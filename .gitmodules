@@ -1,0 +1,12 @@
+[submodule "submodules/alloy"]
+	path = submodules/alloy
+	url = git@github.com:alloy-framework/alloy.git
+[submodule "submodules/flight-instructor"]
+	path = submodules/flight-instructor
+	url = git@github.com:microsoft/flight-instructor.git
+[submodule "submodules/typespec"]
+	path = submodules/typespec
+	url = git@github.com:microsoft/typespec.git
+[submodule "submodules/typespec-azure"]
+	path = submodules/typespec-azure
+	url = git@github.com:Azure/typespec-azure.git
