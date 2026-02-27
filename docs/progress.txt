@@ -91,3 +91,23 @@
 **Key pattern:** createSdkContext is called in $onEmit (not in components) because it's async. The SdkContext is passed as a prop to HttpClientCSharpOutput; task 0.3.2 will wrap it in an EmitterContext provider for deep access via useEmitterContext().
 
 **Gotcha:** `Tester.compileAndDiagnose()` only accepts `TestCompileOptions` (with `compilerOptions`), NOT emitter options. To test with custom emitter options, create a separate tester via `ApiTester.emit("http-client-csharp", { ...options })`.
+
+## 2026-02-27 — Task 0.2.1: Create System.ClientModel core builtins
+
+**Summary:** Created Alloy library declarations for System.ClientModel types using `createLibrary()` from `@alloy-js/csharp`. Two libraries declared:
+
+1. `SystemClientModel` ("System.ClientModel") — ClientResult (with FromValue, FromResponse), BinaryContent (with Create)
+2. `SystemClientModelPrimitives` ("System.ClientModel.Primitives") — ClientPipeline (Create, CreateMessage, Send, SendAsync), PipelineMessage (Request, Response, BufferResponse, ExtractResponse, Apply), PipelineRequest (Headers, Content, Uri), PipelineResponse (Status, Content, ContentStream, Headers, IsError), PipelinePolicy, PipelineMessageClassifier (Create)
+
+**Files created:**
+- `src/builtins/system-client-model.ts` — Library declarations with JSDoc on every type and member
+- `src/builtins/index.ts` — Re-exports
+- `test/builtins.test.tsx` — 11 tests: structural checks + using statement generation via render()
+
+**Key patterns:**
+- Two separate `createLibrary()` calls for the two namespaces — future tasks (0.2.2–0.2.6) will add types to the same file
+- Cross-library type references use arrow functions for lazy evaluation (e.g., PipelineMessage.Request → PipelineRequest, PipelineRequest.Content → BinaryContent)
+- Using statement test uses `render(<Output><SourceFile>...</SourceFile></Output>)` from `@alloy-js/core` with C# `SourceFile`, `ClassDeclaration`, and `Property` to verify correct `using` directives
+- Members without cross-library type refs intentionally omit `type` (consistent with alloy builtins pattern)
+
+**Design decision:** Two separate `createLibrary` calls (one per namespace) rather than a nested namespace descriptor. This matches the alloy builtins convention and allows independent imports.

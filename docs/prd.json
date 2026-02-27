@@ -125,7 +125,7 @@
           "title": "Create System.ClientModel core builtins",
           "description": "Create an Alloy builtin library declaration for System.ClientModel using createLibrary() from @alloy-js/csharp. This enables generated code to reference SCM types (ClientResult, ClientPipeline, BinaryContent, etc.) with automatic using-statement generation. Declare types in the System.ClientModel and System.ClientModel.Primitives namespaces. Include: ClientResult, ClientResult<T>, ClientPipeline, BinaryContent, PipelineMessage, PipelineRequest, PipelineResponse, PipelinePolicy, PipelineMessageClassifier. Each type should be declared with its kind (class/struct/interface) and key members (properties and methods used in generated code). See the Alloy builtins pattern at alloy/packages/csharp/src/builtins/System/index.ts for the declaration pattern.",
           "phase": "phase-0",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "0.1.4"
           ],
