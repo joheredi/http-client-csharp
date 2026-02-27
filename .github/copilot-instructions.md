@@ -13,8 +13,10 @@ pnpm test -- test/hello.test.ts   # Run a single test file
 pnpm test -- -t "emit output.txt" # Run tests matching a name pattern
 pnpm run lint           # ESLint (src/ and test/)
 pnpm run format:check   # Prettier check
-pnpm run format         # Prettier auto-fix
+pnpm run format         # Prettier auto-fix (run before every commit)
 ```
+
+**Always run `pnpm format` before committing** to ensure consistent formatting.
 
 Tests use **vitest** with the `@alloy-js/rollup-plugin` for JSX transform. The vitest config scopes test discovery to `test/` only (submodules contain their own tests that must not run here).
 
@@ -60,7 +62,8 @@ const ApiTester = createTester(resolvePath(import.meta.dirname, ".."), {
 export const Tester = ApiTester.emit("http-client-csharp");
 
 // Tests compile TypeSpec and assert on emitted output
-const [{ outputs }, diagnostics] = await Tester.compileAndDiagnose(`op test(): void;`);
+const [{ outputs }, diagnostics] =
+  await Tester.compileAndDiagnose(`op test(): void;`);
 expect(outputs["output.txt"]).toBe("Hello world!\n");
 ```
 
@@ -68,12 +71,12 @@ expect(outputs["output.txt"]).toBe("Hello world!\n");
 
 ### Imports
 
-| What | Import From |
-|------|-------------|
-| `ClassDeclaration`, `Method`, `Property`, `SourceFile`, etc. | `@alloy-js/csharp` |
-| `SourceDirectory`, `refkey`, `code`, `For`, `Show` | `@alloy-js/core` |
-| `Output`, `writeOutput`, `useTsp` | `@typespec/emitter-framework` |
-| `TypeExpression`, `efRefkey` | `@typespec/emitter-framework/csharp` |
+| What                                                         | Import From                          |
+| ------------------------------------------------------------ | ------------------------------------ |
+| `ClassDeclaration`, `Method`, `Property`, `SourceFile`, etc. | `@alloy-js/csharp`                   |
+| `SourceDirectory`, `refkey`, `code`, `For`, `Show`           | `@alloy-js/core`                     |
+| `Output`, `writeOutput`, `useTsp`                            | `@typespec/emitter-framework`        |
+| `TypeExpression`, `efRefkey`                                 | `@typespec/emitter-framework/csharp` |
 
 **Always** import `SourceFile` from `@alloy-js/csharp` (not `@alloy-js/core`) — the C# version manages `using` directives automatically.
 
@@ -94,7 +97,7 @@ Use `` code`...` `` from `@alloy-js/core` for inline C# expressions with interpo
 
 ```tsx
 code`await ${tokenCredentialKey}.GetTokenAsync(
-  new TokenRequestContext(${scopesKey}), ${cancellationTokenKey})`
+  new TokenRequestContext(${scopesKey}), ${cancellationTokenKey})`;
 ```
 
 ### Component Conventions

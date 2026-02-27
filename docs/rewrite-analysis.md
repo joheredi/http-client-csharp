@@ -38,6 +38,7 @@ The TypeScript emitter converts TypeSpec types through the TCGC (TypeSpec Client
 - **`code-model-writer.ts`**: Serializes the `CodeModel` to JSON with `$id`/`$ref` reference deduplication. Objects with `crossLanguageDefinitionId` or `kind` get unique IDs; subsequent references become `{ "$ref": "id" }`.
 
 The intermediate model (`tspCodeModel.json`) contains:
+
 - `name`, `apiVersions`
 - `enums[]`, `constants[]`, `models[]`
 - `clients[]` (hierarchical, with methods, operations, parameters)
@@ -80,6 +81,7 @@ The generator starts as a console app with arguments: `<outputDirectory> -g <gen
 ### 2.3 Core Abstractions
 
 #### TypeProvider (Abstract Base Class)
+
 The central abstraction for any generated C# type. Uses a **lazy-cached builder** pattern where every property calls a `Build*()` virtual method once and caches the result. Key members:
 
 - **Identity**: `Name`, `Namespace`, `Type` (CSharpType), `DeclarationModifiers`
@@ -89,9 +91,11 @@ The central abstraction for any generated C# type. Uses a **lazy-cached builder*
 - **Mutability**: `Update()` replaces specific members; `Reset()` forces rebuild
 
 #### TypeFactory
+
 Central factory with aggressive caching. Maps `InputType` → `CSharpType` and creates typed providers (models, enums, clients). All methods are `virtual` for extensibility.
 
 Key type mappings:
+
 - `InputModelType` → `ModelProvider`
 - `InputEnumType` → `FixedEnumProvider` or `ExtensibleEnumProvider`
 - `InputArrayType` → `IList<T>`
@@ -100,7 +104,9 @@ Key type mappings:
 - `InputNullableType` → wrapped type with `.WithNullable(true)`
 
 #### OutputLibrary
+
 Assembles all `TypeProvider` objects:
+
 - Models (from `InputNamespace.Models`)
 - Enums (from `InputNamespace.Enums`)
 - Clients + RestClients + ClientOptions
@@ -113,7 +119,9 @@ Assembles all `TypeProvider` objects:
 The legacy generator uses a **three-layer code representation system** rather than string templates:
 
 #### Expressions (37 types, all `record`)
+
 Root: `ValueExpression` (abstract). Provides a fluent API for composition:
+
 - **Literals**: `LiteralExpression`, `TypeReferenceExpression`, `TypeOfExpression`
 - **Operators**: `BinaryOperatorExpression`, `UnaryOperatorExpression`, `AssignmentExpression`
 - **Access**: `MemberExpression`, `IndexerExpression`, `NullConditionalExpression`
@@ -123,14 +131,18 @@ Root: `ValueExpression` (abstract). Provides a fluent API for composition:
 - **Collections**: `ListExpression`, `DictionaryExpression`, `KeyValuePairExpression`
 
 #### Statements (26 types)
+
 Root: `MethodBodyStatement` (abstract). Implements `IEnumerable<MethodBodyStatement>`:
+
 - **Control flow**: `IfStatement`, `IfElseStatement`, `ForStatement`, `ForEachStatement`, `WhileStatement`, `SwitchStatement`, `TryCatchFinallyStatement`
 - **Declarations**: `DeclareLocalFunctionStatement`, `UsingScopeStatement`, `AttributeStatement`
 - **XML docs**: `XmlDocSummaryStatement`, `XmlDocParamStatement`, `XmlDocReturnsStatement`, `XmlDocExceptionStatement`
 - **Preprocessor**: `IfElsePreprocessorStatement`, `PragmaWarningDisableStatement`
 
 #### Snippets (30+ static classes)
+
 Type-safe code generation helpers using `ScopedApi<T>` generic wrappers:
+
 - `StringSnippets`, `IntSnippets`, `BoolSnippets`, `ListSnippets`, `DictionarySnippets`
 - `Utf8JsonWriterSnippets`, `Utf8JsonReaderSnippets`, `JsonElementSnippets`
 - `HttpRequestApiSnippets`, `HttpResponseApiSnippets`, `ClientPipelineApiSnippets`
@@ -141,6 +153,7 @@ The snippet pattern: extension methods on `ScopedApi<T>` produce `ValueExpressio
 ### 2.5 CodeWriter — The Text Emitter
 
 The `CodeWriter` converts the AST to C# source text:
+
 - **Buffer**: Custom `UnsafeBufferSequence` (high-performance `IBufferWriter<char>`)
 - **Scoping**: `Stack<CodeScope>` manages indentation (4 spaces/level), identifier tracking, and brace matching via `IDisposable`
 - **Type rendering**: Fully-qualified names with `global::` prefix, C# keyword aliases (`int` for `System.Int32`), nullable handling
@@ -150,12 +163,14 @@ The `CodeWriter` converts the AST to C# source text:
 ### 2.6 LibraryVisitor & LibraryRewriter
 
 **LibraryVisitor** operates on the **semantic model** (TypeProvider tree) before code emission:
+
 - Pre-visit hooks: `PreVisitModel`, `PreVisitEnum`, `PreVisitProperty` (during TypeFactory creation)
 - Visit hooks: `VisitType`, `VisitMethod`, `VisitConstructor`, `VisitProperty`, `VisitField`
 - Statement/Expression visitors for deep AST transformation
 - `PostVisitType` for post-member processing
 
 **LibraryRewriter** operates on **Roslyn syntax trees** after code emission:
+
 - Extends `CSharpSyntaxRewriter` with injected `SemanticModel`
 - Runs during `GeneratedCodeWorkspace.ProcessDocument()`
 
@@ -168,6 +183,7 @@ The `CodeWriter` converts the AST to C# source text:
 For each `InputModelType`, the generator produces:
 
 **Model class** (`{Name}.cs`):
+
 - **Two constructors**: Public initialization (required params) + internal serialization (all params)
 - **Properties**: Auto-properties with computed getters/setters based on required/readonly/nullable
 - **Fields**: `_additionalBinaryDataProperties` (raw data), backing fields for polymorphic overrides
@@ -175,6 +191,7 @@ For each `InputModelType`, the generator produces:
 - **Backward compatibility**: Maintains API surface from previous contract versions
 
 **Serialization** (`{Name}.Serialization.cs`):
+
 - Implements `IJsonModel<T>` and `IPersistableModel<T>`
 - `JsonModelWriteCore()`: Property-by-property JSON serialization with format-aware handling
 - `DeserializeXxx()`: Property-by-property deserialization with `foreach (var prop in element.EnumerateObject())`
@@ -185,10 +202,12 @@ For each `InputModelType`, the generator produces:
 ### 3.2 Enum Types
 
 **Fixed enums** (C# `enum`):
+
 - Enum members with values
 - Serialization extension class with `ToSerialString()` and `ToEnumName()` methods
 
 **Extensible enums** (`readonly partial struct : IEquatable<T>`):
+
 - Private const fields + public static properties
 - Constructor, equality operators, implicit conversion from underlying type
 - `ToString()`, `Equals()`, `GetHashCode()` implementations
@@ -196,18 +215,21 @@ For each `InputModelType`, the generator produces:
 ### 3.3 Client Types
 
 **Client class** (`{Name}.cs`):
+
 - Fields: endpoint, auth credentials, sub-client caches, API version
 - Public/internal constructors with pipeline creation
 - Service operation methods (protocol + convenience, sync + async)
 - Sub-client factory methods with thread-safe lazy caching
 
 **REST client** (`{Name}.RestClient.cs`):
+
 - `CreateXxxRequest()` methods building HTTP requests
 - URI construction via `ClientUriBuilder`
 - Path/query/header parameter serialization
 - Response status code classifiers
 
 **Client options** (`{Name}Options.cs`):
+
 - Extends `ClientPipelineOptions`
 - Nested `ServiceVersion` enum
 - Latest version constant, version-to-string mapping
@@ -215,6 +237,7 @@ For each `InputModelType`, the generator produces:
 ### 3.4 Infrastructure Types
 
 12+ internal helper classes:
+
 - `TypeFormatters` (value→string for query/path/header)
 - `BinaryContentHelper` (collection→BinaryContent)
 - `Utf8JsonBinaryContent` (JSON request body wrapper)
@@ -235,6 +258,7 @@ For each `InputModelType`, the generator produces:
 ### 3.5 Paging Collections
 
 Per-operation paging classes with three strategies:
+
 - **Single page**: One request, one yield return
 - **Next link**: Loop extracting next-link URL from response body/header
 - **Continuation token**: Loop replacing token in subsequent requests
@@ -272,6 +296,7 @@ The Alloy framework (`@alloy-js/csharp`) provides a **JSX/TSX component model** 
 ### 4.2 Available Components
 
 **Type Declarations:**
+
 - `ClassDeclaration` — full class with access, modifiers, base type, interfaces, type parameters, primary constructor, attributes, doc
 - `StructDeclaration` — struct with readonly, ref, partial modifiers
 - `RecordDeclaration` — record with primary constructor
@@ -279,6 +304,7 @@ The Alloy framework (`@alloy-js/csharp`) provides a **JSX/TSX component model** 
 - `EnumDeclaration` + `EnumMember` — enum with member scope
 
 **Member Declarations:**
+
 - `Method` — with parameters, return type, async, expression body, type parameters, doc, attributes
 - `Property` — with get/set/init, nullable, initializer, required
 - `Field` — with modifiers (static, readonly, volatile, const)
@@ -286,35 +312,41 @@ The Alloy framework (`@alloy-js/csharp`) provides a **JSX/TSX component model** 
 - `Parameters` + `Parameter` — with in/out/ref modifiers, defaults, attributes
 
 **File Structure:**
+
 - `SourceFile` — manages using statements (auto + explicit), file-scoped/block namespaces, header
 - `Namespace` — creates namespace scope, supports nesting
 - `CsprojFile` — MSBuild project file generation
 
 **Expressions & Statements:**
+
 - `InvocationExpression` — method/function calls with type args
 - `AccessExpression` — member access chains (`.Property?.Method()[0]`)
 - `VarDeclaration` — variable declarations with type inference
 - `IfStatement` / `ElseIfClause` / `ElseClause`
 
 **Documentation & Metadata:**
+
 - `DocComment` + tag components (`DocSummary`, `DocParam`, `DocReturns`, `DocException`, `DocSee`, etc.)
 - `DocFromMarkdown` — converts Markdown to XML doc comments
 - `Attributes` / `AttributeList`
 - `Region` — `#region`/`#endregion`
 
 **Utilities:**
+
 - `LexicalScope` / `MethodScope` — block and method scope management
 - `Name` / `Reference` — declaration name rendering and cross-referencing
 
 ### 4.3 Symbol & Scope System
 
 **Symbols** represent C# declarations in a reactive tree:
+
 - `CSharpSymbol` — base, carries access/modifier metadata
 - `NamedTypeSymbol` — classes, interfaces, enums, structs, records
 - `NamespaceSymbol` — namespace with `getFullyQualifiedName()`
 - `MethodSymbol` — methods and constructors
 
 **Scopes** form a hierarchy:
+
 - `CSharpScope` → `CSharpLexicalScope` → `CSharpSourceFileScope`, `CSharpMethodScope`
 - `CSharpNamedTypeScope` → `CSharpClassScope`, `CSharpNamespaceScope`
 
@@ -337,11 +369,12 @@ The builtins package pre-declares `System.*` and `Microsoft.*` namespaces coveri
 ### 4.5 Testing
 
 Tests use **exact string comparison** (not snapshots):
+
 ```tsx
 expect(
   <TestNamespace>
     <ClassDeclaration public name="Foo" />
-  </TestNamespace>
+  </TestNamespace>,
 ).toRenderTo(`public class Foo;`);
 ```
 
@@ -365,39 +398,40 @@ This section maps each major generated output from the legacy C# generator to th
 
 ### 6.1 Model Generation
 
-| Legacy (C# Generator) | Rewrite (Alloy JSX) |
-|---|---|
-| `ModelProvider` → `TypeProviderWriter.WriteType()` | `<ClassDeclaration>` or `<StructDeclaration>` with children |
-| `BuildProperties()` → `PropertyProvider` | `<Property>` with get/set/init/nullable/required |
-| `BuildFields()` → `FieldProvider` | `<Field>` with static/readonly/const |
-| `BuildConstructors()` → `ConstructorProvider` | `<Constructor>` with `<Parameters>` |
+| Legacy (C# Generator)                                              | Rewrite (Alloy JSX)                                                |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `ModelProvider` → `TypeProviderWriter.WriteType()`                 | `<ClassDeclaration>` or `<StructDeclaration>` with children        |
+| `BuildProperties()` → `PropertyProvider`                           | `<Property>` with get/set/init/nullable/required                   |
+| `BuildFields()` → `FieldProvider`                                  | `<Field>` with static/readonly/const                               |
+| `BuildConstructors()` → `ConstructorProvider`                      | `<Constructor>` with `<Parameters>`                                |
 | `BuildSerializationProviders()` → `MrwSerializationTypeDefinition` | Separate `<SourceFile>` with partial class implementing IJsonModel |
-| `XmlDocProvider` | `<DocComment>` with `<DocSummary>`, `<DocParam>` etc. |
-| `AttributeStatement` | `<Attributes>` |
-| Discriminator handling | `abstract` prop on `<ClassDeclaration>`, override patterns |
+| `XmlDocProvider`                                                   | `<DocComment>` with `<DocSummary>`, `<DocParam>` etc.              |
+| `AttributeStatement`                                               | `<Attributes>`                                                     |
+| Discriminator handling                                             | `abstract` prop on `<ClassDeclaration>`, override patterns         |
 
 ### 6.2 Enum Generation
 
-| Legacy | Rewrite |
-|---|---|
-| `FixedEnumProvider` → C# `enum` | `<EnumDeclaration>` with `<EnumMember>` children |
-| `ExtensibleEnumProvider` → `readonly struct` | `<StructDeclaration readonly>` with manually built members |
-| `FixedEnumSerializationProvider` → extension class | `<ClassDeclaration static>` with `<Method>` for ToSerial/ToEnum |
-| `ExtensibleEnumSerializationProvider` → partial struct | Partial `<StructDeclaration>` with serialization methods |
+| Legacy                                                 | Rewrite                                                         |
+| ------------------------------------------------------ | --------------------------------------------------------------- |
+| `FixedEnumProvider` → C# `enum`                        | `<EnumDeclaration>` with `<EnumMember>` children                |
+| `ExtensibleEnumProvider` → `readonly struct`           | `<StructDeclaration readonly>` with manually built members      |
+| `FixedEnumSerializationProvider` → extension class     | `<ClassDeclaration static>` with `<Method>` for ToSerial/ToEnum |
+| `ExtensibleEnumSerializationProvider` → partial struct | Partial `<StructDeclaration>` with serialization methods        |
 
 ### 6.3 Client Generation
 
-| Legacy | Rewrite |
-|---|---|
-| `ClientProvider` | `<ClassDeclaration>` with fields, constructors, methods |
-| `RestClientProvider` (partial) | `<ClassDeclaration partial>` in separate `<SourceFile>` |
-| `ClientOptionsProvider` | `<ClassDeclaration>` extending options base type |
-| `ScmMethodProviderCollection` (4 methods per operation) | 4x `<Method>` components per operation |
-| Pipeline/HTTP abstraction APIs | Direct code generation using `<InvocationExpression>`, `<AccessExpression>` |
+| Legacy                                                  | Rewrite                                                                     |
+| ------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `ClientProvider`                                        | `<ClassDeclaration>` with fields, constructors, methods                     |
+| `RestClientProvider` (partial)                          | `<ClassDeclaration partial>` in separate `<SourceFile>`                     |
+| `ClientOptionsProvider`                                 | `<ClassDeclaration>` extending options base type                            |
+| `ScmMethodProviderCollection` (4 methods per operation) | 4x `<Method>` components per operation                                      |
+| Pipeline/HTTP abstraction APIs                          | Direct code generation using `<InvocationExpression>`, `<AccessExpression>` |
 
 ### 6.4 Infrastructure Types
 
 Most infrastructure types are **static helper classes** that could be:
+
 1. Generated as `<ClassDeclaration static>` with `<Method>` children (same approach, different syntax)
 2. Pre-written as static `.cs` files included via project scaffolding (since their content is mostly fixed)
 3. Defined via `createLibrary()` as builtins if they come from a NuGet package
@@ -405,6 +439,7 @@ Most infrastructure types are **static helper classes** that could be:
 ### 6.5 Serialization
 
 The most complex part. JSON serialization requires generating detailed method bodies with:
+
 - `<Method>` for `Write`/`JsonModelWriteCore`/`DeserializeXxx`
 - Property-by-property serialization using inline code (`code` tagged template or nested JSX)
 - `<IfStatement>` for null/optional checks
@@ -425,6 +460,7 @@ The legacy generator uses a rich expression/statement AST that the `CodeWriter` 
 ### 7.2 Serialization Complexity
 
 MRW serialization is the most complex part (~3000 lines of C# generation logic). Each model property requires type-specific serialization/deserialization code with:
+
 - 15+ primitive type handlers
 - Collection (list/dict) handling with nested element serialization
 - Nullable wrapping/unwrapping
@@ -436,6 +472,7 @@ MRW serialization is the most complex part (~3000 lines of C# generation logic).
 ### 7.3 Custom Code Integration
 
 The legacy generator supports hand-written partial classes that merge with generated code via:
+
 - `[CodeGenType]`, `[CodeGenMember]`, `[CodeGenSuppress]`, `[CodeGenSerialization]` attributes
 - Roslyn-based analysis of custom code compilation
 - Automatic filtering of generated members that conflict with custom code
@@ -445,6 +482,7 @@ The rewrite will need an alternative strategy since Roslyn won't be available.
 ### 7.4 Backward Compatibility
 
 The legacy generator maintains API compatibility with previous contract versions:
+
 - NuGet package download of previous versions
 - Signature comparison for methods/constructors
 - Property type/access compatibility checking
@@ -453,6 +491,7 @@ The legacy generator maintains API compatibility with previous contract versions
 ### 7.5 Dead Code Elimination
 
 The legacy generator uses Roslyn's semantic model to:
+
 - Build reference maps via `SymbolFinder`
 - BFS traversal from root types (clients, custom code)
 - Internalize or remove unreferenced types
@@ -498,12 +537,14 @@ Build a library of higher-level components specific to HTTP client generation:
 ### 8.4 Define C# SDK Builtins
 
 Create `createLibrary()` definitions for:
+
 - `System.ClientModel` (already in Alloy builtins)
 - `System.Text.Json` (already in Alloy builtins)
 - `System.Net.Http` (already in Alloy builtins)
 - Any Azure-specific SDK types needed
 
 The `System.ClientModel` builtin should be organized into logical groups:
+
 - **Core types**: `ClientResult`, `ClientResult<T>`, `ClientPipeline`, `BinaryContent`, `PipelineMessage`, `PipelineRequest`, `PipelineResponse`, `PipelinePolicy`, `PipelineMessageClassifier`
 - **Options & errors**: `ClientPipelineOptions`, `RequestOptions`, `ClientResultException`, `ApiKeyCredential`, `ApiKeyAuthenticationPolicy`
 - **Paging**: `CollectionResult`, `AsyncCollectionResult`, `CollectionResult<T>`, `AsyncCollectionResult<T>`, `ContinuationToken`
@@ -514,6 +555,7 @@ The `System.ClientModel` builtin should be organized into logical groups:
 ### 8.5 Testing Strategy
 
 Use Alloy's `toRenderTo` pattern for unit testing each component:
+
 - Test individual property/method rendering
 - Test model class generation end-to-end
 - Test serialization method generation for each type variant
@@ -524,19 +566,23 @@ Use Alloy's `toRenderTo` pattern for unit testing each component:
 ## 9. Inventory of Generated Artifacts
 
 ### Files Generated Per Model
+
 1. `src/Generated/Models/{Name}.cs` — Model class
 2. `src/Generated/Models/{Name}.Serialization.cs` — Serialization implementation
 
 ### Files Generated Per Enum
+
 1. `src/Generated/Models/{Name}.cs` — Enum definition
 2. `src/Generated/Models/{Name}.Serialization.cs` — Serialization extension methods
 
 ### Files Generated Per Client
+
 1. `src/Generated/{Name}.cs` — Client class
 2. `src/Generated/{Name}.RestClient.cs` — REST client (partial)
 3. `src/Generated/{Name}Options.cs` — Client options (may be shared singleton)
 
 ### Fixed Infrastructure Files
+
 1. `src/Generated/Internal/Argument.cs`
 2. `src/Generated/Internal/ChangeTrackingDictionary.cs`
 3. `src/Generated/Internal/ChangeTrackingList.cs`
@@ -560,6 +606,7 @@ Use Alloy's `toRenderTo` pattern for unit testing each component:
 21. `src/Generated/Internal/CodeGenSerializationAttribute.cs`
 
 ### Project Scaffolding (--new-project)
+
 1. `src/{PackageName}.csproj`
 2. `{PackageName}.sln`
 
@@ -567,34 +614,34 @@ Use Alloy's `toRenderTo` pattern for unit testing each component:
 
 ## 10. Summary Statistics
 
-| Component | Files | Lines (approx) |
-|---|---|---|
-| TypeScript Emitter | 39 TS files | ~5,000 |
-| C# Generator Core | ~90 CS files | ~15,000 |
-| C# Generator ClientModel | ~95 CS files | ~20,000 |
-| C# Generator Input Model | ~110 CS files | ~8,000 |
-| **Total Legacy C# Generator** | **~295 CS files** | **~43,000** |
-| Alloy C# Framework | ~150 TS/TSX files | ~12,000 |
-| New Project (current state) | 6 files | ~100 |
+| Component                     | Files             | Lines (approx) |
+| ----------------------------- | ----------------- | -------------- |
+| TypeScript Emitter            | 39 TS files       | ~5,000         |
+| C# Generator Core             | ~90 CS files      | ~15,000        |
+| C# Generator ClientModel      | ~95 CS files      | ~20,000        |
+| C# Generator Input Model      | ~110 CS files     | ~8,000         |
+| **Total Legacy C# Generator** | **~295 CS files** | **~43,000**    |
+| Alloy C# Framework            | ~150 TS/TSX files | ~12,000        |
+| New Project (current state)   | 6 files           | ~100           |
 
 The rewrite will need to replicate the behavior of ~43,000 lines of C# code using TypeScript + JSX, leveraging the ~12,000-line Alloy framework as the foundation.
 
 **Estimated rewrite scope by phase:**
 
-| Phase | Tasks | Complexity |
-|-------|-------|------------|
-| 0. Foundation | 15 | Low |
-| 1. Types (Models + Enums) | 36 | Medium |
-| 2. JSON Serialization | 30 | High |
-| 3. Clients | 27 | High |
-| 4. Paging/LRO | 18 | Medium |
-| 5. Infrastructure | 21 | Low-Medium |
-| 6. XML (conditional) | 11 | Medium |
-| 7. Merge-Patch (conditional) | 13 | High |
-| 8. Scaffolding | 5 | Low |
-| 9. Multipart (conditional) | 4 | Low |
-| 10. Integration Testing | 15 | Medium |
-| **Total** | **~195** | |
+| Phase                        | Tasks    | Complexity |
+| ---------------------------- | -------- | ---------- |
+| 0. Foundation                | 15       | Low        |
+| 1. Types (Models + Enums)    | 36       | Medium     |
+| 2. JSON Serialization        | 30       | High       |
+| 3. Clients                   | 27       | High       |
+| 4. Paging/LRO                | 18       | Medium     |
+| 5. Infrastructure            | 21       | Low-Medium |
+| 6. XML (conditional)         | 11       | Medium     |
+| 7. Merge-Patch (conditional) | 13       | High       |
+| 8. Scaffolding               | 5        | Low        |
+| 9. Multipart (conditional)   | 4        | Low        |
+| 10. Integration Testing      | 15       | Medium     |
+| **Total**                    | **~195** |            |
 
 **Phase dependency graph:**
 
@@ -639,30 +686,31 @@ The emitter-framework bridges TypeSpec's type system to Alloy's rendering pipeli
 
 Pre-built components that map TypeSpec types directly to C# constructs:
 
-| Component | Input | Output |
-|---|---|---|
-| `ClassDeclaration` | TypeSpec `Model` or `Interface` | C# class with properties, base types, doc comments, JSON attributes |
-| `EnumDeclaration` | TypeSpec `Union` or `Enum` | C# enum with members |
-| `Property` | TypeSpec model property | C# property handling nullable unions, inheritance (`override`/`new`/`virtual`), `[JsonPropertyName]`, `[JsonConverter]` |
-| `TypeExpression` | TypeSpec type reference | C# type name with full scalar mapping |
+| Component          | Input                           | Output                                                                                                                  |
+| ------------------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `ClassDeclaration` | TypeSpec `Model` or `Interface` | C# class with properties, base types, doc comments, JSON attributes                                                     |
+| `EnumDeclaration`  | TypeSpec `Union` or `Enum`      | C# enum with members                                                                                                    |
+| `Property`         | TypeSpec model property         | C# property handling nullable unions, inheritance (`override`/`new`/`virtual`), `[JsonPropertyName]`, `[JsonConverter]` |
+| `TypeExpression`   | TypeSpec type reference         | C# type name with full scalar mapping                                                                                   |
 
 **Scalar type mapping** (TypeExpression):
 
-| TypeSpec Scalar | C# Type |
-|---|---|
-| `string` | `string` |
-| `int32` | `int` |
-| `int64` | `long` |
-| `float32` | `float` |
-| `float64` | `double` |
-| `boolean` | `bool` |
-| `utcDateTime` | `DateTimeOffset` |
-| `duration` | `TimeSpan` |
-| `bytes` | `byte[]` |
-| `decimal` | `decimal` |
-| `url` | `Uri` |
+| TypeSpec Scalar | C# Type          |
+| --------------- | ---------------- |
+| `string`        | `string`         |
+| `int32`         | `int`            |
+| `int64`         | `long`           |
+| `float32`       | `float`          |
+| `float64`       | `double`         |
+| `boolean`       | `bool`           |
+| `utcDateTime`   | `DateTimeOffset` |
+| `duration`      | `TimeSpan`       |
+| `bytes`         | `byte[]`         |
+| `decimal`       | `decimal`        |
+| `url`           | `Uri`            |
 
 **JSON Converter system:**
+
 - `JsonConverter` component — generates converter classes for types requiring custom JSON serialization.
 - `JsonConverterResolver` — deduplicates and centralizes converter registrations.
 
@@ -672,7 +720,7 @@ Pre-built components that map TypeSpec types directly to C# constructs:
 
 The emitter-framework uses **markdown-driven scenario testing**:
 
-1. **Scenario files** are `.md` files containing `` ```tsp `` spec blocks and `` ```cs `` expected output blocks.
+1. **Scenario files** are `.md` files containing ` ```tsp ` spec blocks and ` ```cs ` expected output blocks.
 2. **`executeScenarios()`** auto-generates vitest test suites from these markdown files.
 3. **tree-sitter-based snippet extraction** — `createCSharpExtractorConfig()` enables comparing specific declarations rather than full files.
 4. **Snapshot update mode** — set `RECORD=true` environment variable to update golden files.
@@ -701,47 +749,47 @@ The pipeline has three stages:
 
 **Root & File Structure:**
 
-| Component | Purpose |
-|---|---|
-| `Output` | Root component; sets up binder, name policy, externals |
-| `SourceFile` | Creates file in output tree; each file rendered independently; props: `filetype`, `reference`, `header` |
-| `SourceDirectory` | Directory node in output tree |
+| Component         | Purpose                                                                                                 |
+| ----------------- | ------------------------------------------------------------------------------------------------------- |
+| `Output`          | Root component; sets up binder, name policy, externals                                                  |
+| `SourceFile`      | Creates file in output tree; each file rendered independently; props: `filetype`, `reference`, `header` |
+| `SourceDirectory` | Directory node in output tree                                                                           |
 
 **Code Structure:**
 
-| Component | Purpose |
-|---|---|
-| `Block` | Indented block with configurable open/close delimiters |
-| `Indent` | Indentation with break types: hardline, softline, line, nobreak |
-| `List` | Joins children with separators: comma, semicolon, space, line variants |
-| `For<T>` | Collection iteration with list features; supports Array, Map, Set, reactive refs |
-| `StatementList` | Semicolon + hardline joins |
-| `Prose` | Word-wrapping text |
-| `Wrap` | Conditional wrapping |
+| Component       | Purpose                                                                          |
+| --------------- | -------------------------------------------------------------------------------- |
+| `Block`         | Indented block with configurable open/close delimiters                           |
+| `Indent`        | Indentation with break types: hardline, softline, line, nobreak                  |
+| `List`          | Joins children with separators: comma, semicolon, space, line variants           |
+| `For<T>`        | Collection iteration with list features; supports Array, Map, Set, reactive refs |
+| `StatementList` | Semicolon + hardline joins                                                       |
+| `Prose`         | Word-wrapping text                                                               |
+| `Wrap`          | Conditional wrapping                                                             |
 
 **Declarations:**
 
-| Component | Purpose |
-|---|---|
-| `Declaration` / `Name` | Declare symbols, render declaration names |
-| `MemberDeclaration` / `MemberName` / `MemberScope` | Member-level declaration system |
-| `Scope` | Lexical scope establishment |
+| Component                                          | Purpose                                   |
+| -------------------------------------------------- | ----------------------------------------- |
+| `Declaration` / `Name`                             | Declare symbols, render declaration names |
+| `MemberDeclaration` / `MemberName` / `MemberScope` | Member-level declaration system           |
+| `Scope`                                            | Lexical scope establishment               |
 
 **Control Flow:**
 
-| Component | Purpose |
-|---|---|
-| `Show` | Conditional rendering |
+| Component          | Purpose                             |
+| ------------------ | ----------------------------------- |
+| `Show`             | Conditional rendering               |
 | `Switch` + `Match` | Pattern-based conditional rendering |
 
 **File Manipulation:**
 
-| Component | Purpose |
-|---|---|
-| `CopyFile` | Copy file to output |
-| `AppendFile` | Append to existing file |
+| Component      | Purpose                        |
+| -------------- | ------------------------------ |
+| `CopyFile`     | Copy file to output            |
+| `AppendFile`   | Append to existing file        |
 | `TemplateFile` | Template-based file generation |
-| `UpdateFile` | Modify existing output file |
+| `UpdateFile`   | Modify existing output file    |
 
 #### B.3 Intrinsic JSX Elements (Prettier-Style)
 
@@ -825,21 +873,23 @@ Partial class implementing `IJsonModel<T>` and `IPersistableModel<T>`. Members a
 
 **Property serialization patterns:**
 
-| Pattern | Code |
-|---|---|
-| Property name | `writer.WritePropertyName("name"u8)` (UTF-8 literal) |
-| Optional guard | `Optional.IsDefined(property)` / `Optional.IsCollectionDefined(collection)` |
-| Required nullable | `writer.WriteNull("name"u8)` explicitly |
-| Raw data | Written only when `options.Format != "W"`, with `#if NET6_0_OR_GREATER` guard for `WriteRawValue` |
+| Pattern           | Code                                                                                              |
+| ----------------- | ------------------------------------------------------------------------------------------------- |
+| Property name     | `writer.WritePropertyName("name"u8)` (UTF-8 literal)                                              |
+| Optional guard    | `Optional.IsDefined(property)` / `Optional.IsCollectionDefined(collection)`                       |
+| Required nullable | `writer.WriteNull("name"u8)` explicitly                                                           |
+| Raw data          | Written only when `options.Format != "W"`, with `#if NET6_0_OR_GREATER` guard for `WriteRawValue` |
 
 #### C.4 Enum Patterns
 
 **Fixed Enum:**
+
 - C# `enum` declaration + serialization extension class
 - Extension class provides `ToSerialString()` and `ToEnumName()` methods
 - Int-backed enums need no `ToSerial` method (cast suffices); string-backed use switch expressions
 
 **Extensible Enum:**
+
 - `readonly partial struct : IEquatable<T>`
 - Private `const` values + public `static` properties
 - Implicit operator from underlying type
@@ -848,23 +898,24 @@ Partial class implementing `IJsonModel<T>` and `IPersistableModel<T>`. Members a
 
 Each client is a partial class split across two files:
 
-| File | Content |
-|---|---|
-| `{Name}.cs` | Constructors, fields, operation methods, sub-client accessors |
-| `{Name}.RestClient.cs` | HTTP request builder methods |
+| File                   | Content                                                       |
+| ---------------------- | ------------------------------------------------------------- |
+| `{Name}.cs`            | Constructors, fields, operation methods, sub-client accessors |
+| `{Name}.RestClient.cs` | HTTP request builder methods                                  |
 
 **Four methods per operation:**
 
-| Method | Parameters | Returns |
-|---|---|---|
-| Protocol sync | `BinaryContent` + `RequestOptions` | `ClientResult` |
-| Protocol async | `BinaryContent` + `RequestOptions` | `Task<ClientResult>` |
-| Convenience sync | Typed params + `CancellationToken` | `ClientResult<T>` |
+| Method            | Parameters                         | Returns                 |
+| ----------------- | ---------------------------------- | ----------------------- |
+| Protocol sync     | `BinaryContent` + `RequestOptions` | `ClientResult`          |
+| Protocol async    | `BinaryContent` + `RequestOptions` | `Task<ClientResult>`    |
+| Convenience sync  | Typed params + `CancellationToken` | `ClientResult<T>`       |
 | Convenience async | Typed params + `CancellationToken` | `Task<ClientResult<T>>` |
 
 **Sub-client pattern:** Thread-safe lazy caching via `Volatile.Read` + `Interlocked.CompareExchange`.
 
 **Operation naming conventions:**
+
 - `List` → `GetAll` (bare "list" becomes "get all")
 - `ListXxx` → `GetXxx` (prefixed "list" becomes "get")
 - Async methods get `Async` suffix (e.g., `GetWidget` → `GetWidgetAsync`)
@@ -897,34 +948,34 @@ message.Apply(options);
 
 Four classes per paging operation (sync/async × protocol/convenience):
 
-| Strategy | Description |
-|---|---|
-| Next-link | URI extracted from response body |
+| Strategy           | Description                                  |
+| ------------------ | -------------------------------------------- |
+| Next-link          | URI extracted from response body             |
 | Continuation-token | Token extracted from response body or header |
 
 Uses iterator pattern with `yield return` for lazy page enumeration. Typed extraction via `GetValuesFromPage` / `GetValuesFromPageAsync`.
 
 #### C.8 Polymorphic Models
 
-| Element | Pattern |
-|---|---|
-| Base class | Abstract with `private protected` constructor, `internal` discriminator property |
-| Derived class | Passes literal discriminator value to base constructor |
-| Unknown variant | Internal class with null-guard on discriminator |
+| Element         | Pattern                                                                                                                   |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Base class      | Abstract with `private protected` constructor, `internal` discriminator property                                          |
+| Derived class   | Passes literal discriminator value to base constructor                                                                    |
+| Unknown variant | Internal class with null-guard on discriminator                                                                           |
 | Deserialization | `[PersistableModelProxy(typeof(UnknownXxx))]` on base; `Deserialize` reads discriminator and switches to correct subclass |
 
 #### C.9 Encoding Patterns
 
-| Format | DateTime | Duration | Bytes |
-|---|---|---|---|
-| RFC3339 | `"O"` format | — | — |
-| RFC7231 | `"R"` format | — | — |
-| Unix | `WriteNumberValue(ToUnixTimeSeconds)` | — | — |
-| ISO8601 | — | `"P"` via `XmlConvert` | — |
-| Seconds | — | `TotalSeconds` | — |
-| Milliseconds | — | `TotalMilliseconds` | — |
-| Base64 | — | — | `"D"` (built-in) |
-| Base64URL | — | — | `"U"` (custom `TypeFormatters`) |
+| Format       | DateTime                              | Duration               | Bytes                           |
+| ------------ | ------------------------------------- | ---------------------- | ------------------------------- |
+| RFC3339      | `"O"` format                          | —                      | —                               |
+| RFC7231      | `"R"` format                          | —                      | —                               |
+| Unix         | `WriteNumberValue(ToUnixTimeSeconds)` | —                      | —                               |
+| ISO8601      | —                                     | `"P"` via `XmlConvert` | —                               |
+| Seconds      | —                                     | `TotalSeconds`         | —                               |
+| Milliseconds | —                                     | `TotalMilliseconds`    | —                               |
+| Base64       | —                                     | —                      | `"D"` (built-in)                |
+| Base64URL    | —                                     | —                      | `"U"` (custom `TypeFormatters`) |
 
 #### C.10 XML Serialization
 
@@ -954,11 +1005,11 @@ Uses iterator pattern with `yield return` for lazy page enumeration. Typed extra
 
 #### C.13 Usage Direction Impact
 
-| Direction | Public Constructor | Properties | Operators |
-|---|---|---|---|
-| Input-only | Yes | Read-only | `implicit → BinaryContent` |
-| Output-only | No | Read-only | `explicit ← ClientResult` |
-| Input+Output | Yes | Get/Set | Both operators |
+| Direction    | Public Constructor | Properties | Operators                  |
+| ------------ | ------------------ | ---------- | -------------------------- |
+| Input-only   | Yes                | Read-only  | `implicit → BinaryContent` |
+| Output-only  | No                 | Read-only  | `explicit ← ClientResult`  |
+| Input+Output | Yes                | Get/Set    | Both operators             |
 
 ---
 
@@ -986,7 +1037,7 @@ Full (non-stub) implementations that serve as golden reference files:
 
 Markdown-driven testing specifically for the `@typespec/emitter-framework` C# components:
 
-1. Scenario files are `.md` with `` ```tsp `` input blocks and `` ```cs `` expected output blocks.
+1. Scenario files are `.md` with ` ```tsp ` input blocks and ` ```cs ` expected output blocks.
 2. **tree-sitter** for C# snippet extraction and targeted comparison of specific declarations.
 3. **`executeScenarios()`** auto-generates vitest test suites from the scenario files.
 4. **`RECORD=true`** mode for updating golden files when expected output changes intentionally.

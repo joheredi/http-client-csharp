@@ -159,26 +159,26 @@ const cancellationTokenKey = refkey();
 
 // Interpolate refkeys into code expressions
 code`await ${tokenCredentialKey}.GetTokenAsync(
-  new TokenRequestContext(${scopesKey}), ${cancellationTokenKey})`
+  new TokenRequestContext(${scopesKey}), ${cancellationTokenKey})`;
 
 // Interpolate JSX components (like TypeExpression)
-code`Task<${(<TypeExpression type={returnType} />)}>`
+code`Task<${(<TypeExpression type={returnType} />)}>`;
 
 // Interpolate string values
-code`queryParams.Add($"apiVersion=${versionValue}");`
+code`queryParams.Add($"apiVersion=${versionValue}");`;
 ```
 
 The `code` tag produces `Children` that can be used anywhere — as method bodies, property initializers, expression arguments, etc.
 
 ### Import Cheat Sheet
 
-| Symbol | Import From |
-|--------|-------------|
-| `ClassDeclaration`, `Method`, `Property`, `Field`, `Constructor`, `SourceFile`, `Attribute`, etc. | `@alloy-js/csharp` |
-| `SourceDirectory`, `refkey`, `namekey`, `code`, `For`, `Show`, `List`, `Switch`, `Match`, `Block`, `renderAsync`, `createContext`, `useContext` | `@alloy-js/core` |
-| `Output`, `writeOutput`, `useTsp`, `TransformNamePolicy` | `@typespec/emitter-framework` |
-| `TypeExpression`, `efRefkey` | `@typespec/emitter-framework/csharp` |
-| `createLibrary`, `createCSharpNamePolicy`, `access` | `@alloy-js/csharp` |
+| Symbol                                                                                                                                          | Import From                          |
+| ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| `ClassDeclaration`, `Method`, `Property`, `Field`, `Constructor`, `SourceFile`, `Attribute`, etc.                                               | `@alloy-js/csharp`                   |
+| `SourceDirectory`, `refkey`, `namekey`, `code`, `For`, `Show`, `List`, `Switch`, `Match`, `Block`, `renderAsync`, `createContext`, `useContext` | `@alloy-js/core`                     |
+| `Output`, `writeOutput`, `useTsp`, `TransformNamePolicy`                                                                                        | `@typespec/emitter-framework`        |
+| `TypeExpression`, `efRefkey`                                                                                                                    | `@typespec/emitter-framework/csharp` |
+| `createLibrary`, `createCSharpNamePolicy`, `access`                                                                                             | `@alloy-js/csharp`                   |
 
 ---
 
@@ -304,7 +304,7 @@ import { Show } from "@alloy-js/core";
 
 <Show when={hasAuth}>
   <Field private readonly name="credential" type="TokenCredential" />
-</Show>
+</Show>;
 ```
 
 #### List — Array Rendering with Separators
@@ -349,7 +349,7 @@ import { Indent } from "@alloy-js/core";
 
 <Indent hardline trailingBreak>
   {indentedContent}
-</Indent>
+</Indent>;
 ```
 
 #### Wrap — Conditional Wrapping
@@ -359,7 +359,7 @@ import { Wrap } from "@alloy-js/core";
 
 <Wrap when={needsRegion} with={Region} props={{ name: "Methods" }}>
   {methodDeclarations}
-</Wrap>
+</Wrap>;
 ```
 
 #### Switch / Match — Multi-Conditional
@@ -377,7 +377,7 @@ import { Switch, Match } from "@alloy-js/core";
   <Match else>
     <StructDeclaration name={type.name} />
   </Match>
-</Switch>
+</Switch>;
 ```
 
 #### StatementList — Semicolon-Separated Statements
@@ -389,7 +389,7 @@ import { StatementList } from "@alloy-js/core";
   <VarDeclaration name="x">42</VarDeclaration>
   <VarDeclaration name="y">x + 1</VarDeclaration>
   return y
-</StatementList>
+</StatementList>;
 // Renders:
 // var x = 42;
 // var y = x + 1;
@@ -402,9 +402,9 @@ import { StatementList } from "@alloy-js/core";
 import { Prose } from "@alloy-js/core";
 
 <Prose>
-  This is a long paragraph that will be wrapped at word boundaries
-  when it exceeds the configured print width.
-</Prose>
+  This is a long paragraph that will be wrapped at word boundaries when it
+  exceeds the configured print width.
+</Prose>;
 ```
 
 ### File & Directory Components
@@ -416,10 +416,8 @@ import { SourceFile } from "@alloy-js/csharp";
 import { SourceDirectory } from "@alloy-js/core";
 
 <SourceDirectory path="models">
-  <SourceFile path="Widget.cs">
-    {content}
-  </SourceFile>
-</SourceDirectory>
+  <SourceFile path="Widget.cs">{content}</SourceFile>
+</SourceDirectory>;
 ```
 
 > **Important:** Always import `SourceFile` from `@alloy-js/csharp`, not `@alloy-js/core`. The C# version wraps the core `SourceFile` with automatic `using` directive management and C#-specific scoping.
@@ -440,11 +438,11 @@ import { renderAsync } from "@alloy-js/core";
 
 const directory = await renderAsync(
   <Output
-    program={context.program}           // TypeSpec Program instance
+    program={context.program} // TypeSpec Program instance
     namePolicy={createCSharpNamePolicy()} // Naming convention policy
   >
     <MyRestClient />
-  </Output>
+  </Output>,
 );
 ```
 
@@ -537,16 +535,19 @@ const typeRef = efRefkey(myTypeSpecType);
 ### TransformNamePolicy — Wire/Application Name Mapping
 
 ```tsx
-import { createTransformNamePolicy, TransformNamePolicyContext } from "@typespec/emitter-framework";
+import {
+  createTransformNamePolicy,
+  TransformNamePolicyContext,
+} from "@typespec/emitter-framework";
 
 const policy = createTransformNamePolicy({
-  transportNamer: (type) => type.name,              // Wire format name (JSON key)
+  transportNamer: (type) => type.name, // Wire format name (JSON key)
   applicationNamer: (type) => pascalCase(type.name), // C# property name
 });
 
 <TransformNamePolicyContext.Provider value={policy}>
   {/* Children can access wire names for [JsonPropertyName] attributes */}
-</TransformNamePolicyContext.Provider>
+</TransformNamePolicyContext.Provider>;
 ```
 
 ### SCCSet — Dependency Ordering (Tarjan's Algorithm)
@@ -580,7 +581,7 @@ import { SourceFile, Namespace, ClassDeclaration } from "@alloy-js/csharp";
   <Namespace name="MyApp.Models">
     <ClassDeclaration public name="Widget" />
   </Namespace>
-</SourceFile>
+</SourceFile>;
 ```
 
 **Props:**
@@ -620,7 +621,7 @@ import { SourceDirectory } from "@alloy-js/core";
 <SourceDirectory path="models">
   <SourceFile path="Widget.cs">...</SourceFile>
   <SourceFile path="Order.cs">...</SourceFile>
-</SourceDirectory>
+</SourceDirectory>;
 ```
 
 ### Type Declaration Components
@@ -662,16 +663,23 @@ import { SourceDirectory } from "@alloy-js/core";
 ```tsx
 <InterfaceDeclaration public name="IApiClient" typeParameters={["T"]}>
   <InterfaceProperty name="BaseUrl" type="string" get set />
-  <InterfaceMethod name="GetAsync" returns="Task<T>"
-    parameters={[{ name: "id", type: "int" }]} />
+  <InterfaceMethod
+    name="GetAsync"
+    returns="Task<T>"
+    parameters={[{ name: "id", type: "int" }]}
+  />
 </InterfaceDeclaration>
 ```
 
 #### StructDeclaration
 
 ```tsx
-<StructDeclaration public readonly name="Point"
-  interfaceTypes={["IEquatable<Point>"]}>
+<StructDeclaration
+  public
+  readonly
+  name="Point"
+  interfaceTypes={["IEquatable<Point>"]}
+>
   <Field public readonly name="X" type="double" />
   <Field public readonly name="Y" type="double" />
 </StructDeclaration>
@@ -693,11 +701,14 @@ import { SourceDirectory } from "@alloy-js/core";
 #### RecordDeclaration
 
 ```tsx
-<RecordDeclaration public name="ApiResponse"
+<RecordDeclaration
+  public
+  name="ApiResponse"
   primaryConstructor={[
     { name: "statusCode", type: "int" },
-    { name: "body", type: "string" }
-  ]}>
+    { name: "body", type: "string" },
+  ]}
+>
   <Property name="Timestamp" type="DateTime" get init />
 </RecordDeclaration>
 ```
@@ -714,14 +725,18 @@ import { SourceDirectory } from "@alloy-js/core";
   returns="Task<string>"
   parameters={[
     { name: "url", type: "string" },
-    { name: "cancellationToken", type: "CancellationToken", default: "default" }
+    {
+      name: "cancellationToken",
+      type: "CancellationToken",
+      default: "default",
+    },
   ]}
   typeParameters={["T"]}
   attributes={[<Attribute name="Obsolete" args={['"Use V2"']} />]}
   doc="Fetches data from the specified URL"
 >
-  var response = await httpClient.GetAsync(url, cancellationToken);
-  return await response.Content.ReadAsStringAsync();
+  var response = await httpClient.GetAsync(url, cancellationToken); return await
+  response.Content.ReadAsStringAsync();
 </Method>
 ```
 
@@ -741,12 +756,14 @@ import { SourceDirectory } from "@alloy-js/core";
 #### Constructor
 
 ```tsx
-<Constructor public parameters={[
-  { name: "httpClient", type: "HttpClient" },
-  { name: "endpoint", type: "string" }
-]}>
-  this.httpClient = httpClient;
-  this.endpoint = endpoint;
+<Constructor
+  public
+  parameters={[
+    { name: "httpClient", type: "HttpClient" },
+    { name: "endpoint", type: "string" },
+  ]}
+>
+  this.httpClient = httpClient; this.endpoint = endpoint;
 </Constructor>
 ```
 
@@ -759,7 +776,8 @@ Name is automatically derived from the enclosing class.
   public
   name="Name"
   type="string"
-  get set
+  get
+  set
   nullable
   initializer={`"default"`}
   attributes={[<Attribute name="JsonPropertyName" args={['"name"']} />]}
@@ -879,19 +897,19 @@ Or use the **fluent builder API** (often more convenient):
 import { access } from "@alloy-js/csharp";
 
 // Simple member access
-access("response").member("Content").member("Headers")
+access("response").member("Content").member("Headers");
 // Renders: response.Content.Headers
 
 // Conditional (null-safe) access
-access("user").member("Address", { conditional: true }).member("City")
+access("user").member("Address", { conditional: true }).member("City");
 // Renders: user?.Address.City
 
 // Method calls
-access("client").member("GetAsync").call(["url", "token"])
+access("client").member("GetAsync").call(["url", "token"]);
 // Renders: client.GetAsync(url, token)
 
 // Indexer
-access("items").index([0]).member("Name")
+access("items").index([0]).member("Name");
 // Renders: items[0].Name
 
 // Complex chains
@@ -899,7 +917,7 @@ access("JsonSerializer")
   .member("Deserialize")
   .call(["body", "options"])
   .member("Results")
-  .index([0])
+  .index([0]);
 // Renders: JsonSerializer.Deserialize(body, options).Results[0]
 ```
 
@@ -940,6 +958,7 @@ import { DocComment, DocSummary, DocParam, DocReturns, DocFromMarkdown } from "@
 ```
 
 **Available Doc Components:**
+
 - `DocSummary`, `DocRemarks`, `DocExample`, `DocReturns`, `DocValue`
 - `DocParam`, `DocTypeParam`, `DocException`, `DocPermission`
 - `DocSee`, `DocSeeAlso`, `DocParamRef`, `DocTypeParamRef`
@@ -970,17 +989,19 @@ import { CsprojFile } from "@alloy-js/csharp";
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
   </PropertyGroup>`}
-</CsprojFile>
+</CsprojFile>;
 ```
 
 ### Type Parameters & Constraints
 
 ```tsx
-<ClassDeclaration name="Repository"
+<ClassDeclaration
+  name="Repository"
   typeParameters={[
     { name: "T", constraints: ["class", "new()"] },
-    { name: "TKey", constraints: "IComparable<TKey>" }
-  ]}>
+    { name: "TKey", constraints: "IComparable<TKey>" },
+  ]}
+>
   ...
 </ClassDeclaration>
 // Renders:
@@ -1080,9 +1101,10 @@ function Model({ type, name }: { type: Type; name: string }) {
             required
             name={prop.name}
             type={mapTypeToCs(prop.type)}
-            get set
+            get
+            set
             attributes={[
-              <Attribute name="JsonPropertyName" args={[`"${prop.name}"`]} />
+              <Attribute name="JsonPropertyName" args={[`"${prop.name}"`]} />,
             ]}
           />
         ))}
@@ -1111,7 +1133,11 @@ function OperationGroup({ group }: { group: GroupDescriptor }) {
   const httpClientField = refkey();
   const endpointField = refkey();
 
-  const ogContext = createOperationGroupContext(group, httpClientField, endpointField);
+  const ogContext = createOperationGroupContext(
+    group,
+    httpClientField,
+    endpointField,
+  );
 
   return (
     <OperationGroupContext.Provider value={ogContext}>
@@ -1119,18 +1145,30 @@ function OperationGroup({ group }: { group: GroupDescriptor }) {
         <Namespace name={ctx.namespace}>
           <ClassDeclaration public name={`${group.name}Operations`}>
             {/* Fields */}
-            <Field private readonly name="httpClient" type="HttpClient"
-              refkey={httpClientField} />
-            <Field private readonly name="endpoint" type="string"
-              refkey={endpointField} />
+            <Field
+              private
+              readonly
+              name="httpClient"
+              type="HttpClient"
+              refkey={httpClientField}
+            />
+            <Field
+              private
+              readonly
+              name="endpoint"
+              type="string"
+              refkey={endpointField}
+            />
 
             {/* Constructor */}
-            <Constructor public parameters={[
-              { name: "httpClient", type: "HttpClient" },
-              { name: "endpoint", type: "string" }
-            ]}>
-              this.httpClient = httpClient;
-              this.endpoint = endpoint;
+            <Constructor
+              public
+              parameters={[
+                { name: "httpClient", type: "HttpClient" },
+                { name: "endpoint", type: "string" },
+              ]}
+            >
+              this.httpClient = httpClient; this.endpoint = endpoint;
             </Constructor>
 
             {/* Operations */}
@@ -1205,23 +1243,19 @@ function CallHttpOperation(props: CallHttpProps) {
       <VarDeclaration name="request" using>
         new HttpRequestMessage(HttpMethod.{props.httpMethod}, {props.refkeyUri})
       </VarDeclaration>
-
       {/* Send request */}
       <VarDeclaration name="response" using>
-        await {ogCtx.httpClientField}.SendAsync(
-          request, {props.refkeyCancellationToken})
+        await {ogCtx.httpClientField}.SendAsync( request,{" "}
+        {props.refkeyCancellationToken})
       </VarDeclaration>
-
       {/* Validate response */}
       response.EnsureSuccessStatusCode();
-
       {/* Deserialize */}
       <VarDeclaration name="content">
         await response.Content.ReadAsStringAsync()
       </VarDeclaration>
-
       return JsonSerializer.Deserialize&lt;{mapTypeToCs(props.returnType)}&gt;(
-        content, SerializationContext.Default.Options);
+      content, SerializationContext.Default.Options);
     </>
   );
 }
@@ -1237,16 +1271,16 @@ export interface GroupDescriptor {
   name: string;
   path: string[];
   operations: OperationDescriptor[];
-  allOperations: OperationDescriptor[];  // flattened
+  allOperations: OperationDescriptor[]; // flattened
   subGroups: GroupDescriptor[];
 }
 
 export interface OperationDescriptor {
-  originalOp: Operation;          // TypeSpec source of truth
-  op: Operation;                  // Processed/tool view
-  id: string;                     // snake_case id: "widgets_get_widget"
-  path: string[];                 // hierarchical path
-  implementationOp: Operation;    // What code must implement
+  originalOp: Operation; // TypeSpec source of truth
+  op: Operation; // Processed/tool view
+  id: string; // snake_case id: "widgets_get_widget"
+  path: string[]; // hierarchical path
+  implementationOp: Operation; // What code must implement
   parentGroup: GroupDescriptor;
 }
 
@@ -1273,8 +1307,12 @@ function ExtensibleEnumDeclaration({ type, name }: Props) {
   const variants = [...type.variants.values()];
 
   return (
-    <StructDeclaration public readonly name={name}
-      interfaceTypes={[`IEquatable<${name}>`]}>
+    <StructDeclaration
+      public
+      readonly
+      name={name}
+      interfaceTypes={[`IEquatable<${name}>`]}
+    >
       {/* Private value field */}
       <Field private readonly name="value" type="string" />
 
@@ -1285,20 +1323,35 @@ function ExtensibleEnumDeclaration({ type, name }: Props) {
 
       {/* Static properties for each variant */}
       {variants.map((v) => (
-        <Property public static name={v.name} type={name}
-          get initializer={`new ${name}("${v.value}")`} />
+        <Property
+          public
+          static
+          name={v.name}
+          type={name}
+          get
+          initializer={`new ${name}("${v.value}")`}
+        />
       ))}
 
       {/* Equality, GetHashCode, ToString */}
-      <Method public override name="Equals"
+      <Method
+        public
+        override
+        name="Equals"
         parameters={[{ name: "obj", type: "object", optional: true }]}
-        returns="bool" expression>
+        returns="bool"
+        expression
+      >
         obj is {name} other &amp;&amp; Equals(other)
       </Method>
 
-      <Method public name="Equals"
+      <Method
+        public
+        name="Equals"
         parameters={[{ name: "other", type: name }]}
-        returns="bool" expression>
+        returns="bool"
+        expression
+      >
         string.Equals(value, other.value, StringComparison.OrdinalIgnoreCase)
       </Method>
 
@@ -1332,13 +1385,14 @@ const directory = await renderAsync(
     <CodegenOptionsContext.Provider value={options}>
       <RestClient operations={ops} endpoint={endpoint} />
     </CodegenOptionsContext.Provider>
-  </Output>
+  </Output>,
 );
 ```
 
 ### Output Component
 
 `<Output>` from `@typespec/emitter-framework` provides:
+
 - TypeSpec `program` context for type resolution
 - Name policy for consistent naming
 - Binder for symbol management
@@ -1351,10 +1405,12 @@ flight-instructor uses a pattern where the same tree can be rendered once and fi
 class CSharpRenderer extends Renderer {
   async renderRestClientOperation(options: RenderOperationOptions) {
     return await renderAsync(
-      <Output program={this.serviceInfo.program}
-        namePolicy={createCSharpNamePolicy()}>
+      <Output
+        program={this.serviceInfo.program}
+        namePolicy={createCSharpNamePolicy()}
+      >
         <RestClient operations={options.operations} />
-      </Output>
+      </Output>,
     );
   }
 
@@ -1455,6 +1511,7 @@ CSharpScope (base)
 ### Automatic Scope Management
 
 Components automatically create appropriate scopes:
+
 - `<SourceFile>` → `CSharpSourceFileScope`
 - `<Namespace>` → `CSharpNamespaceScope`
 - `<ClassDeclaration>` → `CSharpClassScope`
@@ -1466,9 +1523,9 @@ Components automatically create appropriate scopes:
 import { useCSharpScope, useMethodScope, useNamespace } from "@alloy-js/csharp";
 
 function MyComponent() {
-  const scope = useCSharpScope();      // Current scope
-  const method = useMethodScope();      // Nearest method scope
-  const ns = useNamespace();           // Nearest namespace
+  const scope = useCSharpScope(); // Current scope
+  const method = useMethodScope(); // Nearest method scope
+  const ns = useNamespace(); // Nearest namespace
   // ...
 }
 ```
@@ -1499,6 +1556,7 @@ import { System, Microsoft } from "@alloy-js/csharp/builtins";
 ```
 
 **Available Namespaces:**
+
 - `System` (Collections, Collections.Generic, IO, Net, Net.Http, Text, Text.Json, Threading.Tasks, Linq, Reflection, Security, etc.)
 - `Microsoft` (CSharp, Win32)
 
@@ -1595,7 +1653,7 @@ import { CsprojFile } from "@alloy-js/csharp";
   <ItemGroup>
     <PackageReference Include="System.Text.Json" Version="8.0.0" />
   </ItemGroup>`}
-</CsprojFile>
+</CsprojFile>;
 ```
 
 **Supported SDKs:** `Microsoft.NET.Sdk`, `Microsoft.NET.Sdk.Web`, `Microsoft.NET.Sdk.Worker`, `Microsoft.NET.Sdk.Razor`, `Microsoft.NET.Sdk.BlazorWebAssembly`, `Aspire.AppHost.Sdk`, `MSTest.Sdk`
@@ -1605,8 +1663,14 @@ import { CsprojFile } from "@alloy-js/csharp";
 For more structured .csproj generation, use the typed MSBuild components:
 
 ```tsx
-import { Project, PropertyGroup, ItemGroup, PackageReference,
-  OutputType, TargetFramework } from "@alloy-js/msbuild/components";
+import {
+  Project,
+  PropertyGroup,
+  ItemGroup,
+  PackageReference,
+  OutputType,
+  TargetFramework,
+} from "@alloy-js/msbuild/components";
 
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
@@ -1617,7 +1681,7 @@ import { Project, PropertyGroup, ItemGroup, PackageReference,
     <PackageReference Include="Azure.Core" Version="1.38.0" />
     <PackageReference Include="System.Text.Json" Version="8.0.0" />
   </ItemGroup>
-</Project>
+</Project>;
 ```
 
 These components render to valid XML and support all standard MSBuild properties, item types, and targets.
@@ -1652,7 +1716,7 @@ import { createCSharpNamePolicy, CSharpElements } from "@alloy-js/csharp";
 type CSharpElementsEx = CSharpElements | "id";
 
 export function createCSharpNamingPolicyEx(
-  options: { keepUnderscore?: boolean } = {}
+  options: { keepUnderscore?: boolean } = {},
 ): NamePolicy<CSharpElementsEx> {
   const basePolicty = createCSharpNamePolicy();
 
@@ -1674,7 +1738,8 @@ export function createCSharpNamingPolicyEx(
 
     // Underscore preservation option
     if (options.keepUnderscore) {
-      return name.split("_")
+      return name
+        .split("_")
         .map((word) => basePolicy.getName(word, element))
         .join("_");
     }
@@ -1727,7 +1792,8 @@ interface RestClientContextType {
 }
 
 // Create typed context
-const RestClientContext: ComponentContext<RestClientContextType> = createContext();
+const RestClientContext: ComponentContext<RestClientContextType> =
+  createContext();
 
 // Create a typed hook with validation (recommended pattern from flight-instructor)
 function useRestClientContext(): RestClientContextType {
@@ -1778,9 +1844,9 @@ flight-instructor uses nested contexts for operation group-specific data:
 
 ```tsx
 interface OperationGroupContextType {
-  httpClientField: Refkey;        // refkey to the HttpClient field
-  endpointField: Refkey;          // refkey to the endpoint field
-  credential: AuthCredential[];   // auth credentials for this group
+  httpClientField: Refkey; // refkey to the HttpClient field
+  endpointField: Refkey; // refkey to the endpoint field
+  credential: AuthCredential[]; // auth credentials for this group
 }
 
 const OperationGroupContext = createContext<OperationGroupContextType>();
@@ -1798,11 +1864,23 @@ function OperationGroup({ group }: { group: GroupDescriptor }) {
   return (
     <OperationGroupContext.Provider value={ogCtx}>
       <ClassDeclaration public name={`${group.name}Operations`}>
-        <Field private readonly name="httpClient" type="HttpClient"
-          refkey={httpClientKey} />
-        <Field private readonly name="endpoint" type="string"
-          refkey={endpointKey} />
-        {group.operations.map((op) => <Operation operation={op} />)}
+        <Field
+          private
+          readonly
+          name="httpClient"
+          type="HttpClient"
+          refkey={httpClientKey}
+        />
+        <Field
+          private
+          readonly
+          name="endpoint"
+          type="string"
+          refkey={endpointKey}
+        />
+        {group.operations.map((op) => (
+          <Operation operation={op} />
+        ))}
       </ClassDeclaration>
     </OperationGroupContext.Provider>
   );
@@ -1815,8 +1893,8 @@ function Operation({ operation }: { operation: OperationDescriptor }) {
 
   return (
     <Method public async name={operation.name}>
-      // Use ogCtx.httpClientField to reference the HTTP client
-      await {ogCtx.httpClientField}.SendAsync(request);
+      // Use ogCtx.httpClientField to reference the HTTP client await{" "}
+      {ogCtx.httpClientField}.SendAsync(request);
     </Method>
   );
 }
@@ -1874,12 +1952,12 @@ stc.ClassDeclaration({ public: true, name: "MyClient" }).children(
 
 ### When to Use
 
-| Use STC When | Use JSX When |
-|---|---|
-| Simple code generation pipelines | Complex conditional rendering |
-| Template-heavy code output | Lots of `<Show>`, `<For>`, `<Switch>` |
-| Prefer builder pattern style | Prefer declarative markup |
-| Working outside .tsx files | Working in .tsx files |
+| Use STC When                     | Use JSX When                          |
+| -------------------------------- | ------------------------------------- |
+| Simple code generation pipelines | Complex conditional rendering         |
+| Template-heavy code output       | Lots of `<Show>`, `<For>`, `<Switch>` |
+| Prefer builder pattern style     | Prefer declarative markup             |
+| Working outside .tsx files       | Working in .tsx files                 |
 
 ---
 
@@ -1918,7 +1996,9 @@ describe("models", () => {
 
     expect(diagnostics).toHaveLength(0);
     expect(outputs["models/Widget.cs"]).toContain("class Widget");
-    expect(outputs["models/Widget.cs"]).toContain("public string Name { get; set; }");
+    expect(outputs["models/Widget.cs"]).toContain(
+      "public string Name { get; set; }",
+    );
   });
 });
 ```
@@ -1940,7 +2020,7 @@ describe("ClassDeclaration", () => {
         <ClassDeclaration public name="MyClass">
           <Property name="Id" type="int" get set />
         </ClassDeclaration>
-      </Wrapper>
+      </Wrapper>,
     ).toRenderTo(d`
       public class MyClass
       {
@@ -1957,15 +2037,16 @@ describe("ClassDeclaration", () => {
 import { renderAsync } from "@alloy-js/core";
 import { Output } from "@typespec/emitter-framework";
 
-async function renderComponent(program: Program, component: Children): Promise<string> {
+async function renderComponent(
+  program: Program,
+  component: Children,
+): Promise<string> {
   const ctx = createTestContext();
 
   const tree = (
     <Output program={program}>
       <RestClientContext.Provider value={ctx}>
-        <SourceFile path="test.cs">
-          {component}
-        </SourceFile>
+        <SourceFile path="test.cs">{component}</SourceFile>
       </RestClientContext.Provider>
     </Output>
   );
@@ -1982,7 +2063,7 @@ it("renders operation method", async () => {
   const descriptor = resolveOperationDescriptor(program);
   const output = await renderComponent(
     program,
-    <Operation operation={descriptor} />
+    <Operation operation={descriptor} />,
   );
 
   expect(output).toContain("async Task<Widget> GetWidget");
@@ -2001,9 +2082,7 @@ import { TestNamespace, toSourceText, testRender, findFile } from "./utils.jsx";
 function TestNamespace({ children }) {
   return (
     <SourceFile path="test.cs">
-      <Namespace name="TestNamespace">
-        {children}
-      </Namespace>
+      <Namespace name="TestNamespace">{children}</Namespace>
     </SourceFile>
   );
 }
@@ -2098,15 +2177,24 @@ function ClientOperation({ operation, httpClientKey, baseUrlKey }) {
 ### Example 2: Model with JSON Serialization
 
 ```tsx
-import { SourceFile, Namespace, ClassDeclaration, Property,
-  Attribute, DocComment, DocSummary } from "@alloy-js/csharp";
+import {
+  SourceFile,
+  Namespace,
+  ClassDeclaration,
+  Property,
+  Attribute,
+  DocComment,
+  DocSummary,
+} from "@alloy-js/csharp";
 
 function JsonModel({ name, properties }) {
   return (
-    <ClassDeclaration public sealed name={name}
-      attributes={[
-        <Attribute name="JsonSerializable" />
-      ]}>
+    <ClassDeclaration
+      public
+      sealed
+      name={name}
+      attributes={[<Attribute name="JsonSerializable" />]}
+    >
       <DocComment>
         <DocSummary>Represents a {name} resource.</DocSummary>
       </DocComment>
@@ -2118,10 +2206,13 @@ function JsonModel({ name, properties }) {
           name={prop.name}
           type={prop.csType}
           nullable={prop.optional}
-          get set
+          get
+          set
           attributes={[
-            <Attribute name="JsonPropertyName"
-              args={[`"${prop.serializedName}"`]} />
+            <Attribute
+              name="JsonPropertyName"
+              args={[`"${prop.serializedName}"`]}
+            />,
           ]}
         />
       ))}
@@ -2132,13 +2223,26 @@ function JsonModel({ name, properties }) {
 // Usage
 <SourceFile path="Models/Widget.cs">
   <Namespace name="MyApp.Models">
-    <JsonModel name="Widget" properties={[
-      { name: "Id", csType: "int", serializedName: "id", optional: false },
-      { name: "Name", csType: "string", serializedName: "name", optional: false },
-      { name: "Description", csType: "string", serializedName: "description", optional: true },
-    ]} />
+    <JsonModel
+      name="Widget"
+      properties={[
+        { name: "Id", csType: "int", serializedName: "id", optional: false },
+        {
+          name: "Name",
+          csType: "string",
+          serializedName: "name",
+          optional: false,
+        },
+        {
+          name: "Description",
+          csType: "string",
+          serializedName: "description",
+          optional: true,
+        },
+      ]}
+    />
   </Namespace>
-</SourceFile>
+</SourceFile>;
 
 // Generates:
 // using System.Text.Json.Serialization;
@@ -2204,18 +2308,18 @@ const interfaceKey = refkey("IWidgetService");
 
 ## Key Patterns Summary
 
-| Pattern | Description | Example |
-|---------|-------------|---------|
-| **Component Tree** | Organize output as nested JSX components | `<RestClient> → <ModelFiles> → <Model>` |
-| **Context Providers** | Share state without prop drilling | `<Context.Provider value={ctx}>` |
-| **Refkeys** | Cross-file symbol references | `refkey()` + `refkey={key}` |
-| **Descriptors** | Abstract TypeSpec types into generation metadata | `GroupDescriptor`, `OperationDescriptor` |
-| **Name Policies** | Consistent naming conventions | `createCSharpNamePolicy()` |
-| **Library Definitions** | Reference external .NET types | `createLibrary("Azure.Core", {...})` |
-| **Source Directories** | Organize output file structure | `<SourceDirectory path="models">` |
-| **Multi-Phase Render** | Generate once, filter for specific output | `renderAsync()` → filter by path |
-| **Type Mapping** | Map TypeSpec types to C# types | `mapTypeToCs()` helpers |
-| **Extensible Enums** | Union types as readonly structs | `<StructDeclaration readonly>` with static props |
+| Pattern                 | Description                                      | Example                                          |
+| ----------------------- | ------------------------------------------------ | ------------------------------------------------ |
+| **Component Tree**      | Organize output as nested JSX components         | `<RestClient> → <ModelFiles> → <Model>`          |
+| **Context Providers**   | Share state without prop drilling                | `<Context.Provider value={ctx}>`                 |
+| **Refkeys**             | Cross-file symbol references                     | `refkey()` + `refkey={key}`                      |
+| **Descriptors**         | Abstract TypeSpec types into generation metadata | `GroupDescriptor`, `OperationDescriptor`         |
+| **Name Policies**       | Consistent naming conventions                    | `createCSharpNamePolicy()`                       |
+| **Library Definitions** | Reference external .NET types                    | `createLibrary("Azure.Core", {...})`             |
+| **Source Directories**  | Organize output file structure                   | `<SourceDirectory path="models">`                |
+| **Multi-Phase Render**  | Generate once, filter for specific output        | `renderAsync()` → filter by path                 |
+| **Type Mapping**        | Map TypeSpec types to C# types                   | `mapTypeToCs()` helpers                          |
+| **Extensible Enums**    | Union types as readonly structs                  | `<StructDeclaration readonly>` with static props |
 
 ---
 
