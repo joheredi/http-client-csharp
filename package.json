@@ -1,0 +1,37 @@
+{
+  "name": "http-client-csharp",
+  "version": "0.0.1",
+  "author": "",
+  "description": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@alloy-js/core": "0.22.0",
+    "@alloy-js/typescript": "0.22.0"
+  },
+  "devDependencies": {
+    "@alloy-js/cli": "0.22.0",
+    "@alloy-js/rollup-plugin": "0.1.0",
+    "@types/node": "^24.1.0",
+    "concurrently": "^9.2.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  },
+  "scripts": {
+    "build": "alloy build",
+    "clean": "rimraf dist/ .temp/",
+    "test": "vitest run",
+    "test:watch": "vitest -w",
+    "watch": "alloy build --watch"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/src/index.js",
+      "types": "./dist/src/index.d.ts"
+    },
+    "./stc": {
+      "import": "./dist/src/stc.js",
+      "types": "./dist/src/stc.d.ts"
+    }
+  }
+}
