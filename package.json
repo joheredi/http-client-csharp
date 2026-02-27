@@ -1,19 +1,26 @@
 {
   "name": "http-client-csharp",
-  "version": "0.0.1",
-  "author": "",
-  "description": "",
-  "license": "ISC",
+  "version": "0.1.0",
   "type": "module",
   "dependencies": {
     "@alloy-js/core": "0.22.0",
-    "@alloy-js/typescript": "0.22.0"
+    "@alloy-js/typescript": "0.22.0",
+    "@typespec/emitter-framework": "^0.16.0"
+  },
+  "main": "dist/src/index.js",
+  "peerDependencies": {
+    "@typespec/compiler": "1.9.0"
   },
   "devDependencies": {
     "@alloy-js/cli": "0.22.0",
     "@alloy-js/rollup-plugin": "0.1.0",
-    "@types/node": "^24.1.0",
+    "@types/node": "latest",
+    "@typescript-eslint/eslint-plugin": "^8.15.0",
+    "@typescript-eslint/parser": "^8.15.0",
+    "@typespec/compiler": "1.9.0",
     "concurrently": "^9.2.0",
+    "eslint": "^9.15.0",
+    "prettier": "^3.3.3",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"
   },
@@ -22,16 +29,25 @@
     "clean": "rimraf dist/ .temp/",
     "test": "vitest run",
     "test:watch": "vitest -w",
-    "watch": "alloy build --watch"
+    "watch": "alloy build --watch",
+    "lint": "eslint src/ test/ --report-unused-disable-directives --max-warnings=0",
+    "lint:fix": "eslint . --report-unused-disable-directives --fix",
+    "format": "prettier .  --write",
+    "format:check": "prettier --check ."
   },
   "exports": {
     ".": {
       "import": "./dist/src/index.js",
-      "types": "./dist/src/index.d.ts"
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
     },
     "./stc": {
       "import": "./dist/src/stc.js",
       "types": "./dist/src/stc.d.ts"
+    },
+    "./testing": {
+      "types": "./dist/src/testing/index.d.ts",
+      "default": "./dist/src/testing/index.js"
     }
   }
 }

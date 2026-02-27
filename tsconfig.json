@@ -15,7 +15,8 @@
     "outDir": "dist",
     "jsx": "preserve",
     "jsxImportSource": "@alloy-js/core",
-    "emitDeclarationOnly": true
+    "emitDeclarationOnly": true,
+    "useDefineForClassFields": true,
   },
   "include": [
     "src/**/*.ts",
