@@ -24,7 +24,7 @@
           "title": "Define emitter options interface",
           "description": "Create the TypeScript interface for all emitter options. The legacy emitter defines options in `emitter/src/options.ts` including: package-name (string), license (object with name/company/link/header/description), disable-xml-docs (boolean), generate-protocol-methods (boolean), generate-convenience-methods (boolean), unreferenced-types-handling (enum: removeOrInternalize|internalize|keepAll), new-project (boolean), save-inputs (boolean). The rewrite options should match the legacy ones minus the C#-generator-specific options (debug, generator-name, emitter-extension-path). The options are registered with the TypeSpec library system via `createTypeSpecLibrary` in `lib.ts`.",
           "phase": "phase-0",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [

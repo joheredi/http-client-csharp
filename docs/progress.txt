@@ -36,3 +36,23 @@
 - ExampleComponent.tsx left in place (not deleted) — can be cleaned up later
 - ESLint config is broken (missing @eslint/js) — pre-existing, not our issue
 - Prettier has submodule plugin error — pre-existing, not our issue
+
+## 2026-02-27 — Task 0.1.1: Define emitter options interface
+**What was done:**
+- Created `src/options.ts` with:
+  - `LicenseOptions` interface (sub-interface for license configuration)
+  - `CSharpEmitterOptions` interface — all user-facing emitter options
+  - `CSharpEmitterOptionsSchema` — JSON Schema for TypeSpec compiler config validation
+  - `defaultOptions` — default values matching legacy emitter behavior
+  - `resolveOptions()` — merges user options with defaults
+- Created `test/options.test.ts` with 12 tests covering interface shape, schema validation, defaults, and option resolution
+
+**Design decision:**
+- Included interface + schema + defaults + resolver in one file, matching legacy pattern (`submodules/typespec/packages/http-client-csharp/emitter/src/options.ts`)
+- Excluded C#-generator-specific options: debug, generator-name, emitter-extension-path, update-code-model, sdk-context-options, logLevel (not needed in single-phase emitter)
+- Included: api-version, generate-protocol-methods, generate-convenience-methods, unreferenced-types-handling, new-project, save-inputs, disable-xml-docs, package-name, license
+
+**Notes for next iterations:**
+- Task 0.1.2 (Register emitter options in library) can use `CSharpEmitterOptionsSchema` directly from this file
+- Task 0.3.2 (EmitterContext provider) will consume `resolveOptions()` from this file
+- `defaultOptions` uses `Required<Pick<...>>` to type only the fields that have defaults — other fields remain optional
