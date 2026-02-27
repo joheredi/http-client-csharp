@@ -56,3 +56,21 @@
 - Task 0.1.2 (Register emitter options in library) can use `CSharpEmitterOptionsSchema` directly from this file
 - Task 0.3.2 (EmitterContext provider) will consume `resolveOptions()` from this file
 - `defaultOptions` uses `Required<Pick<...>>` to type only the fields that have defaults — other fields remain optional
+
+## 2026-02-27 — Task 0.1.2: Register emitter options in library
+**What was done:**
+- Updated `src/lib.ts` to register the emitter options schema via `emitter.options` in `createTypeSpecLibrary()`
+- Added 14 diagnostic codes matching the legacy emitter (no-apiVersion, no-route, general-warning, general-error, unsupported-auth with message variants, client-namespace-conflict, unsupported-endpoint-url, unsupported-sdk-type, unsupported-default-value-type, unsupported-cookie-parameter, unsupported-parameter-kind, unsupported-patch-convenience-method, unsupported-service-method, unsupported-continuation-location)
+- Excluded `invalid-dotnet-sdk-dependency` diagnostic (legacy-specific, not needed for single-phase emitter)
+- Exported `getTracer` in addition to `reportDiagnostic` and `createDiagnostic`
+- Created `test/lib.test.ts` with 9 tests covering: library name, options schema registration, diagnostic code completeness, severity classification, message variants, and exported helpers
+
+**Patterns used:**
+- `paramMessage` template tag for parameterized diagnostic messages
+- Separate `diags` const with `DiagnosticMessagesMap` type utility (same pattern as legacy emitter)
+- Access emitter options at runtime via `$lib.emitter?.options` (not `$lib.definition`)
+
+**Next person should know:**
+- The library name is `http-client-csharp` (not `@typespec/http-client-csharp` like the legacy emitter)
+- `$lib.diagnostics` gives access to registered diagnostics at runtime for testing
+- `TypeSpecLibrary` doesn't have a `definition` property — use `$lib.emitter` directly
