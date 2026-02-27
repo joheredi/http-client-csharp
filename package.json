@@ -33,7 +33,8 @@
     "lint": "eslint src/ test/ --report-unused-disable-directives --max-warnings=0",
     "lint:fix": "eslint . --report-unused-disable-directives --fix",
     "format": "prettier .  --write",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "ralph": "node scripts/ralph.js"
   },
   "exports": {
     ".": {
