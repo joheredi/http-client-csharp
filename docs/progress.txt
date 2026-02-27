@@ -15,3 +15,24 @@
 - All packages were already installed in node_modules (via autoInstallPeers or transitive deps) — adding them to package.json just makes them explicit
 - The vitest config now includes `test: { include: ["test/**/*.test.{ts,tsx}"] }` — always scope test discovery to avoid submodule tests
 - `@alloy-js/typescript` is kept even though this is a C# emitter because `@typespec/emitter-framework` requires it as a peer dependency
+
+## 2026-02-27 — Task 0.3.1: Create root HttpClientCSharpOutput component
+**What was done:**
+- Created `src/components/HttpClientCSharpOutput.tsx` — root output component that wraps emitter-framework's `Output` with C# name policy and format options
+- Updated `src/emitter.tsx` — replaced ExampleComponent/SourceFile scaffolding with HttpClientCSharpOutput
+- Exported component from `src/components/index.ts` barrel file
+- Updated `test/hello.test.ts` — new tests verify emitter compiles without diagnostics and empty output produces no files
+
+**Design decision:**
+- HttpClientCSharpOutput wraps Output (self-contained) rather than being content inside Output. This keeps all C# configuration in one place and makes emitter.tsx thin.
+- Output from `@typespec/emitter-framework` (not `@alloy-js/core`) — provides TspContext so child components can use `useTsp()`
+
+**Key patterns:**
+- `createCSharpNamePolicy()` from `@alloy-js/csharp` — handles PascalCase for types, camelCase for params
+- Format options: tabWidth=4, printWidth=120 (matches CSharpFormatOptions defaults)
+- Component accepts `children` prop for future content (models, enums, clients)
+
+**Notes for next iterations:**
+- ExampleComponent.tsx left in place (not deleted) — can be cleaned up later
+- ESLint config is broken (missing @eslint/js) — pre-existing, not our issue
+- Prettier has submodule plugin error — pre-existing, not our issue

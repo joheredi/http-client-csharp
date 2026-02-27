@@ -19,3 +19,17 @@ Due to `autoInstallPeers: true` in pnpm settings and transitive dependencies fro
 **Why:** This matches the legacy emitter's package.json structure. TypeSpec packages are provided by the user's project environment; Alloy packages are our implementation detail.
 
 **Rejected:** Putting TCGC as a direct dependency — this would cause version conflicts if multiple emitters in the same project use different TCGC versions.
+
+### Root output component wraps emitter-framework Output (Task 0.3.1)
+
+**Chosen approach:** `HttpClientCSharpOutput` is a self-contained component that wraps `Output` from `@typespec/emitter-framework`. It accepts `program` as a prop and configures name policy + format options internally. `emitter.tsx` stays thin — just creates the component and calls `writeOutput`.
+
+**Why:** Keeps all C# rendering configuration in one place. The component is the single source of truth for name policy and format options. Easy to test in isolation.
+
+**Rejected:** Making HttpClientCSharpOutput a content component inside a separately-configured `Output` in emitter.tsx — this splits configuration across two files and makes the component less self-contained.
+
+### Use Output from @typespec/emitter-framework, not @alloy-js/core
+
+**Key difference:** The emitter-framework `Output` wraps core `Output` and adds a `TspContext.Provider` with the TypeSpec `Program`. This lets all child components call `useTsp()` to access the program and typekit. The core `Output` does NOT provide TspContext.
+
+**Import:** `import { Output } from "@typespec/emitter-framework";` (never from `@alloy-js/core` for the root).
