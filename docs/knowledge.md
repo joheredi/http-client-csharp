@@ -83,3 +83,15 @@ Using `render(<Output><SourceFile>...</SourceFile></Output>)` from `@alloy-js/co
 ### Cross-library type refs use arrow functions for lazy evaluation
 
 Within `createLibrary()`, member `type` properties that reference types from the same or other library must use `() => library.Type` arrow function syntax. This is because the library variable isn't assigned yet during the `createLibrary()` call — the arrow function defers evaluation until first access.
+
+## Design Decisions
+
+### License header: utility function vs JSX component (Task 0.3.4)
+
+**Chosen:** Utility function (`getLicenseHeader()`) returning a `\n`-joined string.
+**Rejected:** JSX component wrapping the header. Unnecessary since plain strings work as `Children` in Alloy's SourceFile `header` prop.
+**Why:** The header is static text — no dynamic JSX rendering needed. A function is simpler, testable without JSX, and the string works directly as the `header` prop value.
+
+### Do NOT use Prose for SourceFile headers
+
+The Alloy `<Prose>` component collapses all whitespace and word-wraps based on `printWidth`. Using it for the license header would destroy the exact line formatting. Pass strings or `code` template results directly to the `header` prop instead.
