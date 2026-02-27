@@ -111,3 +111,29 @@
 - Members without cross-library type refs intentionally omit `type` (consistent with alloy builtins pattern)
 
 **Design decision:** Two separate `createLibrary` calls (one per namespace) rather than a nested namespace descriptor. This matches the alloy builtins convention and allows independent imports.
+
+## 2026-02-27 — Task 0.2.2: Add SCM auth and options builtins
+
+Added 6 new types to the System.ClientModel Alloy library declarations:
+
+**System.ClientModel namespace (SystemClientModel):**
+- `ClientResultException` — exception class with `Status` property; used in XML doc comments and error handling
+- `ApiKeyCredential` — credential class; stored as field in generated clients for API key auth
+
+**System.ClientModel.Primitives namespace (SystemClientModelPrimitives):**
+- `ClientPipelineOptions` — base options class for generated `{ServiceName}ClientOptions`
+- `RequestOptions` — per-request options with `ErrorOptions` and `CancellationToken` members
+- `ApiKeyAuthenticationPolicy` — auth policy with `CreateHeaderApiKeyPolicy` static factory
+- `ClientErrorBehaviors` — flags enum with `NoThrow` member for error suppression
+
+**Patterns used:** Same as 0.2.1 — added types inline to existing `createLibrary()` calls. No new files.
+
+**Tests added:** 7 new tests (type existence, member checks, using statement generation for auth types). Total builtins tests: 18. All 45 tests pass.
+
+**Namespace verification:** Used `global::` qualified references from golden files to confirm namespace placement:
+- `global::System.ClientModel.ClientResultException` (4 occurrences)
+- `global::System.ClientModel.Primitives.RequestOptions` (107 occurrences)
+- `global::System.ClientModel.Primitives.ClientPipelineOptions` (4 occurrences)
+- `global::System.ClientModel.Primitives.ApiKeyAuthenticationPolicy` (4 occurrences)
+
+**Note:** `pnpm format` and `pnpm lint` are broken due to missing `prettier-plugin-organize-imports` in submodules/alloy. Pre-existing issue, not related to this change.

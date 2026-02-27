@@ -34,6 +34,25 @@ describe("System.ClientModel builtins", () => {
       expect(SystemClientModel.BinaryContent).toBeDefined();
       expect(SystemClientModel.BinaryContent.Create).toBeDefined();
     });
+
+    /**
+     * Verifies that ClientResultException is declared with its Status property.
+     * This type is referenced in generated XML documentation comments on protocol
+     * methods (<exception cref="ClientResultException">) and in error handling code.
+     */
+    it("declares ClientResultException with expected members", () => {
+      expect(SystemClientModel.ClientResultException).toBeDefined();
+      expect(SystemClientModel.ClientResultException.Status).toBeDefined();
+    });
+
+    /**
+     * Verifies that ApiKeyCredential is declared as a library symbol.
+     * This type is used as a constructor parameter and private field type
+     * in generated client classes for API key authentication.
+     */
+    it("declares ApiKeyCredential", () => {
+      expect(SystemClientModel.ApiKeyCredential).toBeDefined();
+    });
   });
 
   /**
@@ -103,6 +122,62 @@ describe("System.ClientModel builtins", () => {
       ).toBeDefined();
       expect(
         SystemClientModelPrimitives.PipelineMessageClassifier.Create,
+      ).toBeDefined();
+    });
+
+    /**
+     * Verifies that ClientPipelineOptions is declared as a library symbol.
+     * Generated client options classes (e.g., {ServiceName}ClientOptions)
+     * inherit from this type to provide service-specific configuration.
+     */
+    it("declares ClientPipelineOptions", () => {
+      expect(
+        SystemClientModelPrimitives.ClientPipelineOptions,
+      ).toBeDefined();
+    });
+
+    /**
+     * Verifies that RequestOptions is declared with ErrorOptions and
+     * CancellationToken members. This type appears as an optional parameter
+     * in every generated protocol method signature.
+     */
+    it("declares RequestOptions with expected members", () => {
+      expect(SystemClientModelPrimitives.RequestOptions).toBeDefined();
+      expect(
+        SystemClientModelPrimitives.RequestOptions.ErrorOptions,
+      ).toBeDefined();
+      expect(
+        SystemClientModelPrimitives.RequestOptions.CancellationToken,
+      ).toBeDefined();
+    });
+
+    /**
+     * Verifies that ApiKeyAuthenticationPolicy is declared with its
+     * CreateHeaderApiKeyPolicy static factory method. This method is called
+     * in generated client constructors to set up API key authentication
+     * in the HTTP pipeline.
+     */
+    it("declares ApiKeyAuthenticationPolicy with expected members", () => {
+      expect(
+        SystemClientModelPrimitives.ApiKeyAuthenticationPolicy,
+      ).toBeDefined();
+      expect(
+        SystemClientModelPrimitives.ApiKeyAuthenticationPolicy
+          .CreateHeaderApiKeyPolicy,
+      ).toBeDefined();
+    });
+
+    /**
+     * Verifies that ClientErrorBehaviors is declared as an enum with the
+     * NoThrow member. This enum is used in pipeline error handling to
+     * suppress automatic exception throwing on non-success responses.
+     */
+    it("declares ClientErrorBehaviors with expected members", () => {
+      expect(
+        SystemClientModelPrimitives.ClientErrorBehaviors,
+      ).toBeDefined();
+      expect(
+        SystemClientModelPrimitives.ClientErrorBehaviors.NoThrow,
       ).toBeDefined();
     });
   });
@@ -181,6 +256,41 @@ describe("System.ClientModel builtins", () => {
       const content = (result.contents[0] as { contents: string }).contents;
       expect(content).toContain("using System.ClientModel;");
       expect(content).toContain("using System.ClientModel.Primitives;");
+    });
+
+    /**
+     * Verifies that referencing auth types (ApiKeyCredential from System.ClientModel
+     * and ApiKeyAuthenticationPolicy from System.ClientModel.Primitives) produces
+     * the correct using directives. This is important because these types live in
+     * different namespaces and both are referenced in generated client constructors.
+     */
+    it("produces correct using statements for auth types", () => {
+      const result = render(
+        <Output>
+          <SourceFile path="Test.cs">
+            <ClassDeclaration name="TestClient">
+              <Property
+                name="Credential"
+                type={SystemClientModel.ApiKeyCredential}
+                get
+                set
+              />
+              <Property
+                name="Options"
+                type={SystemClientModelPrimitives.RequestOptions}
+                get
+                set
+              />
+            </ClassDeclaration>
+          </SourceFile>
+        </Output>,
+      );
+
+      const content = (result.contents[0] as { contents: string }).contents;
+      expect(content).toContain("using System.ClientModel;");
+      expect(content).toContain("using System.ClientModel.Primitives;");
+      expect(content).toContain("ApiKeyCredential");
+      expect(content).toContain("RequestOptions");
     });
   });
 });

@@ -41,6 +41,32 @@ export const SystemClientModel = createLibrary("System.ClientModel", {
       Create: { kind: "method", methodKind: "ordinary", isStatic: true },
     },
   },
+
+  /**
+   * Exception thrown when a cloud service returns a non-success status code.
+   * Used in generated XML documentation comments and error handling scenarios.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.clientresultexception
+   */
+  ClientResultException: {
+    kind: "class",
+    members: {
+      /** Gets the HTTP status code of the failed response. */
+      Status: { kind: "property" },
+    },
+  },
+
+  /**
+   * Credential type that wraps an API key string for service authentication.
+   * Stored as a private field in generated client classes and passed to
+   * ApiKeyAuthenticationPolicy for pipeline authentication.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.apikeycredential
+   */
+  ApiKeyCredential: {
+    kind: "class",
+    members: {},
+  },
 });
 
 /**
@@ -158,6 +184,72 @@ export const SystemClientModelPrimitives = createLibrary(
       members: {
         /** Creates a classifier that accepts the specified HTTP status codes. */
         Create: { kind: "method", methodKind: "ordinary", isStatic: true },
+      },
+    },
+
+    /**
+     * Base class for service-specific client options (e.g., {ServiceName}ClientOptions).
+     * Generated options classes inherit from this to provide service version enums
+     * and custom pipeline configuration.
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.primitives.clientpipelineoptions
+     */
+    ClientPipelineOptions: {
+      kind: "class",
+      members: {},
+    },
+
+    /**
+     * Per-request options that control pipeline behavior for individual API calls.
+     * Used as an optional parameter in protocol method signatures to allow callers
+     * to override error behavior and provide cancellation tokens.
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.primitives.requestoptions
+     */
+    RequestOptions: {
+      kind: "class",
+      members: {
+        /** Gets or sets the error handling behavior for this request. */
+        ErrorOptions: { kind: "property" },
+        /** Gets the cancellation token for this request. */
+        CancellationToken: { kind: "property" },
+      },
+    },
+
+    /**
+     * Pipeline policy that authenticates requests using an API key.
+     * The static CreateHeaderApiKeyPolicy factory creates a policy that adds
+     * the key as an HTTP header value.
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.primitives.apikeyauthenticationpolicy
+     */
+    ApiKeyAuthenticationPolicy: {
+      kind: "class",
+      members: {
+        /**
+         * Creates a policy that authenticates via an API key in the specified
+         * HTTP header, optionally with a key prefix (e.g., "Bearer").
+         */
+        CreateHeaderApiKeyPolicy: {
+          kind: "method",
+          methodKind: "ordinary",
+          isStatic: true,
+        },
+      },
+    },
+
+    /**
+     * Flags enum that controls how the pipeline handles error responses.
+     * Used with RequestOptions.ErrorOptions to suppress automatic exception
+     * throwing on non-success status codes.
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.primitives.clienterrorbehaviors
+     */
+    ClientErrorBehaviors: {
+      kind: "enum",
+      members: {
+        /** Suppresses automatic ClientResultException throwing on error responses. */
+        NoThrow: { kind: "field" },
       },
     },
   },

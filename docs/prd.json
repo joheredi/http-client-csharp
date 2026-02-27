@@ -154,7 +154,7 @@
           "title": "Add SCM auth and options builtins",
           "description": "Extend the System.ClientModel builtins with auth and options types: ClientPipelineOptions, RequestOptions, ClientResultException, ApiKeyCredential, ApiKeyAuthenticationPolicy (with CreateHeaderApiKeyPolicy static method). These are used in generated client constructors and pipeline setup. See golden file at TestProjects/Local/Sample-TypeSpec/src/Generated/SampleTypeSpecClient.cs for how these types are used.",
           "phase": "phase-0",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "0.2.1"
           ],
