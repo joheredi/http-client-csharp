@@ -199,13 +199,25 @@ export const defaultOptions: Required<
 };
 
 /**
+ * Emitter options with defaults applied for fields that have default values.
+ *
+ * Fields covered by {@link defaultOptions} (`api-version`,
+ * `generate-protocol-methods`, `generate-convenience-methods`, `new-project`,
+ * `save-inputs`) are guaranteed to be present. All other fields remain optional.
+ */
+export type ResolvedCSharpEmitterOptions = typeof defaultOptions &
+  CSharpEmitterOptions;
+
+/**
  * Merges user-provided emitter options with {@link defaultOptions} to produce
  * the final resolved configuration used throughout the emitter.
  *
  * @param context - The TypeSpec emit context containing user-specified options.
  * @returns The fully resolved emitter options.
  */
-export function resolveOptions(context: EmitContext<CSharpEmitterOptions>) {
+export function resolveOptions(
+  context: EmitContext<CSharpEmitterOptions>,
+): ResolvedCSharpEmitterOptions {
   const emitterOptions = context.options;
   return { ...defaultOptions, ...emitterOptions };
 }
