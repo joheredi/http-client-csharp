@@ -1,0 +1,17 @@
+# Progress Log
+
+## 2026-02-27 — Task 0.1.4: Add required dependencies
+**What was done:**
+- Added `@alloy-js/csharp` (0.22.0) to `dependencies` — needed for C# code generation components (ClassDeclaration, Property, Method, etc.)
+- Added `@typespec/http` (^1.9.0) and `@typespec/rest` (>=0.79.0 <0.80.0) to `peerDependencies` — TypeSpec HTTP libraries provided by the user's project
+- Added `@azure-tools/typespec-client-generator-core` (>=0.65.3 <0.66.0) to `peerDependencies` — TCGC for SDK client model
+- Added matching dev versions of all new peer deps for testing
+- Changed `@typespec/compiler` peer dep from exact `"1.9.0"` to `"^1.9.0"` to match legacy emitter pattern
+- Fixed `vitest.config.ts` to scope test discovery to `test/` only (was running 920 submodule test files)
+
+**Pattern used:** Followed the legacy emitter pattern — TypeSpec ecosystem packages as peerDependencies, Alloy packages as direct dependencies.
+
+**Important for next iterations:**
+- All packages were already installed in node_modules (via autoInstallPeers or transitive deps) — adding them to package.json just makes them explicit
+- The vitest config now includes `test: { include: ["test/**/*.test.{ts,tsx}"] }` — always scope test discovery to avoid submodule tests
+- `@alloy-js/typescript` is kept even though this is a C# emitter because `@typespec/emitter-framework` requires it as a peer dependency

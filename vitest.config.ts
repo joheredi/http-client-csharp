@@ -6,7 +6,8 @@ export default defineConfig({
     jsx: "preserve",
     sourcemap: "both",
   },
-  plugins: [
-    alloyPlugin(),
-  ],
+  plugins: [alloyPlugin()],
+  test: {
+    include: ["test/**/*.test.{ts,tsx}"],
+  },
 });

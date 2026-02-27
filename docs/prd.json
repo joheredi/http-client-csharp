@@ -88,7 +88,7 @@
           "title": "Add required dependencies",
           "description": "Update package.json to add required dependencies: @typespec/http, @typespec/rest, @azure-tools/typespec-client-generator-core (TCGC), @alloy-js/csharp. Also add @typespec/http-client-csharp-testing or equivalent test utilities as devDependencies. Remove @alloy-js/typescript if unused. Run pnpm install to update lockfile.",
           "phase": "phase-0",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],
