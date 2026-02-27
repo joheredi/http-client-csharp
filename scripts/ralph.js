@@ -1,32 +1,43 @@
 #!/usr/bin/env node
 
-import { spawn } from "child_process";
+import { spawn, execSync } from "child_process";
 import { readFileSync } from "fs";
-import { resolve, dirname } from "path";
-import { fileURLToPath } from "url";
+import { resolve } from "path";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const packageRoot = execSync("npm prefix", { encoding: "utf-8" }).trim();
 
 const args = process.argv.slice(2);
-const iterationsIndex = args.indexOf("--iterations");
 
-if (iterationsIndex === -1 || !args[iterationsIndex + 1]) {
+function getArg(name) {
+  const idx = args.indexOf(name);
+  return idx !== -1 && args[idx + 1] ? args[idx + 1] : undefined;
+}
+
+const iterationsStr = getArg("--iterations");
+if (!iterationsStr) {
   console.error("Error: --iterations <number> is required");
   process.exit(1);
 }
 
-const iterations = parseInt(args[iterationsIndex + 1], 10);
+const iterations = parseInt(iterationsStr, 10);
 if (isNaN(iterations) || iterations <= 0) {
   console.error("Error: --iterations must be a positive number");
   process.exit(1);
 }
 
-const promptPath = resolve(__dirname, "./docs/ralph.md");
+const model = getArg("--model");
+
+const promptPath = resolve(packageRoot, "docs/ralph.md");
 const prompt = readFileSync(promptPath, "utf-8");
 
 function runCopilot(promptText) {
+  const copilotArgs = ["--yolo", "-p", promptText];
+  if (model) {
+    copilotArgs.push("--model", model);
+  }
+
   return new Promise((resolve, reject) => {
-    const child = spawn("copilot", ["--yolo", "-p", promptText], {
+    const child = spawn("copilot", copilotArgs, {
       stdio: ["inherit", "pipe", "pipe"],
       env: process.env,
     });
