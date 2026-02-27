@@ -2,6 +2,16 @@ IMPORTANT: Complete ONE task per loop. After completion, exit the copilot CLI. N
 
 ---
 
+## Context — loaded every loop
+
+These files form the deterministic stack that is loaded at the start of every iteration to ensure consistent context:
+
+- **`.github/copilot-instructions.md`** — loaded automatically by Copilot. Contains architecture, conventions, and build/test instructions. This is the project's technical standard library.
+- **`docs/knowledge.md`** — read via subagent at the start of each loop. Contains accumulated gotchas, failure modes, and learnings from prior loops.
+- **`docs/alloy-csharp-guide.md`** — consult via subagent when implementing components. Reference for Alloy C# framework patterns (refkeys, `code` templates, `<For>`, naming policies, etc.).
+
+---
+
 ## Phase 1: ORIENT — Pick the next task
 
 Use a subagent to read the last entry in `progress.txt` for context on what was done last.
@@ -10,14 +20,13 @@ List pending tasks:
 ```bash
 python3 -c "
 import json
-with open('prd.json') as f:
-    tasks = json.load(f)['tasks']
-pending = [t for t in tasks if t['status'] == 'not-started']
+with open('docs/prd.json') as f:
+    prd = json.load(f)
+pending = [t for phase in prd['phases'] for t in phase.get('tasks', []) if t['status'] == 'pending']
 for t in pending:
-    pri = t.get('priority', '')
     deps = ', '.join(t.get('dependencies', []))
-    print(f'[{t[\"id\"]}] {t[\"title\"]} | {t[\"category\"]} | pri={pri} | deps=[{deps}]')
-print(f'\n{len(pending)} tasks not-started')
+    print(f'[{t[\"id\"]}] {t[\"title\"]} | phase={t.get(\"phase\", \"\")} | deps=[{deps}]')
+print(f'\n{len(pending)} tasks pending')
 "
 ```
 
@@ -59,7 +68,9 @@ Before writing any code, do a design review using subagents:
 
 ---
 
-## Phase 5: VALIDATE — Build and test
+## Phase 5: VALIDATE — Back pressure
+
+Build, test, and lint form the **back pressure** that rejects bad code generation. The faster this wheel turns, the better the outcomes.
 
 Run validation with a **single subagent** (do not fan out builds/tests to multiple subagents — it causes backpressure):
 
@@ -67,7 +78,11 @@ Run validation with a **single subagent** (do not fan out builds/tests to multip
 pnpm build && pnpm test
 ```
 
-If tests unrelated to your work fail, it is **your job** to resolve them as part of this increment of change. **IMORTANT**: You should think hard when investigating these failure, it is not acceptable to just update the test expectations to make it pass without being 100% certain that it is the correct thing to do
+- **`pnpm build`** — TypeScript type system catches structural errors before runtime.
+- **`pnpm test`** — vitest assertions verify the emitted C# matches expected output. This is the primary correctness gate.
+- **`pnpm lint`** — ESLint catches code quality regressions. Run when making style-sensitive changes.
+
+If tests unrelated to your work fail, it is **your job** to resolve them as part of this increment of change. **IMPORTANT**: You should think hard when investigating these failures — it is not acceptable to just update the test expectations to make it pass without being 100% certain that it is the correct thing to do
 
 ---
 
@@ -78,13 +93,14 @@ If tests unrelated to your work fail, it is **your job** to resolve them as part
 python3 -c "
 import json
 TASK_ID = 'REPLACE_ME'
-with open('prd.json') as f:
+with open('docs/prd.json') as f:
     prd = json.load(f)
-for t in prd['tasks']:
-    if t['id'] == TASK_ID:
-        t['status'] = 'done'
-        break
-with open('prd.json', 'w') as f:
+for phase in prd['phases']:
+    for t in phase.get('tasks', []):
+        if t['id'] == TASK_ID:
+            t['status'] = 'done'
+            break
+with open('docs/prd.json', 'w') as f:
     json.dump(prd, f, indent=2)
 print(f'Marked {TASK_ID} as done')
 "
@@ -113,3 +129,5 @@ Exit the copilot CLI. If the PRD is complete (no remaining not-started tasks), o
 999999\. If you are stuck on a task (e.g., blocked by a missing dependency, unclear spec, or repeated failures), document the blocker in `knowledge.md`, mark the task as blocked in `prd.json` with a reason, and exit. Do not loop forever.
 
 9999999\. Generated output must NEVER contain `<Unresolved Symbol: refkey[...]>`. If you see this in test output, your change is broken — fix it before committing.
+
+99999999\. When you learn something new about how to build, test, or debug this project — or discover a pattern that works well — update `.github/copilot-instructions.md` via a subagent. Keep updates brief and actionable.
