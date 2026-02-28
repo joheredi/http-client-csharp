@@ -8,6 +8,7 @@ import { type Children, For, refkey } from "@alloy-js/core";
 import type { SdkModelType } from "@azure-tools/typespec-client-generator-core";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
+import { ModelConstructors } from "./ModelConstructors.js";
 import { ModelProperty } from "./ModelProperty.js";
 
 /**
@@ -67,6 +68,8 @@ export function ModelFile(props: ModelFileProps) {
           name={modelName}
           refkey={refkey(props.type)}
         >
+          <ModelConstructors type={props.type} />
+          {props.type.properties.length > 0 ? "\n\n" : ""}
           <For each={props.type.properties} hardline>
             {(p) => (
               <ModelProperty property={p} modelUsage={props.type.usage} />

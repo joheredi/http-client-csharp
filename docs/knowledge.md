@@ -297,6 +297,7 @@ Multiple properties rendered inside ClassDeclaration need explicit newline separ
 ### Task 1.2.3: Property Setter Rules (Full Logic)
 
 The `propertyHasSetter` function in ModelProperty.tsx now implements the full legacy PropertyProvider.PropertyHasSetter logic. Order matters:
+
 1. Read-only properties (visibility=[Read]) → never have setters
 2. Output-only models → never have setters
 3. Input-only models, required properties → no setter (constructor handles it)
@@ -304,11 +305,12 @@ The `propertyHasSetter` function in ModelProperty.tsx now implements the full le
 5. Collection properties → never have setters (mutation via Add/Remove)
 6. Everything else → has setter
 
-Key insight: the old `propertyHasSetter(modelUsage)` was too simple — it treated all input-only properties as get-only. The legacy emitter only makes *required* input-only properties get-only; optional ones need setters for `new Model(required) { Optional = val }` syntax.
+Key insight: the old `propertyHasSetter(modelUsage)` was too simple — it treated all input-only properties as get-only. The legacy emitter only makes _required_ input-only properties get-only; optional ones need setters for `new Model(required) { Optional = val }` syntax.
 
 ### Task 1.2.3: Property Utility Functions in src/utils/property.ts
 
 Created utility functions for required/optional analysis that downstream constructor tasks (1.2.4, 1.2.5) should import:
+
 - `isConstructorParameter(prop, isStruct?)` — whether prop is a public ctor param
 - `propertyRequiresNullCheck(prop)` — whether prop needs Argument.AssertNotNull (required reference types only)
 - `getPropertyInitializerKind(prop)` — returns one of: change-tracking-list, change-tracking-dict, to-list, to-dict, direct-assign, none
@@ -318,6 +320,36 @@ Created utility functions for required/optional analysis that downstream constru
 ## Design Decisions
 
 ### Task 1.2.3: Pure utility functions over component-based approach
+
 Chose pure utility functions in `src/utils/property.ts` over embedding logic in JSX components.
+
 - **Chosen**: Utility functions — easier to unit test, importable by constructor tasks, matches nullable.ts pattern
 - **Rejected**: Component-based approach — would couple initialization logic to rendering, harder to test
+
+## Constructor Generation (Task 1.2.4)
+
+### Naming Policy Categories
+The CSharp naming policy (`useCSharpNamePolicy()`) has these relevant categories:
+- `"class-property"` → PascalCase (for property names in constructor body assignments)
+- `"parameter"` → camelCase (for constructor parameter names)
+- `"class"` → PascalCase (for class/model names)
+- Default falls to `changecase.camelCase(name)`
+
+### Constructor Component from @alloy-js/csharp
+- `<Constructor>` accepts `AccessModifiers` props (`public`, `private`, `protected`, `internal`)
+- Setting both `private={true}` and `protected={true}` renders as `"protected private"` (modifier order follows the array: public, protected, private, internal, file). This is valid C# but non-conventional (conventional is `private protected`).
+- `parameters` prop accepts `ParameterProps[]` where `type` is `Children` (can be JSX)
+- Body is rendered as `children` inside a `<Block newline>` — Alloy handles indentation
+- Empty body renders as `{}` on same line (not `{\n}`)
+
+### TypeExpression for Parameter Types
+- Use `unwrapNullableType()` before passing to TypeExpression
+- For nullable params, compose with JSX fragment: `<>{baseType}?</>`
+- `type.__raw!` is needed to get the TypeSpec raw type from TCGC SdkType
+
+### Design Decision: <Constructor> vs Raw Strings
+Chose `<Constructor>` component over raw strings (like ExtensibleEnumFile does) because:
+1. More idiomatic Alloy — leverages the component's built-in parameter rendering
+2. Better composability — parameters are structured data, not string concatenation
+3. Automatic handling of braces and indentation
+Tradeoff: modifier ordering is `"protected private"` instead of `"private protected"`, but both compile identically in C#.

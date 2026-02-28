@@ -436,3 +436,32 @@ Updated `propertyHasSetter` in ModelProperty.tsx:
 Key design decision: Pure utility functions (no JSX) for property analysis. Easier to test in isolation and downstream constructor tasks (1.2.4, 1.2.5) can import these.
 
 Tests: 35 new tests (20 model integration + 35 property-utils unit) covering all new utility functions and updated property behavior. Total: 217 tests passing.
+
+2026-02-28 — Task 1.2.4: Implement public model constructor (complete)
+
+Created `src/components/models/ModelConstructors.tsx`:
+- `isModelAbstract(model)` — checks discriminatorProperty + discriminatedSubtypes
+- `getConstructorAccessModifiers(model)` — public/internal/private+protected based on model type
+- `buildParameters(properties, namePolicy)` — maps TCGC properties to Alloy ParameterProps with TypeExpression types
+- `buildNullChecks(properties, namePolicy)` — generates Argument.AssertNotNull for non-nullable reference types
+- `buildAssignments(allProperties, ctorParams, namePolicy)` — generates `Property = param;` lines for direct-assign properties
+- `ModelConstructors(props)` — main component using `<Constructor>` from @alloy-js/csharp
+
+Updated `src/components/models/ModelFile.tsx`:
+- Added ModelConstructors before property rendering with proper spacing
+
+Key patterns:
+- Uses `<Constructor>` component from @alloy-js/csharp (not raw strings) for idiomatic Alloy
+- Parameters use TypeExpression for types with nullable suffix handled via JSX fragments
+- Constructor body is raw strings (null checks + assignments) inside Constructor children
+- Naming: `namePolicy.getName(name, "class-property")` for PascalCase, `namePolicy.getName(name, "parameter")` for camelCase
+- Empty constructors (all optional props) render as `public Model() {}` — structurally correct
+
+Deferred to future tasks:
+- Collection parameter types (IEnumerable<T> vs IList<T>) → task 1.1.3
+- ChangeTracking initialization for optional collections → tasks 5.1.3/5.1.4
+- ToList()/ToDictionary() for required collections → task 1.1.3
+- Constructor XML doc comments → task 1.2.7
+- Abstract model testing (requires discriminator setup) → task 1.3.x
+
+Naming policy categories verified: "class-property" → PascalCase, "parameter" → camelCase (default)

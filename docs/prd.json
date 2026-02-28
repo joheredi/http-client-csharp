@@ -703,7 +703,7 @@
           "title": "Implement public model constructor",
           "description": "Generate the public initialization constructor. Parameters include only required, non-readonly, non-literal properties. Each parameter has Argument.AssertNotNull validation for non-nullable reference types. Constructor body assigns parameters to properties. For abstract models, constructor is private protected. For output-only models, constructor is internal. See ModelProvider.BuildConstructors and ConstructorProviderHelper.",
           "phase": "phase-1",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "1.2.3"
           ],

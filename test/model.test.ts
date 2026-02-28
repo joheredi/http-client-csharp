@@ -734,3 +734,347 @@ describe("ModelProperty", () => {
     expect(content).not.toMatch(/Tags\s*\{[^}]*set;/);
   });
 });
+
+/**
+ * Tests for the ModelConstructors component.
+ *
+ * These tests verify that model constructors are correctly generated with
+ * the right access modifiers, parameter lists, null checks, and property
+ * assignments. The constructor is the primary API surface for users creating
+ * model instances.
+ *
+ * Why these tests matter:
+ * - Constructor access level affects who can instantiate the model — public
+ *   for input models, internal for output-only, private protected for abstract.
+ * - Missing Argument.AssertNotNull causes null reference exceptions at runtime
+ *   instead of clear argument validation errors.
+ * - Wrong parameter lists break compile-time safety — users get confusing
+ *   errors when required properties are missing from the constructor.
+ * - Incorrect property assignments cause data loss — values passed to the
+ *   constructor would not be persisted on the model instance.
+ */
+describe("ModelConstructors", () => {
+  /**
+   * Validates that input+output models generate a public constructor with
+   * all required properties as parameters. The constructor is public because
+   * users directly construct instances to pass as request bodies.
+   *
+   * This is the most common pattern: a model used as both request and
+   * response body.
+   */
+  it("generates a public constructor with required parameters", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        count: int32;
+      }
+
+      @route("/widgets")
+      op createWidget(@body body: Widget): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
+    expect(modelFile).toBeDefined();
+    const content = outputs[modelFile!];
+
+    // Constructor is public for input+output models
+    expect(content).toMatch(
+      /public\s+Widget\s*\(string\s+name,\s*int\s+count\)/,
+    );
+  });
+
+  /**
+   * Validates that required non-nullable reference type parameters get
+   * Argument.AssertNotNull validation in the constructor body. This catches
+   * null arguments at construction time rather than causing NullReferenceException
+   * later during serialization or usage.
+   *
+   * Only reference types (string, BinaryData, Uri, model classes) need
+   * null checks. Value types (int, bool, float, etc.) cannot be null.
+   */
+  it("generates Argument.AssertNotNull for reference type parameters", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        count: int32;
+      }
+
+      @route("/widgets")
+      op createWidget(@body body: Widget): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
+    const content = outputs[modelFile!];
+
+    // String (reference type) gets null check
+    expect(content).toContain("Argument.AssertNotNull(name, nameof(name));");
+    // int (value type) does NOT get null check
+    expect(content).not.toContain("Argument.AssertNotNull(count");
+  });
+
+  /**
+   * Validates that the constructor body assigns all required parameters to
+   * their corresponding PascalCase properties. This ensures that values
+   * passed to the constructor are persisted on the model instance.
+   */
+  it("assigns constructor parameters to properties", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        count: int32;
+      }
+
+      @route("/widgets")
+      op createWidget(@body body: Widget): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
+    const content = outputs[modelFile!];
+
+    // PascalCase property = camelCase parameter
+    expect(content).toContain("Name = name;");
+    expect(content).toContain("Count = count;");
+  });
+
+  /**
+   * Validates that output-only models generate an internal constructor.
+   * Output models are populated by deserialization — external users never
+   * construct them directly. The internal access modifier restricts
+   * construction to the generated SDK assembly only.
+   */
+  it("generates an internal constructor for output-only models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Result {
+        id: int32;
+        name: string;
+      }
+
+      @route("/results")
+      op getResult(): Result;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Result.cs"));
+    expect(modelFile).toBeDefined();
+    const content = outputs[modelFile!];
+
+    // Constructor is internal for output-only models
+    expect(content).toMatch(/internal\s+Result\s*\(/);
+    // Should NOT be public
+    expect(content).not.toMatch(/public\s+Result\s*\(/);
+  });
+
+  /**
+   * Validates that input-only models generate a public constructor with
+   * only required (non-optional) properties as parameters. Optional
+   * properties are set via object initializer syntax instead.
+   */
+  it("generates a public constructor for input-only models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model CreateRequest {
+        name: string;
+        description?: string;
+      }
+
+      @route("/create")
+      op createItem(@body body: CreateRequest): void;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) =>
+      k.includes("CreateRequest.cs"),
+    );
+    expect(modelFile).toBeDefined();
+    const content = outputs[modelFile!];
+
+    // Constructor is public with only the required parameter
+    expect(content).toMatch(/public\s+CreateRequest\s*\(string\s+name\)/);
+    // Optional property 'description' is NOT a constructor parameter
+    expect(content).not.toMatch(/CreateRequest\s*\([^)]*description/);
+  });
+
+  /**
+   * Validates that models with all optional properties generate an
+   * empty constructor (no parameters). Users set values via object
+   * initializer syntax: `new Options { Verbose = true }`.
+   */
+  it("generates an empty constructor when all properties are optional", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Options {
+        verbose?: boolean;
+        limit?: int32;
+      }
+
+      @route("/widgets")
+      op createWidget(@body body: Options): Options;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) =>
+      k.includes("Options.cs"),
+    );
+    expect(modelFile).toBeDefined();
+    const content = outputs[modelFile!];
+
+    // Constructor exists with no parameters
+    expect(content).toMatch(/public\s+Options\s*\(\s*\)/);
+    // Optional properties are NOT parameters
+    expect(content).not.toMatch(/Options\s*\([^)]*verbose/);
+    expect(content).not.toMatch(/Options\s*\([^)]*limit/);
+  });
+
+  /**
+   * Validates that multiple reference type parameters each get their own
+   * Argument.AssertNotNull call. Each validation is independent and uses
+   * nameof() for refactoring safety.
+   */
+  it("generates null checks for multiple reference type parameters", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Person {
+        firstName: string;
+        lastName: string;
+        age: int32;
+      }
+
+      @route("/people")
+      op createPerson(@body body: Person): Person;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Person.cs"));
+    const content = outputs[modelFile!];
+
+    // Both string parameters get null checks
+    expect(content).toContain(
+      "Argument.AssertNotNull(firstName, nameof(firstName));",
+    );
+    expect(content).toContain(
+      "Argument.AssertNotNull(lastName, nameof(lastName));",
+    );
+    // int parameter does NOT get null check
+    expect(content).not.toContain("Argument.AssertNotNull(age");
+  });
+
+  /**
+   * Validates that the constructor appears before properties in the class
+   * body. This matches the legacy emitter's output ordering convention
+   * and is important for code readability.
+   */
+  it("renders constructor before properties", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/widgets")
+      op createWidget(@body body: Widget): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
+    const content = outputs[modelFile!];
+    const lines = content.split("\n");
+
+    const ctorLineIdx = lines.findIndex((l: string) => l.match(/Widget\s*\(/));
+    const propLineIdx = lines.findIndex((l: string) =>
+      l.includes("public string Name"),
+    );
+
+    expect(ctorLineIdx).toBeGreaterThan(-1);
+    expect(propLineIdx).toBeGreaterThan(-1);
+    // Constructor should appear before the property
+    expect(ctorLineIdx).toBeLessThan(propLineIdx);
+  });
+
+  /**
+   * Validates that null checks appear before property assignments in the
+   * constructor body. This matches the legacy emitter's pattern: validate
+   * all inputs first, then assign to properties. Fail-fast prevents
+   * partially initialized objects.
+   */
+  it("places null checks before assignments in constructor body", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        count: int32;
+      }
+
+      @route("/widgets")
+      op createWidget(@body body: Widget): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
+    const content = outputs[modelFile!];
+    const lines = content.split("\n");
+
+    const nullCheckIdx = lines.findIndex((l: string) =>
+      l.includes("Argument.AssertNotNull"),
+    );
+    const assignIdx = lines.findIndex((l: string) =>
+      l.includes("Name = name;"),
+    );
+
+    expect(nullCheckIdx).toBeGreaterThan(-1);
+    expect(assignIdx).toBeGreaterThan(-1);
+    // Null checks come before assignments
+    expect(nullCheckIdx).toBeLessThan(assignIdx);
+  });
+});
