@@ -1692,7 +1692,7 @@
           "title": "Implement interface determination",
           "description": "Determine which interfaces the serialization class implements: IJsonModel<T> for JSON-supporting models, IPersistableModel<T> for XML-only models. Most models use IJsonModel (which extends IPersistableModel). Check InputModelTypeUsage flags.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.1.1"
           ],

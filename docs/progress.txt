@@ -873,3 +873,29 @@ internal static Widget DeserializeWidget(JsonElement element, ModelReaderWriterO
 **Tests added:** 6 new tests in `JsonDeserialize` describe block covering method signature, null check, using directive, derived models, class placement, and indentation.
 
 **Unblocks:** Tasks 2.3.2 (null check), 2.3.3 (variable declarations), 2.4.1 (discriminator peek), 2.5.2 (explicit ClientResult operator), 2.6.2 (JsonModelCreateCore).
+
+## 2026-02-28 — Task 2.1.2: Implement interface determination
+
+### What was done
+- Updated `src/components/serialization/ModelSerializationFile.tsx` to conditionally determine which serialization interface a model implements based on TCGC `UsageFlags`:
+  - `UsageFlags.Json` → `IJsonModel<T>` (which inherits `IPersistableModel<T>`)
+  - `UsageFlags.Xml` (without Json) → `IPersistableModel<T>` only
+  - Fallback (no format) → `IJsonModel<T>` (matches legacy emitter behavior)
+- Created exported `getSerializationInterfaces(type, modelName)` function for downstream task reuse (2.1.4, 2.1.5, 2.5.x)
+- Added 2 new tests to `test/model-serialization.test.ts`:
+  - XML-only model test: validates `IPersistableModel<T>` is used when content type is `application/xml`
+  - Dual JSON+XML model test: validates `IJsonModel<T>` takes precedence
+
+### Patterns used
+- Bitwise flag checking: `(type.usage & UsageFlags.Json) !== 0`
+- TypeSpec `@header("content-type") contentType: "application/xml"` to produce XML-only usage in TCGC
+- Exported utility function for cross-component reuse
+
+### Test results
+- 335 tests passing (333 existing + 2 new)
+- Build succeeds
+
+### Notes for next iteration
+- Unknown discriminator models bind interfaces to the base model type (legacy behavior). Currently not needed since Unknown variants don't get serialization files yet.
+- Model-as-struct (task 1.2.8) will need `<object>` interface variants added to this logic
+- The `getSerializationInterfaces` function is exported and ready for use in tasks 2.1.4, 2.1.5, 2.5.x

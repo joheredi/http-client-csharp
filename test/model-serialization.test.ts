@@ -303,6 +303,90 @@ describe("ModelSerializationFile", () => {
       serializationFiles.some((k) => k.includes("Cat.Serialization.cs")),
     ).toBe(true);
   });
+
+  /**
+   * Validates interface determination for XML-only models.
+   *
+   * When a model is used exclusively with `application/xml` content type
+   * (no JSON operations reference it), TCGC sets `UsageFlags.Xml` without
+   * `UsageFlags.Json`. In this case, the serialization file should implement
+   * `IPersistableModel<T>` instead of `IJsonModel<T>`, because `IJsonModel<T>`
+   * adds JSON-specific methods (Write/Create with Utf8JsonWriter/Reader) that
+   * are irrelevant for XML-only models.
+   *
+   * This matches the legacy emitter's `MrwSerializationTypeDefinition.BuildImplements()`
+   * which checks `_supportsJson` first, then falls back to `_supportsXml`.
+   */
+  it("declares IPersistableModel<T> for XML-only models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model XmlPayload {
+        name: string;
+      }
+
+      @route("/test")
+      @post op submit(@header("content-type") contentType: "application/xml", @body body: XmlPayload): void;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("XmlPayload.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+    const content = outputs[fileKey!];
+
+    // XML-only models implement IPersistableModel<T>, not IJsonModel<T>
+    expect(content).toMatch(
+      /public\s+partial\s+class\s+XmlPayload\s*:\s*IPersistableModel<XmlPayload>/,
+    );
+    // Must NOT implement IJsonModel
+    expect(content).not.toContain("IJsonModel");
+  });
+
+  /**
+   * Validates that models used with both JSON and XML content types
+   * implement `IJsonModel<T>` (which inherits `IPersistableModel<T>`).
+   *
+   * When a model has both `UsageFlags.Json` and `UsageFlags.Xml`, the
+   * JSON interface takes precedence because `IJsonModel<T>` extends
+   * `IPersistableModel<T>`, satisfying both serialization requirements.
+   */
+  it("declares IJsonModel<T> for models with both JSON and XML usage", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model DualPayload {
+        name: string;
+      }
+
+      @route("/json")
+      @post op submitJson(@body body: DualPayload): DualPayload;
+
+      @route("/xml")
+      @post op submitXml(@header("content-type") contentType: "application/xml", @body body: DualPayload): void;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("DualPayload.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+    const content = outputs[fileKey!];
+
+    // JSON takes precedence — IJsonModel<T> inherits IPersistableModel<T>
+    expect(content).toMatch(
+      /public\s+partial\s+class\s+DualPayload\s*:\s*IJsonModel<DualPayload>/,
+    );
+  });
 });
 
 /**
