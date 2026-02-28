@@ -681,16 +681,31 @@ When two rendering functions call each other recursively (e.g., `renderValueWrit
 **Works for**: Required models, nullable models (unwrapped by `unwrapNullableType`), discriminated base model properties in derived models.
 
 ## vi.mock and TypeSpec Compiler Module Loading
+
 **Gotcha:** `vi.mock()` cannot intercept imports made by the TypeSpec compiler. The compiler loads emitter modules in its own module context (likely via native `import()` that bypasses vitest's module interception). Verified: mock factory function is never called when the emitter runs through `compileAndDiagnose`. Workarounds:
+
 1. Test utility functions directly (unit tests)
 2. Use alloy's `render()` API for component-level rendering tests
 3. Use `globalThis` for cross-context state sharing (last resort)
-Best practice: for features that can't be triggered through TypeSpec compilation (e.g., `modelAsStruct` before TCGC support), test the layers separately rather than trying to mock the integration.
+   Best practice: for features that can't be triggered through TypeSpec compilation (e.g., `modelAsStruct` before TCGC support), test the layers separately rather than trying to mock the integration.
 
 ## StructDeclaration vs ClassDeclaration for Models
+
 When generating struct models, use `<StructDeclaration>` from `@alloy-js/csharp` with `readonly` and `partial` props. Key differences from ClassDeclaration:
+
 - No `baseType` prop (C# structs can't inherit)
 - No `abstract` prop (C# structs can't be abstract)
 - Has `readonly` prop (required for model structs per legacy emitter)
 - `interfaceTypes` available for implementing interfaces
 
+## Design Decisions — Enum Property Serialization (Task 2.2.8)
+
+**Approach chosen:** Extend `getWriteMethodInfo` in PropertySerializer.tsx to handle `kind === "enum"` types by returning `WriteMethodInfo` with a `valueTransform`.
+
+**Why:** The `valueTransform` pattern already exists for durations. By reusing it for enums, the same rendering pipeline handles both direct property writes and collection item writes (via `renderValueWrite`). No need for a separate `renderEnumProperty` function.
+
+**Rejected:** Separate `renderEnumProperty` function similar to `renderModelProperty` — would duplicate guard/nullable logic already in the primitive write path.
+
+### Enum serialization in collections
+
+Enum items in collections are automatically handled because `renderValueWrite` falls through to `getWriteMethodInfo` for non-array/non-model types. The `valueTransform` applies to the loop variable `item` the same way it applies to property names.

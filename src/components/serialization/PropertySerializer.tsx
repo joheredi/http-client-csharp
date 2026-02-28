@@ -19,11 +19,13 @@
  * - **plainTime** → `WriteStringValue` with `"T"` format
  * - **Nested models** → `WriteObjectValue(prop, options)` which delegates to
  *   the model's own `IJsonModel<T>.Write` implementation
+ * - **Enums** → Fixed enums serialize via extension methods (`ToSerialString`,
+ *   `ToSerialSingle`) or direct casts (`(int)value`); extensible enums use
+ *   instance methods (`ToString`, `ToSerialInt32`)
  *
- * Non-primitive types (enums, dictionaries, bytes) return `null` and are
+ * Non-primitive types (dictionaries, bytes) return `null` and are
  * handled by subsequent tasks:
  * - 2.2.6: Bytes serialization
- * - 2.2.8: Enum serialization
  * - 2.2.10: Dictionary serialization
  *
  * @example Generated output for a string property:
@@ -73,12 +75,14 @@
 
 import { useCSharpNamePolicy } from "@alloy-js/csharp";
 import type { Children } from "@alloy-js/core";
-import type {
-  SdkArrayType,
-  SdkDateTimeType,
-  SdkDurationType,
-  SdkModelPropertyType,
-  SdkType,
+import {
+  isSdkIntKind,
+  type SdkArrayType,
+  type SdkDateTimeType,
+  type SdkDurationType,
+  type SdkEnumType,
+  type SdkModelPropertyType,
+  type SdkType,
 } from "@azure-tools/typespec-client-generator-core";
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import { isCollectionType, unwrapNullableType } from "../../utils/nullable.js";
@@ -259,6 +263,95 @@ function getDurationNumericWriteInfo(
 }
 
 /**
+ * Maps TCGC enum value type kinds to .NET framework type names for
+ * serialization method suffixes (e.g., `ToSerialString`, `ToSerialSingle`).
+ *
+ * Covers only the types supported as enum backing types in the C# emitter.
+ */
+const ENUM_FRAMEWORK_NAMES: Record<string, string> = {
+  string: "String",
+  float32: "Single",
+  float64: "Double",
+  int32: "Int32",
+  int64: "Int64",
+};
+
+/**
+ * Maps TCGC integer kinds to C# type keywords for cast expressions.
+ *
+ * Used for int-backed fixed enums which serialize via direct cast:
+ * `writer.WriteNumberValue((int)MyProp)`.
+ */
+const INT_CAST_KEYWORDS: Record<string, string> = {
+  int32: "int",
+  int64: "long",
+};
+
+/**
+ * Returns the write method info for an `SdkEnumType` based on its
+ * fixed/extensible status and backing type.
+ *
+ * The serialization pattern depends on two dimensions:
+ *
+ * | Kind       | String-backed         | Int-backed         | Float-backed          |
+ * |------------|-----------------------|--------------------|-----------------------|
+ * | Fixed      | `.ToSerialString()`   | `(int)value`       | `.ToSerialSingle()`   |
+ * | Extensible | `.ToString()`         | `.ToSerialInt32()`  | `.ToSerialSingle()`   |
+ *
+ * Fixed enums use extension methods from `{EnumName}Extensions`.
+ * Extensible enums use instance methods on the `readonly struct`.
+ * Int-backed fixed enums use a direct cast because their values are
+ * embedded in the C# enum declaration.
+ *
+ * @param enumType - The TCGC enum type to serialize.
+ * @returns Write method info with the appropriate writer method and value transform.
+ */
+function getEnumWriteInfo(enumType: SdkEnumType): WriteMethodInfo {
+  const valueTypeKind = enumType.valueType.kind;
+  const isStringBacked = valueTypeKind === "string";
+
+  if (enumType.isFixed) {
+    // Fixed (non-extensible) C# enums
+    if (isStringBacked) {
+      // String-backed: writer.WriteStringValue(MyProp.ToSerialString())
+      return {
+        methodName: "WriteStringValue",
+        valueTransform: (name) => `${name}.ToSerialString()`,
+      };
+    }
+    if (isSdkIntKind(valueTypeKind)) {
+      // Int-backed: writer.WriteNumberValue((int)MyProp)
+      const keyword = INT_CAST_KEYWORDS[valueTypeKind] ?? "int";
+      return {
+        methodName: "WriteNumberValue",
+        valueTransform: (name) => `(${keyword})${name}`,
+      };
+    }
+    // Float-backed: writer.WriteNumberValue(MyProp.ToSerialSingle())
+    const frameworkName = ENUM_FRAMEWORK_NAMES[valueTypeKind] ?? valueTypeKind;
+    return {
+      methodName: "WriteNumberValue",
+      valueTransform: (name) => `${name}.ToSerial${frameworkName}()`,
+    };
+  }
+
+  // Extensible enums (readonly struct)
+  if (isStringBacked) {
+    // String-backed: writer.WriteStringValue(MyProp.ToString())
+    return {
+      methodName: "WriteStringValue",
+      valueTransform: (name) => `${name}.ToString()`,
+    };
+  }
+  // Numeric: writer.WriteNumberValue(MyProp.ToSerialInt32())
+  const frameworkName = ENUM_FRAMEWORK_NAMES[valueTypeKind] ?? valueTypeKind;
+  return {
+    methodName: "WriteNumberValue",
+    valueTransform: (name) => `${name}.ToSerial${frameworkName}()`,
+  };
+}
+
+/**
  * Determines the `Utf8JsonWriter` write method and optional format specifier
  * for a given SDK type.
  *
@@ -303,6 +396,12 @@ export function getWriteMethodInfo(type: SdkType): WriteMethodInfo | null {
     return { methodName: "WriteStringValue", formatArg: "D" };
   if (kind === "plainTime")
     return { methodName: "WriteStringValue", formatArg: "T" };
+
+  // Enum types — fixed enums use extension methods or casts,
+  // extensible enums use instance methods or ToString().
+  if (kind === "enum") {
+    return getEnumWriteInfo(unwrapped as SdkEnumType);
+  }
 
   return null;
 }
@@ -453,8 +552,10 @@ function collectionItemNeedsNullCheck(itemType: SdkType): boolean {
  *   item serialization, and `WriteEndArray`.
  * - **Model types** — renders `writer.WriteObjectValue(expr, options)` which
  *   delegates to the nested model's own `IJsonModel<T>.Write`.
+ * - **Enum types** — handled via `getWriteMethodInfo` using value transforms
+ *   for extension methods, casts, or instance methods.
  *
- * Returns `null` for types not yet supported (enums, dictionaries,
+ * Returns `null` for types not yet supported (dictionaries,
  * bytes), allowing the caller to skip rendering for those properties.
  *
  * @param type - The SDK type of the value to serialize.
@@ -700,8 +801,8 @@ function renderModelProperty(
  * `writer.WriteObjectValue(Pet, options)` which delegates to the nested
  * model's own `IJsonModel<T>.Write` implementation.
  *
- * **Unsupported types** (enums, dictionaries, bytes) — returns `null`,
- * handled by subsequent tasks (2.2.6, 2.2.8, 2.2.10).
+ * **Unsupported types** (dictionaries, bytes) — returns `null`,
+ * handled by subsequent tasks (2.2.6, 2.2.10).
  *
  * Optional properties are wrapped in `Optional.IsDefined` / `IsCollectionDefined`
  * guards. Required nullable properties get an `else { WriteNull }` branch.

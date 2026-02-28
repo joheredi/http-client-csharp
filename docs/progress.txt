@@ -1078,3 +1078,26 @@ Created infrastructure for generating C# `readonly struct` instead of `class` wh
 All 393 tests pass; build succeeds.
 
 Unblocks: 1.2.9 (Write model generation tests)
+
+---
+
+2026-02-28 — Task 2.2.8: Implement enum serialization (complete)
+
+Modified `src/components/serialization/PropertySerializer.tsx` to handle enum-typed properties in the JSON write path.
+
+**Changes:**
+- Added `getEnumWriteInfo(enumType: SdkEnumType): WriteMethodInfo` function that determines the correct writer method and value transform for all 5 enum patterns
+- Added `ENUM_FRAMEWORK_NAMES` and `INT_CAST_KEYWORDS` lookup tables for type mapping
+- Extended `getWriteMethodInfo` to check for `kind === "enum"` and delegate to `getEnumWriteInfo`
+- Updated module JSDoc to document enum support
+- Imported `isSdkIntKind` and `SdkEnumType` from TCGC
+
+**Serialization patterns implemented:**
+| Kind       | String-backed         | Int-backed         | Float-backed          |
+|------------|-----------------------|--------------------|-----------------------|
+| Fixed      | `.ToSerialString()`   | `(int)value`       | `.ToSerialSingle()`   |
+| Extensible | `.ToString()`         | `.ToSerialInt32()`  | `.ToSerialSingle()`   |
+
+**Design decision:** Extended `getWriteMethodInfo` with `valueTransform` rather than a separate `renderEnumProperty` function. This reuses the existing rendering pipeline for both property-level writes and collection item writes (via `renderValueWrite`).
+
+**Test file:** `test/enum-property-serialization.test.ts` with 7 tests covering all patterns plus optional guard and collection scenarios.

@@ -1959,7 +1959,7 @@
           "title": "Implement enum serialization",
           "description": "Fixed enums: string-backed\u2192value.ToSerialString(), int-backed\u2192(int)value, float-backed\u2192value.ToSerialSingle(). Extensible enums: string-backed\u2192value.ToString(), numeric\u2192value.ToSerialInt32().",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.2.3"
           ],
