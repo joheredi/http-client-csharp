@@ -66,12 +66,15 @@
  */
 
 import { useCSharpNamePolicy } from "@alloy-js/csharp";
+import type { Children } from "@alloy-js/core";
 import type {
+  SdkArrayType,
   SdkDateTimeType,
   SdkDurationType,
   SdkModelPropertyType,
   SdkType,
 } from "@azure-tools/typespec-client-generator-core";
+import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import { isCollectionType, unwrapNullableType } from "../../utils/nullable.js";
 import { isCSharpReferenceType } from "../../utils/property.js";
 
@@ -411,52 +414,256 @@ function renderWriteStatements(
 }
 
 /**
+ * Determines whether a collection item type needs a null check during
+ * JSON serialization.
+ *
+ * In C#, reference types can be null at runtime, so `foreach` loop items
+ * of reference types need a guard: `if (item == null) { WriteNullValue(); continue; }`.
+ * Non-nullable value types (int, bool, enum) cannot be null and skip the check.
+ *
+ * Matches the legacy emitter's `TypeRequiresNullCheckInSerialization`:
+ * - Collections → always (reference types in C#)
+ * - Explicitly nullable types → always
+ * - C# reference type kinds (string, model, bytes, url, unknown) → always
+ * - Value types (int, bool, DateTime, etc.) → never
+ *
+ * @param itemType - The SDK type of the collection element.
+ * @returns `true` if items of this type need null checks in the foreach loop.
+ */
+function collectionItemNeedsNullCheck(itemType: SdkType): boolean {
+  if (itemType.kind === "nullable") return true;
+  const unwrapped = unwrapNullableType(itemType);
+  if (unwrapped.kind === "array" || unwrapped.kind === "dict") return true;
+  return isCSharpReferenceType(itemType);
+}
+
+/**
+ * Renders the serialization statements for a single value expression.
+ *
+ * Handles two categories:
+ * - **Primitive types** — delegates to `getWriteMethodInfo` to produce
+ *   `writer.WriteXxxValue(expr[, format])`.
+ * - **Array types** — recursively renders `WriteStartArray`, `foreach` loop,
+ *   item serialization, and `WriteEndArray`.
+ *
+ * Returns `null` for types not yet supported (models, enums, dictionaries,
+ * bytes), allowing the caller to skip rendering for those properties.
+ *
+ * @param type - The SDK type of the value to serialize.
+ * @param valueExpr - The C# expression that produces the value (e.g., property
+ *   name `"Items"` or loop variable `"item"`).
+ * @param indent - Whitespace indentation prefix for the generated statements.
+ * @returns JSX element with the serialization statements, or `null` if unsupported.
+ */
+function renderValueWrite(
+  type: SdkType,
+  valueExpr: string,
+  indent: string,
+): Children | null {
+  const unwrapped = unwrapNullableType(type);
+
+  // Array types — recursive collection serialization
+  if (unwrapped.kind === "array") {
+    return renderArraySerialization(
+      unwrapped as SdkArrayType,
+      valueExpr,
+      indent,
+    );
+  }
+
+  // Primitive types — simple writer method call
+  const writeInfo = getWriteMethodInfo(type);
+  if (!writeInfo) return null;
+
+  const valuePart = writeInfo.valueTransform
+    ? writeInfo.valueTransform(valueExpr)
+    : valueExpr;
+  const formatPart = writeInfo.formatArg ? `, "${writeInfo.formatArg}"` : "";
+
+  return (
+    <>{`\n${indent}writer.${writeInfo.methodName}(${valuePart}${formatPart});`}</>
+  );
+}
+
+/**
+ * Renders the complete array serialization block for a collection value.
+ *
+ * Generates the pattern:
+ * ```csharp
+ * writer.WriteStartArray();
+ * foreach (ItemType item in collection)
+ * {
+ *     // optional: null check for reference type items
+ *     writer.WriteXxxValue(item);
+ * }
+ * writer.WriteEndArray();
+ * ```
+ *
+ * Handles nested collections recursively — a `List<List<string>>` produces
+ * nested `WriteStartArray`/`WriteEndArray` pairs with nested `foreach` loops.
+ * The loop variable is always named `item`; nested levels shadow the outer
+ * variable, matching the legacy emitter's `ForEachStatement("item", ...)` pattern.
+ *
+ * Uses `TypeExpression` to render the correct C# type name for the `foreach`
+ * variable declaration (e.g., `string`, `int`, `IList<string>`).
+ *
+ * @param arrayType - The TCGC `SdkArrayType` whose items are being serialized.
+ * @param valueExpr - The C# expression for the collection (e.g., `"Items"` or `"item"`).
+ * @param indent - Whitespace indentation prefix for the generated block.
+ * @returns JSX element with the complete array serialization, or `null` if
+ *   the item type is not yet supported.
+ */
+function renderArraySerialization(
+  arrayType: SdkArrayType,
+  valueExpr: string,
+  indent: string,
+) {
+  const itemType = arrayType.valueType;
+  const unwrappedItemType = unwrapNullableType(itemType);
+  const innerIndent = indent + "    ";
+  const loopVar = "item";
+
+  // Get item serialization — recursive for nested arrays, primitive for leaves
+  const itemSerialization = renderValueWrite(itemType, loopVar, innerIndent);
+  if (itemSerialization === null) return null;
+
+  const needsNull = collectionItemNeedsNullCheck(itemType);
+
+  return (
+    <>
+      {`\n${indent}writer.WriteStartArray();`}
+      {`\n${indent}foreach (`}
+      <TypeExpression type={unwrappedItemType.__raw!} />
+      {` ${loopVar} in ${valueExpr})`}
+      {`\n${indent}{`}
+      {needsNull && (
+        <>
+          {`\n${innerIndent}if (${loopVar} == null)`}
+          {`\n${innerIndent}{`}
+          {`\n${innerIndent}    writer.WriteNullValue();`}
+          {`\n${innerIndent}    continue;`}
+          {`\n${innerIndent}}`}
+        </>
+      )}
+      {itemSerialization}
+      {`\n${indent}}`}
+      {`\n${indent}writer.WriteEndArray();`}
+    </>
+  );
+}
+
+/**
+ * Renders collection property serialization with appropriate property name
+ * writing and optional guards.
+ *
+ * Handles both guarded (optional/required-nullable) and unguarded (required)
+ * collection properties. The property name write and collection value
+ * serialization are placed inside the guard block when needed.
+ *
+ * @param property - The SDK model property being serialized.
+ * @param arrayType - The unwrapped `SdkArrayType` for the property.
+ * @param serializedName - The JSON wire name for the property.
+ * @param csharpName - The PascalCase C# property name.
+ * @returns JSX element with the complete collection serialization, or `null`
+ *   if the collection items can't be serialized yet.
+ */
+function renderCollectionProperty(
+  property: SdkModelPropertyType,
+  arrayType: SdkArrayType,
+  serializedName: string,
+  csharpName: string,
+) {
+  if (needsOptionalGuard(property)) {
+    const guardMethod = getOptionalGuardMethodName(property);
+    const reqNullable = isRequiredNullable(property);
+    const collectionContent = renderArraySerialization(
+      arrayType,
+      csharpName,
+      "        ",
+    );
+    if (collectionContent === null) return null;
+
+    return (
+      <>
+        {`\n    if (Optional.${guardMethod}(${csharpName}))`}
+        {"\n    {"}
+        {`\n        writer.WritePropertyName("${serializedName}"u8);`}
+        {collectionContent}
+        {"\n    }"}
+        {reqNullable && (
+          <>
+            {"\n    else"}
+            {"\n    {"}
+            {`\n        writer.WriteNull("${serializedName}"u8);`}
+            {"\n    }"}
+          </>
+        )}
+      </>
+    );
+  }
+
+  const collectionContent = renderArraySerialization(
+    arrayType,
+    csharpName,
+    "    ",
+  );
+  if (collectionContent === null) return null;
+
+  return (
+    <>
+      {`\n    writer.WritePropertyName("${serializedName}"u8);`}
+      {collectionContent}
+    </>
+  );
+}
+
+/**
  * Generates the serialization statements for a single model property.
  *
- * Produces two C# statements:
- * 1. `writer.WritePropertyName("serializedName"u8);` — writes the JSON property
- *    name using a UTF-8 byte literal for performance.
- * 2. `writer.WriteXxxValue(PropertyName[, "format"]);` — writes the property value
- *    using the appropriate `Utf8JsonWriter` method. For types with encoding
- *    (DateTime, Duration, plainDate, plainTime), a format specifier argument
- *    is included. For Duration with numeric encoding, a value transform wraps
- *    the property access (e.g., `Property.TotalSeconds`).
+ * Produces C# statements for writing the property to a `Utf8JsonWriter`.
+ * Handles three categories of types:
  *
- * Optional properties are wrapped in an `Optional.IsDefined` or
- * `Optional.IsCollectionDefined` guard to skip serialization of unset values.
- * Required nullable properties use the same guard but with an `else` branch
- * that writes `null` via `writer.WriteNull("name"u8)`. Nullable value types
- * (e.g., `int?`) use `.Value` inside the guard block to unwrap the value.
- * Required non-nullable properties serialize directly without guards.
+ * **Primitive types** — `writer.WritePropertyName("name"u8)` followed by
+ * `writer.WriteXxxValue(Name)` with optional format specifier.
  *
- * Returns `null` for non-primitive types (models, enums, collections, etc.)
- * which are handled by subsequent tasks (2.2.6–2.2.10).
+ * **Collection types (arrays/lists)** — `writer.WritePropertyName("name"u8)`
+ * followed by `writer.WriteStartArray()`, a `foreach` loop that serializes
+ * each item, and `writer.WriteEndArray()`. Nested collections are handled
+ * recursively with nested foreach loops.
  *
- * @example Generated output for a required string property (no guard):
+ * **Unsupported types** (models, enums, dictionaries, bytes) — returns `null`,
+ * handled by subsequent tasks (2.2.6–2.2.8, 2.2.10).
+ *
+ * Optional properties are wrapped in `Optional.IsDefined` / `IsCollectionDefined`
+ * guards. Required nullable properties get an `else { WriteNull }` branch.
+ *
+ * @example Generated output for a required List<string> property:
  * ```csharp
- * writer.WritePropertyName("name"u8);
- * writer.WriteStringValue(Name);
+ * writer.WritePropertyName("items"u8);
+ * writer.WriteStartArray();
+ * foreach (string item in Items)
+ * {
+ *     if (item == null)
+ *     {
+ *         writer.WriteNullValue();
+ *         continue;
+ *     }
+ *     writer.WriteStringValue(item);
+ * }
+ * writer.WriteEndArray();
  * ```
  *
- * @example Generated output for an optional string property (with guard):
+ * @example Generated output for an optional List<int> property:
  * ```csharp
- * if (Optional.IsDefined(Name))
+ * if (Optional.IsCollectionDefined(Counts))
  * {
- *     writer.WritePropertyName("name"u8);
- *     writer.WriteStringValue(Name);
- * }
- * ```
- *
- * @example Generated output for a required nullable int (with else branch):
- * ```csharp
- * if (Optional.IsDefined(Count))
- * {
- *     writer.WritePropertyName("count"u8);
- *     writer.WriteNumberValue(Count.Value);
- * }
- * else
- * {
- *     writer.WriteNull("count"u8);
+ *     writer.WritePropertyName("counts"u8);
+ *     writer.WriteStartArray();
+ *     foreach (int item in Counts)
+ *     {
+ *         writer.WriteNumberValue(item);
+ *     }
+ *     writer.WriteEndArray();
  * }
  * ```
  *
@@ -469,11 +676,23 @@ export function WritePropertySerialization(
   const namePolicy = useCSharpNamePolicy();
   const { property } = props;
 
-  const writeInfo = getWriteMethodInfo(property.type);
-  if (!writeInfo) return null;
-
   const serializedName = property.serializedName;
   const csharpName = namePolicy.getName(property.name, "class-property");
+
+  // Collection types — array/list serialization with foreach loops
+  const unwrapped = unwrapNullableType(property.type);
+  if (unwrapped.kind === "array") {
+    return renderCollectionProperty(
+      property,
+      unwrapped as SdkArrayType,
+      serializedName,
+      csharpName,
+    );
+  }
+
+  // Primitive types — simple writer method call
+  const writeInfo = getWriteMethodInfo(property.type);
+  if (!writeInfo) return null;
 
   if (needsOptionalGuard(property)) {
     const guardMethod = getOptionalGuardMethodName(property);

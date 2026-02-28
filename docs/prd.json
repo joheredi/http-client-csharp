@@ -1979,7 +1979,7 @@
           "title": "Implement collection serialization",
           "description": "Lists: WriteStartArray \u2192 foreach item \u2192 serialize item \u2192 WriteEndArray. Handle nested collections recursively.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.2.3"
           ],

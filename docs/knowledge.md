@@ -593,15 +593,32 @@ Optional nullable value types (e.g., `count?: int32` → C# `int?`) need `.Value
 ## Task 2.1.2 — Interface Determination Design Decision
 
 ### Approach chosen: Inline helper in ModelSerializationFile.tsx
+
 - `getSerializationInterfaces(type, modelName)` checks TCGC `UsageFlags` to determine interface
 - JSON models → `IJsonModel<T>`, XML-only → `IPersistableModel<T>`, fallback → `IJsonModel<T>`
 - Function is exported for downstream reuse (2.1.4, 2.1.5, 2.5.x)
 
 ### Rejected: Separate utility file
+
 - Overkill for ~20 lines of logic. Can be extracted later if usage grows.
 
 ### Key patterns
+
 - To create XML-only models in TypeSpec tests: use `@header("content-type") contentType: "application/xml"` on body param
 - TCGC sets `UsageFlags.Xml` when content type matches `application/xml` or `text/xml`
 - Unknown discriminator models should bind interface type to base model (not self) — deferred to when Unknown serialization files are implemented
 - Model-as-struct needs `<object>` interface variants (IJsonModel<object>, IPersistableModel<object>) — deferred to task 1.2.8
+
+### Circular type inference in recursive rendering functions
+
+When two rendering functions call each other recursively (e.g., `renderValueWrite` → `renderArraySerialization` → `renderValueWrite`), TypeScript cannot infer the return types and produces `TS7022`. Fix: add an explicit `Children | null` return type annotation (from `@alloy-js/core`) to one of the functions to break the inference cycle.
+
+### TypeExpression works inline in JSX for foreach types
+
+`TypeExpression` from `@typespec/emitter-framework/csharp` can be used inline in JSX children to render C# type names for foreach loop variable declarations. It correctly renders `string`, `int`, `IList<string>`, etc. and generates appropriate `using` directives. Always pass `unwrappedType.__raw!` (unwrap nullable first).
+
+## Design Decisions
+
+### Collection serialization: extend WritePropertySerialization vs separate component
+
+**Chosen:** Extend `WritePropertySerialization` with helper functions (`renderValueWrite`, `renderArraySerialization`, `renderCollectionProperty`) in the same file. **Rejected:** Creating a separate `CollectionSerializer.tsx` component. **Reason:** The collection rendering is tightly coupled to the property serialization flow (needs access to property name, optional guards, serialized name). Keeping it in one file reduces indirection. The `renderValueWrite` function provides a reusable abstraction that tasks 2.2.7 (models), 2.2.8 (enums), and 2.2.10 (dictionaries) can plug into by extending the type switch.

@@ -2551,9 +2551,329 @@ describe("JsonDeserialize", () => {
     const content = outputs[fileKey!];
 
     // Check the overall method structure with indentation
-    expect(content).toContain("internal static Widget DeserializeWidget(JsonElement element, ModelReaderWriterOptions options)");
-    expect(content).toMatch(/DeserializeWidget\(JsonElement element, ModelReaderWriterOptions options\)\n\s*\{/);
-    expect(content).toContain("    if (element.ValueKind == JsonValueKind.Null)");
+    expect(content).toContain(
+      "internal static Widget DeserializeWidget(JsonElement element, ModelReaderWriterOptions options)",
+    );
+    expect(content).toMatch(
+      /DeserializeWidget\(JsonElement element, ModelReaderWriterOptions options\)\n\s*\{/,
+    );
+    expect(content).toContain(
+      "    if (element.ValueKind == JsonValueKind.Null)",
+    );
     expect(content).toContain("        return null;");
+  });
+});
+
+/**
+ * Tests for collection (array/list) property serialization in the JSON write path.
+ *
+ * Collection properties use a `foreach` loop pattern:
+ * ```csharp
+ * writer.WriteStartArray();
+ * foreach (ItemType item in PropertyName)
+ * {
+ *     writer.WriteXxxValue(item);
+ * }
+ * writer.WriteEndArray();
+ * ```
+ *
+ * Reference type items (string, models) get null checks inside the loop.
+ * Value type items (int, bool) do not need null checks.
+ * Optional collections are wrapped in `Optional.IsCollectionDefined` guards.
+ * Nested collections produce nested foreach loops with shadowed `item` variables.
+ */
+describe("CollectionSerialization", () => {
+  /**
+   * Validates that a required `string[]` property generates the WriteStartArray/
+   * foreach/WriteEndArray pattern with a null check for string items.
+   *
+   * String is a reference type in C#, so items can be null at runtime. The null
+   * check ensures `WriteNullValue()` is called instead of `WriteStringValue(null)`.
+   */
+  it("serializes required string array with null check", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        names: string[];
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Property name write
+    expect(content).toContain('writer.WritePropertyName("names"u8);');
+
+    // Collection structure
+    expect(content).toContain("writer.WriteStartArray();");
+    expect(content).toContain("foreach (string item in Names)");
+    expect(content).toContain("writer.WriteEndArray();");
+
+    // Null check for reference type items
+    expect(content).toContain("if (item == null)");
+    expect(content).toContain("writer.WriteNullValue();");
+    expect(content).toContain("continue;");
+
+    // Item serialization
+    expect(content).toContain("writer.WriteStringValue(item);");
+
+    // Should NOT have Optional guard (required property)
+    expect(content).not.toContain("Optional.IsCollectionDefined(Names)");
+  });
+
+  /**
+   * Validates that a required `int32[]` property generates a foreach loop
+   * WITHOUT a null check. int is a non-nullable value type in C#, so items
+   * cannot be null and don't need the null guard.
+   */
+  it("serializes required int array without null check", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        counts: int32[];
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Collection structure
+    expect(content).toContain('writer.WritePropertyName("counts"u8);');
+    expect(content).toContain("writer.WriteStartArray();");
+    expect(content).toContain("foreach (int item in Counts)");
+    expect(content).toContain("writer.WriteNumberValue(item);");
+    expect(content).toContain("writer.WriteEndArray();");
+
+    // No null check for value type items
+    expect(content).not.toContain("if (item == null)");
+  });
+
+  /**
+   * Validates that an optional `string[]` property is wrapped in an
+   * `Optional.IsCollectionDefined` guard. This prevents serializing
+   * collections that haven't been set by the user (tracked via
+   * ChangeTrackingList).
+   */
+  it("wraps optional collection in IsCollectionDefined guard", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        tags?: string[];
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Optional guard
+    expect(content).toContain("if (Optional.IsCollectionDefined(Tags))");
+
+    // Collection content inside guard (indented)
+    expect(content).toContain('writer.WritePropertyName("tags"u8);');
+    expect(content).toContain("writer.WriteStartArray();");
+    expect(content).toContain("foreach (string item in Tags)");
+    expect(content).toContain("writer.WriteStringValue(item);");
+    expect(content).toContain("writer.WriteEndArray();");
+  });
+
+  /**
+   * Validates that a required `boolean[]` property generates a foreach loop
+   * with WriteBooleanValue. Boolean is a value type, so no null check is needed.
+   */
+  it("serializes required boolean array", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        flags: boolean[];
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('writer.WritePropertyName("flags"u8);');
+    expect(content).toContain("writer.WriteStartArray();");
+    expect(content).toContain("foreach (bool item in Flags)");
+    expect(content).toContain("writer.WriteBooleanValue(item);");
+    expect(content).toContain("writer.WriteEndArray();");
+
+    // No null check for bool (value type)
+    expect(content).not.toContain("if (item == null)");
+  });
+
+  /**
+   * Validates that a required `float64[]` property generates a foreach loop
+   * with WriteNumberValue. Ensures all numeric types work correctly with
+   * collection serialization.
+   */
+  it("serializes required float64 array", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        scores: float64[];
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('writer.WritePropertyName("scores"u8);');
+    expect(content).toContain("writer.WriteStartArray();");
+    expect(content).toContain("foreach (double item in Scores)");
+    expect(content).toContain("writer.WriteNumberValue(item);");
+    expect(content).toContain("writer.WriteEndArray();");
+  });
+
+  /**
+   * Validates that a collection property coexists with scalar properties
+   * in the same model. Both should appear in the generated JsonModelWriteCore
+   * method in declaration order.
+   */
+  it("serializes collection alongside scalar properties", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        tags: string[];
+        count: int32;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Scalar properties
+    expect(content).toContain('writer.WritePropertyName("name"u8);');
+    expect(content).toContain("writer.WriteStringValue(Name);");
+    expect(content).toContain('writer.WritePropertyName("count"u8);');
+    expect(content).toContain("writer.WriteNumberValue(Count);");
+
+    // Collection property
+    expect(content).toContain('writer.WritePropertyName("tags"u8);');
+    expect(content).toContain("writer.WriteStartArray();");
+    expect(content).toContain("foreach (string item in Tags)");
+    expect(content).toContain("writer.WriteEndArray();");
+
+    // Verify order: name before tags before count
+    const nameIdx = content.indexOf('writer.WritePropertyName("name"u8)');
+    const tagsIdx = content.indexOf('writer.WritePropertyName("tags"u8)');
+    const countIdx = content.indexOf('writer.WritePropertyName("count"u8)');
+    expect(nameIdx).toBeLessThan(tagsIdx);
+    expect(tagsIdx).toBeLessThan(countIdx);
+  });
+
+  /**
+   * Validates that nested collections (e.g., `string[][]`) produce nested
+   * foreach loops with nested WriteStartArray/WriteEndArray pairs.
+   *
+   * The inner loop variable shadows the outer `item` variable, matching
+   * the legacy emitter's ForEachStatement("item", ...) pattern.
+   * Inner list items are reference types (IList<string>) so they get null checks.
+   */
+  it("serializes nested array with recursive foreach loops", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        matrix: string[][];
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Outer collection structure
+    expect(content).toContain('writer.WritePropertyName("matrix"u8);');
+
+    // Should have two WriteStartArray (outer + inner) and two WriteEndArray
+    const startArrayCount = (
+      content.match(/writer\.WriteStartArray\(\)/g) || []
+    ).length;
+    const endArrayCount = (content.match(/writer\.WriteEndArray\(\)/g) || [])
+      .length;
+    expect(startArrayCount).toBe(2);
+    expect(endArrayCount).toBe(2);
+
+    // Inner foreach should iterate over string items
+    expect(content).toContain("foreach (string item in item)");
+
+    // Inner string items should have null check
+    expect(content).toContain("writer.WriteStringValue(item);");
   });
 });

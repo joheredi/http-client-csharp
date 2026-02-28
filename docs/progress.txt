@@ -899,3 +899,27 @@ internal static Widget DeserializeWidget(JsonElement element, ModelReaderWriterO
 - Unknown discriminator models bind interfaces to the base model type (legacy behavior). Currently not needed since Unknown variants don't get serialization files yet.
 - Model-as-struct (task 1.2.8) will need `<object>` interface variants added to this logic
 - The `getSerializationInterfaces` function is exported and ready for use in tasks 2.1.4, 2.1.5, 2.5.x
+
+2026-02-28 — Task 2.2.9: Implement collection serialization (complete)
+
+Added collection (array/list) serialization to the JSON write path in PropertySerializer.tsx:
+- `collectionItemNeedsNullCheck()` — determines if foreach items need null guard (reference types yes, value types no)
+- `renderValueWrite()` — renders value serialization for primitives and recursively for arrays
+- `renderArraySerialization()` — renders WriteStartArray/foreach/WriteEndArray pattern with TypeExpression for loop variable types
+- `renderCollectionProperty()` — handles property-level guards (Optional.IsCollectionDefined) for collections
+- Modified `WritePropertySerialization` to detect array types and delegate to collection rendering
+
+Patterns used:
+- Standard (non-patch) collections use `foreach` loops, matching the legacy emitter's `ForEachStatement("item", ...)`
+- TypeExpression from @typespec/emitter-framework/csharp used for correct C# type names in foreach declarations
+- Null checks for reference type items (string, model, collections); no null check for value types (int, bool)
+- Nested collections handled recursively with shadowed `item` loop variable
+- Children type from @alloy-js/core used to break circular type inference between renderValueWrite and renderArraySerialization
+
+Tests: 7 new tests in model-serialization.test.ts (CollectionSerialization describe block):
+- Required string array (with null check)
+- Required int array (without null check)
+- Optional collection (IsCollectionDefined guard)
+- Boolean array, float64 array
+- Collection alongside scalar properties
+- Nested string[][] with recursive foreach loops
