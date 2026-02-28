@@ -278,3 +278,22 @@ Key patterns:
 
 All 84 tests pass. Build succeeds. Next natural tasks: 1.7.1 (ExtensibleEnumSerializationFile)
 or 1.1.1 (Verify TypeExpression coverage).
+
+2026-02-28 — Tasks 1.7.1-1.7.4: ExtensibleEnumSerializationFile component (complete)
+
+Implemented the ExtensibleEnumSerializationFile component for numeric extensible enum serialization. All 4 sub-tasks completed as a single unit.
+
+Key accomplishments:
+- Created `src/components/enums/ExtensibleEnumSerializationFile.tsx` generating partial struct with `internal {type} ToSerial{FrameworkName}() => _value;`
+- Wired into `src/emitter.tsx` with filtering: only non-string extensible enums get serialization files
+- Created `test/extensible-enum-serialization.test.ts` with 8 tests covering int/float serialization, string skip, mixed scenarios, header, namespace, and file path
+- All 92 tests pass; build succeeds
+
+Design decision: Filter at emitter level (not inside component) — consistent with existing pattern and avoids creating components that render nothing.
+
+Patterns used:
+- StructDeclaration (public readonly partial) from @alloy-js/csharp for the partial struct
+- getCSharpNumericTypeInfo() for type mapping (no string case since component is numeric-only)
+- Same file path pattern as legacy: src/Generated/Models/{EnumName}.Serialization.cs
+
+Next natural tasks: 1.1.1 (Verify TypeExpression coverage) or model-related tasks (1.2.x)

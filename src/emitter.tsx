@@ -2,6 +2,7 @@ import { createSdkContext } from "@azure-tools/typespec-client-generator-core";
 import { type EmitContext } from "@typespec/compiler";
 import { writeOutput } from "@typespec/emitter-framework";
 import { ExtensibleEnumFile } from "./components/enums/ExtensibleEnumFile.js";
+import { ExtensibleEnumSerializationFile } from "./components/enums/ExtensibleEnumSerializationFile.js";
 import { FixedEnumFile } from "./components/enums/FixedEnumFile.js";
 import { FixedEnumSerializationFile } from "./components/enums/FixedEnumSerializationFile.js";
 import { HttpClientCSharpOutput } from "./components/HttpClientCSharpOutput.js";
@@ -59,6 +60,11 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
       {extensibleEnums.map((e) => (
         <ExtensibleEnumFile type={e} options={options} />
       ))}
+      {extensibleEnums
+        .filter((e) => e.valueType.kind !== "string")
+        .map((e) => (
+          <ExtensibleEnumSerializationFile type={e} options={options} />
+        ))}
     </HttpClientCSharpOutput>
   );
 

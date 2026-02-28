@@ -188,3 +188,23 @@ In TCGC, TypeSpec `union` types with literal members (e.g., `union Foo { string,
 ### [EditorBrowsable] on Equals(object) and GetHashCode
 
 Per the ExtensibleEnumProvider source code, both `Equals(object)` and `GetHashCode()` receive `[EditorBrowsable(EditorBrowsableState.Never)]`. Some older Plugin golden files don't show this on GetHashCode, but the Spector golden files (current reference) do include it.
+
+## Extensible Enum Serialization (Tasks 1.7.1-1.7.4)
+
+**Key insight**: Extensible enum serialization files are completely different from fixed enum serialization files:
+- **Fixed enums**: Use an `internal static partial class {EnumName}Extensions` with extension methods (ToSerial{Type}, To{EnumName})
+- **Extensible enums**: Use a `public readonly partial struct` with a single `internal {type} ToSerial{FrameworkName}() => _value;` method
+
+**String extensible enums**: No serialization file needed — they use `ToString()` directly. Filtering happens at the emitter level in `emitter.tsx`.
+
+**Numeric type mapping for extensible enum serialization**:
+- `int32` → `int` keyword, `Int32` framework name → `ToSerialInt32`
+- `int64` → `long` keyword, `Int64` framework name → `ToSerialInt64`
+- `float32` → `float` keyword, `Single` framework name → `ToSerialSingle`
+- `float64` → `double` keyword, `Double` framework name → `ToSerialDouble`
+
+## Design Decisions
+
+### Extensible Enum Serialization Filtering (1.7.x)
+**Chosen**: Filter at emitter level — `extensibleEnums.filter(e => e.valueType.kind !== "string")` before mapping to component.
+**Rejected**: Internal filtering (component returns null for string types) — components shouldn't be created just to render nothing; this is cleaner and more explicit.
