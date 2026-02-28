@@ -1101,3 +1101,16 @@ Modified `src/components/serialization/PropertySerializer.tsx` to handle enum-ty
 **Design decision:** Extended `getWriteMethodInfo` with `valueTransform` rather than a separate `renderEnumProperty` function. This reuses the existing rendering pipeline for both property-level writes and collection item writes (via `renderValueWrite`).
 
 **Test file:** `test/enum-property-serialization.test.ts` with 7 tests covering all patterns plus optional guard and collection scenarios.
+
+2026-02-28 — Task 1.2.9: Write model generation tests (complete)
+
+Added 5 end-to-end golden file validation tests in a new "ModelUsageGoldenFiles" describe block at the end of test/model.test.ts:
+- InputRecord: validates input-only model has public constructor, Argument.AssertNotNull, get-only property, serialization constructor, correct ordering
+- OutputRecord: validates output-only model has NO public constructor, internal constructor only, get-only property
+- InputOutputRecord: validates input+output model has public constructor, get/set property (the key differentiator)
+- All three files generated at correct paths under src/Generated/Models/
+- Mixed required+optional model: validates required params in public ctor, optional params excluded, optional properties get setters on input-only models
+
+These tests complement the 63 existing individual-aspect tests by validating the COMPLETE model file structure end-to-end for the Spector Type.Model.Usage scenario. Total model tests: 68 (63 existing + 5 new).
+
+Note: pnpm format and pnpm lint have pre-existing failures due to missing submodule dependencies (prettier-plugin-organize-imports). Used npx prettier --write directly on changed files.

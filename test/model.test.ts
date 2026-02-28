@@ -1543,7 +1543,9 @@ describe("AbstractBaseModel", () => {
     const content = outputs[petFile!];
 
     // Enum discriminator must use enum type, not string
-    expect(content).toMatch(/internal\s+PetKind\s+Kind\s*\{\s*get;\s*set;\s*\}/);
+    expect(content).toMatch(
+      /internal\s+PetKind\s+Kind\s*\{\s*get;\s*set;\s*\}/,
+    );
   });
 
   /**
@@ -1626,7 +1628,9 @@ describe("AbstractBaseModel", () => {
     // Constructor must be private protected (not public/internal)
     // Note: Alloy outputs "protected private" which is semantically identical
     // to "private protected" in C# — both compile to the same access level
-    expect(content).toMatch(/(?:private\s+protected|protected\s+private)\s+Pet\s*\(/);
+    expect(content).toMatch(
+      /(?:private\s+protected|protected\s+private)\s+Pet\s*\(/,
+    );
   });
 
   /**
@@ -1653,7 +1657,9 @@ describe("AbstractBaseModel", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const widgetFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
+    const widgetFile = Object.keys(outputs).find((k) =>
+      k.includes("Widget.cs"),
+    );
     expect(widgetFile).toBeDefined();
     const content = outputs[widgetFile!];
 
@@ -1863,7 +1869,9 @@ describe("DerivedModelDiscriminator", () => {
     expect(content).not.toMatch(/Kind\s*=\s*kind;/);
 
     // additionalBinaryDataProperties should NOT be assigned in derived ctor
-    expect(content).not.toMatch(/_additionalBinaryDataProperties\s*=\s*additionalBinaryDataProperties;/);
+    expect(content).not.toMatch(
+      /_additionalBinaryDataProperties\s*=\s*additionalBinaryDataProperties;/,
+    );
   });
 
   /**
@@ -2242,9 +2250,7 @@ describe("UnknownDiscriminatorModel", () => {
 
     // The constructor body should be empty (no property assignments)
     // Match the block after the base initializer
-    expect(content).toMatch(
-      /:\s*base\([^)]+\)\s*\{\s*\}/s,
-    );
+    expect(content).toMatch(/:\s*base\([^)]+\)\s*\{\s*\}/s);
   });
 });
 
@@ -2312,13 +2318,12 @@ describe("NestedDiscriminator", () => {
    * direct instantiation and breaking the public constructor pattern.
    */
   it("intermediate model is not marked abstract", async () => {
-    const [{ outputs }, diagnostics] =
-      await HttpTester.compileAndDiagnose(nestedDiscriminatorSpec);
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(
+      nestedDiscriminatorSpec,
+    );
     expect(diagnostics).toHaveLength(0);
 
-    const sharkFile = Object.keys(outputs).find((k) =>
-      k.includes("Shark.cs"),
-    );
+    const sharkFile = Object.keys(outputs).find((k) => k.includes("Shark.cs"));
     expect(sharkFile).toBeDefined();
     const content = outputs[sharkFile!];
 
@@ -2335,13 +2340,12 @@ describe("NestedDiscriminator", () => {
    * Reference: Shark.cs — `internal string Sharktype { get; set; }`
    */
   it("intermediate model keeps own discriminator property", async () => {
-    const [{ outputs }, diagnostics] =
-      await HttpTester.compileAndDiagnose(nestedDiscriminatorSpec);
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(
+      nestedDiscriminatorSpec,
+    );
     expect(diagnostics).toHaveLength(0);
 
-    const sharkFile = Object.keys(outputs).find((k) =>
-      k.includes("Shark.cs"),
-    );
+    const sharkFile = Object.keys(outputs).find((k) => k.includes("Shark.cs"));
     const content = outputs[sharkFile!];
 
     expect(content).toMatch(/internal\s+string\s+Sharktype\s*\{.*get.*set.*\}/);
@@ -2358,13 +2362,12 @@ describe("NestedDiscriminator", () => {
    * Reference: Shark.cs — `public Shark(int age, string sharktype) : base("shark", age)`
    */
   it("intermediate model public ctor includes hierarchy params", async () => {
-    const [{ outputs }, diagnostics] =
-      await HttpTester.compileAndDiagnose(nestedDiscriminatorSpec);
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(
+      nestedDiscriminatorSpec,
+    );
     expect(diagnostics).toHaveLength(0);
 
-    const sharkFile = Object.keys(outputs).find((k) =>
-      k.includes("Shark.cs"),
-    );
+    const sharkFile = Object.keys(outputs).find((k) => k.includes("Shark.cs"));
     const content = outputs[sharkFile!];
 
     expect(content).toMatch(
@@ -2380,13 +2383,12 @@ describe("NestedDiscriminator", () => {
    * `internal Shark(string kind, int age, IDictionary<string, BinaryData> additionalBinaryDataProperties, string sharktype)`
    */
   it("intermediate model serialization ctor has correct param order", async () => {
-    const [{ outputs }, diagnostics] =
-      await HttpTester.compileAndDiagnose(nestedDiscriminatorSpec);
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(
+      nestedDiscriminatorSpec,
+    );
     expect(diagnostics).toHaveLength(0);
 
-    const sharkFile = Object.keys(outputs).find((k) =>
-      k.includes("Shark.cs"),
-    );
+    const sharkFile = Object.keys(outputs).find((k) => k.includes("Shark.cs"));
     const content = outputs[sharkFile!];
 
     expect(content).toMatch(
@@ -2405,8 +2407,9 @@ describe("NestedDiscriminator", () => {
    * Reference: SawShark.cs — `public SawShark(int age) : base(age, "saw")`
    */
   it("3rd-level model includes grandparent params in ctor", async () => {
-    const [{ outputs }, diagnostics] =
-      await HttpTester.compileAndDiagnose(nestedDiscriminatorSpec);
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(
+      nestedDiscriminatorSpec,
+    );
     expect(diagnostics).toHaveLength(0);
 
     const sawSharkFile = Object.keys(outputs).find((k) =>
@@ -2430,8 +2433,9 @@ describe("NestedDiscriminator", () => {
    * `internal SawShark(string kind, int age, IDictionary<string, BinaryData> additionalBinaryDataProperties, string sharktype)`
    */
   it("3rd-level model serialization ctor has correct param order", async () => {
-    const [{ outputs }, diagnostics] =
-      await HttpTester.compileAndDiagnose(nestedDiscriminatorSpec);
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(
+      nestedDiscriminatorSpec,
+    );
     expect(diagnostics).toHaveLength(0);
 
     const sawSharkFile = Object.keys(outputs).find((k) =>
@@ -2452,8 +2456,9 @@ describe("NestedDiscriminator", () => {
    * Reference: UnknownShark.cs exists in golden files
    */
   it("generates Unknown variant for intermediate discriminated model", async () => {
-    const [{ outputs }, diagnostics] =
-      await HttpTester.compileAndDiagnose(nestedDiscriminatorSpec);
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(
+      nestedDiscriminatorSpec,
+    );
     expect(diagnostics).toHaveLength(0);
 
     const unknownShark = Object.keys(outputs).find((k) =>
@@ -2476,8 +2481,9 @@ describe("NestedDiscriminator", () => {
    * `base(kind ?? "unknown", age, additionalBinaryDataProperties, sharktype ?? "unknown")`
    */
   it("Unknown variant has hierarchy params with null-guards", async () => {
-    const [{ outputs }, diagnostics] =
-      await HttpTester.compileAndDiagnose(nestedDiscriminatorSpec);
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(
+      nestedDiscriminatorSpec,
+    );
     expect(diagnostics).toHaveLength(0);
 
     const unknownShark = Object.keys(outputs).find((k) =>
@@ -2490,5 +2496,336 @@ describe("NestedDiscriminator", () => {
     expect(content).toMatch(/sharktype\s*\?\?\s*"unknown"/);
     // age should NOT have a null-guard (int, not a discriminator)
     expect(content).not.toMatch(/age\s*\?\?\s*"unknown"/);
+  });
+});
+
+/**
+ * End-to-end golden file validation for the Type.Model.Usage scenario.
+ *
+ * These tests validate the COMPLETE model file output for the three usage
+ * direction patterns (Input, Output, Input+Output) from the Spector
+ * `http/type/model/usage` test scenario. Unlike the focused tests above that
+ * check individual aspects via regex, these tests verify the entire file
+ * structure end-to-end — catching formatting, ordering, and integration
+ * issues that individual pattern tests may miss.
+ *
+ * Why these tests matter:
+ * - They serve as the definitive golden file regression suite.
+ * - They validate that all model components (header, namespace, constructors,
+ *   properties, serialization constructor) work together correctly.
+ * - They match the Spector Type.Model.Usage scenario's public API surface:
+ *   InputRecord (input-only), OutputRecord (output-only), InputOutputRecord
+ *   (input+output). The legacy emitter's golden files for this scenario use
+ *   `throw null` stubs, but our emitter generates real implementations — the
+ *   API surface (class name, constructor signatures, property signatures) must
+ *   match.
+ */
+describe("ModelUsageGoldenFiles", () => {
+  /**
+   * Shared TypeSpec input matching the Spector Type.Model.Usage scenario.
+   * Three models with different usage patterns:
+   * - InputRecord: used only as request body (input-only)
+   * - OutputRecord: used only as response (output-only)
+   * - InputOutputRecord: used as both request and response (input+output)
+   */
+  const usageSpec = `
+    using TypeSpec.Http;
+
+    @service
+    namespace TestNamespace;
+
+    model InputRecord {
+      requiredProp: string;
+    }
+
+    model OutputRecord {
+      requiredProp: string;
+    }
+
+    model InputOutputRecord {
+      requiredProp: string;
+    }
+
+    @route("/input")
+    op input(@body body: InputRecord): void;
+
+    @route("/output")
+    op output(): OutputRecord;
+
+    @route("/input-output")
+    op inputAndOutput(@body body: InputOutputRecord): InputOutputRecord;
+  `;
+
+  /**
+   * Validates InputRecord: an input-only model with a required string property.
+   *
+   * Expected API surface (matching Spector golden file):
+   * - public partial class InputRecord
+   * - Public constructor with (string requiredProp)
+   * - Argument.AssertNotNull for the reference type parameter
+   * - Internal serialization constructor with additionalBinaryDataProperties
+   * - Get-only property (input models use constructor initialization)
+   *
+   * This is the most common pattern for request body types in generated SDKs.
+   */
+  it("InputRecord: input-only model has public constructor and get-only property", async () => {
+    const [{ outputs }, diagnostics] =
+      await HttpTester.compileAndDiagnose(usageSpec);
+    expect(diagnostics).toHaveLength(0);
+
+    const key = Object.keys(outputs).find((k) => k.endsWith("InputRecord.cs"));
+    expect(key).toBeDefined();
+    const content = outputs[key!];
+
+    // File header
+    expect(content).toContain("// <auto-generated/>");
+    expect(content).toContain("#nullable disable");
+
+    // Namespace
+    expect(content).toContain("namespace TestNamespace");
+
+    // Class declaration
+    expect(content).toMatch(/public\s+partial\s+class\s+InputRecord/);
+
+    // Public constructor (input-only models ARE user-constructable)
+    expect(content).toMatch(/public\s+InputRecord\s*\(string\s+requiredProp\)/);
+
+    // Null check for reference type in public constructor
+    expect(content).toContain(
+      "Argument.AssertNotNull(requiredProp, nameof(requiredProp));",
+    );
+
+    // Property assignment in public constructor
+    expect(content).toContain("RequiredProp = requiredProp;");
+
+    // Internal serialization constructor with additionalBinaryDataProperties
+    expect(content).toMatch(
+      /internal\s+InputRecord\s*\(\s*string\s+requiredProp\s*,\s*IDictionary<string, BinaryData>\s+additionalBinaryDataProperties\s*\)/,
+    );
+
+    // Get-only property (no setter — input model uses constructor init)
+    expect(content).toMatch(/public\s+string\s+RequiredProp\s*\{\s*get;\s*\}/);
+
+    // Verify correct ordering: public ctor → serialization ctor → property
+    const lines = content.split("\n");
+    const publicCtorIdx = lines.findIndex((l: string) =>
+      l.match(/public\s+InputRecord\s*\(/),
+    );
+    const serCtorIdx = lines.findIndex((l: string) =>
+      l.match(/internal\s+InputRecord\s*\(/),
+    );
+    const propIdx = lines.findIndex((l: string) =>
+      l.includes("public string RequiredProp"),
+    );
+    expect(publicCtorIdx).toBeLessThan(serCtorIdx);
+    expect(serCtorIdx).toBeLessThan(propIdx);
+  });
+
+  /**
+   * Validates OutputRecord: an output-only model with a required string property.
+   *
+   * Expected API surface (matching Spector golden file):
+   * - public partial class OutputRecord
+   * - NO public constructor (output models are populated by deserialization)
+   * - Internal constructor with (string requiredProp)
+   * - Internal serialization constructor with additionalBinaryDataProperties
+   * - Get-only property (output models are read-only)
+   *
+   * This is the standard pattern for response types: the SDK constructs them
+   * internally during deserialization, and users only read properties.
+   */
+  it("OutputRecord: output-only model has no public constructor", async () => {
+    const [{ outputs }, diagnostics] =
+      await HttpTester.compileAndDiagnose(usageSpec);
+    expect(diagnostics).toHaveLength(0);
+
+    const key = Object.keys(outputs).find((k) => k.endsWith("OutputRecord.cs"));
+    expect(key).toBeDefined();
+    const content = outputs[key!];
+
+    // File header
+    expect(content).toContain("// <auto-generated/>");
+    expect(content).toContain("#nullable disable");
+
+    // Namespace
+    expect(content).toContain("namespace TestNamespace");
+
+    // Class declaration
+    expect(content).toMatch(/public\s+partial\s+class\s+OutputRecord/);
+
+    // NO public constructor — only internal
+    expect(content).not.toMatch(/public\s+OutputRecord\s*\(/);
+
+    // Internal primary constructor
+    expect(content).toMatch(
+      /internal\s+OutputRecord\s*\(string\s+requiredProp\)/,
+    );
+
+    // Internal serialization constructor with additionalBinaryDataProperties
+    expect(content).toMatch(
+      /internal\s+OutputRecord\s*\(\s*string\s+requiredProp\s*,\s*IDictionary<string, BinaryData>\s+additionalBinaryDataProperties\s*\)/,
+    );
+
+    // Get-only property (output model is read-only)
+    expect(content).toMatch(/public\s+string\s+RequiredProp\s*\{\s*get;\s*\}/);
+
+    // No set accessor
+    expect(content).not.toMatch(/RequiredProp\s*\{[^}]*set;/);
+  });
+
+  /**
+   * Validates InputOutputRecord: a model used as both request and response.
+   *
+   * Expected API surface (matching Spector golden file):
+   * - public partial class InputOutputRecord
+   * - Public constructor with (string requiredProp)
+   * - Argument.AssertNotNull for the reference type parameter
+   * - Internal serialization constructor with additionalBinaryDataProperties
+   * - Get/set property (users both set values for input and read for output)
+   *
+   * This is the most feature-rich pattern: the model supports construction
+   * (input), serialization (input), deserialization (output), and reading
+   * (output). The get/set accessor is the key differentiator from input-only
+   * and output-only models.
+   */
+  it("InputOutputRecord: input+output model has public constructor and get/set property", async () => {
+    const [{ outputs }, diagnostics] =
+      await HttpTester.compileAndDiagnose(usageSpec);
+    expect(diagnostics).toHaveLength(0);
+
+    const key = Object.keys(outputs).find((k) =>
+      k.endsWith("InputOutputRecord.cs"),
+    );
+    expect(key).toBeDefined();
+    const content = outputs[key!];
+
+    // File header
+    expect(content).toContain("// <auto-generated/>");
+    expect(content).toContain("#nullable disable");
+
+    // Namespace
+    expect(content).toContain("namespace TestNamespace");
+
+    // Class declaration
+    expect(content).toMatch(/public\s+partial\s+class\s+InputOutputRecord/);
+
+    // Public constructor (input+output models ARE user-constructable)
+    expect(content).toMatch(
+      /public\s+InputOutputRecord\s*\(string\s+requiredProp\)/,
+    );
+
+    // Null check for reference type in public constructor
+    expect(content).toContain(
+      "Argument.AssertNotNull(requiredProp, nameof(requiredProp));",
+    );
+
+    // Internal serialization constructor with additionalBinaryDataProperties
+    expect(content).toMatch(
+      /internal\s+InputOutputRecord\s*\(\s*string\s+requiredProp\s*,\s*IDictionary<string, BinaryData>\s+additionalBinaryDataProperties\s*\)/,
+    );
+
+    // Get/set property (the key difference from input-only and output-only)
+    expect(content).toMatch(
+      /public\s+string\s+RequiredProp\s*\{[^}]*get;[^}]*set;[^}]*\}/,
+    );
+  });
+
+  /**
+   * Validates that all three model files are generated at the correct paths.
+   * Each model gets its own file under src/Generated/Models/.
+   */
+  it("generates all three usage model files at correct paths", async () => {
+    const [{ outputs }, diagnostics] =
+      await HttpTester.compileAndDiagnose(usageSpec);
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFiles = Object.keys(outputs).filter(
+      (k) =>
+        k.includes("Models/") &&
+        k.endsWith(".cs") &&
+        !k.includes("Serialization"),
+    );
+
+    const inputRecord = modelFiles.find((f) => f.includes("InputRecord.cs"));
+    const outputRecord = modelFiles.find((f) => f.includes("OutputRecord.cs"));
+    const inputOutputRecord = modelFiles.find((f) =>
+      f.includes("InputOutputRecord.cs"),
+    );
+
+    expect(inputRecord).toBeDefined();
+    expect(outputRecord).toBeDefined();
+    expect(inputOutputRecord).toBeDefined();
+
+    // Verify path structure
+    expect(inputRecord).toContain("src/Generated/Models/InputRecord.cs");
+    expect(outputRecord).toContain("src/Generated/Models/OutputRecord.cs");
+    expect(inputOutputRecord).toContain(
+      "src/Generated/Models/InputOutputRecord.cs",
+    );
+  });
+
+  /**
+   * Validates a model with both required and optional properties.
+   *
+   * This tests the interaction between required and optional properties:
+   * - Required property: appears in public constructor, get-only on input models
+   * - Optional property: NOT in public constructor, has setter on input models
+   *   (for object initializer syntax: `new Model(required) { Optional = val }`)
+   * - Serialization constructor includes BOTH required and optional properties
+   *
+   * This pattern is critical for API usability — required properties are
+   * enforced at compile time, while optional properties use C# object
+   * initializer syntax.
+   */
+  it("model with required and optional properties generates correct constructors and accessors", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model CreateRequest {
+        name: string;
+        description?: string;
+        count: int32;
+        limit?: int32;
+      }
+
+      @route("/create")
+      op createItem(@body body: CreateRequest): void;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const key = Object.keys(outputs).find((k) =>
+      k.endsWith("CreateRequest.cs"),
+    );
+    expect(key).toBeDefined();
+    const content = outputs[key!];
+
+    // Public constructor has ONLY required params (name, count)
+    expect(content).toMatch(
+      /public\s+CreateRequest\s*\(string\s+name,\s*int\s+count\)/,
+    );
+
+    // Null check for required reference type (string)
+    expect(content).toContain("Argument.AssertNotNull(name, nameof(name));");
+    // No null check for value type (int)
+    expect(content).not.toContain("Argument.AssertNotNull(count");
+
+    // Serialization constructor has ALL params + additionalBinaryDataProperties
+    expect(content).toMatch(
+      /internal\s+CreateRequest\s*\([^)]*name[^)]*description[^)]*count[^)]*limit[^)]*additionalBinaryDataProperties[^)]*\)/,
+    );
+
+    // Required properties on input-only model: get-only
+    expect(content).toMatch(/public\s+string\s+Name\s*\{\s*get;\s*\}/);
+    expect(content).toMatch(/public\s+int\s+Count\s*\{\s*get;\s*\}/);
+
+    // Optional properties on input-only model: get+set (object initializer)
+    expect(content).toMatch(
+      /public\s+string\?\s+Description\s*\{\s*get;\s*set;\s*\}/,
+    );
+    expect(content).toMatch(/public\s+int\?\s+Limit\s*\{\s*get;\s*set;\s*\}/);
   });
 });

@@ -834,7 +834,7 @@
           "title": "Write model generation tests",
           "description": "Write tests for model generation covering: simple model with required string property, model with optional properties, input-only model (no public ctor, read-only props), output-only model, input+output model (get/set props, both operators). Compare output against golden files from Spector http/type/model/usage/.",
           "phase": "phase-1",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "1.2.8"
           ],
