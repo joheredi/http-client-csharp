@@ -1,25 +1,42 @@
 /**
  * Model constructor generation component for C# code output.
  *
- * Generates the public initialization constructor for model classes.
- * The constructor includes only required, non-readonly, non-literal
- * properties as parameters. Reference-type parameters get
- * `Argument.AssertNotNull` validation.
+ * Generates two constructors for model classes:
  *
- * Constructor accessibility matches the legacy emitter's ModelProvider.cs
- * (lines 600–604):
+ * 1. **Public initialization constructor** — includes only required,
+ *    non-readonly, non-literal properties as parameters. Reference-type
+ *    parameters get `Argument.AssertNotNull` validation.
+ *
+ * 2. **Internal serialization constructor** — includes ALL properties
+ *    plus the `additionalBinaryDataProperties` dictionary as parameters.
+ *    No validation — just direct property assignment. Used by
+ *    deserialization code to populate every field.
+ *
+ * Constructor accessibility for the public constructor matches the legacy
+ * emitter's ModelProvider.cs (lines 600–604):
  * - Abstract models → `private protected`
  * - Input models → `public`
  * - Output-only models → `internal`
+ *
+ * The serialization constructor is always `internal` (ModelProvider.cs
+ * line 707: `MethodSignatureModifiers.Internal`).
  *
  * @module
  */
 
 import {
   Constructor,
+  type ConstructorProps,
+  computeModifiersPrefix,
+  getAccessModifier,
+  MethodScope,
+  MethodSymbol,
   type ParameterProps,
+  Parameters,
   useCSharpNamePolicy,
+  useNamedTypeScope,
 } from "@alloy-js/csharp";
+import { Block, MemberDeclaration, MemberName } from "@alloy-js/core";
 import type {
   SdkModelPropertyType,
   SdkModelType,
@@ -183,6 +200,132 @@ function buildAssignments(
 }
 
 /**
+ * Private field name for the additional binary data properties storage.
+ *
+ * Matches the legacy emitter's `AdditionalPropertiesHelper.AdditionalBinaryDataPropsFieldName`.
+ * This field stores any JSON properties not mapped to known model properties,
+ * enabling round-trip serialization fidelity.
+ */
+export const ADDITIONAL_BINARY_DATA_PROPS_FIELD_NAME =
+  "_additionalBinaryDataProperties";
+
+/**
+ * Parameter name for additional binary data properties in the serialization constructor.
+ *
+ * Matches the legacy emitter's convention where the field name with the
+ * leading underscore removed becomes the parameter name.
+ */
+export const ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME =
+  "additionalBinaryDataProperties";
+
+/**
+ * Builds the ParameterProps array for the serialization constructor signature.
+ *
+ * Includes ALL model properties as parameters (no filtering — required,
+ * optional, read-only, and constant properties are all included) because
+ * the deserialization code needs to populate every field. The
+ * `additionalBinaryDataProperties` parameter is appended as the last
+ * parameter.
+ *
+ * Matches the legacy emitter's `BuildConstructorParameters(false)` logic
+ * (ModelProvider.cs lines 1058–1061): no properties are excluded.
+ *
+ * @param properties - All properties on the model.
+ * @param namePolicy - The C# naming policy for parameter name conversion.
+ * @returns An array of ParameterProps for the Constructor component.
+ */
+function buildSerializationParameters(
+  properties: SdkModelPropertyType[],
+  namePolicy: ReturnType<typeof useCSharpNamePolicy>,
+): ParameterProps[] {
+  const propParams = properties.map((p) => {
+    const nullable = isPropertyNullable(p);
+    const unwrapped = unwrapNullableType(p.type);
+    const baseType = <TypeExpression type={unwrapped.__raw!} />;
+
+    return {
+      name: namePolicy.getName(p.name, "parameter"),
+      type: nullable ? <>{baseType}?</> : baseType,
+    };
+  });
+
+  propParams.push({
+    name: ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME,
+    type: "IDictionary<string, BinaryData>",
+  });
+
+  return propParams;
+}
+
+/**
+ * Builds direct property assignment lines for the serialization constructor body.
+ *
+ * Every property gets a direct `Property = parameter;` assignment with no
+ * validation, no collection conversion, and no null checks. The serialization
+ * constructor trusts that the deserialization code provides correctly typed
+ * values. The `_additionalBinaryDataProperties` field is assigned last.
+ *
+ * Matches the legacy emitter's `GetPropertyInitializers(false)` logic
+ * (ModelProvider.cs lines 1099–1119): all properties assigned directly
+ * from their parameters plus raw data field assignment.
+ *
+ * @param properties - All properties on the model.
+ * @param namePolicy - The C# naming policy for parameter name conversion.
+ * @returns An array of C# direct assignment statements.
+ */
+function buildSerializationAssignments(
+  properties: SdkModelPropertyType[],
+  namePolicy: ReturnType<typeof useCSharpNamePolicy>,
+): string[] {
+  const lines: string[] = [];
+
+  for (const p of properties) {
+    const propName = namePolicy.getName(p.name, "class-property");
+    const paramName = namePolicy.getName(p.name, "parameter");
+    lines.push(`${propName} = ${paramName};`);
+  }
+
+  lines.push(
+    `${ADDITIONAL_BINARY_DATA_PROPS_FIELD_NAME} = ${ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME};`,
+  );
+
+  return lines;
+}
+
+/**
+ * A constructor component that allows name overloading.
+ *
+ * The standard `<Constructor>` from `@alloy-js/csharp` creates a MethodSymbol
+ * that triggers name deduplication when multiple constructors exist in the same
+ * class (e.g., public + serialization). This variant sets
+ * `ignoreNameConflict: true` on the symbol, allowing two constructors with the
+ * same name (the class name) to coexist — which is valid C# constructor
+ * overloading.
+ *
+ * @see https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/classes-and-structs/constructors
+ */
+function OverloadConstructor(props: ConstructorProps) {
+  const scope = useNamedTypeScope();
+  const name = scope.ownerSymbol.name;
+  const ctorSymbol = new MethodSymbol(name, scope.members, "constructor", {
+    refkeys: props.refkey,
+    ignoreNameConflict: true,
+  });
+  const modifiers = computeModifiersPrefix([getAccessModifier(props)]);
+
+  return (
+    <MemberDeclaration symbol={ctorSymbol}>
+      <MethodScope>
+        {modifiers}
+        <MemberName />
+        <Parameters parameters={props.parameters} />
+        <Block newline>{props.children}</Block>
+      </MethodScope>
+    </MemberDeclaration>
+  );
+}
+
+/**
  * Generates the public initialization constructor for a C# model class.
  *
  * This component produces a constructor whose:
@@ -204,11 +347,20 @@ function buildAssignments(
  *     Name = name;
  *     Count = count;
  * }
+ *
+ * internal Widget(string name, int count, IDictionary<string, BinaryData> additionalBinaryDataProperties)
+ * {
+ *     Name = name;
+ *     Count = count;
+ *     _additionalBinaryDataProperties = additionalBinaryDataProperties;
+ * }
  * ```
  */
 export function ModelConstructors(props: ModelConstructorsProps) {
   const { type } = props;
   const namePolicy = useCSharpNamePolicy();
+
+  // === Public initialization constructor ===
   const accessModifiers = getConstructorAccessModifiers(type);
 
   const ctorParamProps = type.properties.filter((p) =>
@@ -236,9 +388,26 @@ export function ModelConstructors(props: ModelConstructorsProps) {
 
   const body = bodyParts.join("\n");
 
+  // === Internal serialization constructor ===
+  const serializationParams = buildSerializationParameters(
+    type.properties,
+    namePolicy,
+  );
+  const serializationAssignments = buildSerializationAssignments(
+    type.properties,
+    namePolicy,
+  );
+  const serializationBody = serializationAssignments.join("\n");
+
   return (
-    <Constructor {...accessModifiers} parameters={parameters}>
-      {body}
-    </Constructor>
+    <>
+      <Constructor {...accessModifiers} parameters={parameters}>
+        {body}
+      </Constructor>
+      {"\n\n"}
+      <OverloadConstructor internal parameters={serializationParams}>
+        {serializationBody}
+      </OverloadConstructor>
+    </>
   );
 }

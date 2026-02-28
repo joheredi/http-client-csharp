@@ -732,7 +732,7 @@
           "title": "Implement internal serialization constructor",
           "description": "Generate the internal serialization constructor that takes ALL properties plus the additionalBinaryDataProperties dictionary. This constructor is used by deserialization code. It has no validation \u2014 just direct assignment. Parameters follow the same order as properties plus raw data last. See ModelProvider.FullConstructor.",
           "phase": "phase-1",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "1.2.4"
           ],

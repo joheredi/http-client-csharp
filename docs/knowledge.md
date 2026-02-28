@@ -329,13 +329,16 @@ Chose pure utility functions in `src/utils/property.ts` over embedding logic in 
 ## Constructor Generation (Task 1.2.4)
 
 ### Naming Policy Categories
+
 The CSharp naming policy (`useCSharpNamePolicy()`) has these relevant categories:
+
 - `"class-property"` → PascalCase (for property names in constructor body assignments)
 - `"parameter"` → camelCase (for constructor parameter names)
 - `"class"` → PascalCase (for class/model names)
 - Default falls to `changecase.camelCase(name)`
 
 ### Constructor Component from @alloy-js/csharp
+
 - `<Constructor>` accepts `AccessModifiers` props (`public`, `private`, `protected`, `internal`)
 - Setting both `private={true}` and `protected={true}` renders as `"protected private"` (modifier order follows the array: public, protected, private, internal, file). This is valid C# but non-conventional (conventional is `private protected`).
 - `parameters` prop accepts `ParameterProps[]` where `type` is `Children` (can be JSX)
@@ -343,13 +346,36 @@ The CSharp naming policy (`useCSharpNamePolicy()`) has these relevant categories
 - Empty body renders as `{}` on same line (not `{\n}`)
 
 ### TypeExpression for Parameter Types
+
 - Use `unwrapNullableType()` before passing to TypeExpression
 - For nullable params, compose with JSX fragment: `<>{baseType}?</>`
 - `type.__raw!` is needed to get the TypeSpec raw type from TCGC SdkType
 
 ### Design Decision: <Constructor> vs Raw Strings
+
 Chose `<Constructor>` component over raw strings (like ExtensibleEnumFile does) because:
+
 1. More idiomatic Alloy — leverages the component's built-in parameter rendering
 2. Better composability — parameters are structured data, not string concatenation
 3. Automatic handling of braces and indentation
-Tradeoff: modifier ordering is `"protected private"` instead of `"private protected"`, but both compile identically in C#.
+   Tradeoff: modifier ordering is `"protected private"` instead of `"private protected"`, but both compile identically in C#.
+
+## Alloy Constructor Overloading Limitation
+
+**Problem**: The `<Constructor>` component from `@alloy-js/csharp` creates a `MethodSymbol` that triggers automatic name deduplication. When two constructors exist in the same class (valid C# — constructor overloading), the second constructor gets renamed with a `_2` suffix (e.g., `Widget_2(...)` instead of `Widget(...)`).
+
+**Root cause**: Alloy's `SymbolTable.defaultConflictHandler` renames symbols with the same `originalName` by appending `_N`.
+
+**Solution**: Created `OverloadConstructor` in `ModelConstructors.tsx` that mirrors the `Constructor` component but sets `ignoreNameConflict: true` on the `MethodSymbol` options. All necessary internals (`useNamedTypeScope`, `MethodSymbol`, `computeModifiersPrefix`, `getAccessModifier`, `MethodScope`, `MemberDeclaration`, `MemberName`, `Block`, `Parameters`) are publicly exported from `@alloy-js/csharp` and `@alloy-js/core`.
+
+**When to use**: Always use `OverloadConstructor` for the second (and subsequent) constructors in a class. The first constructor can use the standard `<Constructor>`.
+
+## Design Decisions
+
+### Serialization Constructor (Task 1.2.5)
+
+**Chosen approach**: Keep serialization constructor logic in `ModelConstructors.tsx` alongside the public constructor.
+
+**Why**: The component is already named `ModelConstructors` (plural). All constructor logic stays co-located, reducing indirection. The two constructors share utilities (`buildParameters` pattern, naming policy).
+
+**Rejected**: Creating a separate `SerializationConstructor.tsx` component — would add unnecessary file and import overhead for a closely related concern.

@@ -465,3 +465,21 @@ Deferred to future tasks:
 - Abstract model testing (requires discriminator setup) → task 1.3.x
 
 Naming policy categories verified: "class-property" → PascalCase, "parameter" → camelCase (default)
+
+2026-02-28 — Task 1.2.5: Implement internal serialization constructor (complete)
+
+Added the internal serialization constructor to `ModelConstructors.tsx`:
+- Always `internal` access modifier (regardless of model usage)
+- Parameters: ALL model properties (including optional and read-only) + `additionalBinaryDataProperties` as last param (type: `IDictionary<string, BinaryData>`)
+- Body: Direct property assignment for ALL properties, no `Argument.AssertNotNull` validation
+- Assigns `_additionalBinaryDataProperties = additionalBinaryDataProperties;` for round-trip serialization fidelity
+
+Key technical challenge: Alloy's `<Constructor>` component deduplicates names when two constructors exist in the same class, appending `_2` to the second constructor name. Created `OverloadConstructor` component that sets `ignoreNameConflict: true` on the MethodSymbol, enabling valid C# constructor overloading.
+
+New exports from ModelConstructors.tsx:
+- `ADDITIONAL_BINARY_DATA_PROPS_FIELD_NAME` (`_additionalBinaryDataProperties`)
+- `ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME` (`additionalBinaryDataProperties`)
+
+Added 8 new tests for the serialization constructor. Updated 2 existing tests that assumed only one constructor exists (scoped their assertions to the public constructor specifically).
+
+Pattern: `OverloadConstructor` should be used for any additional constructor overload in the same class to avoid Alloy symbol deduplication.

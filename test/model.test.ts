@@ -922,8 +922,9 @@ describe("ModelConstructors", () => {
 
     // Constructor is public with only the required parameter
     expect(content).toMatch(/public\s+CreateRequest\s*\(string\s+name\)/);
-    // Optional property 'description' is NOT a constructor parameter
-    expect(content).not.toMatch(/CreateRequest\s*\([^)]*description/);
+    // Optional property 'description' is NOT a parameter in the PUBLIC constructor
+    // (it IS in the internal serialization constructor, which is correct)
+    expect(content).not.toMatch(/public\s+CreateRequest\s*\([^)]*description/);
   });
 
   /**
@@ -957,9 +958,10 @@ describe("ModelConstructors", () => {
 
     // Constructor exists with no parameters
     expect(content).toMatch(/public\s+Options\s*\(\s*\)/);
-    // Optional properties are NOT parameters
-    expect(content).not.toMatch(/Options\s*\([^)]*verbose/);
-    expect(content).not.toMatch(/Options\s*\([^)]*limit/);
+    // Optional properties are NOT parameters in the PUBLIC constructor
+    // (they ARE in the internal serialization constructor, which is correct)
+    expect(content).not.toMatch(/public\s+Options\s*\([^)]*verbose/);
+    expect(content).not.toMatch(/public\s+Options\s*\([^)]*limit/);
   });
 
   /**
@@ -1076,5 +1078,323 @@ describe("ModelConstructors", () => {
     expect(assignIdx).toBeGreaterThan(-1);
     // Null checks come before assignments
     expect(nullCheckIdx).toBeLessThan(assignIdx);
+  });
+});
+
+/**
+ * Tests for the internal serialization constructor.
+ *
+ * The serialization constructor is the second constructor generated for every
+ * model class. It is used by deserialization code to populate ALL properties
+ * (including optional and read-only) plus the `_additionalBinaryDataProperties`
+ * field. Unlike the public constructor, it performs no validation — just direct
+ * property assignment.
+ *
+ * Why these tests matter:
+ * - Without the serialization constructor, deserialization code cannot create
+ *   model instances with optional/read-only property values from the server.
+ * - The `additionalBinaryDataProperties` parameter enables round-trip
+ *   serialization fidelity — extra JSON properties are preserved.
+ * - The lack of validation ensures deserialization is fast and doesn't reject
+ *   valid server responses (e.g., null values for non-nullable types).
+ */
+describe("SerializationConstructor", () => {
+  /**
+   * Validates that the serialization constructor is always `internal`,
+   * regardless of the model's usage flags. This matches the legacy emitter's
+   * FullConstructor (ModelProvider.cs line 707: MethodSignatureModifiers.Internal).
+   *
+   * Even for public input models where the primary constructor is `public`,
+   * the serialization constructor remains `internal` because only generated
+   * deserialization code should call it.
+   */
+  it("generates an internal serialization constructor for input+output models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        count: int32;
+      }
+
+      @route("/widgets")
+      op createWidget(@body body: Widget): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
+    expect(modelFile).toBeDefined();
+    const content = outputs[modelFile!];
+
+    // Should have an internal constructor that includes additionalBinaryDataProperties
+    expect(content).toMatch(
+      /internal\s+Widget\s*\([^)]*additionalBinaryDataProperties[^)]*\)/,
+    );
+  });
+
+  /**
+   * Validates that the serialization constructor includes ALL properties as
+   * parameters — including optional ones that are excluded from the public
+   * constructor. Deserialization needs to set every property, not just
+   * required ones.
+   */
+  it("includes all properties including optional as parameters", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        description?: string;
+      }
+
+      @route("/widgets")
+      op createWidget(@body body: Widget): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
+    const content = outputs[modelFile!];
+
+    // The serialization constructor should include both required and optional params
+    // Find the internal constructor with additionalBinaryDataProperties
+    expect(content).toMatch(
+      /internal\s+Widget\s*\(\s*string\s+name\s*,\s*string\?\s+description\s*,\s*IDictionary<string, BinaryData>\s+additionalBinaryDataProperties\s*\)/,
+    );
+  });
+
+  /**
+   * Validates that `additionalBinaryDataProperties` appears as the last
+   * parameter with type `IDictionary<string, BinaryData>`. This parameter
+   * enables round-trip preservation of unknown JSON properties.
+   */
+  it("includes additionalBinaryDataProperties as last parameter", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/widgets")
+      op createWidget(@body body: Widget): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
+    const content = outputs[modelFile!];
+
+    // additionalBinaryDataProperties is the last parameter before closing paren
+    expect(content).toMatch(
+      /IDictionary<string, BinaryData>\s+additionalBinaryDataProperties\s*\)/,
+    );
+  });
+
+  /**
+   * Validates that the serialization constructor body contains NO
+   * `Argument.AssertNotNull` calls. Unlike the public constructor, the
+   * serialization constructor trusts the deserialization code to provide
+   * valid values. Validation would reject legitimate server responses where
+   * properties might be null.
+   */
+  it("has no Argument.AssertNotNull in serialization constructor body", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        count: int32;
+      }
+
+      @route("/widgets")
+      op createWidget(@body body: Widget): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
+    const content = outputs[modelFile!];
+
+    // Extract the serialization constructor body (the one with additionalBinaryDataProperties)
+    const serCtorMatch = content.match(
+      /internal\s+Widget\s*\([^)]*additionalBinaryDataProperties[^)]*\)\s*\{([^}]*)\}/,
+    );
+    expect(serCtorMatch).not.toBeNull();
+    const serCtorBody = serCtorMatch![1];
+
+    // No validation in the serialization constructor body
+    expect(serCtorBody).not.toContain("Argument.AssertNotNull");
+  });
+
+  /**
+   * Validates that the serialization constructor body assigns all properties
+   * directly from their parameters AND assigns the
+   * `_additionalBinaryDataProperties` field. Direct assignment means
+   * `Property = parameter;` with no `.ToList()` conversion or other
+   * transformation.
+   */
+  it("directly assigns all properties and additionalBinaryDataProperties field", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        count: int32;
+      }
+
+      @route("/widgets")
+      op createWidget(@body body: Widget): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
+    const content = outputs[modelFile!];
+
+    // Extract the serialization constructor body
+    const serCtorMatch = content.match(
+      /internal\s+Widget\s*\([^)]*additionalBinaryDataProperties[^)]*\)\s*\{([^}]*)\}/,
+    );
+    expect(serCtorMatch).not.toBeNull();
+    const serCtorBody = serCtorMatch![1];
+
+    // Direct property assignments
+    expect(serCtorBody).toContain("Name = name;");
+    expect(serCtorBody).toContain("Count = count;");
+    // Raw data field assignment
+    expect(serCtorBody).toContain(
+      "_additionalBinaryDataProperties = additionalBinaryDataProperties;",
+    );
+  });
+
+  /**
+   * Validates that output-only models also get an internal serialization
+   * constructor. Output models have their primary constructor already as
+   * `internal`, but the serialization constructor differs by including ALL
+   * properties and the additionalBinaryDataProperties parameter.
+   */
+  it("generates serialization constructor for output-only models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Result {
+        id: int32;
+        name: string;
+      }
+
+      @route("/results")
+      op getResult(): Result;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Result.cs"));
+    expect(modelFile).toBeDefined();
+    const content = outputs[modelFile!];
+
+    // Both constructors exist — find the one with additionalBinaryDataProperties
+    expect(content).toMatch(
+      /internal\s+Result\s*\(\s*int\s+id\s*,\s*string\s+name\s*,\s*IDictionary<string, BinaryData>\s+additionalBinaryDataProperties\s*\)/,
+    );
+  });
+
+  /**
+   * Validates that models with all optional properties still include every
+   * property as a parameter in the serialization constructor. The public
+   * constructor has zero parameters for such models, but the serialization
+   * constructor always has all properties.
+   */
+  it("includes optional-only properties in serialization constructor", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Options {
+        verbose?: boolean;
+        limit?: int32;
+      }
+
+      @route("/widgets")
+      op createWidget(@body body: Options): Options;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) =>
+      k.includes("Options.cs"),
+    );
+    expect(modelFile).toBeDefined();
+    const content = outputs[modelFile!];
+
+    // Public constructor has no parameters
+    expect(content).toMatch(/public\s+Options\s*\(\s*\)/);
+
+    // Serialization constructor includes all optional properties
+    expect(content).toMatch(
+      /internal\s+Options\s*\([^)]*verbose[^)]*limit[^)]*additionalBinaryDataProperties[^)]*\)/,
+    );
+  });
+
+  /**
+   * Validates that the serialization constructor appears after the public
+   * constructor in the class body. This matches the legacy emitter's output
+   * ordering convention: public API surface first, then internal members.
+   */
+  it("renders serialization constructor after public constructor", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/widgets")
+      op createWidget(@body body: Widget): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
+    const content = outputs[modelFile!];
+    const lines = content.split("\n");
+
+    // Find the public constructor line
+    const publicCtorIdx = lines.findIndex((l: string) =>
+      l.match(/public\s+Widget\s*\(/),
+    );
+    // Find the serialization constructor line
+    const serCtorIdx = lines.findIndex((l: string) =>
+      l.match(/internal\s+Widget\s*\([^)]*additionalBinaryDataProperties/),
+    );
+
+    expect(publicCtorIdx).toBeGreaterThan(-1);
+    expect(serCtorIdx).toBeGreaterThan(-1);
+    // Serialization constructor should appear after public constructor
+    expect(serCtorIdx).toBeGreaterThan(publicCtorIdx);
   });
 });
