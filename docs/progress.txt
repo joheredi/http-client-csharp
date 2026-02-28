@@ -297,3 +297,22 @@ Patterns used:
 - Same file path pattern as legacy: src/Generated/Models/{EnumName}.Serialization.cs
 
 Next natural tasks: 1.1.1 (Verify TypeExpression coverage) or model-related tasks (1.2.x)
+
+2026-02-28 — Task 1.1.1: Verify TypeExpression coverage (complete)
+
+Audited the emitter-framework's TypeExpression component against the legacy emitter's type mappings. Documented all gaps and created utility functions.
+
+Key deliverables:
+- Created `src/utils/type-mapping.ts` with comprehensive JSDoc documenting all 28 emitter-framework scalar mappings, identified 8 scalar gaps, and 5 non-scalar gaps
+- Created `test/type-mapping.test.ts` with 27 tests covering all maps, utilities, and cross-validation
+- All 119 tests pass; build succeeds
+
+Gaps found (8 scalar overrides needed):
+- bytes→BinaryData, unknown→BinaryData, integer→long, numeric→double
+- float→double, plainDate→DateTimeOffset, plainTime→TimeSpan, safeint→long
+
+Non-scalar gaps: arrays (IList<T> vs T[]), non-nullable unions (BinaryData vs throw), BinaryData not in alloy builtins
+
+Utility exports: SCALAR_TYPE_OVERRIDES, EMITTER_FRAMEWORK_SCALAR_MAP, SCALAR_TO_CSHARP, getScalarOverride(), getCSharpType(), isOverriddenScalar()
+
+Next natural tasks: 1.1.2 (Add missing type mappings via CSharpTypeExpression wrapper), 1.1.3 (collection type utilities), 1.1.4 (nullable type utilities)

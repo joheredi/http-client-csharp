@@ -192,12 +192,14 @@ Per the ExtensibleEnumProvider source code, both `Equals(object)` and `GetHashCo
 ## Extensible Enum Serialization (Tasks 1.7.1-1.7.4)
 
 **Key insight**: Extensible enum serialization files are completely different from fixed enum serialization files:
+
 - **Fixed enums**: Use an `internal static partial class {EnumName}Extensions` with extension methods (ToSerial{Type}, To{EnumName})
 - **Extensible enums**: Use a `public readonly partial struct` with a single `internal {type} ToSerial{FrameworkName}() => _value;` method
 
 **String extensible enums**: No serialization file needed — they use `ToString()` directly. Filtering happens at the emitter level in `emitter.tsx`.
 
 **Numeric type mapping for extensible enum serialization**:
+
 - `int32` → `int` keyword, `Int32` framework name → `ToSerialInt32`
 - `int64` → `long` keyword, `Int64` framework name → `ToSerialInt64`
 - `float32` → `float` keyword, `Single` framework name → `ToSerialSingle`
@@ -206,5 +208,18 @@ Per the ExtensibleEnumProvider source code, both `Equals(object)` and `GetHashCo
 ## Design Decisions
 
 ### Extensible Enum Serialization Filtering (1.7.x)
+
 **Chosen**: Filter at emitter level — `extensibleEnums.filter(e => e.valueType.kind !== "string")` before mapping to component.
 **Rejected**: Internal filtering (component returns null for string types) — components shouldn't be created just to render nothing; this is cleaner and more explicit.
+
+### TypeExpression Scalar Override Strategy (1.1.1)
+
+**Chosen**: Document gaps in `src/utils/type-mapping.ts` with constant maps and lookup utilities. Task 1.1.2 will consume these to create a `CSharpTypeExpression` wrapper using `Experimental_ComponentOverrides`.
+**Why**: Clean separation — 1.1.1 provides the data (which scalars differ, what the correct values are), 1.1.2 provides the mechanism (override config + wrapper component).
+**Rejected**: Creating the override config in 1.1.1 — overlaps with 1.1.2's scope.
+
+**Key gaps identified (8 scalars)**: `bytes`→BinaryData, `unknown`→BinaryData, `integer`→long, `numeric`→double, `float`→double, `plainDate`→DateTimeOffset, `plainTime`→TimeSpan, `safeint`→long.
+
+**Important**: `BinaryData` is NOT in alloy-js/csharp builtins. It's in the `System` namespace and needs a custom library declaration. System builtins are available via `import System from "@alloy-js/csharp/global/System"` (has DateTimeOffset, TimeSpan, Uri but NOT BinaryData).
+
+**Non-scalar gaps**: Arrays→`T[]` in EF but legacy uses `IList<T>`/`IReadOnlyList<T>` by direction (task 1.1.3). Non-nullable unions throw in EF but legacy maps to BinaryData (task 1.1.2).
