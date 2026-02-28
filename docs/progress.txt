@@ -576,3 +576,27 @@ Pattern: `OverloadConstructor` should be used for any additional constructor ove
 - Task 1.3.5 (additional properties on derived models): may need to handle Unknown variants with additional properties
 - Task 1.3.6 (multi-level discriminator chains): Unknown variant for mid-level base models would need params from the full inheritance chain (recursive collection of serialization params)
 - Task 2.4.3 (Unknown fallback deserialization): will need a `DeserializeUnknown{Name}` method that creates the Unknown variant instance
+
+2026-02-28 — Task 1.3.5: Already implemented (marked done)
+
+Verified that derived model additional properties (task 1.3.5) was already fully implemented and tested. All three acceptance criteria met: own properties rendered, constructor includes both base and derived params, base call includes base params only. Marked as done.
+
+2026-02-28 — Task 1.3.6: Handle multi-level discriminator chains (complete)
+
+Fixed 5 interconnected bugs affecting nested discriminator hierarchies (e.g., Fish → Shark → SawShark):
+
+1. **isModelAbstract bug**: Added `model.discriminatorValue === undefined` check. Without this, intermediate models like Shark (which have BOTH discriminated subtypes AND a discriminator value) were incorrectly marked abstract.
+
+2. **Discriminator property filtering**: Replaced `!p.discriminator` with `!isBaseDiscriminatorOverride(p)`. The new function only filters out constant/enumvalue discriminator overrides (like `kind: "shark"`), keeping the model's own discriminator property (like `sharktype: string`).
+
+3. **Hierarchy-walking for ctor params**: Added `collectBaseNonDiscCtorParams()` and `computePublicCtorParams()` which walk the full inheritance chain recursively. This ensures 3rd-level models (SawShark) get grandparent params (age from Fish).
+
+4. **Base call parameter ordering**: Replaced fixed "discriminator-first" approach with `buildPublicBaseInitializer()` that matches the base model's ctor param order. Critical for Shark's ctor `(int age, string sharktype)` where discriminator isn't first.
+
+5. **Serialization param ordering**: Added `computeSerializationCtorParams()` which recursively builds serialization ctor params, correctly positioning `additionalBinaryDataProperties` between base and own params.
+
+Also added `hasDiscriminatedSubtypes()` for Unknown variant generation (separate from abstract check), ensuring UnknownShark is generated for intermediate models.
+
+8 new tests in the NestedDiscriminator describe block covering: intermediate model non-abstract, own discriminator property, hierarchy param collection, 3rd-level params, serialization param ordering, Unknown variant generation, and null-guards.
+
+Key pattern: Always use `pnpm build` before `pnpm test` — vitest resolves through dist/ not source.

@@ -44,7 +44,8 @@ import { getLicenseHeader } from "../../utils/header.js";
 import { efCsharpRefkey } from "../../utils/refkey.js";
 import {
   ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME,
-  buildSerializationParameters,
+  computeSerializationCtorParams,
+  isBaseDiscriminatorOverride,
   OverloadConstructor,
 } from "./ModelConstructors.js";
 
@@ -80,12 +81,9 @@ export function UnknownDiscriminatorModelFile(
   const baseName = namePolicy.getName(props.type.name, "class");
   const unknownName = `Unknown${baseName}`;
 
-  // Constructor parameters match the base model's serialization constructor:
-  // all base properties + additionalBinaryDataProperties
-  const parameters = buildSerializationParameters(
-    props.type.properties,
-    namePolicy,
-  );
+  // Constructor parameters match the model's full serialization parameter set,
+  // computed recursively to get the correct parameter ordering.
+  const parameters = computeSerializationCtorParams(props.type, namePolicy);
 
   // Build base initializer with discriminator null-guard
   const baseInitializer = buildUnknownBaseInitializer(props.type, namePolicy);
@@ -133,28 +131,36 @@ function buildUnknownBaseInitializer(
   baseModel: SdkModelType,
   namePolicy: ReturnType<typeof useCSharpNamePolicy>,
 ): Children {
-  const parts: string[] = [];
+  // Compute the base model's serialization ctor params (correct ordering)
+  const serParams = computeSerializationCtorParams(baseModel, namePolicy);
 
-  for (const p of baseModel.properties) {
-    const paramName = namePolicy.getName(p.name, "parameter");
-    if (p.discriminator) {
-      // Apply null-guard based on discriminator type
-      if (baseModel.discriminatorProperty?.type.kind === "enum") {
-        // Enum (struct) discriminators can't be null, so check for default value.
-        // The "unknown" string literal is implicitly converted to the extensible
-        // enum type via its implicit operator.
-        parts.push(`${paramName} != default ? ${paramName} : "unknown"`);
-      } else {
-        // String discriminators use null-coalescing
-        parts.push(`${paramName} ?? "unknown"`);
+  // Collect all discriminator property names (non-override) from the hierarchy
+  // to determine which params need null-guards
+  const discParamNames = new Set<string>();
+  let current: SdkModelType | undefined = baseModel;
+  while (current) {
+    for (const p of current.properties) {
+      if (p.discriminator && !isBaseDiscriminatorOverride(p)) {
+        discParamNames.add(namePolicy.getName(p.name, "parameter"));
       }
-    } else {
-      parts.push(paramName);
     }
+    current = current.baseModel;
   }
 
-  // additionalBinaryDataProperties is always the last parameter
-  parts.push(ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME);
+  // Determine the discriminator type for null-guard style
+  const isEnumDiscriminator =
+    baseModel.discriminatorProperty?.type.kind === "enum";
+
+  const parts: string[] = serParams.map((param) => {
+    const paramName = param.name as string;
+    if (discParamNames.has(paramName)) {
+      if (isEnumDiscriminator) {
+        return `${paramName} != default ? ${paramName} : "unknown"`;
+      }
+      return `${paramName} ?? "unknown"`;
+    }
+    return paramName;
+  });
 
   return parts.join(", ");
 }

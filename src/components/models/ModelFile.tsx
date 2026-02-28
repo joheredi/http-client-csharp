@@ -10,6 +10,7 @@ import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { efCsharpRefkey } from "../../utils/refkey.js";
 import {
+  isBaseDiscriminatorOverride,
   isDerivedDiscriminatedModel,
   isModelAbstract,
   ModelConstructors,
@@ -63,12 +64,12 @@ export function ModelFile(props: ModelFileProps) {
 
   const isAbstract = isModelAbstract(props.type);
 
-  // For derived discriminated models, filter out the discriminator override
-  // property — it's inherited from the base class and should not be
-  // re-declared on the derived model.
+  // For derived discriminated models, filter out base discriminator override
+  // properties (e.g., kind: "eagle") — they're inherited from the base class.
+  // Keep the model's own discriminator property (e.g., Shark's sharktype: string).
   const isDerived = isDerivedDiscriminatedModel(props.type);
   const renderProperties = isDerived
-    ? props.type.properties.filter((p) => !p.discriminator)
+    ? props.type.properties.filter((p) => !isBaseDiscriminatorOverride(p))
     : props.type.properties;
 
   return (

@@ -957,7 +957,7 @@
           "title": "Implement derived model additional properties",
           "description": "Derived models may have properties beyond the base model. These should be generated with the same property logic as regular models. The derived constructor includes both base properties and own properties. See Eagle.cs which has Friends, Hate, Partner properties in addition to base Bird properties.",
           "phase": "phase-1",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "1.3.3",
             "1.2.2"
@@ -982,7 +982,7 @@
           "title": "Handle multi-level discriminator chains",
           "description": "When an intermediate model in a discriminator hierarchy both has a discriminator value AND has its own discriminated subtypes, generate a dual-constructor pattern. See ModelProvider multi-level discriminator detection logic.",
           "phase": "phase-1",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "1.3.5"
           ],

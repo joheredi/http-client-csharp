@@ -2247,3 +2247,248 @@ describe("UnknownDiscriminatorModel", () => {
     );
   });
 });
+
+/**
+ * Tests for multi-level (nested) discriminator hierarchies.
+ *
+ * Validates the emitter correctly handles models where an intermediate type
+ * in a discriminator hierarchy both extends a discriminated base AND introduces
+ * its own discriminator property with further subtypes.
+ *
+ * Example: Fish (@discriminator("kind")) → Shark (@discriminator("sharktype"))
+ *          → SawShark (sharktype: "saw")
+ *
+ * Key behaviors validated:
+ * - Intermediate models (Shark) are NOT marked abstract if they have a discriminatorValue
+ * - Intermediate models keep their own discriminator property (sharktype) as a class member
+ * - Constructor parameters are collected from the full inheritance chain, not just
+ *   the immediate base
+ * - Base call parameter ordering matches the base model's constructor signature
+ * - additionalBinaryDataProperties is positioned correctly between base and own params
+ * - Unknown variants are generated for intermediate abstract models too
+ *
+ * Reference: Spector nested-discriminator golden files (Shark.cs, SawShark.cs,
+ * GoblinShark.cs, UnknownShark.cs)
+ */
+describe("NestedDiscriminator", () => {
+  const nestedDiscriminatorSpec = `
+    using TypeSpec.Http;
+
+    @service
+    namespace TestNamespace;
+
+    @discriminator("kind")
+    model Fish {
+      kind: string;
+      age: int32;
+    }
+
+    @discriminator("sharktype")
+    model Shark extends Fish {
+      kind: "shark";
+      sharktype: string;
+    }
+
+    model SawShark extends Shark {
+      sharktype: "saw";
+    }
+
+    model Salmon extends Fish {
+      kind: "salmon";
+      friends?: Fish[];
+    }
+
+    @route("/test")
+    op test(@body body: Fish): Fish;
+  `;
+
+  /**
+   * Validates that intermediate models with both a discriminator value AND
+   * their own discriminated subtypes are NOT marked abstract. The legacy
+   * emitter uses IsAbstract = DiscriminatorProperty != null && DiscriminatorValue == null.
+   * Models like Shark (kind: "shark") have a discriminatorValue, so they're concrete.
+   *
+   * Without this fix, Shark would be incorrectly generated as abstract, preventing
+   * direct instantiation and breaking the public constructor pattern.
+   */
+  it("intermediate model is not marked abstract", async () => {
+    const [{ outputs }, diagnostics] =
+      await HttpTester.compileAndDiagnose(nestedDiscriminatorSpec);
+    expect(diagnostics).toHaveLength(0);
+
+    const sharkFile = Object.keys(outputs).find((k) =>
+      k.includes("Shark.cs"),
+    );
+    expect(sharkFile).toBeDefined();
+    const content = outputs[sharkFile!];
+
+    expect(content).toMatch(/public\s+partial\s+class\s+Shark\s*:\s*Fish/);
+    expect(content).not.toMatch(/abstract/);
+  });
+
+  /**
+   * Validates that an intermediate model's own discriminator property (sharktype)
+   * appears as an internal property with get/set. Only the BASE discriminator
+   * override (kind: "shark") should be filtered out — the model's own discriminator
+   * is a real property that gets serialized/deserialized.
+   *
+   * Reference: Shark.cs — `internal string Sharktype { get; set; }`
+   */
+  it("intermediate model keeps own discriminator property", async () => {
+    const [{ outputs }, diagnostics] =
+      await HttpTester.compileAndDiagnose(nestedDiscriminatorSpec);
+    expect(diagnostics).toHaveLength(0);
+
+    const sharkFile = Object.keys(outputs).find((k) =>
+      k.includes("Shark.cs"),
+    );
+    const content = outputs[sharkFile!];
+
+    expect(content).toMatch(/internal\s+string\s+Sharktype\s*\{.*get.*set.*\}/);
+  });
+
+  /**
+   * Validates that the intermediate model's public constructor includes
+   * base params from the full hierarchy AND its own discriminator as a parameter.
+   *
+   * Shark extends Fish, so Fish's non-discriminator ctor param (age) appears
+   * first, followed by Shark's own discriminator property (sharktype).
+   * The base call hardcodes Fish's kind discriminator to "shark".
+   *
+   * Reference: Shark.cs — `public Shark(int age, string sharktype) : base("shark", age)`
+   */
+  it("intermediate model public ctor includes hierarchy params", async () => {
+    const [{ outputs }, diagnostics] =
+      await HttpTester.compileAndDiagnose(nestedDiscriminatorSpec);
+    expect(diagnostics).toHaveLength(0);
+
+    const sharkFile = Object.keys(outputs).find((k) =>
+      k.includes("Shark.cs"),
+    );
+    const content = outputs[sharkFile!];
+
+    expect(content).toMatch(
+      /public\s+Shark\(int\s+age,\s*string\s+sharktype\)\s*:\s*base\("shark",\s*age\)/,
+    );
+  });
+
+  /**
+   * Validates that the intermediate model's serialization constructor includes
+   * base params + additionalBinaryDataProperties + own params in the correct order.
+   *
+   * Reference: Shark.cs —
+   * `internal Shark(string kind, int age, IDictionary<string, BinaryData> additionalBinaryDataProperties, string sharktype)`
+   */
+  it("intermediate model serialization ctor has correct param order", async () => {
+    const [{ outputs }, diagnostics] =
+      await HttpTester.compileAndDiagnose(nestedDiscriminatorSpec);
+    expect(diagnostics).toHaveLength(0);
+
+    const sharkFile = Object.keys(outputs).find((k) =>
+      k.includes("Shark.cs"),
+    );
+    const content = outputs[sharkFile!];
+
+    expect(content).toMatch(
+      /internal\s+Shark\([\s\S]*?string\s+kind[\s\S]*?int\s+age[\s\S]*?IDictionary<string,\s*BinaryData>\s+additionalBinaryDataProperties[\s\S]*?string\s+sharktype[\s\S]*?\)/,
+    );
+  });
+
+  /**
+   * Validates that a 3rd-level derived model (SawShark → Shark → Fish) collects
+   * constructor params from the full hierarchy. SawShark needs `age` from Fish
+   * (grandparent) since Shark (parent) doesn't expose it as a regular param.
+   *
+   * The base call matches Shark's ctor order: `base(age, "saw")` where age
+   * precedes the discriminator literal (matching Shark's `(int age, string sharktype)`).
+   *
+   * Reference: SawShark.cs — `public SawShark(int age) : base(age, "saw")`
+   */
+  it("3rd-level model includes grandparent params in ctor", async () => {
+    const [{ outputs }, diagnostics] =
+      await HttpTester.compileAndDiagnose(nestedDiscriminatorSpec);
+    expect(diagnostics).toHaveLength(0);
+
+    const sawSharkFile = Object.keys(outputs).find((k) =>
+      k.includes("SawShark.cs"),
+    );
+    expect(sawSharkFile).toBeDefined();
+    const content = outputs[sawSharkFile!];
+
+    // Public ctor includes age from Fish (grandparent) and base call places
+    // it before the discriminator literal, matching Shark's param order
+    expect(content).toMatch(
+      /public\s+SawShark\(int\s+age\)\s*:\s*base\(age,\s*"saw"\)/,
+    );
+  });
+
+  /**
+   * Validates that the 3rd-level model's serialization constructor params
+   * are in the correct order: base hierarchy props + additionalBinaryData + own.
+   *
+   * Reference: SawShark.cs —
+   * `internal SawShark(string kind, int age, IDictionary<string, BinaryData> additionalBinaryDataProperties, string sharktype)`
+   */
+  it("3rd-level model serialization ctor has correct param order", async () => {
+    const [{ outputs }, diagnostics] =
+      await HttpTester.compileAndDiagnose(nestedDiscriminatorSpec);
+    expect(diagnostics).toHaveLength(0);
+
+    const sawSharkFile = Object.keys(outputs).find((k) =>
+      k.includes("SawShark.cs"),
+    );
+    const content = outputs[sawSharkFile!];
+
+    expect(content).toMatch(
+      /internal\s+SawShark\([\s\S]*?string\s+kind[\s\S]*?int\s+age[\s\S]*?IDictionary<string,\s*BinaryData>\s+additionalBinaryDataProperties[\s\S]*?string\s+sharktype[\s\S]*?\)/,
+    );
+  });
+
+  /**
+   * Validates that an Unknown variant is generated for the intermediate model
+   * (Shark), not just the root abstract model (Fish). Shark has discriminated
+   * subtypes, so UnknownShark is needed for deserialization fallback.
+   *
+   * Reference: UnknownShark.cs exists in golden files
+   */
+  it("generates Unknown variant for intermediate discriminated model", async () => {
+    const [{ outputs }, diagnostics] =
+      await HttpTester.compileAndDiagnose(nestedDiscriminatorSpec);
+    expect(diagnostics).toHaveLength(0);
+
+    const unknownShark = Object.keys(outputs).find((k) =>
+      k.includes("UnknownShark.cs"),
+    );
+    expect(unknownShark).toBeDefined();
+    const content = outputs[unknownShark!];
+
+    expect(content).toMatch(
+      /internal\s+partial\s+class\s+UnknownShark\s*:\s*Shark/,
+    );
+  });
+
+  /**
+   * Validates that the Unknown variant for an intermediate model includes
+   * params from the full hierarchy with null-guards on ALL discriminator
+   * properties (both the root and intermediate discriminators).
+   *
+   * Reference: UnknownShark.cs —
+   * `base(kind ?? "unknown", age, additionalBinaryDataProperties, sharktype ?? "unknown")`
+   */
+  it("Unknown variant has hierarchy params with null-guards", async () => {
+    const [{ outputs }, diagnostics] =
+      await HttpTester.compileAndDiagnose(nestedDiscriminatorSpec);
+    expect(diagnostics).toHaveLength(0);
+
+    const unknownShark = Object.keys(outputs).find((k) =>
+      k.includes("UnknownShark.cs"),
+    );
+    const content = outputs[unknownShark!];
+
+    // kind and sharktype should have null-guards
+    expect(content).toMatch(/kind\s*\?\?\s*"unknown"/);
+    expect(content).toMatch(/sharktype\s*\?\?\s*"unknown"/);
+    // age should NOT have a null-guard (int, not a discriminator)
+    expect(content).not.toMatch(/age\s*\?\?\s*"unknown"/);
+  });
+});

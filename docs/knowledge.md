@@ -440,13 +440,33 @@ Derived models in TCGC include the discriminator override property in their `pro
 ## Design Decisions
 
 ### Task 1.3.4: Unknown discriminator variant — reuse OverloadConstructor
+
 **Chosen:** Export and reuse `OverloadConstructor` + `buildSerializationParameters` from ModelConstructors.tsx in the new `UnknownDiscriminatorModel.tsx` component.
 **Why:** The Unknown variant's constructor needs `: base(...)` chaining which only OverloadConstructor supports (standard `<Constructor>` from alloy-csharp doesn't have `baseInitializer`). The `buildSerializationParameters` produces exactly the right parameter list. Minimal code duplication.
 **Rejected:** Creating a new `BaseChainedConstructor` component — would duplicate OverloadConstructor logic for no benefit. Also rejected extending ModelFile.tsx — the Unknown variant has fundamentally different structure (internal, no properties, single constructor) that warrants a separate component.
 
 ### Unknown variant is emitter-synthesized, not from TCGC
+
 The `Unknown{BaseName}` class does NOT exist in TCGC's `discriminatedSubtypes` map. It's synthesized by the C# emitter in `emitter.tsx` by filtering `models` with `isModelAbstract()`. The legacy emitter does this in `InputModelType.cs` (line 108-128) where it creates a synthetic `InputModelType` with discriminatorValue="unknown". Our approach generates the file directly from the abstract base model's metadata without creating intermediate model objects.
 
 ### String vs enum discriminator null-guard patterns
+
 - String discriminators: `paramName ?? "unknown"` (null-coalescing, because strings are reference types)
 - Enum discriminators: `paramName != default ? paramName : "unknown"` (default-check, because extensible enums are structs/value types that can't be null, and "unknown" string gets implicitly converted to the enum type via its implicit operator)
+
+### Task 1.3.6: Multi-level discriminator hierarchy handling
+
+**Five interconnected bugs fixed:**
+1. `isModelAbstract` must check `discriminatorValue === undefined` (legacy: `DiscriminatorValue is null`). Intermediate models with BOTH discriminated subtypes AND a discriminator value are NOT abstract.
+2. Use `isBaseDiscriminatorOverride(p)` (checks `p.discriminator && (p.type.kind === "constant" || p.type.kind === "enumvalue")`) instead of `p.discriminator` when filtering derived model properties. This keeps own discriminator properties (Shark's `sharktype: string`) while filtering base overrides (`kind: "shark"`).
+3. Constructor params must walk the FULL base hierarchy (`collectBaseNonDiscCtorParams`), not just the immediate base. For 3+ level hierarchies, the immediate base may not expose all ancestor params.
+4. Base call argument order must match the base model's ctor param order. Use `buildPublicBaseInitializer()` which iterates base ctor params and substitutes the discriminator literal at the correct position.
+5. Serialization ctor params must be computed recursively (`computeSerializationCtorParams`). This positions `additionalBinaryDataProperties` between base-model params and derived-model params.
+
+**`hasDiscriminatedSubtypes` vs `isModelAbstract`:**
+- `isModelAbstract` → class should be `abstract` (no discriminatorValue, has subtypes)
+- `hasDiscriminatedSubtypes` → Unknown variant should be generated (has subtypes, regardless of discriminatorValue)
+Both functions exist in ModelConstructors.tsx and serve different purposes.
+
+**CRITICAL: vitest resolves through dist/, not source.**
+After changing source files in src/, always run `pnpm build` before `pnpm test`. The vitest config uses esbuild with JSX preserve + alloy plugin, but `package.json` exports point to `dist/src/index.js`. Without rebuilding, tests run against stale compiled code.
