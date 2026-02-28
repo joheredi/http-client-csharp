@@ -250,3 +250,31 @@ Tasks 1.4.5, 1.5.2, 1.5.3, 1.5.4, 1.5.5, and 1.5.6 were all already implemented 
 The fixed-enum.test.ts already covers all fixed enum test requirements (1.4.5).
 
 All 71 tests pass. Build succeeds. Next natural tasks: 1.6.1 (ExtensibleEnumFile) or other ready tasks.
+
+2026-02-28 — Task 1.6.1-1.6.8: ExtensibleEnumFile component (complete)
+
+Implemented the ExtensibleEnumFile component that generates C# readonly partial structs
+implementing IEquatable<T> for extensible (non-fixed) enums. All 8 sub-tasks completed
+as a single unit since they all modify the same component file.
+
+Files created:
+- src/components/enums/ExtensibleEnumFile.tsx — Main component with sub-components for
+  each section (ValueFields, EnumConstructor, EnumStaticProperties, EqualityOperators,
+  ImplicitConversionOperators, EqualsObjectMethod, EqualsTypeMethod, GetHashCodeMethod,
+  ToStringMethod)
+- test/extensible-enum.test.ts — 13 tests covering string, int, and float backing types
+
+Files modified:
+- src/components/enums/index.ts — Added ExtensibleEnumFile export
+- src/emitter.tsx — Added extensible enum rendering (filter !e.isFixed)
+
+Key patterns:
+- Uses StructDeclaration from alloy-js/csharp for the outer struct (preserves refkey)
+- Uses raw strings for body content (no OperatorDeclaration in alloy-js/csharp)
+- Manually adds using directives (like FixedEnumSerializationFile pattern)
+- String vs numeric differences: AssertNotNull, nullable implicit operator,
+  case-insensitive Equals, StringComparer GetHashCode, direct ToString
+- TypeSpec unions with literal members model extensible enums in TCGC
+
+All 84 tests pass. Build succeeds. Next natural tasks: 1.7.1 (ExtensibleEnumSerializationFile)
+or 1.1.1 (Verify TypeExpression coverage).

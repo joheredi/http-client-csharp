@@ -167,3 +167,24 @@ The framework name is used in serialization method suffixes (e.g., `ToSerialStri
 **Chosen:** Single component file with SerializeMethod/DeserializeMethod sub-components that render method bodies as line-by-line string children of ClassDeclaration.
 
 **Rejected:** Using Alloy's Method component — ParameterProps lacks `this` modifier for extension methods. Also rejected using `code` template tags for entire methods — difficult to control indentation precisely for complex nested structures (switch expressions, if-chains).
+
+## Design Decisions — Extensible Enum Component
+
+### Approach: StructDeclaration + raw strings
+
+Chose to use alloy-js/csharp `StructDeclaration` for the outer struct declaration (preserves refkey for cross-file references) with raw strings for the body content. Rejected two alternatives:
+
+1. **All raw strings** — would lose refkey support needed for model properties referencing enum types
+2. **Full alloy components** — not possible because alloy-js/csharp lacks OperatorDeclaration and const field components
+
+### Using directives are manual
+
+The extensible enum component manually adds `using System;`, `using System.ComponentModel;`, and optionally `using System.Globalization;` as raw strings (same pattern as FixedEnumSerializationFile). Alloy's automatic using directive management only works when using alloy type references, not raw strings.
+
+### TypeSpec unions model extensible enums
+
+In TCGC, TypeSpec `union` types with literal members (e.g., `union Foo { string, Bar: "Bar" }`) are modeled as `SdkEnumType` with `isFixed=false`. Regular TypeSpec `enum` declarations produce `isFixed=true`. The emitter filters on `isFixed` to route to the appropriate component.
+
+### [EditorBrowsable] on Equals(object) and GetHashCode
+
+Per the ExtensibleEnumProvider source code, both `Equals(object)` and `GetHashCode()` receive `[EditorBrowsable(EditorBrowsableState.Never)]`. Some older Plugin golden files don't show this on GetHashCode, but the Spector golden files (current reference) do include it.

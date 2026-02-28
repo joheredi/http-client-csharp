@@ -1,6 +1,7 @@
 import { createSdkContext } from "@azure-tools/typespec-client-generator-core";
 import { type EmitContext } from "@typespec/compiler";
 import { writeOutput } from "@typespec/emitter-framework";
+import { ExtensibleEnumFile } from "./components/enums/ExtensibleEnumFile.js";
 import { FixedEnumFile } from "./components/enums/FixedEnumFile.js";
 import { FixedEnumSerializationFile } from "./components/enums/FixedEnumSerializationFile.js";
 import { HttpClientCSharpOutput } from "./components/HttpClientCSharpOutput.js";
@@ -41,6 +42,7 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
 
   // Render the JSX component tree and write generated C# files to disk
   const fixedEnums = sdkContext.sdkPackage.enums.filter((e) => e.isFixed);
+  const extensibleEnums = sdkContext.sdkPackage.enums.filter((e) => !e.isFixed);
 
   const output = (
     <HttpClientCSharpOutput
@@ -53,6 +55,9 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
       ))}
       {fixedEnums.map((e) => (
         <FixedEnumSerializationFile type={e} options={options} />
+      ))}
+      {extensibleEnums.map((e) => (
+        <ExtensibleEnumFile type={e} options={options} />
       ))}
     </HttpClientCSharpOutput>
   );
