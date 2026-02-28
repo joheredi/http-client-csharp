@@ -13,8 +13,8 @@
  * 4. Calls `continue` to skip to the next JSON property.
  *
  * Properties with types not yet handled (models, enums, collections,
- * dictionaries, bytes) are skipped — those are implemented by subsequent
- * tasks (2.3.5–2.3.10). A children slot after all property matches allows
+ * dictionaries) are skipped — those are implemented by subsequent
+ * tasks (2.3.7–2.3.10). A children slot after all property matches allows
  * task 2.3.12 to add the additional binary data catch-all.
  *
  * For derived discriminated models, the loop includes ALL properties from
@@ -45,6 +45,9 @@
 import { useCSharpNamePolicy } from "@alloy-js/csharp";
 import type { Children } from "@alloy-js/core";
 import type {
+  SdkBuiltInType,
+  SdkDateTimeType,
+  SdkDurationType,
   SdkModelPropertyType,
   SdkModelType,
   SdkType,
@@ -110,9 +113,12 @@ export function computeMatchableProperties(
  * Abstract numeric kinds (`numeric`, `integer`, `float`) map to their
  * C# default representations: `double` for numeric/float, `long` for integer.
  *
- * Types not in this map (models, enums, collections, dictionaries, bytes,
- * datetime, duration) require specialized deserialization and return `null`
- * from `getReadExpression` — those are handled by subsequent tasks.
+ * Types not in this map (models, enums, collections, dictionaries) require
+ * specialized deserialization and return `null` from `getReadExpression` —
+ * those are handled by subsequent tasks.
+ *
+ * Encoded types (DateTime, Duration, bytes, plainDate, plainTime) are handled
+ * by dedicated helper functions before consulting this map.
  */
 const READ_METHOD_MAP: Record<string, string> = {
   string: "GetString",
@@ -136,22 +142,137 @@ const READ_METHOD_MAP: Record<string, string> = {
 };
 
 /**
+ * Returns the C# read expression for a `SdkDateTimeType` based on its encoding.
+ *
+ * The encoding determines how the JSON value is read:
+ * - `"rfc3339"` (default) → `prop.Value.GetDateTimeOffset("O")` (ISO 8601 round-trip)
+ * - `"rfc7231"` → `prop.Value.GetDateTimeOffset("R")` (RFC 1123 HTTP-date)
+ * - `"unixTimestamp"` → `DateTimeOffset.FromUnixTimeSeconds(prop.Value.GetInt64())`
+ *
+ * The `GetDateTimeOffset(format)` overload is a custom extension method defined
+ * in the generated `ModelSerializationExtensions` class. For Unix timestamps,
+ * the value is a number so it uses the built-in `GetInt64()` with the framework's
+ * `DateTimeOffset.FromUnixTimeSeconds` static method.
+ *
+ * @param type - An `SdkDateTimeType` with its encoding resolved by TCGC.
+ * @returns The C# expression string for reading the DateTime value.
+ */
+function getDateTimeReadExpression(type: SdkDateTimeType): string {
+  if (type.encode === "unixTimestamp") {
+    return "DateTimeOffset.FromUnixTimeSeconds(prop.Value.GetInt64())";
+  }
+  const format = type.encode === "rfc7231" ? "R" : "O";
+  return `prop.Value.GetDateTimeOffset("${format}")`;
+}
+
+/**
+ * Returns the C# read expression for a `SdkDurationType` based on its encoding.
+ *
+ * Duration (TimeSpan) supports three encoding strategies:
+ * - `"ISO8601"` (default) → `prop.Value.GetTimeSpan("P")` — custom extension method
+ *   that delegates to `TypeFormatters.ParseTimeSpan`. The "P" format produces
+ *   ISO 8601 duration strings like `"P1DT2H3M4S"`.
+ * - `"seconds"` → `TimeSpan.FromSeconds(prop.Value.GetInt32())` for integer wire
+ *   types, or `TimeSpan.FromSeconds(prop.Value.GetDouble())` for float/double wire
+ *   types.
+ * - `"milliseconds"` → `TimeSpan.FromMilliseconds(prop.Value.Get{Type}())` with
+ *   the same integer vs float distinction.
+ *
+ * The wire type distinction matches the legacy emitter's `Duration_Seconds` (int32)
+ * vs `Duration_Seconds_Float`/`Duration_Seconds_Double` (float) formats. Only
+ * `int32` uses `GetInt32()`; all other wire types use `GetDouble()`.
+ *
+ * @param type - An `SdkDurationType` with its encoding and wireType resolved by TCGC.
+ * @returns The C# expression string for reading the Duration value.
+ */
+function getDurationReadExpression(type: SdkDurationType): string {
+  if (type.encode === "seconds") {
+    return getDurationNumericReadExpression(type, "FromSeconds");
+  }
+  if (type.encode === "milliseconds") {
+    return getDurationNumericReadExpression(type, "FromMilliseconds");
+  }
+  // ISO8601 is the default encoding — uses custom GetTimeSpan extension method.
+  return `prop.Value.GetTimeSpan("P")`;
+}
+
+/**
+ * Returns the C# read expression for a numeric-encoded duration.
+ *
+ * When the wire type is `int32`, uses `GetInt32()` matching the legacy emitter's
+ * `Duration_Seconds` format. All other wire types (float32, float64, int64, etc.)
+ * use `GetDouble()` matching the legacy emitter's `Duration_Seconds_Float` /
+ * `Duration_Seconds_Double` fallback.
+ *
+ * @param type - The `SdkDurationType` whose `wireType` determines the getter method.
+ * @param method - The `TimeSpan` factory method (`"FromSeconds"` or `"FromMilliseconds"`).
+ * @returns The C# expression string.
+ */
+function getDurationNumericReadExpression(
+  type: SdkDurationType,
+  method: string,
+): string {
+  const getter = type.wireType.kind === "int32" ? "GetInt32" : "GetDouble";
+  return `TimeSpan.${method}(prop.Value.${getter}())`;
+}
+
+/**
+ * Returns the C# read expression for a `bytes` type based on its encoding.
+ *
+ * In this emitter, `bytes` maps to `BinaryData` (not `byte[]`), following the
+ * SCALAR_TYPE_OVERRIDES in type-mapping.ts. The deserialization strategy depends
+ * on the encoding:
+ * - `"base64"` → `BinaryData.FromBytes(prop.Value.GetBytesFromBase64("D"))`
+ * - `"base64url"` → `BinaryData.FromBytes(prop.Value.GetBytesFromBase64("U"))`
+ * - default fallback → `BinaryData.FromString(prop.Value.GetRawText())`
+ *
+ * Note: TCGC always assigns `"base64"` as the default encode for bytes types,
+ * so the raw text fallback is defensive and unlikely to be triggered for
+ * standard `bytes` properties. It may be relevant for `unknown` types or
+ * future TCGC changes.
+ *
+ * The `GetBytesFromBase64(format)` overload is a custom extension method defined
+ * in the generated `ModelSerializationExtensions` class that handles both standard
+ * base64 ("D") and URL-safe base64 ("U") encodings.
+ *
+ * @param type - An `SdkBuiltInType` with `kind: "bytes"` and encoding.
+ * @returns The C# expression string for reading the bytes value.
+ */
+function getBytesReadExpression(type: SdkBuiltInType): string {
+  if (type.encode === "base64") {
+    return `BinaryData.FromBytes(prop.Value.GetBytesFromBase64("D"))`;
+  }
+  if (type.encode === "base64url") {
+    return `BinaryData.FromBytes(prop.Value.GetBytesFromBase64("U"))`;
+  }
+  // Default encoding — raw JSON text to BinaryData
+  return "BinaryData.FromString(prop.Value.GetRawText())";
+}
+
+/**
  * Returns the C# expression to extract a value from `prop.Value` (a
  * `JsonElement`) for the given SDK type.
  *
  * Unwraps nullable and constant type wrappers to find the underlying
  * primitive kind, then maps it to the appropriate `JsonElement.Get{Type}()`
- * method call. URL types are handled specially with `new Uri(prop.Value.GetString())`.
+ * method call. Handles:
+ *
+ * - **Primitive types** (string, numbers, boolean) → `prop.Value.Get{Type}()`
+ * - **URL** → `new Uri(prop.Value.GetString())`
+ * - **DateTime** (utcDateTime, offsetDateTime) → encoding-aware: `GetDateTimeOffset("O"/"R")`
+ *   or `DateTimeOffset.FromUnixTimeSeconds(GetInt64())` for Unix
+ * - **Duration** → encoding-aware: `GetTimeSpan("P")` for ISO8601, or
+ *   `TimeSpan.FromSeconds(GetInt32()/GetDouble())` for numeric encodings
+ * - **Bytes** → `BinaryData.FromBytes(GetBytesFromBase64("D"/"U"))` or
+ *   `BinaryData.FromString(GetRawText())` for default encoding
+ * - **plainDate** → `prop.Value.GetDateTimeOffset("D")`
+ * - **plainTime** → `prop.Value.GetTimeSpan("T")`
  *
  * Returns `null` for types that need specialized deserialization logic:
  * - **Models** — task 2.3.7 (recursive `DeserializeXxx` call)
  * - **Enums** — task 2.3.8 (conversion via `ToXxx` extension)
  * - **Collections (arrays)** — task 2.3.9 (foreach over array)
  * - **Dictionaries** — task 2.3.10 (foreach over object)
- * - **Bytes** — task 2.3.6 (Base64/Base64URL encoding)
- * - **DateTime** — task 2.3.6 (format-aware deserialization)
- * - **Duration** — task 2.3.6 (encoding-aware deserialization)
- * - **plainDate/plainTime** — task 2.3.6 (format specifiers)
  *
  * @param type - An SDK type from TCGC.
  * @returns The C# expression string, or `null` if the type is not yet supported.
@@ -171,6 +292,29 @@ export function getReadExpression(type: SdkType): string | null {
   // URL type needs wrapping in a Uri constructor
   if (kind === "url") {
     return "new Uri(prop.Value.GetString())";
+  }
+
+  // DateTime types — encoding determines the format specifier or Unix strategy.
+  if (kind === "utcDateTime" || kind === "offsetDateTime") {
+    return getDateTimeReadExpression(unwrapped as SdkDateTimeType);
+  }
+
+  // Duration types — encoding determines ISO8601 vs numeric strategy.
+  if (kind === "duration") {
+    return getDurationReadExpression(unwrapped as SdkDurationType);
+  }
+
+  // Bytes type — encoding determines Base64 vs Base64URL vs raw.
+  if (kind === "bytes") {
+    return getBytesReadExpression(unwrapped as SdkBuiltInType);
+  }
+
+  // Plain date/time — fixed ISO format specifiers using custom extension methods.
+  if (kind === "plainDate") {
+    return `prop.Value.GetDateTimeOffset("D")`;
+  }
+  if (kind === "plainTime") {
+    return `prop.Value.GetTimeSpan("T")`;
   }
 
   // Primitive types — direct JsonElement getter

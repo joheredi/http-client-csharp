@@ -650,13 +650,25 @@ When two rendering functions call each other recursively (e.g., `renderValueWrit
 ## Design Decisions
 
 ### PropertyMatchingLoop Approach (Task 2.3.4)
+
 **Chosen**: Single `PropertyMatchingLoop` component with `getReadExpression()` helper function that maps SDK types to `prop.Value.Get{Type}()` expressions. Returns null for unsupported types.
 **Why**: Mirrors the write-side pattern (`WritePropertySerialization` + `getWriteMethodInfo`). Clean extension point — subsequent tasks (2.3.5-2.3.12) add new type support by extending `getReadExpression`.
 **Rejected**: Children-per-property approach (overcomplicated; loop structure is uniform across properties).
 
 ### Property Matching Loop — Key Implementation Notes
+
 - `computeMatchableProperties()` returns a flat list: base model properties (recursive) + own non-override properties, same order as `computeVariableInfos` in DeserializeVariableDeclarations.tsx
 - The `READ_METHOD_MAP` constant maps TCGC SDK type kinds to `JsonElement.Get{Type}()` method names
 - URL type is handled specially: `new Uri(prop.Value.GetString())` instead of a simple getter
 - Constants (e.g., discriminator `kind: "dog"`) are unwrapped to their `valueType` before looking up the reader method
 - The children slot after all property matches is for the additional binary data catch-all (task 2.3.12)
+
+### Encoded type deserialization patterns (Task 2.3.6)
+
+**DateTime read expressions**: Uses custom `GetDateTimeOffset(format)` extension method from `ModelSerializationExtensions` for rfc3339 ("O") and rfc7231 ("R"). Unix timestamps use the framework's `DateTimeOffset.FromUnixTimeSeconds(prop.Value.GetInt64())` — no custom extension needed.
+
+**Duration read expressions**: ISO8601 uses custom `GetTimeSpan("P")` extension method. Numeric encodings (seconds/milliseconds) use `TimeSpan.FromSeconds()`/`TimeSpan.FromMilliseconds()` with a getter determined by wire type. Key insight: only `int32` wire type uses `GetInt32()`; all other wire types (int64, float32, float64) use `GetDouble()`. This matches legacy emitter's format enum distinction (Duration_Seconds = int32, everything else = Double).
+
+**Bytes default encoding**: TCGC always assigns `encode: "base64"` as the default for bytes types, even without an explicit `@encode` decorator. The `BinaryData.FromString(prop.Value.GetRawText())` fallback is defensive and not triggered for standard bytes properties.
+
+**plainDate/plainTime**: Use the same extension methods as DateTime/Duration — `GetDateTimeOffset("D")` for plainDate, `GetTimeSpan("T")` for plainTime. These are fixed format specifiers (no encode variation).

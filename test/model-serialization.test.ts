@@ -4036,4 +4036,449 @@ describe("PropertyMatchingLoop", () => {
     expect(content).toContain('if (prop.NameEquals("weight"u8))');
     expect(content).toContain("weight = prop.Value.GetSingle();");
   });
+
+  /**
+   * Validates that a utcDateTime property with default encoding (RFC3339)
+   * is deserialized using `prop.Value.GetDateTimeOffset("O")`. The "O" format
+   * specifier delegates to the custom `ModelSerializationExtensions.GetDateTimeOffset`
+   * method which parses ISO 8601 round-trip formatted dates.
+   */
+  it('deserializes utcDateTime property with GetDateTimeOffset("O")', async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        createdAt: utcDateTime;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("createdAt"u8))');
+    expect(content).toContain('createdAt = prop.Value.GetDateTimeOffset("O");');
+  });
+
+  /**
+   * Validates that a utcDateTime property with RFC7231 encoding is deserialized
+   * using `prop.Value.GetDateTimeOffset("R")`. The "R" format specifier parses
+   * RFC 1123 format dates (e.g., "Wed, 12 Oct 2022 07:20:50 GMT"), commonly
+   * used in HTTP headers.
+   */
+  it('deserializes utcDateTime property with RFC7231 encoding using GetDateTimeOffset("R")', async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        @encode(DateTimeKnownEncoding.rfc7231)
+        lastModified: utcDateTime;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("lastModified"u8))');
+    expect(content).toContain(
+      'lastModified = prop.Value.GetDateTimeOffset("R");',
+    );
+  });
+
+  /**
+   * Validates that a utcDateTime property with Unix timestamp encoding is
+   * deserialized using `DateTimeOffset.FromUnixTimeSeconds(prop.Value.GetInt64())`.
+   * Unlike RFC3339/RFC7231 which are string-based, Unix timestamps are numeric
+   * (seconds since epoch), so the pattern uses GetInt64() and the framework's
+   * static factory method.
+   */
+  it("deserializes utcDateTime property with unixTimestamp encoding", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        @encode(DateTimeKnownEncoding.unixTimestamp, int64)
+        timestamp: utcDateTime;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("timestamp"u8))');
+    expect(content).toContain(
+      "timestamp = DateTimeOffset.FromUnixTimeSeconds(prop.Value.GetInt64());",
+    );
+  });
+
+  /**
+   * Validates that a plainDate property is deserialized using
+   * `prop.Value.GetDateTimeOffset("D")`. The "D" format specifier produces
+   * ISO 8601 date-only format (e.g., "2022-10-12"). plainDate maps to
+   * DateTimeOffset in C# and uses the custom GetDateTimeOffset extension.
+   */
+  it('deserializes plainDate property with GetDateTimeOffset("D")', async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        birthDate: plainDate;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("birthDate"u8))');
+    expect(content).toContain(
+      'birthDate = prop.Value.GetDateTimeOffset("D");',
+    );
+  });
+
+  /**
+   * Validates that a plainTime property is deserialized using
+   * `prop.Value.GetTimeSpan("T")`. The "T" format specifier parses
+   * ISO 8601 time-only format. plainTime maps to TimeSpan in C# and uses
+   * the custom GetTimeSpan extension method.
+   */
+  it('deserializes plainTime property with GetTimeSpan("T")', async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        startTime: plainTime;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("startTime"u8))');
+    expect(content).toContain('startTime = prop.Value.GetTimeSpan("T");');
+  });
+
+  /**
+   * Validates that a duration property with default ISO8601 encoding is
+   * deserialized using `prop.Value.GetTimeSpan("P")`. The "P" format
+   * delegates to the custom GetTimeSpan extension which uses
+   * TypeFormatters.ParseTimeSpan to parse ISO 8601 duration strings
+   * like "P1DT2H3M4S".
+   */
+  it('deserializes duration property with ISO8601 encoding using GetTimeSpan("P")', async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        timeout: duration;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("timeout"u8))');
+    expect(content).toContain('timeout = prop.Value.GetTimeSpan("P");');
+  });
+
+  /**
+   * Validates that a duration property encoded as seconds with a float64 wire
+   * type is deserialized using `TimeSpan.FromSeconds(prop.Value.GetDouble())`.
+   * Float wire types use GetDouble() because TimeSpan.FromSeconds takes a double
+   * and fractional seconds are meaningful.
+   */
+  it("deserializes duration property with seconds encoding (float)", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        @encode(DurationKnownEncoding.seconds, float64)
+        delay: duration;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("delay"u8))');
+    expect(content).toContain(
+      "delay = TimeSpan.FromSeconds(prop.Value.GetDouble());",
+    );
+  });
+
+  /**
+   * Validates that a duration property encoded as seconds with an int32 wire
+   * type is deserialized using `TimeSpan.FromSeconds(prop.Value.GetInt32())`.
+   * Integer wire types use GetInt32() to match the legacy emitter's
+   * Duration_Seconds format. This is the truncated (whole-second) variant.
+   */
+  it("deserializes duration property with seconds encoding (integer)", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        @encode(DurationKnownEncoding.seconds, int32)
+        ttl: duration;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("ttl"u8))');
+    expect(content).toContain(
+      "ttl = TimeSpan.FromSeconds(prop.Value.GetInt32());",
+    );
+  });
+
+  /**
+   * Validates that a duration property encoded as milliseconds with a float64
+   * wire type is deserialized using `TimeSpan.FromMilliseconds(prop.Value.GetDouble())`.
+   * This covers APIs that measure durations in milliseconds with fractional precision.
+   */
+  it("deserializes duration property with milliseconds encoding (float)", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        @encode(DurationKnownEncoding.milliseconds, float64)
+        latency: duration;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("latency"u8))');
+    expect(content).toContain(
+      "latency = TimeSpan.FromMilliseconds(prop.Value.GetDouble());",
+    );
+  });
+
+  /**
+   * Validates that a duration property encoded as milliseconds with an int32
+   * wire type is deserialized using `TimeSpan.FromMilliseconds(prop.Value.GetInt32())`.
+   * Integer millisecond durations are common in APIs that measure latency or
+   * timeout values as whole milliseconds.
+   */
+  it("deserializes duration property with milliseconds encoding (integer)", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        @encode(DurationKnownEncoding.milliseconds, int32)
+        retryAfter: duration;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("retryAfter"u8))');
+    expect(content).toContain(
+      "retryAfter = TimeSpan.FromMilliseconds(prop.Value.GetInt32());",
+    );
+  });
+
+  /**
+   * Validates that a bytes property without explicit @encode decorator is
+   * deserialized using base64 encoding, which is the default for bytes in
+   * TCGC. The result is `BinaryData.FromBytes(prop.Value.GetBytesFromBase64("D"))`.
+   * TCGC always assigns "base64" as the default encode for bytes types.
+   */
+  it("deserializes bytes property with default encoding (base64)", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        data: bytes;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("data"u8))');
+    expect(content).toContain(
+      'data = BinaryData.FromBytes(prop.Value.GetBytesFromBase64("D"));',
+    );
+  });
+
+  /**
+   * Validates that a bytes property with base64 encoding is deserialized using
+   * `BinaryData.FromBytes(prop.Value.GetBytesFromBase64("D"))`. The "D" format
+   * specifier triggers standard base64 decoding via the custom
+   * GetBytesFromBase64 extension method.
+   */
+  it("deserializes bytes property with base64 encoding", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        @encode("base64")
+        data: bytes;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("data"u8))');
+    expect(content).toContain(
+      'data = BinaryData.FromBytes(prop.Value.GetBytesFromBase64("D"));',
+    );
+  });
+
+  /**
+   * Validates that a bytes property with base64url encoding is deserialized using
+   * `BinaryData.FromBytes(prop.Value.GetBytesFromBase64("U"))`. The "U" format
+   * specifier triggers URL-safe base64 decoding (no padding, `-` and `_` instead
+   * of `+` and `/`), commonly used in JWTs and URL parameters.
+   */
+  it("deserializes bytes property with base64url encoding", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        @encode("base64url")
+        token: bytes;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("token"u8))');
+    expect(content).toContain(
+      'token = BinaryData.FromBytes(prop.Value.GetBytesFromBase64("U"));',
+    );
+  });
 });

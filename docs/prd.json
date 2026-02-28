@@ -2213,7 +2213,7 @@
           "title": "Implement primitive deserialization",
           "description": "Map each primitive type to its JsonElement getter: string\u2192GetString(), int\u2192GetInt32(), bool\u2192GetBoolean(), etc.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.3.4"
           ],
@@ -2233,7 +2233,7 @@
           "title": "Implement encoded type deserialization",
           "description": "DateTime: Unix\u2192FromUnixTimeSeconds(GetInt64()), others\u2192GetDateTimeOffset(format). Duration: Seconds\u2192FromSeconds(GetInt32/GetDouble()), ISO8601\u2192GetTimeSpan(\"P\"). Bytes: Base64\u2192GetBytesFromBase64(), Base64URL\u2192custom.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.3.5"
           ],

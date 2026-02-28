@@ -992,3 +992,44 @@ Design decision: Mirrors write-side pattern (PropertySerializer.tsx). Single com
 Integration: Added as child of `<JsonDeserialize>` after `<DeserializeVariableDeclarations>` in emitter.tsx.
 
 15 new tests added to model-serialization.test.ts covering: foreach loop generation, primitive type getters (string/int/bool/float/url), multiple properties in order, serializedName usage, continue statements, derived model base property inclusion, indentation, placement after variable declarations.
+
+## 2026-02-28 — Task 2.3.5: Mark as already done (primitive deserialization)
+
+Task 2.3.5 (Implement primitive deserialization) was already fully implemented in PropertyMatchingLoop.tsx
+as part of task 2.3.4. The READ_METHOD_MAP and getReadExpression() function already handle all primitive
+types (string, boolean, int8-int64, uint8-uint64, float32, float64, decimal, decimal128, safeint, numeric,
+integer, float, url). Marked as done.
+
+## 2026-02-28 — Task 2.3.6: Implement encoded type deserialization (complete)
+
+Extended `getReadExpression()` in `PropertyMatchingLoop.tsx` with encoding-aware deserialization for:
+
+**DateTime** (utcDateTime, offsetDateTime):
+- rfc3339 (default) → `prop.Value.GetDateTimeOffset("O")`
+- rfc7231 → `prop.Value.GetDateTimeOffset("R")`
+- unixTimestamp → `DateTimeOffset.FromUnixTimeSeconds(prop.Value.GetInt64())`
+
+**Duration**:
+- ISO8601 (default) → `prop.Value.GetTimeSpan("P")`
+- seconds + int32 wire → `TimeSpan.FromSeconds(prop.Value.GetInt32())`
+- seconds + float wire → `TimeSpan.FromSeconds(prop.Value.GetDouble())`
+- milliseconds + int32 wire → `TimeSpan.FromMilliseconds(prop.Value.GetInt32())`
+- milliseconds + float wire → `TimeSpan.FromMilliseconds(prop.Value.GetDouble())`
+
+**Bytes** (maps to BinaryData):
+- base64 (default for bytes in TCGC) → `BinaryData.FromBytes(prop.Value.GetBytesFromBase64("D"))`
+- base64url → `BinaryData.FromBytes(prop.Value.GetBytesFromBase64("U"))`
+- raw fallback → `BinaryData.FromString(prop.Value.GetRawText())`
+
+**plainDate** → `prop.Value.GetDateTimeOffset("D")`
+**plainTime** → `prop.Value.GetTimeSpan("T")`
+
+Key patterns:
+- Helper functions (`getDateTimeReadExpression`, `getDurationReadExpression`, `getBytesReadExpression`)
+  mirror the serialization side's `getDateTimeWriteInfo`, `getDurationWriteInfo` pattern
+- Duration wire type check: only `int32` uses `GetInt32()`; all other wire types use `GetDouble()`
+  (matches legacy emitter's Duration_Seconds vs Duration_Seconds_Float/Double format distinction)
+- TCGC defaults bytes to encode="base64", so the raw text fallback is defensive
+
+Files modified: src/components/serialization/PropertyMatchingLoop.tsx, test/model-serialization.test.ts
+12 new tests added covering all encoded type variants.
