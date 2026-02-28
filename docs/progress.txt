@@ -236,3 +236,17 @@ Added 6 new types to the System.ClientModel Alloy library declarations:
 - ParameterProps in @alloy-js/csharp lacks `this` modifier, so extension methods are rendered as raw strings
 
 **Test count: 71 total (7 new), all passing.**
+
+---
+2026-02-28 — Housekeeping: Mark already-completed tasks as done
+
+Tasks 1.4.5, 1.5.2, 1.5.3, 1.5.4, 1.5.5, and 1.5.6 were all already implemented as part of tasks 1.4.1-1.4.4 and 1.5.1 respectively. The FixedEnumSerializationFile component (1.5.1) already handles:
+- ToSerialString for string-backed enums (1.5.2)
+- ToSerial numeric methods for float/numeric enums (1.5.3)
+- Deserialization To{EnumName} for all types (1.5.4)
+- Skipping serialization for int-backed enums (1.5.5)
+- Tests covering all variants (1.5.6)
+
+The fixed-enum.test.ts already covers all fixed enum test requirements (1.4.5).
+
+All 71 tests pass. Build succeeds. Next natural tasks: 1.6.1 (ExtensibleEnumFile) or other ready tasks.
