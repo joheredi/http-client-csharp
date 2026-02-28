@@ -1,6 +1,7 @@
 import { createSdkContext } from "@azure-tools/typespec-client-generator-core";
 import { type EmitContext } from "@typespec/compiler";
 import { writeOutput } from "@typespec/emitter-framework";
+import { CSharpScalarOverrides } from "./components/CSharpTypeExpression.js";
 import { ExtensibleEnumFile } from "./components/enums/ExtensibleEnumFile.js";
 import { ExtensibleEnumSerializationFile } from "./components/enums/ExtensibleEnumSerializationFile.js";
 import { FixedEnumFile } from "./components/enums/FixedEnumFile.js";
@@ -51,20 +52,22 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
       options={options}
       sdkContext={sdkContext}
     >
-      {fixedEnums.map((e) => (
-        <FixedEnumFile type={e} options={options} />
-      ))}
-      {fixedEnums.map((e) => (
-        <FixedEnumSerializationFile type={e} options={options} />
-      ))}
-      {extensibleEnums.map((e) => (
-        <ExtensibleEnumFile type={e} options={options} />
-      ))}
-      {extensibleEnums
-        .filter((e) => e.valueType.kind !== "string")
-        .map((e) => (
-          <ExtensibleEnumSerializationFile type={e} options={options} />
+      <CSharpScalarOverrides>
+        {fixedEnums.map((e) => (
+          <FixedEnumFile type={e} options={options} />
         ))}
+        {fixedEnums.map((e) => (
+          <FixedEnumSerializationFile type={e} options={options} />
+        ))}
+        {extensibleEnums.map((e) => (
+          <ExtensibleEnumFile type={e} options={options} />
+        ))}
+        {extensibleEnums
+          .filter((e) => e.valueType.kind !== "string")
+          .map((e) => (
+            <ExtensibleEnumSerializationFile type={e} options={options} />
+          ))}
+      </CSharpScalarOverrides>
     </HttpClientCSharpOutput>
   );
 

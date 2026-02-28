@@ -316,3 +316,28 @@ Non-scalar gaps: arrays (IList<T> vs T[]), non-nullable unions (BinaryData vs th
 Utility exports: SCALAR_TYPE_OVERRIDES, EMITTER_FRAMEWORK_SCALAR_MAP, SCALAR_TO_CSHARP, getScalarOverride(), getCSharpType(), isOverriddenScalar()
 
 Next natural tasks: 1.1.2 (Add missing type mappings via CSharpTypeExpression wrapper), 1.1.3 (collection type utilities), 1.1.4 (nullable type utilities)
+
+2026-02-28 — Task 1.1.2: Add missing type mappings (complete)
+
+Created CSharpScalarOverrides provider component that overrides emitter-framework's TypeExpression scalar mappings to match the legacy HTTP client C# emitter.
+
+Key deliverables:
+- Created `src/components/CSharpTypeExpression.tsx` with:
+  - SystemBinaryData library declaration (BinaryData not in alloy builtins)
+  - scalarOverrideMap with 7 scalar overrides
+  - getScalarOverride() function that correctly distinguishes built-in vs user-defined scalars
+  - CSharpScalarOverrides provider using Experimental_ComponentOverrides
+  - Intrinsic override for unknown → BinaryData
+- Created `test/type-expression.test.tsx` with 20 tests covering all overrides and fall-throughs
+- Integrated CSharpScalarOverrides into emitter.tsx (wraps component tree)
+- All 139 tests pass; build succeeds
+
+Design decision: Used Experimental_ComponentOverrides (forTypeKind) instead of a standalone wrapper component. This automatically applies to all <TypeExpression> usages in the subtree including framework-internal ones. Follows the flight-instructor pattern.
+
+Key gotcha: The getScalarOverride function must use intrinsicNameToCSharpType from the emitter-framework to distinguish built-in scalars from user-defined ones. Without this, walking the base chain causes int32 (extends integer) to incorrectly pick up the integer→long override. Built-in scalars check only their direct name; user-defined scalars walk the chain.
+
+Stream/IPAddress note: These are NOT TypeSpec scalars or SdkBuiltInKinds. They were legacy InputPrimitiveType values. In the new TCGC, they're handled at a different layer (model/property level).
+
+Overrides: bytes→BinaryData, integer→long, safeint→long, numeric→double, float→double, plainDate→DateTimeOffset, plainTime→TimeSpan, unknown→BinaryData
+
+Next tasks: 1.1.3 (collection type utilities), 1.1.4 (nullable type utilities), or other ready phase-0/1 tasks

@@ -223,3 +223,22 @@ Per the ExtensibleEnumProvider source code, both `Equals(object)` and `GetHashCo
 **Important**: `BinaryData` is NOT in alloy-js/csharp builtins. It's in the `System` namespace and needs a custom library declaration. System builtins are available via `import System from "@alloy-js/csharp/global/System"` (has DateTimeOffset, TimeSpan, Uri but NOT BinaryData).
 
 **Non-scalar gaps**: Arrays→`T[]` in EF but legacy uses `IList<T>`/`IReadOnlyList<T>` by direction (task 1.1.3). Non-nullable unions throw in EF but legacy maps to BinaryData (task 1.1.2).
+
+## Design Decisions
+
+### Task 1.1.2: Scalar Override Approach
+**Chosen**: `Experimental_ComponentOverrides` provider with `forTypeKind("Scalar")` and `forTypeKind("Intrinsic")`.
+**Rejected**: Standalone CSharpTypeExpression wrapper component.
+**Why**: The override provider automatically applies to ALL `<TypeExpression>` usages in the subtree, including those inside emitter-framework components (like ClassDeclaration's type rendering). A wrapper would only work where explicitly used and miss framework-internal calls.
+
+### Scalar Base Chain Resolution Gotcha
+When overriding scalars via `forTypeKind("Scalar")`, the callback receives ALL scalars including built-in ones like `int32` that inherit from overridden parents like `integer`. The `getScalarOverride()` function uses `intrinsicNameToCSharpType` from `@typespec/emitter-framework/csharp` to distinguish:
+- **Built-in scalars** (in intrinsic map): check only the direct name against the override map
+- **User-defined scalars** (not in intrinsic map): walk the baseScalar chain to inherit overrides
+This prevents `int32 extends integer` from incorrectly picking up `integer→long`.
+
+### System.BinaryData default import
+`System` from `@alloy-js/csharp/global/System` is a **default export** (use `import System from ...` not `import { System } from ...`).
+
+### Stream and IPAddress are not TypeSpec scalars
+Stream and IPAddress were `InputPrimitiveType` kinds in the legacy emitter, but they don't exist as TypeSpec scalars or TCGC `SdkBuiltInKinds`. They must be handled at the model property generation level, not at the TypeExpression override level.
