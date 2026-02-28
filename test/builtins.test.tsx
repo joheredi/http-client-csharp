@@ -180,6 +180,94 @@ describe("System.ClientModel builtins", () => {
         SystemClientModelPrimitives.ClientErrorBehaviors.NoThrow,
       ).toBeDefined();
     });
+
+    /**
+     * Verifies that ModelReaderWriterOptions is declared with its Format
+     * property. This type is passed to every IJsonModel and IPersistableModel
+     * method to specify the wire format (e.g., "J" for JSON).
+     */
+    it("declares ModelReaderWriterOptions with expected members", () => {
+      expect(
+        SystemClientModelPrimitives.ModelReaderWriterOptions,
+      ).toBeDefined();
+      expect(
+        SystemClientModelPrimitives.ModelReaderWriterOptions.Format,
+      ).toBeDefined();
+    });
+
+    /**
+     * Verifies that ModelReaderWriterContext is declared as a library symbol.
+     * Generated libraries produce a context class that inherits from this type
+     * and registers all serializable models via attributes.
+     */
+    it("declares ModelReaderWriterContext", () => {
+      expect(
+        SystemClientModelPrimitives.ModelReaderWriterContext,
+      ).toBeDefined();
+    });
+
+    /**
+     * Verifies that ModelReaderWriter is declared with its static Write method.
+     * Generated serialization code calls ModelReaderWriter.Write(this, options, context)
+     * in PersistableModelWriteCore implementations.
+     */
+    it("declares ModelReaderWriter with expected members", () => {
+      expect(SystemClientModelPrimitives.ModelReaderWriter).toBeDefined();
+      expect(
+        SystemClientModelPrimitives.ModelReaderWriter.Write,
+      ).toBeDefined();
+    });
+
+    /**
+     * Verifies that IJsonModel is declared with Write and Create methods.
+     * Generated .Serialization.cs classes implement IJsonModel<T> to provide
+     * Utf8JsonWriter-based serialization and Utf8JsonReader-based deserialization.
+     */
+    it("declares IJsonModel with expected members", () => {
+      expect(SystemClientModelPrimitives.IJsonModel).toBeDefined();
+      expect(SystemClientModelPrimitives.IJsonModel.Write).toBeDefined();
+      expect(SystemClientModelPrimitives.IJsonModel.Create).toBeDefined();
+    });
+
+    /**
+     * Verifies that IPersistableModel is declared with Write, Create, and
+     * GetFormatFromOptions methods. Generated serialization classes implement
+     * IPersistableModel<T> for format-agnostic binary serialization support.
+     */
+    it("declares IPersistableModel with expected members", () => {
+      expect(SystemClientModelPrimitives.IPersistableModel).toBeDefined();
+      expect(
+        SystemClientModelPrimitives.IPersistableModel.Write,
+      ).toBeDefined();
+      expect(
+        SystemClientModelPrimitives.IPersistableModel.Create,
+      ).toBeDefined();
+      expect(
+        SystemClientModelPrimitives.IPersistableModel.GetFormatFromOptions,
+      ).toBeDefined();
+    });
+
+    /**
+     * Verifies that PersistableModelProxyAttribute is declared. This attribute
+     * is applied to abstract models with discriminators to specify the unknown
+     * variant type for fallback deserialization.
+     */
+    it("declares PersistableModelProxyAttribute", () => {
+      expect(
+        SystemClientModelPrimitives.PersistableModelProxyAttribute,
+      ).toBeDefined();
+    });
+
+    /**
+     * Verifies that ModelReaderWriterBuildableAttribute is declared. This
+     * attribute registers model types as buildable in the ModelReaderWriterContext,
+     * enabling the serialization framework to discover all serializable types.
+     */
+    it("declares ModelReaderWriterBuildableAttribute", () => {
+      expect(
+        SystemClientModelPrimitives.ModelReaderWriterBuildableAttribute,
+      ).toBeDefined();
+    });
   });
 
   /**
@@ -291,6 +379,40 @@ describe("System.ClientModel builtins", () => {
       expect(content).toContain("using System.ClientModel.Primitives;");
       expect(content).toContain("ApiKeyCredential");
       expect(content).toContain("RequestOptions");
+    });
+
+    /**
+     * Verifies that referencing serialization types (ModelReaderWriterOptions,
+     * IJsonModel, IPersistableModel) produces the correct using directive for
+     * System.ClientModel.Primitives. These types are used in generated
+     * .Serialization.cs files and ModelReaderWriterContext classes.
+     */
+    it("produces correct using statements for serialization types", () => {
+      const result = render(
+        <Output>
+          <SourceFile path="Test.Serialization.cs">
+            <ClassDeclaration name="TestModel">
+              <Property
+                name="Options"
+                type={SystemClientModelPrimitives.ModelReaderWriterOptions}
+                get
+                set
+              />
+              <Property
+                name="Context"
+                type={SystemClientModelPrimitives.ModelReaderWriterContext}
+                get
+                set
+              />
+            </ClassDeclaration>
+          </SourceFile>
+        </Output>,
+      );
+
+      const content = (result.contents[0] as { contents: string }).contents;
+      expect(content).toContain("using System.ClientModel.Primitives;");
+      expect(content).toContain("ModelReaderWriterOptions");
+      expect(content).toContain("ModelReaderWriterContext");
     });
   });
 });

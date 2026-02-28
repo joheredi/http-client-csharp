@@ -252,5 +252,125 @@ export const SystemClientModelPrimitives = createLibrary(
         NoThrow: { kind: "field" },
       },
     },
+
+    /**
+     * Options that control the format used by model serialization and deserialization.
+     * Passed to IJsonModel and IPersistableModel methods to select wire format ("J" for JSON, "X" for XML).
+     * Used as a parameter type in Write, Create, and GetFormatFromOptions methods on generated
+     * serialization classes.
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.primitives.modelreaderwriteroptions
+     */
+    ModelReaderWriterOptions: {
+      kind: "class",
+      members: {
+        /** Gets the wire format string (e.g., "J" for JSON, "X" for XML). */
+        Format: { kind: "property" },
+      },
+    },
+
+    /**
+     * Abstract base class for generated model reader/writer context types.
+     * Each generated library produces a context class (e.g., SampleTypeSpecContext)
+     * that inherits from this type and registers all serializable models via
+     * ModelReaderWriterBuildable attributes. The context is referenced via its
+     * static Default property (e.g., SampleTypeSpecContext.Default) when calling
+     * ModelReaderWriter.Write.
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.primitives.modelreaderwritercontext
+     */
+    ModelReaderWriterContext: {
+      kind: "class",
+      members: {},
+    },
+
+    /**
+     * Static helper for serializing and deserializing models that implement
+     * IPersistableModel{T}. Used in generated serialization code, e.g.,
+     * `ModelReaderWriter.Write(this, options, SampleTypeSpecContext.Default)`.
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.primitives.modelreaderwriter
+     */
+    ModelReaderWriter: {
+      kind: "class",
+      members: {
+        /** Serializes a model to BinaryData using the given options and optional context. */
+        Write: { kind: "method", methodKind: "ordinary", isStatic: true },
+      },
+    },
+
+    /**
+     * Generic interface implemented by models that support JSON serialization.
+     * Generated .Serialization.cs partial classes implement IJsonModel{T} to
+     * provide Utf8JsonWriter-based write and Utf8JsonReader-based read methods.
+     * The generic type parameter T is the model type itself.
+     *
+     * @remarks Methods: void Write(Utf8JsonWriter, ModelReaderWriterOptions),
+     * T Create(ref Utf8JsonReader, ModelReaderWriterOptions)
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.primitives.ijsonmodel-1
+     */
+    IJsonModel: {
+      kind: "interface",
+      members: {
+        /** Writes the model to a Utf8JsonWriter with the specified format options. */
+        Write: { kind: "method", methodKind: "ordinary" },
+        /** Creates a model instance from a Utf8JsonReader with the specified format options. */
+        Create: { kind: "method", methodKind: "ordinary" },
+      },
+    },
+
+    /**
+     * Generic interface implemented by models that support binary (BinaryData) serialization.
+     * Generated .Serialization.cs partial classes implement IPersistableModel{T} to
+     * provide format-agnostic write/create methods and format negotiation.
+     * The generic type parameter T is the model type itself.
+     *
+     * @remarks Methods: BinaryData Write(ModelReaderWriterOptions),
+     * T Create(BinaryData, ModelReaderWriterOptions),
+     * string GetFormatFromOptions(ModelReaderWriterOptions)
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.primitives.ipersistablemodel-1
+     */
+    IPersistableModel: {
+      kind: "interface",
+      members: {
+        /** Serializes the model to BinaryData using the specified format options. */
+        Write: { kind: "method", methodKind: "ordinary" },
+        /** Creates a model instance from BinaryData using the specified format options. */
+        Create: { kind: "method", methodKind: "ordinary" },
+        /** Returns the wire format string supported by this model for the given options. */
+        GetFormatFromOptions: { kind: "method", methodKind: "ordinary" },
+      },
+    },
+
+    /**
+     * Attribute applied to abstract models with a discriminator to specify
+     * the unknown/fallback variant type. Used in polymorphic deserialization
+     * so the framework knows which concrete type to instantiate when the
+     * discriminator value is unrecognized.
+     *
+     * @example `[PersistableModelProxy(typeof(UnknownAnimal))]`
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.primitives.persistablemodelproxyattribute
+     */
+    PersistableModelProxyAttribute: {
+      kind: "class",
+      members: {},
+    },
+
+    /**
+     * Attribute applied to a ModelReaderWriterContext class to register a
+     * model type as buildable (serializable/deserializable). One attribute
+     * is added per model type that implements IPersistableModel{T} or IJsonModel{T}.
+     *
+     * @example `[ModelReaderWriterBuildable(typeof(Dog))]`
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.primitives.modelreaderwriterbuildableattribute
+     */
+    ModelReaderWriterBuildableAttribute: {
+      kind: "class",
+      members: {},
+    },
   },
 );

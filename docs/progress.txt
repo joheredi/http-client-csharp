@@ -600,3 +600,23 @@ Also added `hasDiscriminatedSubtypes()` for Unknown variant generation (separate
 8 new tests in the NestedDiscriminator describe block covering: intermediate model non-abstract, own discriminator property, hierarchy param collection, 3rd-level params, serialization param ordering, Unknown variant generation, and null-guards.
 
 Key pattern: Always use `pnpm build` before `pnpm test` — vitest resolves through dist/ not source.
+
+2026-02-28 — Task 0.2.4: Add SCM serialization builtins (complete)
+
+Added 7 model serialization types to SystemClientModelPrimitives in src/builtins/system-client-model.ts:
+1. ModelReaderWriterOptions — class with Format property
+2. ModelReaderWriterContext — class (base for generated context classes)
+3. ModelReaderWriter — class with static Write method
+4. IJsonModel — interface with Write and Create methods
+5. IPersistableModel — interface with Write, Create, and GetFormatFromOptions methods
+6. PersistableModelProxyAttribute — class (attribute for discriminated union unknown variants)
+7. ModelReaderWriterBuildableAttribute — class (attribute for context type registration)
+
+Tests added: 8 new tests in test/builtins.test.tsx (7 type existence + 1 using statement integration).
+Also marked 1.2.7 as done (was completed in a prior iteration but not recorded in PRD).
+
+Total tests: 268. All passing. Build succeeds.
+
+Design decision: All types added to existing SystemClientModelPrimitives library (System.ClientModel.Primitives namespace). Generic interfaces (IJsonModel, IPersistableModel) declared as regular interface descriptors — generic parameterization is handled at usage site, not in the library declaration. This matches how System.Collections.Generic types work in Alloy.
+
+**Next natural tasks:** 2.1.1 (ModelSerializationFile component — now has all needed builtins), 0.2.3 (paging builtins), 0.2.5 (auth builtins), 0.3.2 (EmitterContext), or 1.1.3 (collection type utilities)
