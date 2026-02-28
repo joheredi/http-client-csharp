@@ -1715,7 +1715,7 @@
           "title": "Generate parameterless internal constructor",
           "description": "Generate `internal ModelName() { }` or `internal ModelName() => throw null;` as the deserialization constructor. This is needed for the MRW framework.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.1.1"
           ],

@@ -298,3 +298,245 @@ describe("ModelSerializationFile", () => {
     expect(serializationFiles.some((k) => k.includes("Cat.Serialization.cs"))).toBe(true);
   });
 });
+
+/**
+ * Tests for the DeserializationConstructor component.
+ *
+ * These tests verify that the emitter generates a parameterless `internal`
+ * constructor in the `.Serialization.cs` partial class for models that need it.
+ * The MRW (Model Reader/Writer) framework requires this constructor to create
+ * empty model instances during deserialization.
+ *
+ * Why these tests matter:
+ * - Without this constructor, the MRW framework cannot instantiate models for
+ *   deserialization, causing runtime failures.
+ * - The constructor must only be generated when the model's public init ctor
+ *   has parameters — otherwise, a duplicate parameterless constructor would
+ *   cause a C# compilation error.
+ * - The XML doc comment format must match the legacy emitter's golden files.
+ */
+describe("DeserializationConstructor", () => {
+  /**
+   * Validates that a model with required properties gets a parameterless
+   * internal constructor in its serialization file. Since the public init
+   * ctor has parameters (name, value), no parameterless ctor exists, so
+   * the deserialization constructor must be generated.
+   */
+  it("generates internal parameterless constructor for models with required properties", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        value: int32;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toMatch(/internal\s+Widget\s*\(\s*\)/);
+  });
+
+  /**
+   * Validates that the XML doc comment on the deserialization constructor
+   * matches the legacy emitter's format: `/// <summary> Initializes a new
+   * instance of <see cref="ModelName"/> for deserialization. </summary>`.
+   * This ensures consistency with golden files.
+   */
+  it("includes XML doc comment for deserialization", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain(
+      '/// <summary> Initializes a new instance of <see cref="Widget"/> for deserialization. </summary>',
+    );
+  });
+
+  /**
+   * Validates that models with only optional properties do NOT get the
+   * deserialization constructor. When all properties are optional, the
+   * public init ctor has zero parameters, so it already serves as the
+   * parameterless constructor — generating another would cause a C#
+   * duplicate constructor error.
+   */
+  it("skips constructor for models with only optional properties", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name?: string;
+        value?: int32;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Should NOT contain a parameterless internal constructor since
+    // the public ctor already has zero parameters
+    expect(content).not.toMatch(/internal\s+Widget\s*\(\s*\)/);
+  });
+
+  /**
+   * Validates that derived models in a discriminator hierarchy get the
+   * deserialization constructor when they have required base properties
+   * (excluding the discriminator). For example, if Pet has `name: string`,
+   * Dog extends Pet with `kind: "dog"` — Dog's public ctor takes `name`,
+   * so Dog needs a parameterless deserialization ctor.
+   */
+  it("generates constructor for derived models with required base properties", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Dog extends Pet {
+        kind: "dog";
+        breed: string;
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const dogFileKey = Object.keys(outputs).find((k) =>
+      k.includes("Dog.Serialization.cs"),
+    );
+    const dogContent = outputs[dogFileKey!];
+
+    // Dog has required base params (name) + own params (breed),
+    // so it needs a parameterless deserialization ctor
+    expect(dogContent).toMatch(/internal\s+Dog\s*\(\s*\)/);
+    expect(dogContent).toContain(
+      '/// <summary> Initializes a new instance of <see cref="Dog"/> for deserialization. </summary>',
+    );
+  });
+
+  /**
+   * Validates that derived models WITHOUT required base properties (other
+   * than the discriminator) do NOT get the deserialization constructor.
+   * When Pet only has `kind: string` (the discriminator), Dog's public ctor
+   * has zero parameters, so a deserialization ctor would duplicate it.
+   */
+  it("skips constructor for derived models with no required non-discriminator base properties", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+      }
+
+      model Dog extends Pet {
+        kind: "dog";
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const dogFileKey = Object.keys(outputs).find((k) =>
+      k.includes("Dog.Serialization.cs"),
+    );
+    const dogContent = outputs[dogFileKey!];
+
+    // Dog has no required params (kind is the discriminator, filtered out),
+    // so its public ctor is parameterless — no deserialization ctor needed
+    expect(dogContent).not.toMatch(/internal\s+Dog\s*\(\s*\)/);
+  });
+
+  /**
+   * Validates that abstract base models in a discriminator hierarchy also
+   * get the deserialization constructor when they have required properties.
+   * Even though abstract models can't be directly instantiated, their
+   * deserialization constructors are called by derived model constructors
+   * via constructor chaining.
+   */
+  it("generates constructor for abstract base models with required properties", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Dog extends Pet {
+        kind: "dog";
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const petFileKey = Object.keys(outputs).find((k) =>
+      k.includes("Pet.Serialization.cs"),
+    );
+    const petContent = outputs[petFileKey!];
+
+    // Pet has required properties (kind + name), so it needs the ctor
+    expect(petContent).toMatch(/internal\s+Pet\s*\(\s*\)/);
+    expect(petContent).toContain(
+      '/// <summary> Initializes a new instance of <see cref="Pet"/> for deserialization. </summary>',
+    );
+  });
+});

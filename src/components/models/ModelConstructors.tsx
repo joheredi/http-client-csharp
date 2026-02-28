@@ -235,7 +235,9 @@ function getBasePublicCtorParams(
  * @param model - The TCGC SDK model type.
  * @returns The model's public ctor params in the order they appear in the signature.
  */
-function computePublicCtorParams(model: SdkModelType): SdkModelPropertyType[] {
+export function computePublicCtorParams(
+  model: SdkModelType,
+): SdkModelPropertyType[] {
   if (isDerivedDiscriminatedModel(model)) {
     const baseParams = collectBaseNonDiscCtorParams(model);
     const ownParams = model.properties.filter(

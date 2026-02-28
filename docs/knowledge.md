@@ -482,6 +482,7 @@ After changing source files in src/, always run `pnpm build` before `pnpm test`.
 **Why**: C# partial classes require multiple declarations with the same name. Alloy doesn't natively understand partial class semantics, so `ignoreNameConflict` tells it to allow duplicate names.
 
 **Code pattern**:
+
 ```tsx
 import { namekey } from "@alloy-js/core";
 const partialName = namekey(modelName, { ignoreNameConflict: true });
@@ -505,6 +506,13 @@ const partialName = namekey(modelName, { ignoreNameConflict: true });
 ## Design Decisions
 
 ### ModelSerializationFile Interface Type (Task 2.1.1)
+
 - **Chosen**: Use `code` template with `SystemClientModelPrimitives.IJsonModel` builtin refkey: `` code`${SystemClientModelPrimitives.IJsonModel}<${modelName}>` ``
 - **Why**: Auto-generates `using System.ClientModel.Primitives;` via Alloy's SourceFile. Idiomatic Alloy pattern.
 - **Rejected**: Plain string `IJsonModel<${modelName}>` — doesn't trigger automatic using statement generation.
+
+## DeserializationConstructor Patterns (Task 2.1.3)
+
+- **OverloadConstructor for serialization file ctors**: Use `OverloadConstructor` (from `ModelConstructors.tsx`) rather than the standard `Constructor` for any constructor placed in the `.Serialization.cs` partial class. The `ignoreNameConflict: true` on its MethodSymbol prevents Alloy from appending `_2` suffixes when the same model already has constructors in the main `.cs` partial class.
+- **computePublicCtorParams is now exported**: Use `computePublicCtorParams(model)` from `ModelConstructors.tsx` to determine a model's public initialization constructor parameters. Useful for deciding whether a parameterless constructor already exists.
+- **Conditional constructor generation**: `needsDeserializationConstructor(model)` returns true only when `computePublicCtorParams(model).length > 0`. This prevents C# compiler errors from duplicate parameterless constructors.
