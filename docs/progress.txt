@@ -1058,3 +1058,23 @@ type like `{ getName(name: string, element: string): string }` causes TS incompa
 
 Files modified: src/components/serialization/PropertyMatchingLoop.tsx
 Tests added: 3 tests covering required nested model, multiple nested models, and derived discriminated model.
+
+2026-02-28 — Task 1.2.8: Handle model-as-struct (complete)
+
+Created infrastructure for generating C# `readonly struct` instead of `class` when a model has `modelAsStruct=true`.
+
+**Files created:**
+- `src/utils/model.ts` — `isModelStruct()` utility that checks `modelAsStruct` on SdkModelType (forward-compatible with future TCGC property)
+- `test/model-struct.test.tsx` — 8 tests: 4 for isModelStruct utility, 4 for StructDeclaration rendering
+
+**Files modified:**
+- `src/components/models/ModelFile.tsx` — Conditional rendering: StructDeclaration (readonly, partial) when isStruct, ClassDeclaration otherwise. Structs skip abstract and baseType.
+- `src/components/models/ModelConstructors.tsx` — Added `isStruct` prop to ModelConstructorsProps and BaseModelConstructors. Passes `isStruct` to `isConstructorParameter()` so struct constructors include ALL non-readonly properties (not just required).
+
+**Key design decision:** Used `StructDeclaration` from `@alloy-js/csharp` (already used in ExtensibleEnumFile for enum structs). Detection is via dynamic property check on SdkModelType — TCGC does not yet expose `modelAsStruct`.
+
+**Testing limitation:** The TypeSpec compiler loads emitter modules in its own module context, so `vi.mock` cannot intercept `isModelStruct()` calls during compilation. Full integration tests (TypeSpec → struct C# output) are deferred until TCGC adds `modelAsStruct` natively. Current tests cover: utility function behavior, StructDeclaration rendering, and isConstructorParameter struct behavior (in property-utils.test.ts).
+
+All 393 tests pass; build succeeds.
+
+Unblocks: 1.2.9 (Write model generation tests)

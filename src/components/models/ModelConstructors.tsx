@@ -70,6 +70,8 @@ import { efCsharpRefkey } from "../../utils/refkey.js";
 export interface ModelConstructorsProps {
   /** The TCGC SDK model type representing a TypeSpec model. */
   type: SdkModelType;
+  /** Whether the model is a struct. Structs include all non-readonly properties in the constructor. */
+  isStruct?: boolean;
 }
 
 /**
@@ -607,14 +609,20 @@ export function OverloadConstructor(props: ModelConstructorProps) {
  * ```
  */
 export function ModelConstructors(props: ModelConstructorsProps) {
-  const { type } = props;
+  const { type, isStruct = false } = props;
   const namePolicy = useCSharpNamePolicy();
 
   if (isDerivedDiscriminatedModel(type)) {
     return <DerivedModelConstructors type={type} namePolicy={namePolicy} />;
   }
 
-  return <BaseModelConstructors type={type} namePolicy={namePolicy} />;
+  return (
+    <BaseModelConstructors
+      type={type}
+      namePolicy={namePolicy}
+      isStruct={isStruct}
+    />
+  );
 }
 
 /**
@@ -626,14 +634,15 @@ export function ModelConstructors(props: ModelConstructorsProps) {
 function BaseModelConstructors(props: {
   type: SdkModelType;
   namePolicy: ReturnType<typeof useCSharpNamePolicy>;
+  isStruct?: boolean;
 }) {
-  const { type, namePolicy } = props;
+  const { type, namePolicy, isStruct = false } = props;
 
   // === Public initialization constructor ===
   const accessModifiers = getConstructorAccessModifiers(type);
 
   const ctorParamProps = type.properties.filter((p) =>
-    isConstructorParameter(p),
+    isConstructorParameter(p, isStruct),
   );
 
   const parameters = buildParameters(ctorParamProps, namePolicy);
