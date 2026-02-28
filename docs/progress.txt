@@ -946,3 +946,24 @@ Tests: 5 new tests in model-serialization.test.ts (ModelSerialization describe b
 - Model property alongside primitive properties (ordering)
 
 Next: 2.2.8 (enum serialization), 2.2.6 (bytes), or 2.2.10 (dictionary) are natural next steps
+
+## 2026-02-28 — Task 2.3.3: Implement deserialization variable declarations
+
+**What was done:**
+- Created `src/components/serialization/DeserializeVariableDeclarations.tsx` — new component that generates local variable declarations at the top of the `DeserializeXxx` method body
+- Each variable corresponds to a serialization constructor parameter: property variables use `Type name = default;`, discriminator variables in derived models use the literal value (e.g., `string kind = "dog";`), and `additionalBinaryDataProperties` uses `new ChangeTrackingDictionary<string, BinaryData>()`
+- Updated `emitter.tsx` to pass `DeserializeVariableDeclarations` as children of `JsonDeserialize`
+- Exported the new component from `serialization/index.ts`
+- Added 7 new tests covering: simple properties, optional/nullable properties, string discriminators, base model discriminators, ordering after null check, derived model variable ordering, and collection properties
+- 354 tests passing, build succeeds
+
+**Patterns used:**
+- Same rendering pattern as `PropertySerializer.tsx`: raw strings with `\n` for newlines/indentation, `TypeExpression` for types, and `code` template for expressions with builtin refkeys
+- Reused `computeVariableInfos()` that mirrors `computeSerializationCtorParams()` from ModelConstructors but returns property objects (not ParameterProps) to enable discriminator checks
+- Used `System.BinaryData` builtin refkey in the `code` template for ChangeTrackingDictionary init to auto-generate `using System;`
+
+**Notes for next tasks:**
+- Task 2.3.4 (property matching loop) will iterate `element.EnumerateObject()` and populate these variables
+- Task 2.3.13 (constructor call) will pass these variables to the serialization constructor
+- TypeExpression renders array types as `T[]` (not `IList<T>`) — this is consistent with how the emitter framework represents types. The legacy emitter uses `IList<T>` but the new emitter uses whatever TypeExpression produces.
+- `IDictionary<string, BinaryData>` and `ChangeTrackingDictionary` are currently raw strings — when tasks 5.1.3/5.1.4 add ChangeTracking builtins, these could be updated to use refkeys for proper using directive generation

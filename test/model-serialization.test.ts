@@ -2565,6 +2565,328 @@ describe("JsonDeserialize", () => {
 });
 
 /**
+ * Tests for DeserializeVariableDeclarations component.
+ *
+ * These tests verify that the emitter generates the correct local variable
+ * declarations at the top of the `DeserializeXxx` method body. Each variable
+ * corresponds to a serialization constructor parameter and will be populated
+ * during the property matching loop (2.3.4–2.3.12) and passed to the
+ * serialization constructor (2.3.13).
+ *
+ * Why these tests matter:
+ * - Variable declarations must match the serialization constructor parameter
+ *   types exactly — wrong types cause compilation errors.
+ * - The `additionalBinaryDataProperties` dictionary must use
+ *   `ChangeTrackingDictionary` (not a plain `Dictionary`) to support the
+ *   "not set" vs "empty" distinction.
+ * - Discriminator variables must be pre-initialized to the known literal value
+ *   so that even if the JSON omits the discriminator property, the constructed
+ *   model still has the correct discriminator.
+ * - Variable order must match the serialization constructor parameter order
+ *   (base props → additionalBinaryData → derived props for inherited models).
+ */
+describe("DeserializeVariableDeclarations", () => {
+  /**
+   * Validates that a simple model with scalar properties generates
+   * variable declarations with `default` initializers. Each property type
+   * maps to its C# equivalent: `string` for TypeSpec `string`, `int` for
+   * `int32`. The additionalBinaryDataProperties dictionary is always
+   * declared last with a ChangeTrackingDictionary initializer.
+   */
+  it("declares variables for simple model properties", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        count: int32;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+    const content = outputs[fileKey!];
+
+    // Variables must appear inside the Deserialize method, after the null check
+    expect(content).toContain("string name = default;");
+    expect(content).toContain("int count = default;");
+    expect(content).toContain(
+      "IDictionary<string, BinaryData> additionalBinaryDataProperties = new ChangeTrackingDictionary<string, BinaryData>();",
+    );
+  });
+
+  /**
+   * Validates that optional properties get nullable type annotations (`?`)
+   * in their variable declarations. An optional int32 becomes `int?` and
+   * an optional string becomes `string?`, both initialized to `default`.
+   * This matches the legacy emitter where optional non-collection types
+   * are always nullable in C#.
+   */
+  it("declares nullable variables for optional properties", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        description?: string;
+        priority?: int32;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain("string name = default;");
+    expect(content).toContain("string? description = default;");
+    expect(content).toContain("int? priority = default;");
+  });
+
+  /**
+   * Validates that a derived discriminated model with a string discriminator
+   * initializes the discriminator variable to its known literal value instead
+   * of `default`. This ensures the model always has the correct discriminator
+   * even if the JSON payload omits it. Non-discriminator properties still use
+   * `default`.
+   *
+   * This matches the legacy emitter's GetPropertyVariableDeclarations logic:
+   * `property.IsDiscriminator && _model.DiscriminatorValue != null &&
+   * property.Type.IsFrameworkType → Literal(discriminatorValue)`.
+   */
+  it("initializes string discriminator to literal value in derived model", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Dog extends Pet {
+        kind: "dog";
+        breed: string;
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const dogFile = Object.keys(outputs).find((k) =>
+      k.includes("Dog.Serialization.cs"),
+    );
+    expect(dogFile).toBeDefined();
+    const dogContent = outputs[dogFile!];
+
+    // Discriminator variable should be initialized to the known literal "dog"
+    expect(dogContent).toContain('string kind = "dog";');
+    // Non-discriminator inherited property uses default
+    expect(dogContent).toContain("string name = default;");
+    // Derived model's own property uses default
+    expect(dogContent).toContain("string breed = default;");
+    // additionalBinaryDataProperties always uses ChangeTrackingDictionary
+    expect(dogContent).toContain(
+      "IDictionary<string, BinaryData> additionalBinaryDataProperties = new ChangeTrackingDictionary<string, BinaryData>();",
+    );
+  });
+
+  /**
+   * Validates that the base model in a discriminated hierarchy uses `default`
+   * for the discriminator variable (not a literal). The base model doesn't
+   * know which subtype it will deserialize into, so the discriminator variable
+   * starts as `default` and is populated from JSON during the property
+   * matching loop.
+   */
+  it("uses default for discriminator in base model", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Dog extends Pet {
+        kind: "dog";
+        breed: string;
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const petFile = Object.keys(outputs).find((k) =>
+      k.endsWith("Pet.Serialization.cs"),
+    );
+    expect(petFile).toBeDefined();
+    const petContent = outputs[petFile!];
+
+    // Base model discriminator uses default, not a literal
+    expect(petContent).toContain("string kind = default;");
+    expect(petContent).toContain("string name = default;");
+  });
+
+  /**
+   * Validates that variable declarations appear AFTER the null check and
+   * INSIDE the Deserialize method body. The ordering is critical:
+   * 1. Method signature
+   * 2. Null check (if element.ValueKind == JsonValueKind.Null)
+   * 3. Variable declarations (this component)
+   * 4. Property matching loop (future task 2.3.4)
+   * 5. Constructor return (future task 2.3.13)
+   */
+  it("places variable declarations after null check", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    const nullCheckEnd = content.indexOf("return null;");
+    const varDecl = content.indexOf("string name = default;");
+    const additionalDecl = content.indexOf(
+      "additionalBinaryDataProperties = new ChangeTrackingDictionary",
+    );
+
+    expect(nullCheckEnd).toBeGreaterThan(-1);
+    expect(varDecl).toBeGreaterThan(nullCheckEnd);
+    expect(additionalDecl).toBeGreaterThan(varDecl);
+  });
+
+  /**
+   * Validates that for derived models, the variable order follows the
+   * serialization constructor parameter order: base model properties first
+   * (including additionalBinaryDataProperties), then the derived model's
+   * own properties. This ensures the variables can be passed directly to
+   * the serialization constructor in the correct positional order.
+   */
+  it("orders variables matching serialization constructor for derived models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Dog extends Pet {
+        kind: "dog";
+        breed: string;
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const dogFile = Object.keys(outputs).find((k) =>
+      k.includes("Dog.Serialization.cs"),
+    );
+    const dogContent = outputs[dogFile!];
+
+    // Verify ordering: base props → additionalBinaryData → derived props
+    const kindIdx = dogContent.indexOf('string kind = "dog";');
+    const nameIdx = dogContent.indexOf("string name = default;");
+    const additionalIdx = dogContent.indexOf(
+      "additionalBinaryDataProperties = new ChangeTrackingDictionary",
+    );
+    const breedIdx = dogContent.indexOf("string breed = default;");
+
+    expect(kindIdx).toBeGreaterThan(-1);
+    expect(nameIdx).toBeGreaterThan(kindIdx);
+    expect(additionalIdx).toBeGreaterThan(nameIdx);
+    expect(breedIdx).toBeGreaterThan(additionalIdx);
+  });
+
+  /**
+   * Validates that collection-typed properties (arrays, dictionaries) are
+   * declared with their type and initialized to `default`. TypeExpression
+   * renders array types as `T[]` (matching the raw type representation).
+   * Collections are never nullable in C# (they use ChangeTracking types
+   * for "not set" semantics), so no `?` suffix is added even for optional
+   * collections.
+   */
+  it("declares collection properties with correct types", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        tags: string[];
+        scores?: int32[];
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Required array property — not nullable
+    expect(content).toMatch(/string\[\] tags = default;/);
+    // Optional array property — still not nullable (collections never nullable)
+    expect(content).toMatch(/int\[\] scores = default;/);
+  });
+});
+
+/**
  * Tests for collection (array/list) property serialization in the JSON write path.
  *
  * Collection properties use a `foreach` loop pattern:

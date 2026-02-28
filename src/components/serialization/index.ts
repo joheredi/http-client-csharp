@@ -1,5 +1,7 @@
 export { DeserializationConstructor } from "./DeserializationConstructor.js";
 export type { DeserializationConstructorProps } from "./DeserializationConstructor.js";
+export { DeserializeVariableDeclarations } from "./DeserializeVariableDeclarations.js";
+export type { DeserializeVariableDeclarationsProps } from "./DeserializeVariableDeclarations.js";
 export { JsonDeserialize } from "./JsonDeserialize.js";
 export type { JsonDeserializeProps } from "./JsonDeserialize.js";
 export { JsonModelWriteCore } from "./JsonModelWriteCore.js";

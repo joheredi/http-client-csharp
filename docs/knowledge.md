@@ -626,6 +626,22 @@ When two rendering functions call each other recursively (e.g., `renderValueWrit
 ## Design Decisions
 
 ### Nested model serialization (2.2.7) — WriteObjectValue without generic type parameter
+
 - **Chosen**: Generate `writer.WriteObjectValue(PropertyName, options)` as raw string — no explicit generic type `<T>`, C# infers it from the argument
 - **Why**: Matches legacy emitter output exactly (see `RoundTripModel.Serialization.cs:120`). Simpler code, no need for TypeExpression in the serialization call.
 - **Rejected**: Using `writer.WriteObjectValue<TypeExpression>(value, options)` — the legacy emitter only uses explicit `<T>` for `object` types in dictionaries/additional properties, not for direct model property access.
+
+---
+
+### DeserializeVariableDeclarations Pattern (Task 2.3.3)
+
+**Component**: `src/components/serialization/DeserializeVariableDeclarations.tsx`
+
+**Key patterns:**
+- Uses `computeVariableInfos()` which mirrors `computeSerializationCtorParams()` but returns property objects instead of ParameterProps, enabling discriminator/type checks
+- For the `additionalBinaryDataProperties` variable, must wrap the `code` template in `<>` fragment with separate `{"\n    "}` for the newline — `code` template literals don't handle `\n` at the beginning of the string correctly
+- `TypeExpression` renders array types as `T[]` (e.g., `string[]`), not `IList<T>` — this differs from the legacy emitter which uses `IList<T>` for property declarations and variable declarations
+- String discriminator literal initialization only applies when: `property.discriminator === true && model.discriminatorValue !== undefined && unwrapped.kind === "string"` — enum discriminators use `default`
+- Variable order for derived models: base props → additionalBinaryData → derived own props (matching serialization constructor parameter order)
+
+**Gotcha**: When using the `code` template tag, leading `\n` characters are not rendered. Use a raw string `{"\n    "}` as a separate child before the `code` template for newline+indentation.

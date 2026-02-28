@@ -2169,7 +2169,7 @@
           "title": "Implement variable declarations",
           "description": "Declare local variables for all serialization constructor parameters. E.g., `string name = default;`, `IList<int> items = default;`, `IDictionary<string, BinaryData> additionalBinaryDataProperties = new ChangeTrackingDictionary<string, BinaryData>();`.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.3.1"
           ],
