@@ -293,9 +293,15 @@ describe("ModelSerializationFile", () => {
     );
 
     // All three models should have serialization files
-    expect(serializationFiles.some((k) => k.includes("Pet.Serialization.cs"))).toBe(true);
-    expect(serializationFiles.some((k) => k.includes("Dog.Serialization.cs"))).toBe(true);
-    expect(serializationFiles.some((k) => k.includes("Cat.Serialization.cs"))).toBe(true);
+    expect(
+      serializationFiles.some((k) => k.includes("Pet.Serialization.cs")),
+    ).toBe(true);
+    expect(
+      serializationFiles.some((k) => k.includes("Dog.Serialization.cs")),
+    ).toBe(true);
+    expect(
+      serializationFiles.some((k) => k.includes("Cat.Serialization.cs")),
+    ).toBe(true);
   });
 });
 
@@ -538,5 +544,437 @@ describe("DeserializationConstructor", () => {
     expect(petContent).toContain(
       '/// <summary> Initializes a new instance of <see cref="Pet"/> for deserialization. </summary>',
     );
+  });
+});
+
+/**
+ * Tests for the JsonModelWriteCore component.
+ *
+ * These tests verify that the emitter generates the `JsonModelWriteCore` method
+ * in the `.Serialization.cs` partial class. This method is the core JSON
+ * serialization entry point called by `IJsonModel<T>.Write`. It validates the
+ * wire format, optionally calls the base class implementation for derived models,
+ * and provides a children slot for property-level serialization.
+ *
+ * Why these tests matter:
+ * - JsonModelWriteCore is the foundation for all JSON property serialization
+ *   (tasks 2.2.2–2.2.14). Without this method shell, property writes have no home.
+ * - Format validation prevents models from being serialized in unsupported formats
+ *   (e.g., attempting XML on a JSON-only model), which would produce corrupt output.
+ * - Virtual/override modifiers are critical for polymorphic serialization — derived
+ *   models must override the base to add their own properties after the base call.
+ * - The base.JsonModelWriteCore call ensures inherited properties are serialized
+ *   before derived properties, matching the wire format contract.
+ * - Auto-generated `using` directives for System, System.Text.Json, and
+ *   System.ClientModel.Primitives are required for the code to compile.
+ */
+describe("JsonModelWriteCore", () => {
+  /**
+   * Validates that a root model (no base class) generates JsonModelWriteCore
+   * with `protected virtual` modifier. Virtual allows derived models to override
+   * the method while providing a default implementation for direct serialization.
+   */
+  it("generates protected virtual method for root model", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toMatch(
+      /protected\s+virtual\s+void\s+JsonModelWriteCore\s*\(/,
+    );
+  });
+
+  /**
+   * Validates that the method signature includes Utf8JsonWriter and
+   * ModelReaderWriterOptions parameters, matching the IJsonModel<T>
+   * serialization contract. These are the only parameters — the model
+   * instance is `this`.
+   */
+  it("includes Utf8JsonWriter and ModelReaderWriterOptions parameters", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toMatch(
+      /JsonModelWriteCore\s*\(\s*Utf8JsonWriter\s+writer\s*,\s*ModelReaderWriterOptions\s+options\s*\)/,
+    );
+  });
+
+  /**
+   * Validates that the method starts with format validation that checks
+   * whether the wire format is "J" (JSON). The format string is resolved
+   * via IPersistableModel<T>.GetFormatFromOptions when options.Format is "W"
+   * (wire format). This is critical — without it, a non-JSON format request
+   * would silently produce malformed output.
+   */
+  it("includes format validation at the start of method body", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Format resolution via IPersistableModel<T>.GetFormatFromOptions
+    expect(content).toContain(
+      "((IPersistableModel<Widget>)this).GetFormatFromOptions(options)",
+    );
+
+    // Format check and FormatException
+    expect(content).toContain('if (format != "J")');
+    expect(content).toContain("throw new FormatException(");
+    expect(content).toContain("nameof(Widget)");
+  });
+
+  /**
+   * Validates that derived models in a discriminator hierarchy use
+   * `protected override` instead of `protected virtual`. Override is
+   * required so the runtime dispatches to the derived model's serialization
+   * when the base type's Write method is called polymorphically.
+   */
+  it("generates protected override method for derived model", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Dog extends Pet {
+        kind: "dog";
+        breed: string;
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const dogFileKey = Object.keys(outputs).find((k) =>
+      k.includes("Dog.Serialization.cs"),
+    );
+    const dogContent = outputs[dogFileKey!];
+
+    expect(dogContent).toMatch(
+      /protected\s+override\s+void\s+JsonModelWriteCore\s*\(/,
+    );
+  });
+
+  /**
+   * Validates that derived models call `base.JsonModelWriteCore(writer, options)`
+   * to serialize inherited properties before their own. Without this call,
+   * base model properties would be silently dropped from the JSON output,
+   * breaking the wire format contract.
+   */
+  it("calls base.JsonModelWriteCore for derived models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Dog extends Pet {
+        kind: "dog";
+        breed: string;
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const dogFileKey = Object.keys(outputs).find((k) =>
+      k.includes("Dog.Serialization.cs"),
+    );
+    const dogContent = outputs[dogFileKey!];
+
+    expect(dogContent).toContain("base.JsonModelWriteCore(writer, options);");
+  });
+
+  /**
+   * Validates that root models do NOT call base.JsonModelWriteCore.
+   * Root models have no base serialization to delegate to, and calling
+   * a non-existent base method would cause a C# compilation error.
+   */
+  it("does not call base.JsonModelWriteCore for root models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).not.toContain("base.JsonModelWriteCore");
+  });
+
+  /**
+   * Validates that the `using System.Text.Json;` directive is auto-generated
+   * because Utf8JsonWriter is referenced from that namespace in the method
+   * parameters. This using statement is critical for the code to compile.
+   */
+  it("includes using directive for System.Text.Json", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain("using System.Text.Json;");
+  });
+
+  /**
+   * Validates that the `using System;` directive is auto-generated
+   * because FormatException is referenced from the System namespace
+   * in the format validation block. Without this, the code won't compile.
+   */
+  it("includes using directive for System", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain("using System;");
+  });
+
+  /**
+   * Validates that the format validation references the correct model name
+   * in both the IPersistableModel cast and the FormatException message.
+   * Each model must reference its own type, not a generic placeholder.
+   */
+  it("uses correct model name in format validation for each model", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Dog extends Pet {
+        kind: "dog";
+        breed: string;
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    // Pet should reference IPersistableModel<Pet>
+    const petFileKey = Object.keys(outputs).find((k) =>
+      k.includes("Pet.Serialization.cs"),
+    );
+    const petContent = outputs[petFileKey!];
+    expect(petContent).toContain("(IPersistableModel<Pet>)this");
+    expect(petContent).toContain("nameof(Pet)");
+
+    // Dog should reference IPersistableModel<Dog>
+    const dogFileKey = Object.keys(outputs).find((k) =>
+      k.includes("Dog.Serialization.cs"),
+    );
+    const dogContent = outputs[dogFileKey!];
+    expect(dogContent).toContain("(IPersistableModel<Dog>)this");
+    expect(dogContent).toContain("nameof(Dog)");
+  });
+
+  /**
+   * Validates that abstract base models (discriminated union roots) also
+   * get the JsonModelWriteCore method with `protected virtual` modifier.
+   * Even though abstract models can't be directly instantiated, their
+   * JsonModelWriteCore is called by derived models via base.JsonModelWriteCore.
+   */
+  it("generates virtual method for abstract base models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Dog extends Pet {
+        kind: "dog";
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const petFileKey = Object.keys(outputs).find((k) =>
+      k.includes("Pet.Serialization.cs"),
+    );
+    const petContent = outputs[petFileKey!];
+
+    // Abstract base model should have protected virtual (not override)
+    expect(petContent).toMatch(
+      /protected\s+virtual\s+void\s+JsonModelWriteCore/,
+    );
+    expect(petContent).not.toContain("base.JsonModelWriteCore");
+  });
+
+  /**
+   * Validates multi-level inheritance: grandchild models also use override
+   * and call base. For a hierarchy Animal → Pet → Dog, Dog must override
+   * JsonModelWriteCore and call base to chain through Pet → Animal.
+   */
+  it("handles multi-level inheritance correctly", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Animal {
+        kind: string;
+        name: string;
+      }
+
+      model Pet extends Animal {
+        kind: "pet";
+        trained: boolean;
+      }
+
+      @route("/test")
+      op test(): Animal;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    // Animal (root) should be virtual
+    const animalKey = Object.keys(outputs).find((k) =>
+      k.includes("Animal.Serialization.cs"),
+    );
+    const animalContent = outputs[animalKey!];
+    expect(animalContent).toMatch(
+      /protected\s+virtual\s+void\s+JsonModelWriteCore/,
+    );
+
+    // Pet (derived) should be override with base call
+    const petKey = Object.keys(outputs).find((k) =>
+      k.includes("Pet.Serialization.cs"),
+    );
+    const petContent = outputs[petKey!];
+    expect(petContent).toMatch(
+      /protected\s+override\s+void\s+JsonModelWriteCore/,
+    );
+    expect(petContent).toContain("base.JsonModelWriteCore(writer, options);");
   });
 });

@@ -681,3 +681,31 @@ Total tests: 276 (all passing). Build succeeds.
 **Test status:** 282 tests passing, build succeeds
 
 **Next natural tasks:** 2.1.2 (interface determination), 2.1.4 (PersistableModel write/create), 2.2.1 (JsonWriteCore), 1.1.3 (collection type utilities)
+
+2026-02-28 — Task 2.2.1: Create JsonModelWriteCore component (complete)
+
+Created `src/components/serialization/JsonModelWriteCore.tsx`:
+- Generates `protected virtual void JsonModelWriteCore(Utf8JsonWriter, ModelReaderWriterOptions)` for root models
+- Generates `protected override` with `base.JsonModelWriteCore(writer, options)` for derived models
+- Includes format validation: checks format is "J" (JSON), throws FormatException otherwise
+- Uses IPersistableModel<T>.GetFormatFromOptions for wire format resolution
+- Accepts children prop for future property serialization (tasks 2.2.2–2.2.14)
+
+Created new builtins:
+- `src/builtins/system.ts` — FormatException, BinaryData (auto-generates `using System;`)
+- `src/builtins/system-text-json.ts` — Utf8JsonWriter, JsonElement, JsonDocument, JsonSerializer (auto-generates `using System.Text.Json;`)
+- Updated `src/builtins/index.ts` to export new libraries
+
+Wired into emitter.tsx as child of ModelSerializationFile, before DeserializationConstructor.
+
+11 new tests added to `test/model-serialization.test.ts` covering:
+- Virtual vs override modifiers
+- Parameter types (Utf8JsonWriter, ModelReaderWriterOptions)
+- Format validation pattern
+- Base class call for derived models
+- Auto-generated using directives
+- Multi-level inheritance
+
+Key design decision: Used raw strings + `code` templates (like FixedEnumSerializationFile) instead of `<Method>` component. This gives full control over Allman-style brace formatting while still leveraging refkeys for auto-using directives.
+
+Directly unblocks: 2.2.2 (base class call), 2.2.3 (primitive serialization), 2.2.11 (optional guards), 2.2.13 (read-only guards), 2.2.14 (additional binary data), 2.6.1 (IJsonModel.Write wrapper)

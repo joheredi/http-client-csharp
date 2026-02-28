@@ -1,8 +1,8 @@
 /**
- * Alloy library declarations for System.ClientModel types.
+ * Alloy library declarations for .NET BCL and System.ClientModel types.
  *
- * These builtins enable generated C# code to reference System.ClientModel
- * types with automatic `using` statement generation. Import the library
+ * These builtins enable generated C# code to reference .NET types
+ * with automatic `using` statement generation. Import the library
  * objects and use their members as refkeys in JSX components.
  *
  * @example
@@ -13,6 +13,8 @@
  * <Property name="Result" type={SystemClientModel.ClientResult} get />
  * ```
  */
+export { System } from "./system.js";
+export { SystemTextJson } from "./system-text-json.js";
 export {
   SystemClientModel,
   SystemClientModelPrimitives,

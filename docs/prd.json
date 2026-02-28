@@ -1802,7 +1802,7 @@
           "title": "Create JsonWriteCore component",
           "description": "Generate the JsonModelWriteCore method body. This is the core serialization method that writes each property to JSON. It's protected virtual for root models, protected override for derived. Starts with format validation, then writes properties, then writes additional data. See MrwSerializationTypeDefinition.cs CreateSerializeHandler.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.1.1"
           ],

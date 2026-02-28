@@ -516,3 +516,13 @@ const partialName = namekey(modelName, { ignoreNameConflict: true });
 - **OverloadConstructor for serialization file ctors**: Use `OverloadConstructor` (from `ModelConstructors.tsx`) rather than the standard `Constructor` for any constructor placed in the `.Serialization.cs` partial class. The `ignoreNameConflict: true` on its MethodSymbol prevents Alloy from appending `_2` suffixes when the same model already has constructors in the main `.cs` partial class.
 - **computePublicCtorParams is now exported**: Use `computePublicCtorParams(model)` from `ModelConstructors.tsx` to determine a model's public initialization constructor parameters. Useful for deciding whether a parameterless constructor already exists.
 - **Conditional constructor generation**: `needsDeserializationConstructor(model)` returns true only when `computePublicCtorParams(model).length > 0`. This prevents C# compiler errors from duplicate parameterless constructors.
+
+## Design Decisions
+
+### JsonModelWriteCore: Raw strings + code templates vs Method component (Task 2.2.1)
+**Chosen**: Raw strings with `code` template interpolation (following FixedEnumSerializationFile pattern)
+**Rejected**: `<Method>` component from @alloy-js/csharp
+**Why**: The `<Method>` component uses K&R brace style (`method() {`) for empty methods. Raw strings give full control over Allman-style formatting (`method()\n{`) matching golden files. The `code` template enables refkey interpolation for auto-using directives while keeping manual formatting control.
+
+### System.Text.Json and System builtins (Task 2.2.1)
+Created `src/builtins/system.ts` and `src/builtins/system-text-json.ts` as separate files following the existing `system-client-model.ts` pattern. These enable auto-generated `using` directives when Utf8JsonWriter, FormatException, etc. are referenced via refkeys in `code` templates. Future serialization tasks should use these builtins rather than manual `using` strings.
