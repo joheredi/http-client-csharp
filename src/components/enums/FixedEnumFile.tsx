@@ -13,6 +13,7 @@ import {
 } from "@azure-tools/typespec-client-generator-core";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
+import { declarationRefkeys } from "../../utils/refkey.js";
 
 /**
  * Props for the {@link FixedEnumFile} component.
@@ -104,7 +105,11 @@ export function FixedEnumFile(props: FixedEnumFileProps) {
       {header}
       {"\n\n"}
       <Namespace name={props.type.namespace}>
-        <EnumDeclaration public name={enumName} refkey={refkey(props.type)}>
+        <EnumDeclaration
+          public
+          name={enumName}
+          refkey={declarationRefkeys(refkey(props.type), props.type.__raw)}
+        >
           <For each={props.type.values} joiner={",\n"}>
             {(member) => {
               const memberName = namePolicy.getName(member.name, "enum-member");

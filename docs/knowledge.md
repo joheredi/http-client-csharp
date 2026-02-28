@@ -402,3 +402,13 @@ When setting both `private: true` and `protected: true` on a Constructor/ClassDe
 - `baseModel?: SdkModelType` — reference to parent model (on derived model)
 - `property.discriminator: boolean` — flag on individual properties marking them as discriminators
 - There is NO `isAbstract` field — abstractness is derived from having discriminatorProperty + discriminatedSubtypes
+
+### Refkey mismatch between custom declarations and TypeExpression
+
+**Critical gotcha discovered in task 1.3.2**: `TypeExpression` from `@typespec/emitter-framework/csharp` resolves type references using `efRefkey(rawType)`, which is `refkey(Symbol.for("emitter-framework:csharp"), rawType)`. Custom declaration components (FixedEnumFile, ExtensibleEnumFile, ModelFile) that use plain `refkey(sdkType)` will produce `<Unresolved Symbol>` errors when their types are referenced via `TypeExpression`.
+
+**Fix**: Use `efCsharpRefkey(sdkType.__raw!)` from `src/utils/refkey.ts` as the `refkey` prop for declarations. For `EnumDeclaration` (which accepts `Refkey[]`), you can also use `declarationRefkeys(refkey(sdkType), sdkType.__raw)` to register both keys.
+
+**Root cause**: `efRefkey` is NOT publicly exported from `@typespec/emitter-framework/csharp`. Our utility recreates it using the same `Symbol.for("emitter-framework:csharp")` prefix.
+
+**Any new declaration component** (ClassDeclaration, StructDeclaration, EnumDeclaration) must use `efCsharpRefkey` or `declarationRefkeys` from `src/utils/refkey.ts`.

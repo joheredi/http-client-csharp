@@ -1501,6 +1501,52 @@ describe("AbstractBaseModel", () => {
   });
 
   /**
+   * Validates that enum discriminator properties use the enum type, not string.
+   *
+   * When a discriminator property is typed as a TypeSpec enum (not a plain string),
+   * the generated C# property must use the corresponding C# enum type.
+   * For example, `kind: DogKind` should render as `internal DogKind Kind { get; set; }`.
+   *
+   * This matches the golden file pattern in:
+   * `TestProjects/Spector/http/type/model/inheritance/enum-discriminator/src/Generated/Models/Dog.cs`
+   */
+  it("renders enum discriminator property with enum type", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      enum PetKind {
+        cat: "cat",
+        dog: "dog",
+      }
+
+      @discriminator("kind")
+      model Pet {
+        kind: PetKind;
+        name: string;
+      }
+
+      model Cat extends Pet {
+        kind: PetKind.cat;
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const petFile = Object.keys(outputs).find((k) => k.includes("Pet.cs"));
+    expect(petFile).toBeDefined();
+    const content = outputs[petFile!];
+
+    // Enum discriminator must use enum type, not string
+    expect(content).toMatch(/internal\s+PetKind\s+Kind\s*\{\s*get;\s*set;\s*\}/);
+  });
+
+  /**
    * Validates that non-discriminator properties on an abstract base model
    * remain public. Only the discriminator property itself gets internal access.
    *

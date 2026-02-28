@@ -4,10 +4,11 @@ import {
   SourceFile,
   useCSharpNamePolicy,
 } from "@alloy-js/csharp";
-import { type Children, For, refkey } from "@alloy-js/core";
+import { type Children, For } from "@alloy-js/core";
 import type { SdkModelType } from "@azure-tools/typespec-client-generator-core";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
+import { efCsharpRefkey } from "../../utils/refkey.js";
 import { isModelAbstract, ModelConstructors } from "./ModelConstructors.js";
 import { ModelProperty } from "./ModelProperty.js";
 
@@ -69,7 +70,7 @@ export function ModelFile(props: ModelFileProps) {
           abstract={isAbstract}
           partial
           name={modelName}
-          refkey={refkey(props.type)}
+          refkey={efCsharpRefkey(props.type.__raw!)}
         >
           <ModelConstructors type={props.type} />
           {props.type.properties.length > 0 ? "\n\n" : ""}

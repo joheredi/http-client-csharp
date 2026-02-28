@@ -4,13 +4,13 @@ import {
   StructDeclaration,
   useCSharpNamePolicy,
 } from "@alloy-js/csharp";
-import { refkey } from "@alloy-js/core";
 import type {
   SdkEnumType,
   SdkEnumValueType,
 } from "@azure-tools/typespec-client-generator-core";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
+import { efCsharpRefkey } from "../../utils/refkey.js";
 
 /**
  * C# type information derived from a TCGC value type kind.
@@ -163,7 +163,7 @@ export function ExtensibleEnumFile(props: ExtensibleEnumFileProps) {
           readonly
           partial
           name={enumName}
-          refkey={refkey(props.type)}
+          refkey={efCsharpRefkey(props.type.__raw!)}
           interfaceTypes={[`IEquatable<${enumName}>`]}
         >
           <ValueFields type={props.type} typeInfo={typeInfo} />

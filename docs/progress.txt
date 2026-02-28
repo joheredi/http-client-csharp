@@ -505,3 +505,23 @@ Pattern: `OverloadConstructor` should be used for any additional constructor ove
 - Discriminator detection in TCGC: base model has `discriminatorProperty` + `discriminatedSubtypes`; derived models have `discriminatorValue` + `baseModel`
 - Task 1.3.2 (discriminator property handling in derived models) will need to pass the discriminator value to the base constructor
 - 239 tests passing, build clean
+
+## 2026-02-28 — Task 1.3.2: Implement discriminator property (complete)
+
+### What was done
+- Verified string discriminator already works (`internal string Kind { get; set; }`) via ModelProperty.tsx
+- Discovered enum discriminator produced `<Unresolved Symbol>` — root cause: refkey mismatch between enum declarations (`refkey(sdkType)`) and TypeExpression (`efRefkey(rawType)`)
+- Created `src/utils/refkey.ts` with `efCsharpRefkey()` and `declarationRefkeys()` utilities that match the emitter-framework's internal refkey derivation
+- Updated FixedEnumFile, ExtensibleEnumFile, and ModelFile to use emitter-framework-compatible refkeys
+- Added test for enum discriminator property type (`internal PetKind Kind { get; set; }`)
+- 240 tests passing, clean build
+
+### Patterns used
+- `Symbol.for("emitter-framework:csharp")` prefix to match emitter-framework's `efRefkey`
+- `efCsharpRefkey(sdkType.__raw!)` for ClassDeclaration/StructDeclaration (single Refkey)
+- `declarationRefkeys(refkey(sdkType), sdkType.__raw)` for EnumDeclaration (Refkey[])
+
+### Important for next tasks
+- ALL future declaration components MUST use `efCsharpRefkey` from `src/utils/refkey.ts`
+- Task 1.3.3 (derived model discriminator) should handle: base class inheritance, discriminator value in base constructor call, skipping discriminator property redeclaration
+- The EnumMember refkeys in FixedEnumFile still use plain `refkey(member)` — this may need updating if enum member values are referenced via TypeExpression
