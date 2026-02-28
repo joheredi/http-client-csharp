@@ -72,7 +72,7 @@ import type {
   SdkModelPropertyType,
   SdkType,
 } from "@azure-tools/typespec-client-generator-core";
-import { unwrapNullableType } from "../../utils/nullable.js";
+import { isCollectionType, unwrapNullableType } from "../../utils/nullable.js";
 
 /**
  * Props for the {@link WritePropertySerialization} component.
@@ -298,6 +298,70 @@ export function getWriteMethodInfo(type: SdkType): WriteMethodInfo | null {
 }
 
 /**
+ * Determines whether a property needs an `Optional.IsDefined` or
+ * `Optional.IsCollectionDefined` guard during JSON serialization.
+ *
+ * Optional properties may not have been set by the user, so they must be
+ * wrapped in an `Optional.IsDefined`/`IsCollectionDefined` check to avoid
+ * serializing unset values. Required non-nullable properties are always
+ * present and serialize directly without guards.
+ *
+ * @param property - An SDK model property from TCGC.
+ * @returns `true` if the property should be wrapped in an Optional guard.
+ */
+export function needsOptionalGuard(property: SdkModelPropertyType): boolean {
+  return property.optional;
+}
+
+/**
+ * Returns the `Optional` guard method name for a property.
+ *
+ * Collections use `Optional.IsCollectionDefined()` because they use
+ * `ChangeTrackingList`/`ChangeTrackingDictionary` which have special
+ * "is defined" semantics. Scalar properties use `Optional.IsDefined()`.
+ *
+ * @param property - An SDK model property from TCGC.
+ * @returns `"IsCollectionDefined"` for collection types, `"IsDefined"` otherwise.
+ */
+export function getOptionalGuardMethodName(
+  property: SdkModelPropertyType,
+): string {
+  return isCollectionType(property.type) ? "IsCollectionDefined" : "IsDefined";
+}
+
+/**
+ * Renders the `writer.WritePropertyName` and `writer.WriteXxxValue` statements
+ * for a property at the specified indentation level.
+ *
+ * Extracted as a helper to support both direct (unguarded) and guarded
+ * serialization paths, which differ only in indentation.
+ *
+ * @param serializedName - The JSON wire name (e.g., `"name"`).
+ * @param writeInfo - The write method info for this property type.
+ * @param csharpName - The PascalCase C# property name (e.g., `"Name"`).
+ * @param indent - The whitespace indentation prefix (e.g., `"    "` or `"        "`).
+ * @returns JSX element with the two write statements.
+ */
+function renderWriteStatements(
+  serializedName: string,
+  writeInfo: WriteMethodInfo,
+  csharpName: string,
+  indent: string,
+) {
+  const valuePart = writeInfo.valueTransform
+    ? writeInfo.valueTransform(csharpName)
+    : csharpName;
+  const formatPart = writeInfo.formatArg ? `, "${writeInfo.formatArg}"` : "";
+
+  return (
+    <>
+      {`\n${indent}writer.WritePropertyName("${serializedName}"u8);`}
+      {`\n${indent}writer.${writeInfo.methodName}(${valuePart}${formatPart});`}
+    </>
+  );
+}
+
+/**
  * Generates the serialization statements for a single model property.
  *
  * Produces two C# statements:
@@ -309,8 +373,27 @@ export function getWriteMethodInfo(type: SdkType): WriteMethodInfo | null {
  *    is included. For Duration with numeric encoding, a value transform wraps
  *    the property access (e.g., `Property.TotalSeconds`).
  *
+ * Optional properties are wrapped in an `Optional.IsDefined` or
+ * `Optional.IsCollectionDefined` guard to skip serialization of unset values.
+ * Required non-nullable properties serialize directly without guards.
+ *
  * Returns `null` for non-primitive types (models, enums, collections, etc.)
  * which are handled by subsequent tasks (2.2.6–2.2.10).
+ *
+ * @example Generated output for a required string property (no guard):
+ * ```csharp
+ * writer.WritePropertyName("name"u8);
+ * writer.WriteStringValue(Name);
+ * ```
+ *
+ * @example Generated output for an optional string property (with guard):
+ * ```csharp
+ * if (Optional.IsDefined(Name))
+ * {
+ *     writer.WritePropertyName("name"u8);
+ *     writer.WriteStringValue(Name);
+ * }
+ * ```
  *
  * @param props - The component props containing the property to serialize.
  * @returns JSX element with the write statements, or `null` for unsupported types.
@@ -326,15 +409,23 @@ export function WritePropertySerialization(
 
   const serializedName = property.serializedName;
   const csharpName = namePolicy.getName(property.name, "class-property");
-  const valuePart = writeInfo.valueTransform
-    ? writeInfo.valueTransform(csharpName)
-    : csharpName;
-  const formatPart = writeInfo.formatArg ? `, "${writeInfo.formatArg}"` : "";
 
-  return (
-    <>
-      {`\n    writer.WritePropertyName("${serializedName}"u8);`}
-      {`\n    writer.${writeInfo.methodName}(${valuePart}${formatPart});`}
-    </>
-  );
+  if (needsOptionalGuard(property)) {
+    const guardMethod = getOptionalGuardMethodName(property);
+    return (
+      <>
+        {`\n    if (Optional.${guardMethod}(${csharpName}))`}
+        {"\n    {"}
+        {renderWriteStatements(
+          serializedName,
+          writeInfo,
+          csharpName,
+          "        ",
+        )}
+        {"\n    }"}
+      </>
+    );
+  }
+
+  return renderWriteStatements(serializedName, writeInfo, csharpName, "    ");
 }

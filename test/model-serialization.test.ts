@@ -1683,3 +1683,273 @@ describe("PropertySerialization", () => {
     );
   });
 });
+
+/**
+ * Tests for optional property serialization guards.
+ *
+ * When a property is optional, it may not have been set by the user. The
+ * generated serialization code wraps the property write in an `Optional.IsDefined`
+ * (for scalar types) or `Optional.IsCollectionDefined` (for collection types) guard.
+ * This prevents serializing unset values and matches the legacy emitter's behavior
+ * from `CreateConditionalSerializationStatement` in MrwSerializationTypeDefinition.cs.
+ *
+ * Required non-nullable properties serialize directly without guards.
+ */
+describe("OptionalPropertyGuards", () => {
+  /**
+   * Validates that an optional string property is wrapped in `Optional.IsDefined`.
+   * This is the most common guard pattern — string is a reference type and when
+   * optional, the user may not have set it.
+   */
+  it("wraps optional string property in Optional.IsDefined guard", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        description?: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Required property 'name' serializes directly without guard
+    expect(content).toContain('writer.WritePropertyName("name"u8);');
+    expect(content).toContain("writer.WriteStringValue(Name);");
+    expect(content).not.toContain("Optional.IsDefined(Name)");
+
+    // Optional property 'description' wrapped in IsDefined guard
+    expect(content).toContain("if (Optional.IsDefined(Description))");
+    expect(content).toContain('writer.WritePropertyName("description"u8);');
+    expect(content).toContain("writer.WriteStringValue(Description);");
+  });
+
+  /**
+   * Validates that an optional int32 property is wrapped in `Optional.IsDefined`.
+   * Even though int is a value type, when optional it becomes `int?` (Nullable<int>)
+   * and needs a guard to detect whether the user set it.
+   */
+  it("wraps optional int32 property in Optional.IsDefined guard", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        count?: int32;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain("if (Optional.IsDefined(Count))");
+    expect(content).toContain('writer.WritePropertyName("count"u8);');
+    expect(content).toContain("writer.WriteNumberValue(Count);");
+  });
+
+  /**
+   * Validates that a required non-nullable property serializes directly
+   * without any `Optional.IsDefined` guard. Required properties are always
+   * present and don't need conditional serialization.
+   */
+  it("does not wrap required non-nullable property in guard", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        count: int32;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Neither required property should have a guard
+    expect(content).not.toContain("Optional.IsDefined");
+    expect(content).not.toContain("Optional.IsCollectionDefined");
+
+    // Both should serialize directly
+    expect(content).toContain('writer.WritePropertyName("name"u8);');
+    expect(content).toContain("writer.WriteStringValue(Name);");
+    expect(content).toContain('writer.WritePropertyName("count"u8);');
+    expect(content).toContain("writer.WriteNumberValue(Count);");
+  });
+
+  /**
+   * Validates that the write statements inside an Optional guard are
+   * properly indented (8 spaces inside the if block vs 4 spaces for
+   * direct writes). The guard block should follow the C# brace style:
+   * ```csharp
+   *     if (Optional.IsDefined(Prop))
+   *     {
+   *         writer.WritePropertyName("prop"u8);
+   *         writer.WriteStringValue(Prop);
+   *     }
+   * ```
+   */
+  it("indents write statements inside Optional guard block", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        description?: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Check the full guarded block structure with correct indentation
+    expect(content).toContain("    if (Optional.IsDefined(Description))");
+    expect(content).toContain("    {");
+    expect(content).toContain(
+      '        writer.WritePropertyName("description"u8);',
+    );
+    expect(content).toContain("        writer.WriteStringValue(Description);");
+    expect(content).toContain("    }");
+  });
+
+  /**
+   * Validates that an optional boolean property gets the IsDefined guard.
+   * Covers the boolean primitive type to ensure all primitive types
+   * consistently get guards when optional.
+   */
+  it("wraps optional boolean property in Optional.IsDefined guard", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        isActive?: boolean;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain("if (Optional.IsDefined(IsActive))");
+    expect(content).toContain('writer.WritePropertyName("isActive"u8);');
+    expect(content).toContain("writer.WriteBooleanValue(IsActive);");
+  });
+
+  /**
+   * Validates that models with a mix of required and optional properties
+   * correctly apply guards only to optional ones. Required properties
+   * should serialize directly while optional properties get guards.
+   */
+  it("applies guards only to optional properties in mixed model", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        description?: string;
+        count: int32;
+        weight?: float64;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Required properties: no guard
+    expect(content).not.toContain("Optional.IsDefined(Name)");
+    expect(content).not.toContain("Optional.IsDefined(Count)");
+
+    // Optional properties: have guard
+    expect(content).toContain("Optional.IsDefined(Description)");
+    expect(content).toContain("Optional.IsDefined(Weight)");
+  });
+
+  /**
+   * Validates that an optional utcDateTime property with RFC3339 encoding
+   * gets both the IsDefined guard and the correct format specifier inside.
+   * Ensures guards compose correctly with encoding-aware serialization.
+   */
+  it("wraps optional utcDateTime property in guard with format specifier", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        createdAt?: utcDateTime;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain("if (Optional.IsDefined(CreatedAt))");
+    expect(content).toContain('writer.WritePropertyName("createdAt"u8);');
+    expect(content).toContain('writer.WriteStringValue(CreatedAt, "O");');
+  });
+});

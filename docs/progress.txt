@@ -783,3 +783,25 @@ and Bytes (2.2.6) which also need format specifiers. Future tasks should add cas
 - Design decision: Chose `valueTransform` callback over separate handling in component
   for clean separation of type analysis vs rendering. Rejected string templates (less type-safe)
   and prefix/suffix pattern (awkward with nested parens).
+
+2026-02-28 — Task 2.2.11: Implement optional property guards (complete)
+
+Modified `src/components/serialization/PropertySerializer.tsx` to wrap optional property writes in `Optional.IsDefined`/`Optional.IsCollectionDefined` guards:
+
+- Added `needsOptionalGuard(property)` — returns true for `property.optional` properties
+- Added `getOptionalGuardMethodName(property)` — returns "IsCollectionDefined" for collections, "IsDefined" for scalars
+- Extracted `renderWriteStatements()` helper to handle indentation (4 spaces unguarded, 8 spaces inside guard block)
+- Modified `WritePropertySerialization` to conditionally wrap write statements in `if (Optional.GuardMethod(Prop)) { ... }` block
+
+Design decision: Guard logic lives inside `WritePropertySerialization` (not as a separate wrapper component) because the guard tightly couples to the serialization — it wraps both WritePropertyName and WriteValue together. This keeps the code simple and means future type serialization tasks (2.2.6-2.2.10) will automatically get guards when they add support for their types.
+
+Tests added (7 new tests in `OptionalPropertyGuards` describe block):
+- Optional string → IsDefined guard
+- Optional int32 → IsDefined guard
+- Required non-nullable → no guard
+- Indentation correctness inside guard block
+- Optional boolean → IsDefined guard
+- Mixed required/optional model → guards only on optional
+- Optional utcDateTime → IsDefined guard with format specifier
+
+Note for task 2.2.12: The required-nullable if/else pattern (with WriteNull fallback) is not yet implemented — that's the next task. The guard infrastructure is ready for it.

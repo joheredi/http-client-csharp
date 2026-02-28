@@ -560,6 +560,7 @@ Created `src/builtins/system.ts` and `src/builtins/system-text-json.ts` as separ
 ## Design Decisions
 
 ### Duration serialization: valueTransform pattern (Task 2.2.5)
+
 - `WriteMethodInfo` now has an optional `valueTransform?: (propertyName: string) => string` callback
 - When present, the property name is passed through it before rendering (e.g., `name → name.TotalSeconds`)
 - This pattern will be reused for bytes serialization (2.2.6) and any future type that needs value wrapping

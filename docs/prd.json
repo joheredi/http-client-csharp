@@ -2020,7 +2020,7 @@
           "title": "Implement optional property guards",
           "description": "Optional properties wrapped with `if (Optional.IsDefined(prop))`. Optional collections wrapped with `if (Optional.IsCollectionDefined(prop))`.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.2.1"
           ],
