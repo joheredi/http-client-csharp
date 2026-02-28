@@ -638,6 +638,7 @@ When two rendering functions call each other recursively (e.g., `renderValueWrit
 **Component**: `src/components/serialization/DeserializeVariableDeclarations.tsx`
 
 **Key patterns:**
+
 - Uses `computeVariableInfos()` which mirrors `computeSerializationCtorParams()` but returns property objects instead of ParameterProps, enabling discriminator/type checks
 - For the `additionalBinaryDataProperties` variable, must wrap the `code` template in `<>` fragment with separate `{"\n    "}` for the newline — `code` template literals don't handle `\n` at the beginning of the string correctly
 - `TypeExpression` renders array types as `T[]` (e.g., `string[]`), not `IList<T>` — this differs from the legacy emitter which uses `IList<T>` for property declarations and variable declarations
@@ -645,3 +646,17 @@ When two rendering functions call each other recursively (e.g., `renderValueWrit
 - Variable order for derived models: base props → additionalBinaryData → derived own props (matching serialization constructor parameter order)
 
 **Gotcha**: When using the `code` template tag, leading `\n` characters are not rendered. Use a raw string `{"\n    "}` as a separate child before the `code` template for newline+indentation.
+
+## Design Decisions
+
+### PropertyMatchingLoop Approach (Task 2.3.4)
+**Chosen**: Single `PropertyMatchingLoop` component with `getReadExpression()` helper function that maps SDK types to `prop.Value.Get{Type}()` expressions. Returns null for unsupported types.
+**Why**: Mirrors the write-side pattern (`WritePropertySerialization` + `getWriteMethodInfo`). Clean extension point — subsequent tasks (2.3.5-2.3.12) add new type support by extending `getReadExpression`.
+**Rejected**: Children-per-property approach (overcomplicated; loop structure is uniform across properties).
+
+### Property Matching Loop — Key Implementation Notes
+- `computeMatchableProperties()` returns a flat list: base model properties (recursive) + own non-override properties, same order as `computeVariableInfos` in DeserializeVariableDeclarations.tsx
+- The `READ_METHOD_MAP` constant maps TCGC SDK type kinds to `JsonElement.Get{Type}()` method names
+- URL type is handled specially: `new Uri(prop.Value.GetString())` instead of a simple getter
+- Constants (e.g., discriminator `kind: "dog"`) are unwrapped to their `valueType` before looking up the reader method
+- The children slot after all property matches is for the additional binary data catch-all (task 2.3.12)

@@ -18,6 +18,7 @@ import { DeserializationConstructor } from "./components/serialization/Deseriali
 import { DeserializeVariableDeclarations } from "./components/serialization/DeserializeVariableDeclarations.js";
 import { JsonDeserialize } from "./components/serialization/JsonDeserialize.js";
 import { JsonModelWriteCore } from "./components/serialization/JsonModelWriteCore.js";
+import { PropertyMatchingLoop } from "./components/serialization/PropertyMatchingLoop.js";
 import { $lib } from "./lib.js";
 import { type CSharpEmitterOptions, resolveOptions } from "./options.js";
 
@@ -95,6 +96,7 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
             {"\n\n"}
             <JsonDeserialize type={m}>
               <DeserializeVariableDeclarations type={m} />
+              <PropertyMatchingLoop type={m} />
             </JsonDeserialize>
           </ModelSerializationFile>
         ))}

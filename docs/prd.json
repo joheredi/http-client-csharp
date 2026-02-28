@@ -2189,7 +2189,7 @@
           "title": "Implement property matching loop",
           "description": "Generate `foreach (var prop in element.EnumerateObject())` with `if (prop.NameEquals(\"name\"u8))` for each property, followed by value extraction and `continue`.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.3.3"
           ],

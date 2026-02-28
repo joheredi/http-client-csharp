@@ -9,6 +9,12 @@ export type { JsonModelWriteCoreProps } from "./JsonModelWriteCore.js";
 export { ModelSerializationFile } from "./ModelSerializationFile.js";
 export type { ModelSerializationFileProps } from "./ModelSerializationFile.js";
 export {
+  computeMatchableProperties,
+  getReadExpression,
+  PropertyMatchingLoop,
+} from "./PropertyMatchingLoop.js";
+export type { PropertyMatchingLoopProps } from "./PropertyMatchingLoop.js";
+export {
   getWriteMethodInfo,
   WritePropertySerialization,
 } from "./PropertySerializer.js";

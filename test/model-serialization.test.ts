@@ -3474,3 +3474,566 @@ describe("ModelSerialization", () => {
     expect(addressIdx).toBeLessThan(ageIdx);
   });
 });
+
+/**
+ * Tests for the PropertyMatchingLoop component.
+ *
+ * These tests verify that the emitter generates the `foreach (var prop in element.EnumerateObject())`
+ * loop that matches JSON properties by name and assigns their values to local variables.
+ * This is the core deserialization pattern where each property in the JSON payload is
+ * matched against known property names using `prop.NameEquals("name"u8)`, and the value
+ * is extracted using the appropriate `JsonElement.Get{Type}()` method.
+ *
+ * Why these tests matter:
+ * - The property matching loop is the heart of JSON deserialization — without it,
+ *   no property values would be populated from JSON.
+ * - Property names must use the `serializedName` (wire name) not the C# name,
+ *   and must use the UTF-8 byte literal suffix `u8` for performance.
+ * - Variable names must match the parameter names used in the variable declarations
+ *   (task 2.3.3) to ensure correct assignment.
+ * - The `continue` statement after each match prevents falling through to
+ *   subsequent property checks or the additional binary data catch-all.
+ * - Derived models must include ALL properties (base + own) in the matching loop.
+ */
+describe("PropertyMatchingLoop", () => {
+  /**
+   * Validates that the foreach loop iterates over all JSON properties
+   * using `element.EnumerateObject()`. This is the standard pattern for
+   * reading properties from a JSON object in System.Text.Json.
+   */
+  it("generates foreach loop over element.EnumerateObject()", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+    const content = outputs[fileKey!];
+
+    expect(content).toContain(
+      "foreach (var prop in element.EnumerateObject())",
+    );
+  });
+
+  /**
+   * Validates that a string property generates the correct NameEquals check
+   * and GetString() value extraction. String is the most common property type
+   * and the simplest case — no format specifiers or type conversions needed.
+   */
+  it("deserializes string property with prop.Value.GetString()", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("name"u8))');
+    expect(content).toContain("name = prop.Value.GetString();");
+    expect(content).toContain("continue;");
+  });
+
+  /**
+   * Validates that an int32 property uses GetInt32() for value extraction.
+   * This tests the numeric type mapping where TCGC's `int32` maps to C#'s
+   * `JsonElement.GetInt32()`.
+   */
+  it("deserializes int32 property with prop.Value.GetInt32()", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        count: int32;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("count"u8))');
+    expect(content).toContain("count = prop.Value.GetInt32();");
+  });
+
+  /**
+   * Validates that a boolean property uses GetBoolean() for value extraction.
+   */
+  it("deserializes boolean property with prop.Value.GetBoolean()", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        enabled: boolean;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("enabled"u8))');
+    expect(content).toContain("enabled = prop.Value.GetBoolean();");
+  });
+
+  /**
+   * Validates that a float64 property uses GetDouble() for value extraction.
+   */
+  it("deserializes float64 property with prop.Value.GetDouble()", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        price: float64;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("price"u8))');
+    expect(content).toContain("price = prop.Value.GetDouble();");
+  });
+
+  /**
+   * Validates that an int64 property uses GetInt64() for value extraction.
+   * This confirms that the mapping handles 64-bit integers correctly.
+   */
+  it("deserializes int64 property with prop.Value.GetInt64()", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        bigNumber: int64;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("bigNumber"u8))');
+    expect(content).toContain("bigNumber = prop.Value.GetInt64();");
+  });
+
+  /**
+   * Validates that multiple properties are matched in order within the foreach
+   * loop. The order must match the model property declaration order (which also
+   * matches the variable declaration and serialization constructor order).
+   */
+  it("matches multiple properties in declaration order", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        count: int32;
+        enabled: boolean;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // All three properties must be present
+    expect(content).toContain('if (prop.NameEquals("name"u8))');
+    expect(content).toContain("name = prop.Value.GetString();");
+    expect(content).toContain('if (prop.NameEquals("count"u8))');
+    expect(content).toContain("count = prop.Value.GetInt32();");
+    expect(content).toContain('if (prop.NameEquals("enabled"u8))');
+    expect(content).toContain("enabled = prop.Value.GetBoolean();");
+
+    // Verify ordering: name before count before enabled
+    const nameIdx = content.indexOf('prop.NameEquals("name"u8)');
+    const countIdx = content.indexOf('prop.NameEquals("count"u8)');
+    const enabledIdx = content.indexOf('prop.NameEquals("enabled"u8)');
+    expect(nameIdx).toBeLessThan(countIdx);
+    expect(countIdx).toBeLessThan(enabledIdx);
+  });
+
+  /**
+   * Validates that the serialized wire name is used in NameEquals, not the
+   * C# PascalCase property name. JSON properties use camelCase wire names
+   * but the C# variable is named with camelCase parameter convention.
+   * The u8 suffix creates a ReadOnlySpan<byte> for efficient comparison.
+   */
+  it("uses serializedName with u8 suffix in NameEquals", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        @encodedName("application/json", "display_name")
+        displayName: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Must use the wire name, not the TypeSpec name
+    expect(content).toContain('if (prop.NameEquals("display_name"u8))');
+    // The variable name should be camelCase parameter convention
+    expect(content).toContain("displayName = prop.Value.GetString();");
+  });
+
+  /**
+   * Validates that each property match block includes a `continue` statement.
+   * Without `continue`, the loop would fall through to check subsequent
+   * properties unnecessarily, and worse, would fall through to the additional
+   * binary data catch-all (task 2.3.12), incorrectly treating the matched
+   * property as unknown data.
+   */
+  it("includes continue after each property assignment", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        count: int32;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Each property block should have assignment followed by continue
+    const foreachBlock = content.substring(
+      content.indexOf("foreach (var prop in element.EnumerateObject())"),
+    );
+    const continueCount = (foreachBlock.match(/continue;/g) || []).length;
+    // Should have at least 2 continues (one for each property)
+    expect(continueCount).toBeGreaterThanOrEqual(2);
+  });
+
+  /**
+   * Validates that derived discriminated models include base model properties
+   * in the matching loop. The derived model's DeserializeXxx method processes
+   * ALL properties (base + own) — the base class does not have a separate
+   * deserialization that gets called.
+   */
+  it("includes base model properties in derived model loop", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Dog extends Pet {
+        kind: "dog";
+        breed: string;
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Dog.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+    const content = outputs[fileKey!];
+
+    // Base model properties must be in the derived model's loop
+    expect(content).toContain('if (prop.NameEquals("kind"u8))');
+    expect(content).toContain("kind = prop.Value.GetString();");
+    expect(content).toContain('if (prop.NameEquals("name"u8))');
+    expect(content).toContain("name = prop.Value.GetString();");
+    // Own property must also be present
+    expect(content).toContain('if (prop.NameEquals("breed"u8))');
+    expect(content).toContain("breed = prop.Value.GetString();");
+
+    // Verify ordering: base props before own props
+    const kindIdx = content.indexOf('prop.NameEquals("kind"u8)');
+    const nameIdx = content.indexOf('prop.NameEquals("name"u8)');
+    const breedIdx = content.indexOf('prop.NameEquals("breed"u8)');
+    expect(kindIdx).toBeLessThan(nameIdx);
+    expect(nameIdx).toBeLessThan(breedIdx);
+  });
+
+  /**
+   * Validates the indentation structure of the property matching loop.
+   * The foreach is at 4-space indent (method body), the if blocks at
+   * 8-space indent (foreach body), and assignments at 12-space indent
+   * (if body). Correct indentation is critical for matching legacy
+   * emitter golden files.
+   */
+  it("generates correctly indented loop structure", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // 4 spaces: foreach keyword
+    expect(content).toContain(
+      "    foreach (var prop in element.EnumerateObject())",
+    );
+    // 4 spaces: opening brace of foreach
+    expect(content).toMatch(/\n    \{[\s\S]*prop\.NameEquals/);
+    // 8 spaces: if block inside foreach
+    expect(content).toContain('        if (prop.NameEquals("name"u8))');
+    // 12 spaces: assignment inside if block
+    expect(content).toContain(
+      "            name = prop.Value.GetString();",
+    );
+    // 12 spaces: continue inside if block
+    expect(content).toContain("            continue;");
+  });
+
+  /**
+   * Validates that the foreach loop is placed after variable declarations
+   * and before the closing brace of the DeserializeXxx method. The correct
+   * ordering is: null check → variable declarations → foreach loop.
+   */
+  it("is placed after variable declarations in Deserialize method", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Variable declarations should appear before the foreach loop
+    const varDeclIdx = content.indexOf("string name = default;");
+    const foreachIdx = content.indexOf(
+      "foreach (var prop in element.EnumerateObject())",
+    );
+    expect(varDeclIdx).toBeGreaterThan(-1);
+    expect(foreachIdx).toBeGreaterThan(-1);
+    expect(varDeclIdx).toBeLessThan(foreachIdx);
+  });
+
+  /**
+   * Validates that a URL property is deserialized with `new Uri(prop.Value.GetString())`.
+   * URL types map to `System.Uri` in C# which requires constructing from a string.
+   */
+  it("deserializes url property with new Uri(prop.Value.GetString())", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        endpoint: url;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("endpoint"u8))');
+    expect(content).toContain(
+      "endpoint = new Uri(prop.Value.GetString());",
+    );
+  });
+
+  /**
+   * Validates that the discriminator property in a base model is matched
+   * and deserialized like any other string property. Even though the
+   * discriminator has special semantics, its value extraction follows the
+   * same pattern — the JSON value overwrites the pre-initialized default.
+   */
+  it("matches discriminator property in base model", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Dog extends Pet {
+        kind: "dog";
+        breed: string;
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    // Check the base model's serialization file
+    const petKey = Object.keys(outputs).find((k) =>
+      k.includes("Pet.Serialization.cs"),
+    );
+    expect(petKey).toBeDefined();
+    const petContent = outputs[petKey!];
+
+    expect(petContent).toContain('if (prop.NameEquals("kind"u8))');
+    expect(petContent).toContain("kind = prop.Value.GetString();");
+  });
+
+  /**
+   * Validates that float32 property uses GetSingle() for value extraction.
+   * C#'s `float` (System.Single) maps to JsonElement.GetSingle().
+   */
+  it("deserializes float32 property with prop.Value.GetSingle()", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        weight: float32;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("weight"u8))');
+    expect(content).toContain("weight = prop.Value.GetSingle();");
+  });
+});

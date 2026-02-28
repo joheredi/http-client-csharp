@@ -967,3 +967,28 @@ Next: 2.2.8 (enum serialization), 2.2.6 (bytes), or 2.2.10 (dictionary) are natu
 - Task 2.3.13 (constructor call) will pass these variables to the serialization constructor
 - TypeExpression renders array types as `T[]` (not `IList<T>`) — this is consistent with how the emitter framework represents types. The legacy emitter uses `IList<T>` but the new emitter uses whatever TypeExpression produces.
 - `IDictionary<string, BinaryData>` and `ChangeTrackingDictionary` are currently raw strings — when tasks 5.1.3/5.1.4 add ChangeTracking builtins, these could be updated to use refkeys for proper using directive generation
+
+2026-02-28 — Task 2.3.4: Implement property matching loop (complete)
+
+Created `src/components/serialization/PropertyMatchingLoop.tsx` with:
+- `PropertyMatchingLoop` component — generates `foreach (var prop in element.EnumerateObject())` loop
+- `getReadExpression(type)` — maps SDK types to `prop.Value.Get{Type}()` expressions
+- `computeMatchableProperties(model)` — gets flat property list (base + own for derived models)
+
+Supported primitive types: string, boolean, int8-int64, uint8-uint64, float32, float64, decimal, decimal128, safeint, numeric, integer, url.
+Unsupported types (return null, handled by 2.3.5-2.3.12): models, enums, collections, dicts, bytes, datetime, duration.
+
+Pattern generated for each property:
+```csharp
+if (prop.NameEquals("serializedName"u8))
+{
+    varName = prop.Value.GetXxx();
+    continue;
+}
+```
+
+Design decision: Mirrors write-side pattern (PropertySerializer.tsx). Single component with helper function. Types not yet supported return null and are skipped, allowing incremental extension by subsequent tasks.
+
+Integration: Added as child of `<JsonDeserialize>` after `<DeserializeVariableDeclarations>` in emitter.tsx.
+
+15 new tests added to model-serialization.test.ts covering: foreach loop generation, primitive type getters (string/int/bool/float/url), multiple properties in order, serializedName usage, continue statements, derived model base property inclusion, indentation, placement after variable declarations.
