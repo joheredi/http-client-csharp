@@ -805,3 +805,40 @@ Tests added (7 new tests in `OptionalPropertyGuards` describe block):
 - Optional utcDateTime → IsDefined guard with format specifier
 
 Note for task 2.2.12: The required-nullable if/else pattern (with WriteNull fallback) is not yet implemented — that's the next task. The guard infrastructure is ready for it.
+
+2026-02-28 — Task 2.2.12: Implement required-nullable write pattern (complete)
+
+Modified `src/components/serialization/PropertySerializer.tsx` to handle required-nullable properties (properties with `type.kind === "nullable"` that are NOT optional).
+
+Changes:
+- Added `isRequiredNullable(property)` — detects `!optional && !collection && type.kind === "nullable"`
+- Added `needsNullableValueAccess(property)` — checks if `.Value` is needed (nullable value types like int?, bool?, DateTimeOffset?)
+- Expanded `needsOptionalGuard()` to return true for required-nullable properties (they also need Optional.IsDefined)
+- Modified `WritePropertySerialization` to render an else branch with `writer.WriteNull("name"u8)` for required-nullable
+- Added `.Value` accessor for nullable value types inside the guard block
+
+Pattern generated for required-nullable value types (e.g., `int | null`):
+```csharp
+if (Optional.IsDefined(Count))
+{
+    writer.WritePropertyName("count"u8);
+    writer.WriteNumberValue(Count.Value);
+}
+else
+{
+    writer.WriteNull("count"u8);
+}
+```
+
+Reference types (string, url) don't get `.Value` but still get the else branch.
+
+Tests added: 7 new tests in `RequiredNullableWritePattern` describe block covering:
+- Required nullable string (reference type, no .Value)
+- Required nullable int32 (value type, .Value)
+- Required nullable boolean (value type, .Value)
+- Required nullable utcDateTime (value type, .Value + format specifier)
+- Indentation verification for if/else block
+- Mixed required/optional/required-nullable model
+- Required nullable URL (reference type, no .Value)
+
+Known gap: Optional nullable value types (e.g., `count?: int32` → `int?`) also need `.Value` but existing code doesn't handle it. This is a pre-existing issue, not introduced by this task.

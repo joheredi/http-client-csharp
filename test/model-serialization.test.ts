@@ -1953,3 +1953,286 @@ describe("OptionalPropertyGuards", () => {
     expect(content).toContain('writer.WriteStringValue(CreatedAt, "O");');
   });
 });
+
+/**
+ * Tests for the required-nullable write pattern (task 2.2.12).
+ *
+ * When a property is required AND explicitly nullable (e.g., `prop: string | null`),
+ * the serialization code generates an if/else pattern:
+ * - If the value is defined: write the property name and value
+ * - Else: write null via `writer.WriteNull("name"u8)`
+ *
+ * This differs from:
+ * - Required non-nullable: no guard at all (always writes value)
+ * - Optional: only an if block (skips serialization when unset, no else)
+ *
+ * For nullable value types (int?, bool?, DateTimeOffset?), the value accessor
+ * uses `.Value` inside the if block to unwrap the Nullable<T> struct.
+ * Reference types (string?) don't need `.Value`.
+ */
+describe("RequiredNullableWritePattern", () => {
+  /**
+   * Validates that a required nullable string property gets the if/else pattern
+   * with WriteNull in the else branch. String is a reference type so no `.Value`
+   * is needed — the property accessor is used directly.
+   */
+  it("generates if/else with WriteNull for required nullable string", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string | null;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Required nullable string gets if/else guard with IsDefined
+    expect(content).toContain("if (Optional.IsDefined(Name))");
+    expect(content).toContain('writer.WritePropertyName("name"u8);');
+    // String is a reference type — no .Value needed
+    expect(content).toContain("writer.WriteStringValue(Name);");
+    // Else branch writes null
+    expect(content).toContain('writer.WriteNull("name"u8);');
+  });
+
+  /**
+   * Validates that a required nullable int32 property gets the if/else pattern
+   * with `.Value` to unwrap the Nullable<int>. Int is a C# value type, so
+   * `int?` is actually `Nullable<int>` and requires `.Value` to access the
+   * underlying value when we know it's defined.
+   */
+  it("generates if/else with .Value for required nullable int32", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        count: int32 | null;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Required nullable int32 gets if/else guard
+    expect(content).toContain("if (Optional.IsDefined(Count))");
+    expect(content).toContain('writer.WritePropertyName("count"u8);');
+    // Int is a value type — .Value needed to unwrap Nullable<int>
+    expect(content).toContain("writer.WriteNumberValue(Count.Value);");
+    // Else branch writes null
+    expect(content).toContain('writer.WriteNull("count"u8);');
+  });
+
+  /**
+   * Validates the required nullable boolean pattern. Boolean is a value type,
+   * so `bool?` is `Nullable<bool>` and needs `.Value`.
+   */
+  it("generates if/else with .Value for required nullable boolean", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        isActive: boolean | null;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain("if (Optional.IsDefined(IsActive))");
+    expect(content).toContain('writer.WritePropertyName("isActive"u8);');
+    expect(content).toContain("writer.WriteBooleanValue(IsActive.Value);");
+    expect(content).toContain('writer.WriteNull("isActive"u8);');
+  });
+
+  /**
+   * Validates the required nullable utcDateTime pattern. DateTimeOffset is a
+   * value type, so `DateTimeOffset?` needs `.Value`. The format specifier "O"
+   * (RFC3339) should appear after the `.Value` accessor.
+   */
+  it("generates if/else with .Value and format for required nullable utcDateTime", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        createdAt: utcDateTime | null;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain("if (Optional.IsDefined(CreatedAt))");
+    expect(content).toContain('writer.WritePropertyName("createdAt"u8);');
+    // DateTimeOffset is a value type — .Value + format specifier
+    expect(content).toContain('writer.WriteStringValue(CreatedAt.Value, "O");');
+    expect(content).toContain('writer.WriteNull("createdAt"u8);');
+  });
+
+  /**
+   * Validates correct indentation of the full if/else block structure.
+   * The else branch should follow the same indentation as the if block.
+   * ```csharp
+   *     if (Optional.IsDefined(Count))
+   *     {
+   *         writer.WritePropertyName("count"u8);
+   *         writer.WriteNumberValue(Count.Value);
+   *     }
+   *     else
+   *     {
+   *         writer.WriteNull("count"u8);
+   *     }
+   * ```
+   */
+  it("indents if/else block correctly for required nullable property", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        count: int32 | null;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Verify full indented block structure
+    expect(content).toContain("    if (Optional.IsDefined(Count))");
+    expect(content).toContain("    {");
+    expect(content).toContain('        writer.WritePropertyName("count"u8);');
+    expect(content).toContain("        writer.WriteNumberValue(Count.Value);");
+    expect(content).toContain("    else");
+    expect(content).toContain('        writer.WriteNull("count"u8);');
+  });
+
+  /**
+   * Validates that a model with mixed required, optional, and required-nullable
+   * properties applies the correct pattern to each:
+   * - Required non-nullable: direct write (no guard)
+   * - Optional: if guard only (no else)
+   * - Required nullable: if/else guard with WriteNull
+   */
+  it("handles mixed required, optional, and required-nullable properties", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        description?: string;
+        count: int32 | null;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Required non-nullable 'name': no guard
+    expect(content).not.toContain("Optional.IsDefined(Name)");
+    expect(content).toContain('writer.WritePropertyName("name"u8);');
+    expect(content).toContain("writer.WriteStringValue(Name);");
+
+    // Optional 'description': if guard only (no else/WriteNull)
+    expect(content).toContain("if (Optional.IsDefined(Description))");
+    expect(content).not.toContain('writer.WriteNull("description"u8);');
+
+    // Required nullable 'count': if/else guard with WriteNull
+    expect(content).toContain("if (Optional.IsDefined(Count))");
+    expect(content).toContain("writer.WriteNumberValue(Count.Value);");
+    expect(content).toContain('writer.WriteNull("count"u8);');
+  });
+
+  /**
+   * Validates that a required nullable URL property (reference type) does not
+   * get `.Value`. URL maps to System.Uri which is a class (reference type),
+   * not a struct.
+   */
+  it("does not add .Value for required nullable URL (reference type)", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        endpoint: url | null;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain("if (Optional.IsDefined(Endpoint))");
+    // URL is a reference type — no .Value
+    expect(content).toContain("writer.WriteStringValue(Endpoint);");
+    expect(content).not.toContain("Endpoint.Value");
+    expect(content).toContain('writer.WriteNull("endpoint"u8);');
+  });
+});

@@ -2041,7 +2041,7 @@
           "title": "Implement required-nullable write pattern",
           "description": "Required nullable properties use IsDefined + WriteNull else branch: `if (Optional.IsDefined(prop)) { write... } else { writer.WriteNull(\"name\"u8); }`.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.2.11"
           ],

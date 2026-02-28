@@ -567,3 +567,16 @@ Created `src/builtins/system.ts` and `src/builtins/system-text-json.ts` as separ
 - The `INTEGER_KINDS` set determines whether `Convert.ToInt32()` wrapping is needed for numeric duration encodings
 - DurationKnownEncoding values are: `"ISO8601"`, `"seconds"`, `"milliseconds"` (from `@typespec/compiler`)
 - `SdkDurationType` has `encode` (the encoding) and `wireType` (the target type, e.g., int32, float64)
+
+## Known Gap: Optional Value Type .Value Accessor
+
+Optional nullable value types (e.g., `count?: int32` → C# `int?`) need `.Value` inside `Optional.IsDefined` guard blocks to unwrap `Nullable<T>`, but the current code only adds `.Value` for required-nullable properties. This means optional int/bool/DateTimeOffset properties generate `writer.WriteNumberValue(Count)` instead of `writer.WriteNumberValue(Count.Value)`. The generated C# won't compile for these cases. This should be addressed in a future task.
+
+## Design Decisions
+
+### Task 2.2.12: Required-Nullable Write Pattern
+**Approach chosen**: Extended `needsOptionalGuard()` to also trigger for required-nullable properties, reusing the same guard infrastructure. Added else branch rendering inside `WritePropertySerialization` component.
+
+**Why**: Both optional and required-nullable properties use `Optional.IsDefined()` guards — the only difference is the else branch. This minimizes code changes and reuses existing infrastructure cleanly.
+
+**Rejected**: Separate rendering path with three code paths (required, optional, required-nullable). Would duplicate guard rendering logic and be harder to maintain.
