@@ -620,3 +620,36 @@ Total tests: 268. All passing. Build succeeds.
 Design decision: All types added to existing SystemClientModelPrimitives library (System.ClientModel.Primitives namespace). Generic interfaces (IJsonModel, IPersistableModel) declared as regular interface descriptors — generic parameterization is handled at usage site, not in the library declaration. This matches how System.Collections.Generic types work in Alloy.
 
 **Next natural tasks:** 2.1.1 (ModelSerializationFile component — now has all needed builtins), 0.2.3 (paging builtins), 0.2.5 (auth builtins), 0.3.2 (EmitterContext), or 1.1.3 (collection type utilities)
+
+2026-02-28 — Task 2.1.1: Create ModelSerializationFile component (complete)
+
+Created `src/components/serialization/ModelSerializationFile.tsx` — generates `.Serialization.cs` partial class files implementing `IJsonModel<T>`.
+
+**Key design decisions:**
+- Uses `code` template with `SystemClientModelPrimitives.IJsonModel` builtin refkey for the interface type. This auto-generates `using System.ClientModel.Primitives;` via Alloy's SourceFile.
+- Uses `namekey(modelName, { ignoreNameConflict: true })` from `@alloy-js/core` to prevent Alloy's symbol deduplication. Without this, the serialization file's ClassDeclaration would be renamed `Widget_2` because ModelFile already declares a ClassDeclaration with the same name in the same namespace.
+- No refkey on the serialization ClassDeclaration — the ModelFile already owns the type's refkey.
+- Re-declares baseType for derived models (matching golden file pattern: `Dog : Pet, IJsonModel<Dog>`).
+- Abstract models get the abstract modifier in the serialization file.
+- Accepts `children` prop for future tasks to add serialization methods.
+
+**Files created:**
+- `src/components/serialization/ModelSerializationFile.tsx` — component
+- `src/components/serialization/index.ts` — barrel export
+- `test/model-serialization.test.ts` — 8 tests covering path, header, interface, namespace, derived, abstract, hierarchy
+
+**Files modified:**
+- `src/emitter.tsx` — renders serialization files for all models
+- `docs/prd.json` — marked 2.1.1 as done
+
+**Known cosmetic differences from golden files:**
+- Alloy's SourceFile places `using` directives before the license header. Golden files have header first. This is an Alloy framework behavior, not specific to the serialization file.
+- Empty class body renders as `class Widget;` (semicolon) instead of `class Widget { }`. This is valid C# 12+ and will resolve when methods are added in later tasks.
+
+**Learnings:**
+- TCGC model `namespace` property does NOT include `.Models` suffix (e.g., `TestNamespace`, not `TestNamespace.Models`). Test expectations should match this.
+- `namekey()` from `@alloy-js/core` with `{ ignoreNameConflict: true }` is the correct way to handle partial class declarations across files. Same pattern as `OverloadConstructor`.
+
+Total tests: 276 (all passing). Build succeeds.
+
+**Next natural tasks:** 2.1.2 (interface determination), 2.1.3 (parameterless internal constructor), 1.1.3 (collection type utilities), 1.2.6 (additionalBinaryDataProperties)

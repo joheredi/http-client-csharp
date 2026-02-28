@@ -13,6 +13,7 @@ import {
 } from "./components/models/ModelConstructors.js";
 import { ModelFile } from "./components/models/ModelFile.js";
 import { UnknownDiscriminatorModelFile } from "./components/models/UnknownDiscriminatorModel.js";
+import { ModelSerializationFile } from "./components/serialization/ModelSerializationFile.js";
 import { $lib } from "./lib.js";
 import { type CSharpEmitterOptions, resolveOptions } from "./options.js";
 
@@ -82,6 +83,9 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
           .map((m) => (
             <UnknownDiscriminatorModelFile type={m} options={options} />
           ))}
+        {models.map((m) => (
+          <ModelSerializationFile type={m} options={options} />
+        ))}
       </CSharpScalarOverrides>
     </HttpClientCSharpOutput>
   );
