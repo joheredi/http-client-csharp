@@ -978,3 +978,370 @@ describe("JsonModelWriteCore", () => {
     expect(petContent).toContain("base.JsonModelWriteCore(writer, options);");
   });
 });
+
+/**
+ * Tests for primitive property serialization in JsonModelWriteCore.
+ *
+ * These tests verify that the emitter generates `writer.WritePropertyName("serializedName"u8)`
+ * and `writer.WriteXxxValue(PropertyName)` statements for each primitive property type
+ * inside the `JsonModelWriteCore` method body.
+ *
+ * Why these tests matter:
+ * - Property serialization is the core output of the JSON write path — without it,
+ *   models produce empty JSON objects, breaking all API communication.
+ * - UTF-8 byte literals (`"name"u8`) are a performance-critical pattern that the
+ *   System.ClientModel framework expects for efficient JSON writing.
+ * - The correct writer method must be selected for each type (WriteStringValue,
+ *   WriteNumberValue, WriteBooleanValue) or the output will be malformed JSON.
+ * - Derived models must NOT serialize base discriminator overrides — those are
+ *   handled by the base class via `base.JsonModelWriteCore`.
+ */
+describe("PropertySerialization", () => {
+  /**
+   * Validates that a string property generates `writer.WritePropertyName("name"u8)`
+   * followed by `writer.WriteStringValue(Name)`. This is the most common
+   * serialization pattern — the UTF-8 byte literal is required for performance.
+   */
+  it("serializes string property with WriteStringValue", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('writer.WritePropertyName("name"u8);');
+    expect(content).toContain("writer.WriteStringValue(Name);");
+  });
+
+  /**
+   * Validates that an int32 property generates `writer.WriteNumberValue(Count)`.
+   * All integer and floating-point types map to WriteNumberValue in the
+   * Utf8JsonWriter API.
+   */
+  it("serializes int32 property with WriteNumberValue", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        count: int32;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('writer.WritePropertyName("count"u8);');
+    expect(content).toContain("writer.WriteNumberValue(Count);");
+  });
+
+  /**
+   * Validates that a boolean property generates `writer.WriteBooleanValue(IsActive)`.
+   * Boolean is the third primitive type alongside string and number.
+   */
+  it("serializes boolean property with WriteBooleanValue", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        isActive: boolean;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('writer.WritePropertyName("isActive"u8);');
+    expect(content).toContain("writer.WriteBooleanValue(IsActive);");
+  });
+
+  /**
+   * Validates that a float64 property generates `writer.WriteNumberValue(Score)`.
+   * Floating-point types also use WriteNumberValue, same as integers.
+   */
+  it("serializes float64 property with WriteNumberValue", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        score: float64;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('writer.WritePropertyName("score"u8);');
+    expect(content).toContain("writer.WriteNumberValue(Score);");
+  });
+
+  /**
+   * Validates that multiple properties are serialized in order. Each property
+   * gets its own WritePropertyName + WriteXxxValue pair. The output should
+   * contain all property serialization statements.
+   */
+  it("serializes multiple primitive properties in order", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        count: int32;
+        isActive: boolean;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // All three properties should be serialized
+    expect(content).toContain('writer.WritePropertyName("name"u8);');
+    expect(content).toContain("writer.WriteStringValue(Name);");
+    expect(content).toContain('writer.WritePropertyName("count"u8);');
+    expect(content).toContain("writer.WriteNumberValue(Count);");
+    expect(content).toContain('writer.WritePropertyName("isActive"u8);');
+    expect(content).toContain("writer.WriteBooleanValue(IsActive);");
+
+    // Verify ordering: name before count before isActive
+    const nameIdx = content.indexOf('WritePropertyName("name"u8)');
+    const countIdx = content.indexOf('WritePropertyName("count"u8)');
+    const activeIdx = content.indexOf('WritePropertyName("isActive"u8)');
+    expect(nameIdx).toBeLessThan(countIdx);
+    expect(countIdx).toBeLessThan(activeIdx);
+  });
+
+  /**
+   * Validates that property names use UTF-8 byte literals (`"name"u8`).
+   * The u8 suffix creates a `ReadOnlySpan<byte>` which avoids UTF-16 to
+   * UTF-8 transcoding at runtime — a critical performance optimization
+   * required by the System.ClientModel framework.
+   */
+  it("uses u8 suffix for UTF-8 byte literal property names", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        myProperty: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Must use u8 suffix for the property name
+    expect(content).toMatch(/WritePropertyName\("myProperty"u8\)/);
+  });
+
+  /**
+   * Validates that the serialized name (JSON wire name) is used for
+   * WritePropertyName, not the C# property name. TypeSpec property names
+   * use camelCase which becomes the serialized name, while C# properties
+   * are PascalCase.
+   */
+  it("uses serializedName for WritePropertyName and PascalCase for value", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        firstName: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // serializedName (camelCase) for the wire name
+    expect(content).toContain('writer.WritePropertyName("firstName"u8);');
+    // PascalCase for the C# property accessor
+    expect(content).toContain("writer.WriteStringValue(FirstName);");
+  });
+
+  /**
+   * Validates that derived models only serialize their own properties, not
+   * inherited ones. The base class properties are serialized via the
+   * `base.JsonModelWriteCore(writer, options)` call.
+   */
+  it("derived model serializes only own properties", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Dog extends Pet {
+        kind: "dog";
+        breed: string;
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    // Dog should serialize its own property (breed) but NOT the base discriminator override (kind: "dog")
+    const dogFileKey = Object.keys(outputs).find((k) =>
+      k.includes("Dog.Serialization.cs"),
+    );
+    const dogContent = outputs[dogFileKey!];
+
+    expect(dogContent).toContain('writer.WritePropertyName("breed"u8);');
+    expect(dogContent).toContain("writer.WriteStringValue(Breed);");
+    // Should NOT contain kind property write — it's handled by base.JsonModelWriteCore
+    expect(dogContent).not.toContain('WritePropertyName("kind"u8)');
+
+    // Pet (base) should serialize both kind and name
+    const petFileKey = Object.keys(outputs).find((k) =>
+      k.includes("Pet.Serialization.cs"),
+    );
+    const petContent = outputs[petFileKey!];
+
+    expect(petContent).toContain('writer.WritePropertyName("kind"u8);');
+    expect(petContent).toContain("writer.WriteStringValue(Kind);");
+    expect(petContent).toContain('writer.WritePropertyName("name"u8);');
+    expect(petContent).toContain("writer.WriteStringValue(Name);");
+  });
+
+  /**
+   * Validates that int64 properties use WriteNumberValue. This ensures
+   * all integer variants (not just int32) are correctly handled.
+   */
+  it("serializes int64 property with WriteNumberValue", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        bigId: int64;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('writer.WritePropertyName("bigId"u8);');
+    expect(content).toContain("writer.WriteNumberValue(BigId);");
+  });
+
+  /**
+   * Validates that the property serialization is placed inside the
+   * JsonModelWriteCore method body (after format validation and optional
+   * base call), not outside it.
+   */
+  it("property writes are inside JsonModelWriteCore method body", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // The format check should come BEFORE the property write
+    const formatCheckIdx = content.indexOf('if (format != "J")');
+    const propertyWriteIdx = content.indexOf('WritePropertyName("name"u8)');
+    expect(formatCheckIdx).toBeLessThan(propertyWriteIdx);
+  });
+});

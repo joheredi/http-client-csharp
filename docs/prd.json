@@ -1848,7 +1848,7 @@
           "title": "Implement primitive property serialization",
           "description": "Generate writer.WritePropertyName(\"name\"u8) + writer.WriteStringValue/WriteNumberValue/WriteBooleanValue for each primitive type. Use UTF-8 string literals for property names.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.2.1"
           ],

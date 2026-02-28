@@ -13,10 +13,14 @@
  *   derived models use `protected override`.
  * - **Base class call**: Derived models call `base.JsonModelWriteCore(writer, options)`
  *   to serialize inherited properties before their own.
- * - **Children slot**: Property serialization statements (tasks 2.2.2–2.2.14)
- *   and additional binary data (task 2.2.14) are passed as children.
+ * - **Property serialization**: Iterates over the model's own properties and
+ *   generates `writer.WritePropertyName("name"u8)` + `writer.WriteXxxValue(Name)`
+ *   for each primitive property. Derived discriminated models filter out base
+ *   discriminator overrides (handled by the base class call).
+ * - **Children slot**: Additional content (e.g., additional binary data from
+ *   task 2.2.14) is rendered after property writes.
  *
- * @example Generated output (root model):
+ * @example Generated output (root model with string property):
  * ```csharp
  * protected virtual void JsonModelWriteCore(Utf8JsonWriter writer, ModelReaderWriterOptions options)
  * {
@@ -25,11 +29,12 @@
  *     {
  *         throw new FormatException($"The model {nameof(Friend)} does not support writing '{format}' format.");
  *     }
- *     // property writes (children)
+ *     writer.WritePropertyName("name"u8);
+ *     writer.WriteStringValue(Name);
  * }
  * ```
  *
- * @example Generated output (derived model):
+ * @example Generated output (derived model with boolean property):
  * ```csharp
  * protected override void JsonModelWriteCore(Utf8JsonWriter writer, ModelReaderWriterOptions options)
  * {
@@ -39,7 +44,8 @@
  *         throw new FormatException($"The model {nameof(Dog)} does not support writing '{format}' format.");
  *     }
  *     base.JsonModelWriteCore(writer, options);
- *     // property writes (children)
+ *     writer.WritePropertyName("breed"u8);
+ *     writer.WriteStringValue(Breed);
  * }
  * ```
  *
@@ -52,6 +58,11 @@ import type { SdkModelType } from "@azure-tools/typespec-client-generator-core";
 import { System } from "../../builtins/system.js";
 import { SystemTextJson } from "../../builtins/system-text-json.js";
 import { SystemClientModelPrimitives } from "../../builtins/system-client-model.js";
+import {
+  isBaseDiscriminatorOverride,
+  isDerivedDiscriminatedModel,
+} from "../models/ModelConstructors.js";
+import { WritePropertySerialization } from "./PropertySerializer.js";
 
 /**
  * Props for the {@link JsonModelWriteCore} component.
@@ -60,9 +71,9 @@ export interface JsonModelWriteCoreProps {
   /** The TCGC SDK model type whose serialization method is being generated. */
   type: SdkModelType;
   /**
-   * Optional children for property serialization statements.
-   * Future tasks (2.2.2–2.2.14) will pass property write statements and
-   * additional binary data serialization as children.
+   * Optional children for additional content after property writes.
+   * Used by task 2.2.14 (additional binary data serialization) to render
+   * the `_additionalBinaryDataProperties` loop after all property writes.
    */
   children?: Children;
 }
@@ -97,6 +108,14 @@ export function JsonModelWriteCore(props: JsonModelWriteCoreProps) {
   const modelName = namePolicy.getName(props.type.name, "class");
   const isDerived = shouldOverride(props.type);
 
+  // For derived discriminated models, filter out base discriminator override
+  // properties (e.g., kind: "eagle") — they're serialized by the base class's
+  // JsonModelWriteCore via the base.JsonModelWriteCore call.
+  const isDerivedDisc = isDerivedDiscriminatedModel(props.type);
+  const serializableProperties = isDerivedDisc
+    ? props.type.properties.filter((p) => !isBaseDiscriminatorOverride(p))
+    : props.type.properties;
+
   return (
     <>
       {code`protected ${isDerived ? "override" : "virtual"} void JsonModelWriteCore(${SystemTextJson.Utf8JsonWriter} writer, ${SystemClientModelPrimitives.ModelReaderWriterOptions} options)`}
@@ -108,6 +127,9 @@ export function JsonModelWriteCore(props: JsonModelWriteCoreProps) {
       {code`        throw new ${System.FormatException}($"The model {nameof(${modelName})} does not support writing '{format}' format.");`}
       {"\n    }"}
       {isDerived && "\n    base.JsonModelWriteCore(writer, options);"}
+      {serializableProperties.map((p) => (
+        <WritePropertySerialization property={p} />
+      ))}
       {props.children}
       {"\n}"}
     </>

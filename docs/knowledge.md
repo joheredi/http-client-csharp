@@ -520,9 +520,29 @@ const partialName = namekey(modelName, { ignoreNameConflict: true });
 ## Design Decisions
 
 ### JsonModelWriteCore: Raw strings + code templates vs Method component (Task 2.2.1)
+
 **Chosen**: Raw strings with `code` template interpolation (following FixedEnumSerializationFile pattern)
 **Rejected**: `<Method>` component from @alloy-js/csharp
 **Why**: The `<Method>` component uses K&R brace style (`method() {`) for empty methods. Raw strings give full control over Allman-style formatting (`method()\n{`) matching golden files. The `code` template enables refkey interpolation for auto-using directives while keeping manual formatting control.
 
 ### System.Text.Json and System builtins (Task 2.2.1)
+
 Created `src/builtins/system.ts` and `src/builtins/system-text-json.ts` as separate files following the existing `system-client-model.ts` pattern. These enable auto-generated `using` directives when Utf8JsonWriter, FormatException, etc. are referenced via refkeys in `code` templates. Future serialization tasks should use these builtins rather than manual `using` strings.
+
+## Design Decisions
+
+### Property Serialization Architecture (Task 2.2.3)
+- **Chosen**: Property iteration is INSIDE `JsonModelWriteCore` component (iterates `model.properties`, renders `WritePropertySerialization` for each)
+- **Why**: The component already has the model type prop; keeping iteration internal is cohesive and avoids coupling emitter.tsx to serialization details
+- **Rejected**: Passing property writes as children from `emitter.tsx` — makes emitter too complex, couples it to serialization internals
+- **Extension point**: `getWriteMethodName()` in `PropertySerializer.tsx` returns `null` for non-primitive types; future tasks can extend the dispatch or create new components
+
+## Gotchas
+
+### CSharp Name Policy Element Types
+- Use `"class-property"` (not `"property"`) with `useCSharpNamePolicy().getName()` for PascalCase property names
+- Valid elements: `"class"`, `"constant"`, `"variable"`, `"struct"`, `"enum"`, `"enum-member"`, `"function"`, `"interface"`, `"record"`, `"class-member-private"`, `"class-member-public"`, `"class-method"`, `"class-property"`, `"parameter"`, `"type-parameter"`, `"namespace"`
+
+### Constant Type Unwrapping for Serialization
+- When determining the writer method for a property, unwrap both nullable (`SdkNullableType`) AND constant (`SdkConstantType`) to get the underlying primitive kind
+- Constants still serialize via their property accessor (e.g., `writer.WriteStringValue(Kind)`), but the writer method selection needs the underlying type

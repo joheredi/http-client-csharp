@@ -709,3 +709,32 @@ Wired into emitter.tsx as child of ModelSerializationFile, before Deserializatio
 Key design decision: Used raw strings + `code` templates (like FixedEnumSerializationFile) instead of `<Method>` component. This gives full control over Allman-style brace formatting while still leveraging refkeys for auto-using directives.
 
 Directly unblocks: 2.2.2 (base class call), 2.2.3 (primitive serialization), 2.2.11 (optional guards), 2.2.13 (read-only guards), 2.2.14 (additional binary data), 2.6.1 (IJsonModel.Write wrapper)
+
+## 2026-02-28 — Task 2.2.3: Implement primitive property serialization (complete)
+
+### What was done
+- Created `src/components/serialization/PropertySerializer.tsx` with `WritePropertySerialization` component and `getWriteMethodName` helper
+- Modified `JsonModelWriteCore.tsx` to iterate over model properties and render `WritePropertySerialization` for each
+- Property types handled: string/url → WriteStringValue, all integer/float/decimal → WriteNumberValue, boolean → WriteBooleanValue
+- Derived discriminated models filter out base discriminator overrides (handled by base.JsonModelWriteCore call)
+- Constant types are unwrapped to their underlying primitive kind for writer method selection
+- Added 10 new tests covering: string, int32, int64, float64, boolean, multiple properties in order, u8 suffix, serializedName vs PascalCase, derived model filtering, method body placement
+- 303 tests passing, clean build
+
+### Patterns used
+- `useCSharpNamePolicy().getName(name, "class-property")` for PascalCase C# property names
+- `property.serializedName` for JSON wire names (camelCase)
+- `unwrapNullableType()` + constant unwrap for type kind resolution
+- Same `isBaseDiscriminatorOverride` / `isDerivedDiscriminatedModel` filtering as ModelFile.tsx
+- Manual string formatting with `\n    ` prefix (matching existing JsonModelWriteCore pattern)
+
+### Design decision
+- Property iteration is INSIDE JsonModelWriteCore (not passed as children from emitter.tsx)
+- Children slot preserved for additional binary data (task 2.2.14)
+- PropertySerializer.tsx is a separate module for future extensibility (tasks 2.2.4-2.2.10)
+
+### Important for next tasks
+- `getWriteMethodName()` returns null for non-primitive types — tasks 2.2.4-2.2.10 should extend this or create separate components
+- `WritePropertySerialization` can be extended or replaced for complex types (enum, model, collection, dict, datetime, duration, bytes)
+- The `children` prop on JsonModelWriteCore is reserved for task 2.2.14 (additional binary data serialization)
+- CSharp naming policy uses "class-property" element type (not "property") for PascalCase property names
