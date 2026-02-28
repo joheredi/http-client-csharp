@@ -5,7 +5,10 @@ export type { JsonModelWriteCoreProps } from "./JsonModelWriteCore.js";
 export { ModelSerializationFile } from "./ModelSerializationFile.js";
 export type { ModelSerializationFileProps } from "./ModelSerializationFile.js";
 export {
-  getWriteMethodName,
+  getWriteMethodInfo,
   WritePropertySerialization,
 } from "./PropertySerializer.js";
-export type { WritePropertySerializationProps } from "./PropertySerializer.js";
+export type {
+  WriteMethodInfo,
+  WritePropertySerializationProps,
+} from "./PropertySerializer.js";

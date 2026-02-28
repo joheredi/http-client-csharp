@@ -535,7 +535,13 @@ Created `src/builtins/system.ts` and `src/builtins/system-text-json.ts` as separ
 - **Chosen**: Property iteration is INSIDE `JsonModelWriteCore` component (iterates `model.properties`, renders `WritePropertySerialization` for each)
 - **Why**: The component already has the model type prop; keeping iteration internal is cohesive and avoids coupling emitter.tsx to serialization details
 - **Rejected**: Passing property writes as children from `emitter.tsx` — makes emitter too complex, couples it to serialization internals
-- **Extension point**: `getWriteMethodName()` in `PropertySerializer.tsx` returns `null` for non-primitive types; future tasks can extend the dispatch or create new components
+- **Extension point**: `getWriteMethodInfo()` in `PropertySerializer.tsx` returns `WriteMethodInfo { methodName, formatArg? }` or `null`. Handles primitives, DateTime (with encoding), plainDate, plainTime. Future tasks (Duration 2.2.5, Bytes 2.2.6, etc.) should add cases to this function.
+
+### DateTime Serialization (Task 2.2.4)
+- **Chosen**: Evolve `getWriteMethodName` → `getWriteMethodInfo` returning `{ methodName, formatArg? }`
+- **Why**: Clean single return type covers both format-less primitives and format-aware types (DateTime, Duration, bytes)
+- **Encoding mapping**: rfc3339→"O", rfc7231→"R", unixTimestamp→"U", plainDate→"D", plainTime→"T"
+- **Format-aware overloads**: The generated `ModelSerializationExtensions` class provides `WriteStringValue(Utf8JsonWriter, DateTimeOffset, string)` and `WriteNumberValue(Utf8JsonWriter, DateTimeOffset, string)` that use `TypeFormatters.ToString()` internally
 
 ## Gotchas
 

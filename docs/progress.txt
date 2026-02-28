@@ -738,3 +738,28 @@ Directly unblocks: 2.2.2 (base class call), 2.2.3 (primitive serialization), 2.2
 - `WritePropertySerialization` can be extended or replaced for complex types (enum, model, collection, dict, datetime, duration, bytes)
 - The `children` prop on JsonModelWriteCore is reserved for task 2.2.14 (additional binary data serialization)
 - CSharp naming policy uses "class-property" element type (not "property") for PascalCase property names
+
+2026-02-28 — Task 2.2.4: Implement DateTime serialization with encoding (complete)
+
+Evolved `getWriteMethodName` → `getWriteMethodInfo` in `PropertySerializer.tsx`:
+- Returns `WriteMethodInfo { methodName, formatArg? }` instead of plain string
+- Handles utcDateTime/offsetDateTime with encoding-based format specifiers:
+  - rfc3339 → WriteStringValue(prop, "O")
+  - rfc7231 → WriteStringValue(prop, "R")
+  - unixTimestamp → WriteNumberValue(prop, "U")
+- Also handles plainDate → "D" and plainTime → "T" format specifiers
+- Format-aware overloads come from generated ModelSerializationExtensions class
+
+Updated exports in `src/components/serialization/index.ts`:
+- Replaced `getWriteMethodName` with `getWriteMethodInfo` and `WriteMethodInfo`
+
+Added 5 tests in `model-serialization.test.ts`:
+- utcDateTime with default RFC3339 encoding
+- utcDateTime with RFC7231 encoding (@encode decorator)
+- utcDateTime with unixTimestamp encoding
+- plainDate with "D" format
+- plainTime with "T" format
+
+Pattern: The `WriteMethodInfo` interface is designed to be extensible for Duration (2.2.5)
+and Bytes (2.2.6) which also need format specifiers. Future tasks should add cases to
+`getWriteMethodInfo` following the same pattern.

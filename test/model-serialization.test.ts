@@ -1344,4 +1344,170 @@ describe("PropertySerialization", () => {
     const propertyWriteIdx = content.indexOf('WritePropertyName("name"u8)');
     expect(formatCheckIdx).toBeLessThan(propertyWriteIdx);
   });
+
+  /**
+   * Validates that a utcDateTime property with default encoding (RFC3339)
+   * generates `writer.WriteStringValue(CreatedAt, "O")`. The "O" format specifier
+   * produces ISO 8601 round-trip format, which is the standard JSON date encoding.
+   * The format argument is passed to the `ModelSerializationExtensions.WriteStringValue`
+   * extension method, not the native `Utf8JsonWriter.WriteStringValue`.
+   */
+  it("serializes utcDateTime property with RFC3339 encoding", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        createdAt: utcDateTime;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('writer.WritePropertyName("createdAt"u8);');
+    expect(content).toContain('writer.WriteStringValue(CreatedAt, "O");');
+  });
+
+  /**
+   * Validates that a utcDateTime property with RFC7231 encoding generates
+   * `writer.WriteStringValue(LastModified, "R")`. The "R" format specifier
+   * produces RFC 1123 format (e.g., "Wed, 12 Oct 2022 07:20:50 GMT"), which
+   * is used for HTTP header dates. Without the correct format, API servers
+   * would reject the date value.
+   */
+  it("serializes utcDateTime property with RFC7231 encoding", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        @encode(DateTimeKnownEncoding.rfc7231)
+        lastModified: utcDateTime;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('writer.WritePropertyName("lastModified"u8);');
+    expect(content).toContain('writer.WriteStringValue(LastModified, "R");');
+  });
+
+  /**
+   * Validates that a utcDateTime property with Unix timestamp encoding generates
+   * `writer.WriteNumberValue(Timestamp, "U")`. Unlike RFC3339/RFC7231, Unix
+   * timestamps are numbers (seconds since epoch), so they use WriteNumberValue
+   * instead of WriteStringValue. The "U" format is handled by the
+   * `ModelSerializationExtensions.WriteNumberValue` extension method which calls
+   * `DateTimeOffset.ToUnixTimeSeconds()`.
+   */
+  it("serializes utcDateTime property with unixTimestamp encoding", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        @encode(DateTimeKnownEncoding.unixTimestamp, int64)
+        timestamp: utcDateTime;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('writer.WritePropertyName("timestamp"u8);');
+    expect(content).toContain('writer.WriteNumberValue(Timestamp, "U");');
+  });
+
+  /**
+   * Validates that a plainDate property generates `writer.WriteStringValue(BirthDate, "D")`.
+   * The "D" format specifier produces ISO 8601 date-only format (e.g., "2022-10-12").
+   * plainDate maps to DateTimeOffset in C# but needs explicit formatting to exclude
+   * the time portion.
+   */
+  it("serializes plainDate property with D format", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        birthDate: plainDate;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('writer.WritePropertyName("birthDate"u8);');
+    expect(content).toContain('writer.WriteStringValue(BirthDate, "D");');
+  });
+
+  /**
+   * Validates that a plainTime property generates `writer.WriteStringValue(StartTime, "T")`.
+   * The "T" format specifier produces ISO 8601 time-only format (e.g., "13:45:30").
+   * plainTime maps to TimeSpan in C# and requires the "T" format to avoid writing
+   * a duration-like string.
+   */
+  it("serializes plainTime property with T format", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        startTime: plainTime;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('writer.WritePropertyName("startTime"u8);');
+    expect(content).toContain('writer.WriteStringValue(StartTime, "T");');
+  });
 });

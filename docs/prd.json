@@ -1875,7 +1875,7 @@
           "title": "Implement DateTime serialization with encoding",
           "description": "DateTimeOffset serialization depends on encoding: RFC3339/ISO8601\u2192WriteStringValue(value, \"O\"), RFC7231/RFC1123\u2192WriteStringValue(value, \"R\"), Unix\u2192WriteNumberValue(value, \"U\"). See MrwSerializationTypeDefinition lines 2365-2376.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.2.3"
           ],
