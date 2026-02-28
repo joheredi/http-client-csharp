@@ -2293,7 +2293,7 @@
           "title": "Implement collection deserialization",
           "description": "Lists: declare `List<T>`, foreach item in element.EnumerateArray(), deserialize, add to list.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.3.5"
           ],

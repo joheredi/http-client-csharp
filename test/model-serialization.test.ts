@@ -4956,4 +4956,223 @@ describe("PropertyMatchingLoop", () => {
     expect(content).toContain('if (prop.NameEquals("level"u8))');
     expect(content).toContain("level = new Level(prop.Value.GetInt32());");
   });
+
+  /**
+   * Validates that a string array property generates the correct
+   * List<string> deserialization pattern with EnumerateArray() loop.
+   *
+   * This is the simplest collection deserialization case: iterate over
+   * JSON array elements and call GetString() on each. The pattern must
+   * create a List<T>, iterate with foreach + EnumerateArray(), add each
+   * deserialized item, then assign the list to the local variable.
+   *
+   * Why this matters:
+   * - Collection deserialization is fundamentally different from scalar
+   *   properties — it requires a multi-line block instead of a single expression.
+   * - Validates the List<T> declaration, foreach loop, and Add() pattern.
+   */
+  it("deserializes string array with List<string> and EnumerateArray", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        tags: string[];
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("tags"u8))');
+    expect(content).toContain("List<string> array = new List<string>();");
+    expect(content).toContain(
+      "foreach (var item in prop.Value.EnumerateArray())",
+    );
+    expect(content).toContain("array.Add(item.GetString());");
+    expect(content).toContain("tags = array;");
+    expect(content).toContain("continue;");
+  });
+
+  /**
+   * Validates that an int32 array property generates the correct
+   * List<int> deserialization pattern with GetInt32() for each item.
+   *
+   * Tests numeric collection deserialization — the item read expression
+   * must use the correct JsonElement getter method for the element type.
+   */
+  it("deserializes int32 array with List<int> and GetInt32", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        scores: int32[];
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("scores"u8))');
+    expect(content).toContain("List<int> array = new List<int>();");
+    expect(content).toContain(
+      "foreach (var item in prop.Value.EnumerateArray())",
+    );
+    expect(content).toContain("array.Add(item.GetInt32());");
+    expect(content).toContain("scores = array;");
+  });
+
+  /**
+   * Validates that an array of model objects generates the correct
+   * deserialization pattern calling the static DeserializeXxx method
+   * on each item.
+   *
+   * Model arrays are critical because they test the recursive
+   * deserialization delegation pattern: each item in the JSON array
+   * is deserialized by calling the nested model's own Deserialize method.
+   */
+  it("deserializes model array with DeserializeXxx per item", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Part {
+        id: string;
+      }
+
+      model Widget {
+        parts: Part[];
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("parts"u8))');
+    expect(content).toContain("List<Part> array = new List<Part>();");
+    expect(content).toContain(
+      "foreach (var item in prop.Value.EnumerateArray())",
+    );
+    expect(content).toContain(
+      "array.Add(Part.DeserializePart(item, options));",
+    );
+    expect(content).toContain("parts = array;");
+  });
+
+  /**
+   * Validates that an array of extensible enums generates the correct
+   * deserialization pattern using the enum constructor for each item.
+   *
+   * Extensible enums use `new EnumName(item.GetXxx())` — the accessor
+   * must be `item` (not `prop.Value`) because we're inside the foreach loop.
+   */
+  it("deserializes extensible enum array with new constructor per item", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      union Priority {
+        string,
+        low: "low",
+        high: "high",
+      }
+
+      model Widget {
+        priorities: Priority[];
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("priorities"u8))');
+    expect(content).toContain(
+      "array.Add(new Priority(item.GetString()));",
+    );
+    expect(content).toContain("priorities = array;");
+  });
+
+  /**
+   * Validates that a nested array (array of arrays) generates the correct
+   * recursive deserialization pattern with nested List declarations,
+   * foreach loops, and depth-suffixed variable names.
+   *
+   * Nested arrays test the recursive nature of renderArrayDeserialization:
+   * - Outer loop: `array`, `item`
+   * - Inner loop: `array0`, `item0`
+   * This matches the legacy emitter's naming convention.
+   */
+  it("deserializes nested array with recursive foreach loops", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        matrix: int32[][];
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("matrix"u8))');
+    // Outer loop
+    expect(content).toContain(
+      "foreach (var item in prop.Value.EnumerateArray())",
+    );
+    // Inner loop with depth-suffixed variable names
+    expect(content).toContain("List<int> array0 = new List<int>();");
+    expect(content).toContain("foreach (var item0 in item.EnumerateArray())");
+    expect(content).toContain("array0.Add(item0.GetInt32());");
+    expect(content).toContain("array.Add(array0);");
+    expect(content).toContain("matrix = array;");
+  });
 });

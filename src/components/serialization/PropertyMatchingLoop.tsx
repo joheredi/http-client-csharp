@@ -12,10 +12,10 @@
  * 3. Assigns the extracted value to the local variable: `{var} = prop.Value.Get{Type}()`.
  * 4. Calls `continue` to skip to the next JSON property.
  *
- * Properties with types not yet handled (enums, collections,
- * dictionaries) are skipped — those are implemented by subsequent
- * tasks (2.3.8–2.3.10). A children slot after all property matches allows
- * task 2.3.12 to add the additional binary data catch-all.
+ * Properties with types not yet handled (dictionaries) are skipped —
+ * those are implemented by subsequent tasks (2.3.10). A children slot
+ * after all property matches allows task 2.3.12 to add the additional
+ * binary data catch-all.
  *
  * For derived discriminated models, the loop includes ALL properties from
  * the entire inheritance hierarchy (base + own), matching the flat
@@ -46,6 +46,7 @@ import { useCSharpNamePolicy } from "@alloy-js/csharp";
 import type { Children } from "@alloy-js/core";
 import type { NamePolicy } from "@alloy-js/core";
 import type {
+  SdkArrayType,
   SdkBuiltInType,
   SdkDateTimeType,
   SdkDurationType,
@@ -54,6 +55,7 @@ import type {
   SdkModelType,
   SdkType,
 } from "@azure-tools/typespec-client-generator-core";
+import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import { unwrapNullableType } from "../../utils/nullable.js";
 import {
   isBaseDiscriminatorOverride,
@@ -115,9 +117,10 @@ export function computeMatchableProperties(
  * Abstract numeric kinds (`numeric`, `integer`, `float`) map to their
  * C# default representations: `double` for numeric/float, `long` for integer.
  *
- * Types not in this map (enums, collections, dictionaries) require
+ * Types not in this map (collections, dictionaries) require
  * specialized deserialization and return `null` from `getReadExpression` —
- * those are handled by subsequent tasks. Model types are handled
+ * collections are handled by `renderArrayDeserialization`, and dictionaries
+ * by task 2.3.10. Model types are handled
  * separately via the `DeserializeXxx` static method pattern.
  *
  * Encoded types (DateTime, Duration, bytes, plainDate, plainTime) are handled
@@ -158,14 +161,18 @@ const READ_METHOD_MAP: Record<string, string> = {
  * `DateTimeOffset.FromUnixTimeSeconds` static method.
  *
  * @param type - An `SdkDateTimeType` with its encoding resolved by TCGC.
+ * @param accessor - The C# expression for the JsonElement (e.g., `"prop.Value"` or `"item"`).
  * @returns The C# expression string for reading the DateTime value.
  */
-function getDateTimeReadExpression(type: SdkDateTimeType): string {
+function getDateTimeReadExpression(
+  type: SdkDateTimeType,
+  accessor: string,
+): string {
   if (type.encode === "unixTimestamp") {
-    return "DateTimeOffset.FromUnixTimeSeconds(prop.Value.GetInt64())";
+    return `DateTimeOffset.FromUnixTimeSeconds(${accessor}.GetInt64())`;
   }
   const format = type.encode === "rfc7231" ? "R" : "O";
-  return `prop.Value.GetDateTimeOffset("${format}")`;
+  return `${accessor}.GetDateTimeOffset("${format}")`;
 }
 
 /**
@@ -186,17 +193,21 @@ function getDateTimeReadExpression(type: SdkDateTimeType): string {
  * `int32` uses `GetInt32()`; all other wire types use `GetDouble()`.
  *
  * @param type - An `SdkDurationType` with its encoding and wireType resolved by TCGC.
+ * @param accessor - The C# expression for the JsonElement (e.g., `"prop.Value"` or `"item"`).
  * @returns The C# expression string for reading the Duration value.
  */
-function getDurationReadExpression(type: SdkDurationType): string {
+function getDurationReadExpression(
+  type: SdkDurationType,
+  accessor: string,
+): string {
   if (type.encode === "seconds") {
-    return getDurationNumericReadExpression(type, "FromSeconds");
+    return getDurationNumericReadExpression(type, "FromSeconds", accessor);
   }
   if (type.encode === "milliseconds") {
-    return getDurationNumericReadExpression(type, "FromMilliseconds");
+    return getDurationNumericReadExpression(type, "FromMilliseconds", accessor);
   }
   // ISO8601 is the default encoding — uses custom GetTimeSpan extension method.
-  return `prop.Value.GetTimeSpan("P")`;
+  return `${accessor}.GetTimeSpan("P")`;
 }
 
 /**
@@ -209,14 +220,16 @@ function getDurationReadExpression(type: SdkDurationType): string {
  *
  * @param type - The `SdkDurationType` whose `wireType` determines the getter method.
  * @param method - The `TimeSpan` factory method (`"FromSeconds"` or `"FromMilliseconds"`).
+ * @param accessor - The C# expression for the JsonElement (e.g., `"prop.Value"` or `"item"`).
  * @returns The C# expression string.
  */
 function getDurationNumericReadExpression(
   type: SdkDurationType,
   method: string,
+  accessor: string,
 ): string {
   const getter = type.wireType.kind === "int32" ? "GetInt32" : "GetDouble";
-  return `TimeSpan.${method}(prop.Value.${getter}())`;
+  return `TimeSpan.${method}(${accessor}.${getter}())`;
 }
 
 /**
@@ -239,17 +252,21 @@ function getDurationNumericReadExpression(
  * base64 ("D") and URL-safe base64 ("U") encodings.
  *
  * @param type - An `SdkBuiltInType` with `kind: "bytes"` and encoding.
+ * @param accessor - The C# expression for the JsonElement (e.g., `"prop.Value"` or `"item"`).
  * @returns The C# expression string for reading the bytes value.
  */
-function getBytesReadExpression(type: SdkBuiltInType): string {
+function getBytesReadExpression(
+  type: SdkBuiltInType,
+  accessor: string,
+): string {
   if (type.encode === "base64") {
-    return `BinaryData.FromBytes(prop.Value.GetBytesFromBase64("D"))`;
+    return `BinaryData.FromBytes(${accessor}.GetBytesFromBase64("D"))`;
   }
   if (type.encode === "base64url") {
-    return `BinaryData.FromBytes(prop.Value.GetBytesFromBase64("U"))`;
+    return `BinaryData.FromBytes(${accessor}.GetBytesFromBase64("U"))`;
   }
   // Default encoding — raw JSON text to BinaryData
-  return "BinaryData.FromString(prop.Value.GetRawText())";
+  return `BinaryData.FromString(${accessor}.GetRawText())`;
 }
 
 /**
@@ -273,25 +290,27 @@ function getBytesReadExpression(type: SdkBuiltInType): string {
  *
  * @param enumType - The TCGC enum type to deserialize.
  * @param namePolicy - C# name policy for resolving the enum type name.
+ * @param accessor - The C# expression for the JsonElement (e.g., `"prop.Value"` or `"item"`).
  * @returns The C# expression string, or `null` for unsupported backing types.
  */
 function getEnumReadExpression(
   enumType: SdkEnumType,
   namePolicy: NamePolicy<string>,
+  accessor: string,
 ): string | null {
   const valueTypeKind = enumType.valueType.kind;
   const getterMethod = READ_METHOD_MAP[valueTypeKind];
   if (!getterMethod) return null;
 
-  const getter = `prop.Value.${getterMethod}()`;
+  const getter = `${accessor}.${getterMethod}()`;
   const enumName = namePolicy.getName(enumType.name, "enum");
 
   if (enumType.isFixed) {
-    // Fixed enums: prop.Value.GetXxx().To{EnumName}()
+    // Fixed enums: {accessor}.GetXxx().To{EnumName}()
     return `${getter}.To${enumName}()`;
   }
 
-  // Extensible enums: new {EnumName}(prop.Value.GetXxx())
+  // Extensible enums: new {EnumName}({accessor}.GetXxx())
   return `new ${enumName}(${getter})`;
 }
 
@@ -316,17 +335,20 @@ function getEnumReadExpression(
  * - **Enums** → Fixed: `GetXxx().To{EnumName}()`, Extensible: `new {EnumName}(GetXxx())`
  *
  * Returns `null` for types that need specialized deserialization logic:
- * - **Collections (arrays)** — task 2.3.9 (foreach over array)
+ * - **Collections (arrays)** — handled by `renderArrayDeserialization`
  * - **Dictionaries** — task 2.3.10 (foreach over object)
  *
  * @param type - An SDK type from TCGC.
  * @param namePolicy - Optional C# name policy for resolving model/enum class names.
  *   Required for model and enum type deserialization.
+ * @param accessor - The C# expression for the JsonElement (e.g., `"prop.Value"` or `"item"`).
+ *   Defaults to `"prop.Value"` for the standard property matching loop context.
  * @returns The C# expression string, or `null` if the type is not yet supported.
  */
 export function getReadExpression(
   type: SdkType,
   namePolicy?: NamePolicy<string>,
+  accessor: string = "prop.Value",
 ): string | null {
   let unwrapped = unwrapNullableType(type);
 
@@ -341,54 +363,173 @@ export function getReadExpression(
 
   // URL type needs wrapping in a Uri constructor
   if (kind === "url") {
-    return "new Uri(prop.Value.GetString())";
+    return `new Uri(${accessor}.GetString())`;
   }
 
   // DateTime types — encoding determines the format specifier or Unix strategy.
   if (kind === "utcDateTime" || kind === "offsetDateTime") {
-    return getDateTimeReadExpression(unwrapped as SdkDateTimeType);
+    return getDateTimeReadExpression(unwrapped as SdkDateTimeType, accessor);
   }
 
   // Duration types — encoding determines ISO8601 vs numeric strategy.
   if (kind === "duration") {
-    return getDurationReadExpression(unwrapped as SdkDurationType);
+    return getDurationReadExpression(unwrapped as SdkDurationType, accessor);
   }
 
   // Bytes type — encoding determines Base64 vs Base64URL vs raw.
   if (kind === "bytes") {
-    return getBytesReadExpression(unwrapped as SdkBuiltInType);
+    return getBytesReadExpression(unwrapped as SdkBuiltInType, accessor);
   }
 
   // Plain date/time — fixed ISO format specifiers using custom extension methods.
   if (kind === "plainDate") {
-    return `prop.Value.GetDateTimeOffset("D")`;
+    return `${accessor}.GetDateTimeOffset("D")`;
   }
   if (kind === "plainTime") {
-    return `prop.Value.GetTimeSpan("T")`;
+    return `${accessor}.GetTimeSpan("T")`;
   }
 
   // Primitive types — direct JsonElement getter
   const method = READ_METHOD_MAP[kind];
   if (method) {
-    return `prop.Value.${method}()`;
+    return `${accessor}.${method}()`;
   }
 
   // Enum types — fixed enums use extension methods, extensible enums use constructors.
   if (kind === "enum" && namePolicy) {
-    return getEnumReadExpression(unwrapped as SdkEnumType, namePolicy);
+    return getEnumReadExpression(
+      unwrapped as SdkEnumType,
+      namePolicy,
+      accessor,
+    );
   }
 
   // Model types — call static DeserializeXxx method on the model class.
-  // The pattern is: ModelName.DeserializeModelName(prop.Value, options)
+  // The pattern is: ModelName.DeserializeModelName({accessor}, options)
   // This delegates deserialization to the nested model's own static method.
   if (kind === "model" && namePolicy) {
     const modelType = unwrapped as SdkModelType;
     const modelName = namePolicy.getName(modelType.name, "class");
-    return `${modelName}.Deserialize${modelName}(prop.Value, options)`;
+    return `${modelName}.Deserialize${modelName}(${accessor}, options)`;
   }
 
   // Types handled by subsequent tasks return null
   return null;
+}
+
+/**
+ * Returns the variable name for the local list at a given nesting depth.
+ *
+ * Follows the legacy emitter's naming convention:
+ * - depth 0: `"array"` (top-level collection)
+ * - depth 1: `"array0"` (first nested collection)
+ * - depth 2: `"array1"` (second nested collection)
+ *
+ * @param depth - The current nesting depth (0-based).
+ * @returns The variable name string.
+ */
+function getArrayVarName(depth: number): string {
+  return depth === 0 ? "array" : `array${depth - 1}`;
+}
+
+/**
+ * Returns the loop variable name for the foreach at a given nesting depth.
+ *
+ * Follows the legacy emitter's naming convention:
+ * - depth 0: `"item"` (top-level foreach)
+ * - depth 1: `"item0"` (first nested foreach)
+ * - depth 2: `"item1"` (second nested foreach)
+ *
+ * @param depth - The current nesting depth (0-based).
+ * @returns The loop variable name string.
+ */
+function getItemVarName(depth: number): string {
+  return depth === 0 ? "item" : `item${depth - 1}`;
+}
+
+/**
+ * Renders the array deserialization block for a collection property or
+ * nested collection.
+ *
+ * Generates the pattern:
+ * ```csharp
+ * List<T> array = new List<T>();
+ * foreach (var item in {accessor}.EnumerateArray())
+ * {
+ *     array.Add({itemReadExpr});
+ * }
+ * ```
+ *
+ * Handles nested collections recursively — a `List<List<string>>` produces
+ * nested `List` declarations and `foreach` loops. Variable names use depth
+ * suffixes (`array`, `array0`, `array1`; `item`, `item0`, `item1`) matching
+ * the legacy emitter's naming convention.
+ *
+ * Uses `TypeExpression` to render the correct C# type name for the `List<T>`
+ * generic parameter, ensuring proper `using` directives are generated.
+ *
+ * @param arrayType - The TCGC `SdkArrayType` whose items are being deserialized.
+ * @param accessor - The C# expression for the JsonElement to enumerate
+ *   (e.g., `"prop.Value"` for top-level, `"item"` for nested).
+ * @param indent - Whitespace indentation prefix for the generated block.
+ * @param namePolicy - C# name policy for resolving type names.
+ * @param depth - Current nesting depth (0 for top-level collection).
+ * @returns JSX element with the array deserialization block, or `null` if
+ *   the item type is not yet supported.
+ */
+function renderArrayDeserialization(
+  arrayType: SdkArrayType,
+  accessor: string,
+  indent: string,
+  namePolicy: NamePolicy<string>,
+  depth: number = 0,
+): Children | null {
+  const itemType = arrayType.valueType;
+  const unwrappedItemType = unwrapNullableType(itemType);
+  const innerIndent = indent + "    ";
+  const arrayVar = getArrayVarName(depth);
+  const itemVar = getItemVarName(depth);
+
+  // Determine the foreach body based on item type
+  let foreachBody: Children;
+
+  if (unwrappedItemType.kind === "array") {
+    // Nested array — recursive: build inner list then add to outer
+    const innerBlock = renderArrayDeserialization(
+      unwrappedItemType as SdkArrayType,
+      itemVar,
+      innerIndent,
+      namePolicy,
+      depth + 1,
+    );
+    if (!innerBlock) return null;
+    const innerArrayVar = getArrayVarName(depth + 1);
+    foreachBody = (
+      <>
+        {innerBlock}
+        {`\n${innerIndent}${arrayVar}.Add(${innerArrayVar});`}
+      </>
+    );
+  } else {
+    // Leaf type — use getReadExpression for the item value
+    const itemReadExpr = getReadExpression(itemType, namePolicy, itemVar);
+    if (!itemReadExpr) return null;
+    foreachBody = <>{`\n${innerIndent}${arrayVar}.Add(${itemReadExpr});`}</>;
+  }
+
+  return (
+    <>
+      {`\n${indent}List<`}
+      <TypeExpression type={unwrappedItemType.__raw!} />
+      {`> ${arrayVar} = new List<`}
+      <TypeExpression type={unwrappedItemType.__raw!} />
+      {`>();`}
+      {`\n${indent}foreach (var ${itemVar} in ${accessor}.EnumerateArray())`}
+      {`\n${indent}{`}
+      {foreachBody}
+      {`\n${indent}}`}
+    </>
+  );
 }
 
 /**
@@ -410,9 +551,9 @@ export function getReadExpression(
  * ```
  *
  * Properties whose types are not yet supported (returning `null` from
- * `getReadExpression`) are silently skipped. This allows subsequent tasks
- * to incrementally add support for more types (enums, collections,
- * dictionaries) without changing this component.
+ * `getReadExpression` and not array types) are silently skipped. This
+ * allows subsequent tasks to incrementally add support for more types
+ * (dictionaries) without changing this component.
  *
  * @param props - The component props containing the model type and optional children.
  * @returns JSX element rendering the property matching foreach loop.
@@ -428,6 +569,31 @@ export function PropertyMatchingLoop(props: PropertyMatchingLoopProps) {
       {properties.map((p) => {
         const serializedName = p.serializedName;
         const varName = namePolicy.getName(p.name, "parameter");
+        const unwrapped = unwrapNullableType(p.type);
+
+        // Array types need a multi-line block with List<T> + foreach
+        if (unwrapped.kind === "array") {
+          const arrayBlock = renderArrayDeserialization(
+            unwrapped as SdkArrayType,
+            "prop.Value",
+            "            ",
+            namePolicy,
+            0,
+          );
+          if (!arrayBlock) return null;
+          return (
+            <>
+              {`\n        if (prop.NameEquals("${serializedName}"u8))`}
+              {"\n        {"}
+              {arrayBlock}
+              {`\n            ${varName} = array;`}
+              {"\n            continue;"}
+              {"\n        }"}
+            </>
+          );
+        }
+
+        // Simple expression-based deserialization for scalar types
         const readExpr = getReadExpression(p.type, namePolicy);
         if (!readExpr) return null;
 

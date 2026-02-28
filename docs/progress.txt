@@ -1172,3 +1172,31 @@ Added enum deserialization to the JSON read path in PropertyMatchingLoop.tsx.
 - Write: Extensible string enums use `.ToString()`, but Read: uses constructor `new Enum(GetString())`
 
 Total tests: 413 (all passing). 5 new tests added.
+
+## 2026-02-28 — Task 2.3.9: Implement collection deserialization (complete)
+
+### What was done
+- Added collection (array/list) deserialization to `PropertyMatchingLoop.tsx`
+- Refactored `getReadExpression` and all helper functions (`getDateTimeReadExpression`, `getDurationReadExpression`, `getDurationNumericReadExpression`, `getBytesReadExpression`, `getEnumReadExpression`) to accept an `accessor` parameter instead of hardcoding `"prop.Value"`. This enables reuse for collection items where the accessor is `"item"`.
+- Added `renderArrayDeserialization` function that generates:
+  ```csharp
+  List<T> array = new List<T>();
+  foreach (var item in prop.Value.EnumerateArray())
+  {
+      array.Add({itemReadExpr});
+  }
+  varName = array;
+  ```
+- Handles nested arrays recursively with depth-suffixed variable names (`array`/`array0`, `item`/`item0`) matching the legacy emitter convention.
+- Uses `TypeExpression` for `List<T>` generic parameter rendering.
+- Added 5 tests: string array, int array, model array, extensible enum array, nested array.
+
+### Patterns used
+- Mirrored the write path's `renderArraySerialization` pattern from `PropertySerializer.tsx`
+- `accessor` parameter threading for expression reuse across property-level and item-level contexts
+- `TypeExpression type={unwrappedItemType.__raw!}` for C# type names in List<T>
+
+### Notes for next iteration
+- Null checking for collection items is NOT included (task 2.3.11)
+- Dictionary deserialization is the next step (task 2.3.10) — same pattern but with `EnumerateObject()` and `Dictionary<string, T>`
+- The `pnpm format` and `pnpm lint` commands fail due to a pre-existing submodule dependency issue (missing prettier-plugin-organize-imports in alloy submodule)
