@@ -1828,7 +1828,7 @@
           "title": "Implement base class call for derived models",
           "description": "Derived models call base.JsonModelWriteCore(writer, options) before writing their own properties.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.2.1"
           ],
@@ -1918,7 +1918,7 @@
           "title": "Implement bytes serialization",
           "description": "byte[]/BinaryData serialization: Base64\u2192WriteBase64StringValue(value, \"D\"), Base64URL\u2192WriteBase64StringValue(value, \"U\").",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.2.3"
           ],
@@ -2149,7 +2149,7 @@
           "title": "Implement null check",
           "description": "First line: `if (element.ValueKind == JsonValueKind.Null) { return null; }`.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.3.1"
           ],

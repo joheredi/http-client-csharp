@@ -1114,3 +1114,32 @@ Added 5 end-to-end golden file validation tests in a new "ModelUsageGoldenFiles"
 These tests complement the 63 existing individual-aspect tests by validating the COMPLETE model file structure end-to-end for the Spector Type.Model.Usage scenario. Total model tests: 68 (63 existing + 5 new).
 
 Note: pnpm format and pnpm lint have pre-existing failures due to missing submodule dependencies (prettier-plugin-organize-imports). Used npx prettier --write directly on changed files.
+
+## 2026-02-28 — Task 2.2.6: Implement bytes serialization (complete)
+
+Added bytes/BinaryData serialization support to the JSON write path in PropertySerializer.tsx.
+
+**Changes:**
+- `src/components/serialization/PropertySerializer.tsx`:
+  - Added `SdkBuiltInType` import from TCGC
+  - Created `getBytesWriteInfo()` function that maps TCGC bytes encoding to WriteMethodInfo:
+    - `"base64"` → `WriteBase64StringValue(Name.ToArray(), "D")`
+    - `"base64url"` → `WriteBase64StringValue(Name.ToArray(), "U")`
+  - Added `kind === "bytes"` case to `getWriteMethodInfo()` function
+  - Updated JSDoc comments to include bytes in supported types list
+  - Added bytes serialization example to module-level docs
+  - Updated "unsupported types" comments to remove bytes (now handled)
+
+- `test/model-serialization.test.ts`:
+  - Added 3 new tests in PropertySerialization describe block:
+    - bytes with default encoding (base64) → `WriteBase64StringValue(Data.ToArray(), "D")`
+    - bytes with explicit base64 encoding → same as default
+    - bytes with base64url encoding → `WriteBase64StringValue(Token.ToArray(), "U")`
+
+**Pattern used:** Same `WriteMethodInfo` pattern as DateTime/Duration serialization, using `valueTransform` for `.ToArray()` conversion (BinaryData → byte[]). This mirrors the read-side implementation in PropertyMatchingLoop.tsx.
+
+**Also marked as done in this iteration:**
+- Task 2.2.2 (base class call for derived models) — already implemented
+- Task 2.3.2 (null check) — already implemented
+
+Total tests: 408 (all passing). 3 new tests added.

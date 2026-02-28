@@ -17,15 +17,16 @@
  *   encodings (integer variants wrapped in `Convert.ToInt32`)
  * - **plainDate** → `WriteStringValue` with `"D"` format
  * - **plainTime** → `WriteStringValue` with `"T"` format
+ * - **Bytes/BinaryData** → `WriteBase64StringValue` with `"D"` (base64) or
+ *   `"U"` (base64url) format, using `.ToArray()` to convert BinaryData to byte[]
  * - **Nested models** → `WriteObjectValue(prop, options)` which delegates to
  *   the model's own `IJsonModel<T>.Write` implementation
  * - **Enums** → Fixed enums serialize via extension methods (`ToSerialString`,
  *   `ToSerialSingle`) or direct casts (`(int)value`); extensible enums use
  *   instance methods (`ToString`, `ToSerialInt32`)
  *
- * Non-primitive types (dictionaries, bytes) return `null` and are
+ * Non-primitive types (dictionaries) return `null` and are
  * handled by subsequent tasks:
- * - 2.2.6: Bytes serialization
  * - 2.2.10: Dictionary serialization
  *
  * @example Generated output for a string property:
@@ -64,6 +65,12 @@
  * writer.WriteNumberValue(Convert.ToInt32(Ttl.TotalSeconds));
  * ```
  *
+ * @example Generated output for a bytes/BinaryData property (base64):
+ * ```csharp
+ * writer.WritePropertyName("data"u8);
+ * writer.WriteBase64StringValue(Data.ToArray(), "D");
+ * ```
+ *
  * @example Generated output for a nested model property:
  * ```csharp
  * writer.WritePropertyName("pet"u8);
@@ -78,6 +85,7 @@ import type { Children } from "@alloy-js/core";
 import {
   isSdkIntKind,
   type SdkArrayType,
+  type SdkBuiltInType,
   type SdkDateTimeType,
   type SdkDurationType,
   type SdkEnumType,
@@ -352,17 +360,54 @@ function getEnumWriteInfo(enumType: SdkEnumType): WriteMethodInfo {
 }
 
 /**
+ * Returns the write method info for a bytes/BinaryData SDK type.
+ *
+ * Maps the TCGC bytes encoding to the corresponding `Utf8JsonWriter` extension
+ * method call pattern. BinaryData values are converted to `byte[]` via `.ToArray()`
+ * before being passed to `WriteBase64StringValue`.
+ *
+ * Encoding mapping:
+ * - `"base64"` → `WriteBase64StringValue(Name.ToArray(), "D")` (standard base64)
+ * - `"base64url"` → `WriteBase64StringValue(Name.ToArray(), "U")` (URL-safe base64)
+ *
+ * The `WriteBase64StringValue(byte[], string)` overload is a custom extension method
+ * defined in the generated `ModelSerializationExtensions` class that handles both
+ * standard ("D") and URL-safe ("U") base64 encodings.
+ *
+ * @param type - An `SdkBuiltInType` with `kind: "bytes"` and encoding.
+ * @returns Write method info with format specifier and `.ToArray()` value transform,
+ *   or `null` for unsupported encodings.
+ */
+function getBytesWriteInfo(type: SdkBuiltInType): WriteMethodInfo | null {
+  if (type.encode === "base64") {
+    return {
+      methodName: "WriteBase64StringValue",
+      formatArg: "D",
+      valueTransform: (name) => `${name}.ToArray()`,
+    };
+  }
+  if (type.encode === "base64url") {
+    return {
+      methodName: "WriteBase64StringValue",
+      formatArg: "U",
+      valueTransform: (name) => `${name}.ToArray()`,
+    };
+  }
+  return null;
+}
+
+/**
  * Determines the `Utf8JsonWriter` write method and optional format specifier
  * for a given SDK type.
  *
  * Unwraps nullable wrappers and constant types to find the underlying
  * kind, then maps it to the appropriate writer method. For types that
  * require encoding-aware serialization (DateTime, Duration, plainDate,
- * plainTime), also returns the format specifier and/or value transform.
+ * plainTime, bytes), also returns the format specifier and/or value transform.
  *
  * @param type - An SDK type from TCGC.
  * @returns Write method info, or `null` if the type requires a different
- *   serialization strategy (models, enums, collections, etc.).
+ *   serialization strategy (models, collections, etc.).
  */
 export function getWriteMethodInfo(type: SdkType): WriteMethodInfo | null {
   let unwrapped = unwrapNullableType(type);
@@ -401,6 +446,12 @@ export function getWriteMethodInfo(type: SdkType): WriteMethodInfo | null {
   // extensible enums use instance methods or ToString().
   if (kind === "enum") {
     return getEnumWriteInfo(unwrapped as SdkEnumType);
+  }
+
+  // Bytes types — encoding determines base64 format specifier.
+  // BinaryData needs .ToArray() conversion to byte[].
+  if (kind === "bytes") {
+    return getBytesWriteInfo(unwrapped as SdkBuiltInType);
   }
 
   return null;
@@ -555,8 +606,8 @@ function collectionItemNeedsNullCheck(itemType: SdkType): boolean {
  * - **Enum types** — handled via `getWriteMethodInfo` using value transforms
  *   for extension methods, casts, or instance methods.
  *
- * Returns `null` for types not yet supported (dictionaries,
- * bytes), allowing the caller to skip rendering for those properties.
+ * Returns `null` for types not yet supported (dictionaries),
+ * allowing the caller to skip rendering for those properties.
  *
  * @param type - The SDK type of the value to serialize.
  * @param valueExpr - The C# expression that produces the value (e.g., property
@@ -801,8 +852,8 @@ function renderModelProperty(
  * `writer.WriteObjectValue(Pet, options)` which delegates to the nested
  * model's own `IJsonModel<T>.Write` implementation.
  *
- * **Unsupported types** (dictionaries, bytes) — returns `null`,
- * handled by subsequent tasks (2.2.6, 2.2.10).
+ * **Unsupported types** (dictionaries) — returns `null`,
+ * handled by subsequent tasks (2.2.10).
  *
  * Optional properties are wrapped in `Optional.IsDefined` / `IsCollectionDefined`
  * guards. Required nullable properties get an `else { WriteNull }` branch.

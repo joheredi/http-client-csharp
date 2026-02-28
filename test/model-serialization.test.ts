@@ -1766,6 +1766,119 @@ describe("PropertySerialization", () => {
       "writer.WriteNumberValue(Convert.ToInt32(PollInterval.TotalMilliseconds));",
     );
   });
+
+  /**
+   * Validates that a bytes property with default encoding (base64) generates
+   * `writer.WriteBase64StringValue(Data.ToArray(), "D")`. The "D" format specifier
+   * triggers standard base64 encoding via the custom WriteBase64StringValue extension
+   * method. BinaryData must be converted to byte[] via `.ToArray()` because the
+   * extension method requires a byte array argument.
+   *
+   * This is the default encoding when no @encode decorator is specified — TCGC
+   * assigns "base64" automatically. Without `.ToArray()`, the generated C# would
+   * not compile because BinaryData is not implicitly convertible to byte[].
+   */
+  it("serializes bytes property with default encoding (base64)", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        data: bytes;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('writer.WritePropertyName("data"u8);');
+    expect(content).toContain(
+      'writer.WriteBase64StringValue(Data.ToArray(), "D");',
+    );
+  });
+
+  /**
+   * Validates that a bytes property with explicit base64 encoding generates
+   * the same output as the default encoding: `WriteBase64StringValue(Data.ToArray(), "D")`.
+   * This ensures the @encode("base64") decorator is correctly handled and produces
+   * the standard base64 format.
+   */
+  it("serializes bytes property with base64 encoding", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        @encode("base64")
+        data: bytes;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('writer.WritePropertyName("data"u8);');
+    expect(content).toContain(
+      'writer.WriteBase64StringValue(Data.ToArray(), "D");',
+    );
+  });
+
+  /**
+   * Validates that a bytes property with base64url encoding generates
+   * `writer.WriteBase64StringValue(Token.ToArray(), "U")`. The "U" format specifier
+   * triggers URL-safe base64 encoding (no padding, uses `-` and `_` instead of
+   * `+` and `/`). This encoding is commonly used in JWTs, URL parameters, and
+   * anywhere standard base64 characters would need URL-escaping.
+   *
+   * Without the distinct "U" format, bytes would be encoded with standard base64
+   * and would be rejected by APIs expecting URL-safe encoding.
+   */
+  it("serializes bytes property with base64url encoding", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        @encode("base64url")
+        token: bytes;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('writer.WritePropertyName("token"u8);');
+    expect(content).toContain(
+      'writer.WriteBase64StringValue(Token.ToArray(), "U");',
+    );
+  });
 });
 
 /**
