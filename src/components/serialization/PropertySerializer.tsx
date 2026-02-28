@@ -17,13 +17,13 @@
  *   encodings (integer variants wrapped in `Convert.ToInt32`)
  * - **plainDate** → `WriteStringValue` with `"D"` format
  * - **plainTime** → `WriteStringValue` with `"T"` format
+ * - **Nested models** → `WriteObjectValue(prop, options)` which delegates to
+ *   the model's own `IJsonModel<T>.Write` implementation
  *
- * Non-primitive types (models, enums, collections, dictionaries,
- * bytes) return `null` and are handled by subsequent tasks:
+ * Non-primitive types (enums, dictionaries, bytes) return `null` and are
+ * handled by subsequent tasks:
  * - 2.2.6: Bytes serialization
- * - 2.2.7: Nested model serialization
  * - 2.2.8: Enum serialization
- * - 2.2.9: Collection serialization
  * - 2.2.10: Dictionary serialization
  *
  * @example Generated output for a string property:
@@ -60,6 +60,12 @@
  * ```csharp
  * writer.WritePropertyName("ttl"u8);
  * writer.WriteNumberValue(Convert.ToInt32(Ttl.TotalSeconds));
+ * ```
+ *
+ * @example Generated output for a nested model property:
+ * ```csharp
+ * writer.WritePropertyName("pet"u8);
+ * writer.WriteObjectValue(Pet, options);
  * ```
  *
  * @module
@@ -440,13 +446,15 @@ function collectionItemNeedsNullCheck(itemType: SdkType): boolean {
 /**
  * Renders the serialization statements for a single value expression.
  *
- * Handles two categories:
+ * Handles three categories:
  * - **Primitive types** — delegates to `getWriteMethodInfo` to produce
  *   `writer.WriteXxxValue(expr[, format])`.
  * - **Array types** — recursively renders `WriteStartArray`, `foreach` loop,
  *   item serialization, and `WriteEndArray`.
+ * - **Model types** — renders `writer.WriteObjectValue(expr, options)` which
+ *   delegates to the nested model's own `IJsonModel<T>.Write`.
  *
- * Returns `null` for types not yet supported (models, enums, dictionaries,
+ * Returns `null` for types not yet supported (enums, dictionaries,
  * bytes), allowing the caller to skip rendering for those properties.
  *
  * @param type - The SDK type of the value to serialize.
@@ -469,6 +477,11 @@ function renderValueWrite(
       valueExpr,
       indent,
     );
+  }
+
+  // Model types — delegate to WriteObjectValue which calls the model's IJsonModel.Write
+  if (unwrapped.kind === "model") {
+    return <>{`\n${indent}writer.WriteObjectValue(${valueExpr}, options);`}</>;
   }
 
   // Primitive types — simple writer method call
@@ -618,10 +631,62 @@ function renderCollectionProperty(
 }
 
 /**
+ * Renders model property serialization with appropriate property name
+ * writing and optional guards.
+ *
+ * Generates `writer.WriteObjectValue(PropertyName, options)` which delegates
+ * serialization to the nested model's own `IJsonModel<T>.Write` implementation.
+ * The generic type parameter is inferred by C# from the argument type.
+ *
+ * For optional model properties, wraps in `Optional.IsDefined()` guard.
+ * For required-nullable model properties, adds `else { WriteNull }` branch.
+ * Models are C# reference types so they never need `.Value` unwrapping.
+ *
+ * @param property - The SDK model property being serialized.
+ * @param serializedName - The JSON wire name for the property.
+ * @param csharpName - The PascalCase C# property name.
+ * @returns JSX element with the complete model serialization.
+ */
+function renderModelProperty(
+  property: SdkModelPropertyType,
+  serializedName: string,
+  csharpName: string,
+) {
+  if (needsOptionalGuard(property)) {
+    const guardMethod = getOptionalGuardMethodName(property);
+    const reqNullable = isRequiredNullable(property);
+    return (
+      <>
+        {`\n    if (Optional.${guardMethod}(${csharpName}))`}
+        {"\n    {"}
+        {`\n        writer.WritePropertyName("${serializedName}"u8);`}
+        {`\n        writer.WriteObjectValue(${csharpName}, options);`}
+        {"\n    }"}
+        {reqNullable && (
+          <>
+            {"\n    else"}
+            {"\n    {"}
+            {`\n        writer.WriteNull("${serializedName}"u8);`}
+            {"\n    }"}
+          </>
+        )}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {`\n    writer.WritePropertyName("${serializedName}"u8);`}
+      {`\n    writer.WriteObjectValue(${csharpName}, options);`}
+    </>
+  );
+}
+
+/**
  * Generates the serialization statements for a single model property.
  *
  * Produces C# statements for writing the property to a `Utf8JsonWriter`.
- * Handles three categories of types:
+ * Handles four categories of types:
  *
  * **Primitive types** — `writer.WritePropertyName("name"u8)` followed by
  * `writer.WriteXxxValue(Name)` with optional format specifier.
@@ -631,8 +696,12 @@ function renderCollectionProperty(
  * each item, and `writer.WriteEndArray()`. Nested collections are handled
  * recursively with nested foreach loops.
  *
- * **Unsupported types** (models, enums, dictionaries, bytes) — returns `null`,
- * handled by subsequent tasks (2.2.6–2.2.8, 2.2.10).
+ * **Model types** — `writer.WritePropertyName("pet"u8)` followed by
+ * `writer.WriteObjectValue(Pet, options)` which delegates to the nested
+ * model's own `IJsonModel<T>.Write` implementation.
+ *
+ * **Unsupported types** (enums, dictionaries, bytes) — returns `null`,
+ * handled by subsequent tasks (2.2.6, 2.2.8, 2.2.10).
  *
  * Optional properties are wrapped in `Optional.IsDefined` / `IsCollectionDefined`
  * guards. Required nullable properties get an `else { WriteNull }` branch.
@@ -667,6 +736,12 @@ function renderCollectionProperty(
  * }
  * ```
  *
+ * @example Generated output for a nested model property:
+ * ```csharp
+ * writer.WritePropertyName("pet"u8);
+ * writer.WriteObjectValue(Pet, options);
+ * ```
+ *
  * @param props - The component props containing the property to serialize.
  * @returns JSX element with the write statements, or `null` for unsupported types.
  */
@@ -688,6 +763,11 @@ export function WritePropertySerialization(
       serializedName,
       csharpName,
     );
+  }
+
+  // Model types — WriteObjectValue delegates to nested model's IJsonModel.Write
+  if (unwrapped.kind === "model") {
+    return renderModelProperty(property, serializedName, csharpName);
   }
 
   // Primitive types — simple writer method call

@@ -1939,7 +1939,7 @@
           "title": "Implement nested model serialization",
           "description": "Nested model properties use writer.WriteObjectValue(value, options) which delegates to the model's own IJsonModel.Write.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.2.3"
           ],

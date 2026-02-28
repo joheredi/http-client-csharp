@@ -2877,3 +2877,278 @@ describe("CollectionSerialization", () => {
     expect(content).toContain("writer.WriteStringValue(item);");
   });
 });
+
+/**
+ * Tests for nested model property serialization.
+ *
+ * When a model property is itself a model type, the serializer generates
+ * `writer.WriteObjectValue(PropertyName, options)` which delegates to
+ * the nested model's own `IJsonModel<T>.Write` implementation. This avoids
+ * duplicating serialization logic and follows the Composite pattern.
+ *
+ * The generic type parameter on `WriteObjectValue` is intentionally omitted
+ * because C# infers it from the argument type. This matches the legacy emitter's
+ * generated output (e.g., `writer.WriteObjectValue(RequiredModel, options)`).
+ *
+ * These tests matter because:
+ * - Models referencing other models are the most common complex type in APIs.
+ * - The `WriteObjectValue` call must pass `options` so nested models respect
+ *   the wire format (JSON, XML, etc.) and additional binary data capture.
+ * - Optional/required-nullable guards for model properties must work the same
+ *   as for primitives (`Optional.IsDefined` / `WriteNull` else branch).
+ * - Model properties inside collections (e.g., `Pet[]`) must serialize each
+ *   item via `WriteObjectValue` in the foreach loop.
+ */
+describe("ModelSerialization", () => {
+  /**
+   * Validates that a required model property generates:
+   *   writer.WritePropertyName("pet"u8);
+   *   writer.WriteObjectValue(Pet, options);
+   *
+   * No Optional guard is needed since the property is required and non-nullable.
+   * The `options` parameter is forwarded so the nested model can read the wire
+   * format and capture additional binary data properties.
+   */
+  it("serializes required model property with WriteObjectValue", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Pet {
+        name: string;
+      }
+
+      model Owner {
+        pet: Pet;
+      }
+
+      @route("/test")
+      op test(): Owner;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Owner.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Property name write
+    expect(content).toContain('writer.WritePropertyName("pet"u8);');
+
+    // WriteObjectValue with options forwarded
+    expect(content).toContain("writer.WriteObjectValue(Pet, options);");
+
+    // Should NOT have Optional guard (required property)
+    expect(content).not.toContain("Optional.IsDefined(Pet)");
+  });
+
+  /**
+   * Validates that an optional model property is wrapped in an Optional.IsDefined
+   * guard. When the property is not set, nothing is written to the JSON output.
+   *
+   * The guard uses `IsDefined` (not `IsCollectionDefined`) because model types
+   * are not collections.
+   */
+  it("wraps optional model property in Optional.IsDefined guard", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Pet {
+        name: string;
+      }
+
+      model Owner {
+        pet?: Pet;
+      }
+
+      @route("/test")
+      op test(): Owner;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Owner.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Should be wrapped in Optional.IsDefined guard
+    expect(content).toContain("if (Optional.IsDefined(Pet))");
+
+    // Inside the guard block: property name and WriteObjectValue
+    expect(content).toContain('writer.WritePropertyName("pet"u8);');
+    expect(content).toContain("writer.WriteObjectValue(Pet, options);");
+
+    // Should NOT have else/WriteNull (optional, not required-nullable)
+    const guardIdx = content.indexOf("Optional.IsDefined(Pet)");
+    const afterGuard = content.substring(guardIdx);
+    // The next '}' closes the if block, there should be no 'else' for optional
+    const closeBraceIdx = afterGuard.indexOf("}");
+    const afterClose = afterGuard.substring(closeBraceIdx + 1, closeBraceIdx + 20);
+    expect(afterClose).not.toContain("else");
+  });
+
+  /**
+   * Validates that a required nullable model property generates an if/else
+   * pattern: write the value if defined, otherwise write null.
+   *
+   * Models are C# reference types so they don't need `.Value` unwrapping
+   * (unlike nullable value types like int? or bool?).
+   */
+  it("generates if/else with WriteNull for required nullable model", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Pet {
+        name: string;
+      }
+
+      model Owner {
+        pet: Pet | null;
+      }
+
+      @route("/test")
+      op test(): Owner;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Owner.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Guard for required-nullable
+    expect(content).toContain("if (Optional.IsDefined(Pet))");
+
+    // Inside the if block: property name and WriteObjectValue
+    expect(content).toContain('writer.WritePropertyName("pet"u8);');
+    expect(content).toContain("writer.WriteObjectValue(Pet, options);");
+
+    // Else block with WriteNull
+    expect(content).toContain('writer.WriteNull("pet"u8);');
+
+    // Model is a reference type — no .Value unwrapping
+    expect(content).not.toContain("Pet.Value");
+  });
+
+  /**
+   * Validates that an array of model objects correctly serializes each item
+   * via WriteObjectValue in the foreach loop. Models are reference types,
+   * so items get a null check.
+   *
+   * Expected generated pattern:
+   *   writer.WritePropertyName("pets"u8);
+   *   writer.WriteStartArray();
+   *   foreach (Pet item in Pets) {
+   *     if (item == null) { WriteNullValue(); continue; }
+   *     writer.WriteObjectValue(item, options);
+   *   }
+   *   writer.WriteEndArray();
+   */
+  it("serializes array of models with WriteObjectValue per item", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Pet {
+        name: string;
+      }
+
+      model Owner {
+        pets: Pet[];
+      }
+
+      @route("/test")
+      op test(): Owner;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Owner.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Property name and collection structure
+    expect(content).toContain('writer.WritePropertyName("pets"u8);');
+    expect(content).toContain("writer.WriteStartArray();");
+    expect(content).toContain("writer.WriteEndArray();");
+
+    // foreach with model type
+    expect(content).toContain("foreach (Pet item in Pets)");
+
+    // Null check for reference type (model) items
+    expect(content).toContain("if (item == null)");
+    expect(content).toContain("writer.WriteNullValue();");
+    expect(content).toContain("continue;");
+
+    // Each item serialized via WriteObjectValue
+    expect(content).toContain("writer.WriteObjectValue(item, options);");
+
+    // Should NOT have Optional guard (required collection)
+    expect(content).not.toContain("Optional.IsCollectionDefined(Pets)");
+  });
+
+  /**
+   * Validates that model properties serialize alongside primitive properties
+   * in the correct order. This tests that the model serialization integrates
+   * properly with the existing primitive serialization pipeline.
+   */
+  it("serializes model property alongside primitive properties", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Address {
+        street: string;
+      }
+
+      model Person {
+        name: string;
+        address: Address;
+        age: int32;
+      }
+
+      @route("/test")
+      op test(): Person;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Person.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // All properties should be serialized
+    expect(content).toContain('writer.WritePropertyName("name"u8);');
+    expect(content).toContain("writer.WriteStringValue(Name);");
+
+    expect(content).toContain('writer.WritePropertyName("address"u8);');
+    expect(content).toContain("writer.WriteObjectValue(Address, options);");
+
+    expect(content).toContain('writer.WritePropertyName("age"u8);');
+    expect(content).toContain("writer.WriteNumberValue(Age);");
+
+    // Verify ordering: name before address before age
+    const nameIdx = content.indexOf('WritePropertyName("name"u8)');
+    const addressIdx = content.indexOf('WritePropertyName("address"u8)');
+    const ageIdx = content.indexOf('WritePropertyName("age"u8)');
+    expect(nameIdx).toBeLessThan(addressIdx);
+    expect(addressIdx).toBeLessThan(ageIdx);
+  });
+});

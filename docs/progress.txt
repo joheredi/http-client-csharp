@@ -923,3 +923,26 @@ Tests: 7 new tests in model-serialization.test.ts (CollectionSerialization descr
 - Boolean array, float64 array
 - Collection alongside scalar properties
 - Nested string[][] with recursive foreach loops
+
+2026-02-28 — Task 2.2.7: Implement nested model serialization (complete)
+
+Added nested model property serialization to the JSON write path in PropertySerializer.tsx:
+- `renderModelProperty()` — generates `writer.WriteObjectValue(PropertyName, options)` for model properties with optional/required-nullable guards
+- Updated `renderValueWrite()` to handle `kind === "model"` for recursive use in collections (arrays of models)
+- Updated `WritePropertySerialization()` to dispatch model types to `renderModelProperty()` before primitive fallback
+
+Patterns used:
+- `writer.WriteObjectValue(value, options)` — no generic type parameter, C# infers it from argument type
+- Same Optional.IsDefined guard pattern as primitives for optional model properties
+- Same if/else WriteNull pattern for required-nullable model properties
+- Models are C# reference types — no .Value unwrapping needed
+- Model items in collections get null check (reference type) in foreach loop
+
+Tests: 5 new tests in model-serialization.test.ts (ModelSerialization describe block):
+- Required model property with WriteObjectValue
+- Optional model property with IsDefined guard
+- Required nullable model with WriteNull else branch
+- Array of models with WriteObjectValue per item
+- Model property alongside primitive properties (ordering)
+
+Next: 2.2.8 (enum serialization), 2.2.6 (bytes), or 2.2.10 (dictionary) are natural next steps

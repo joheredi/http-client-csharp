@@ -622,3 +622,10 @@ When two rendering functions call each other recursively (e.g., `renderValueWrit
 ### Collection serialization: extend WritePropertySerialization vs separate component
 
 **Chosen:** Extend `WritePropertySerialization` with helper functions (`renderValueWrite`, `renderArraySerialization`, `renderCollectionProperty`) in the same file. **Rejected:** Creating a separate `CollectionSerializer.tsx` component. **Reason:** The collection rendering is tightly coupled to the property serialization flow (needs access to property name, optional guards, serialized name). Keeping it in one file reduces indirection. The `renderValueWrite` function provides a reusable abstraction that tasks 2.2.7 (models), 2.2.8 (enums), and 2.2.10 (dictionaries) can plug into by extending the type switch.
+
+## Design Decisions
+
+### Nested model serialization (2.2.7) — WriteObjectValue without generic type parameter
+- **Chosen**: Generate `writer.WriteObjectValue(PropertyName, options)` as raw string — no explicit generic type `<T>`, C# infers it from the argument
+- **Why**: Matches legacy emitter output exactly (see `RoundTripModel.Serialization.cs:120`). Simpler code, no need for TypeExpression in the serialization call.
+- **Rejected**: Using `writer.WriteObjectValue<TypeExpression>(value, options)` — the legacy emitter only uses explicit `<T>` for `object` types in dictionaries/additional properties, not for direct model property access.
