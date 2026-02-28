@@ -3312,7 +3312,10 @@ describe("ModelSerialization", () => {
     const afterGuard = content.substring(guardIdx);
     // The next '}' closes the if block, there should be no 'else' for optional
     const closeBraceIdx = afterGuard.indexOf("}");
-    const afterClose = afterGuard.substring(closeBraceIdx + 1, closeBraceIdx + 20);
+    const afterClose = afterGuard.substring(
+      closeBraceIdx + 1,
+      closeBraceIdx + 20,
+    );
     expect(afterClose).not.toContain("else");
   });
 
@@ -3890,9 +3893,7 @@ describe("PropertyMatchingLoop", () => {
     // 8 spaces: if block inside foreach
     expect(content).toContain('        if (prop.NameEquals("name"u8))');
     // 12 spaces: assignment inside if block
-    expect(content).toContain(
-      "            name = prop.Value.GetString();",
-    );
+    expect(content).toContain("            name = prop.Value.GetString();");
     // 12 spaces: continue inside if block
     expect(content).toContain("            continue;");
   });
@@ -3961,9 +3962,7 @@ describe("PropertyMatchingLoop", () => {
     const content = outputs[fileKey!];
 
     expect(content).toContain('if (prop.NameEquals("endpoint"u8))');
-    expect(content).toContain(
-      "endpoint = new Uri(prop.Value.GetString());",
-    );
+    expect(content).toContain("endpoint = new Uri(prop.Value.GetString());");
   });
 
   /**
@@ -4169,9 +4168,7 @@ describe("PropertyMatchingLoop", () => {
     const content = outputs[fileKey!];
 
     expect(content).toContain('if (prop.NameEquals("birthDate"u8))');
-    expect(content).toContain(
-      'birthDate = prop.Value.GetDateTimeOffset("D");',
-    );
+    expect(content).toContain('birthDate = prop.Value.GetDateTimeOffset("D");');
   });
 
   /**
@@ -4480,5 +4477,163 @@ describe("PropertyMatchingLoop", () => {
     expect(content).toContain(
       'token = BinaryData.FromBytes(prop.Value.GetBytesFromBase64("U"));',
     );
+  });
+
+  /**
+   * Validates that a required nested model property generates the static
+   * `DeserializeXxx` call pattern: `ModelName.DeserializeModelName(prop.Value, options)`.
+   *
+   * This is the core model deserialization pattern in System.ClientModel —
+   * each model type has a static `DeserializeXxx` method that knows how to
+   * read its own properties from a `JsonElement`. Nested model properties
+   * delegate to the nested model's own deserialization method.
+   *
+   * This test is critical because nested model references are the most common
+   * complex type in real-world APIs and must resolve correctly without
+   * `<Unresolved Symbol>` errors.
+   */
+  it("deserializes required nested model property with DeserializeXxx call", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Pet {
+        name: string;
+      }
+
+      model Widget {
+        pet: Pet;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+    const content = outputs[fileKey!];
+
+    // Should match the JSON property name and call the nested model's Deserialize method
+    expect(content).toContain('if (prop.NameEquals("pet"u8))');
+    expect(content).toContain("pet = Pet.DeserializePet(prop.Value, options);");
+    expect(content).toContain("continue;");
+  });
+
+  /**
+   * Validates that a model with multiple nested model properties generates
+   * separate `DeserializeXxx` calls for each one, and that each uses the
+   * correct model name for its type.
+   *
+   * This ensures the name policy correctly resolves different model names
+   * and that the deserialization method name is derived from the property's
+   * type, not the property name.
+   */
+  it("deserializes multiple nested model properties with correct type names", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Address {
+        street: string;
+      }
+
+      model Contact {
+        email: string;
+      }
+
+      model Person {
+        home: Address;
+        contact: Contact;
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Person;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Person.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+    const content = outputs[fileKey!];
+
+    // Each nested model property should use its own type's Deserialize method
+    expect(content).toContain('if (prop.NameEquals("home"u8))');
+    expect(content).toContain(
+      "home = Address.DeserializeAddress(prop.Value, options);",
+    );
+
+    expect(content).toContain('if (prop.NameEquals("contact"u8))');
+    expect(content).toContain(
+      "contact = Contact.DeserializeContact(prop.Value, options);",
+    );
+
+    // Primitive property should still use the simple getter
+    expect(content).toContain('if (prop.NameEquals("name"u8))');
+    expect(content).toContain("name = prop.Value.GetString();");
+  });
+
+  /**
+   * Validates that a model property in a derived discriminated model
+   * generates the correct `DeserializeXxx` call. Derived models flatten
+   * all properties (base + own) into a single deserialization loop, so
+   * nested model properties from both base and derived must work.
+   *
+   * This test verifies that model type resolution works correctly in the
+   * context of inheritance hierarchies.
+   */
+  it("deserializes nested model property in derived discriminated model", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Metadata {
+        version: int32;
+      }
+
+      @discriminator("kind")
+      model Shape {
+        kind: string;
+        metadata: Metadata;
+      }
+
+      model Circle extends Shape {
+        kind: "circle";
+        radius: float64;
+      }
+
+      @route("/test")
+      op test(): Circle;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Circle.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+    const content = outputs[fileKey!];
+
+    // The derived model's deserialization should include the base model's nested model property
+    expect(content).toContain('if (prop.NameEquals("metadata"u8))');
+    expect(content).toContain(
+      "metadata = Metadata.DeserializeMetadata(prop.Value, options);",
+    );
+
+    // Own primitive property should also be present
+    expect(content).toContain('if (prop.NameEquals("radius"u8))');
+    expect(content).toContain("radius = prop.Value.GetDouble();");
   });
 });

@@ -672,3 +672,10 @@ When two rendering functions call each other recursively (e.g., `renderValueWrit
 **Bytes default encoding**: TCGC always assigns `encode: "base64"` as the default for bytes types, even without an explicit `@encode` decorator. The `BinaryData.FromString(prop.Value.GetRawText())` fallback is defensive and not triggered for standard bytes properties.
 
 **plainDate/plainTime**: Use the same extension methods as DateTime/Duration — `GetDateTimeOffset("D")` for plainDate, `GetTimeSpan("T")` for plainTime. These are fixed format specifiers (no encode variation).
+
+### Model deserialization pattern (Task 2.3.7)
+
+**Pattern**: `ModelName.DeserializeModelName(prop.Value, options)` — static method call on the model class.
+**Implementation**: Extended `getReadExpression()` with `namePolicy?: NamePolicy<string>` parameter. When `kind === "model"`, uses `namePolicy.getName(modelType.name, "class")` to get PascalCase name.
+**Type note**: Use `NamePolicy<string>` (not inline type) to be compatible with `NamePolicy<CSharpElements>` from `useCSharpNamePolicy()`.
+**Works for**: Required models, nullable models (unwrapped by `unwrapNullableType`), discriminated base model properties in derived models.

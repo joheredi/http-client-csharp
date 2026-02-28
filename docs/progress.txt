@@ -1033,3 +1033,28 @@ Key patterns:
 
 Files modified: src/components/serialization/PropertyMatchingLoop.tsx, test/model-serialization.test.ts
 12 new tests added covering all encoded type variants.
+
+## 2026-02-28 — Task 2.3.7: Implement model deserialization (complete)
+
+Extended `getReadExpression()` in `PropertyMatchingLoop.tsx` with nested model deserialization support.
+
+**Pattern**: `ModelName.DeserializeModelName(prop.Value, options)` — each model type has a static
+`DeserializeXxx` method that reads its own properties from a `JsonElement`. Nested model properties
+delegate to the nested model's own deserialization method.
+
+**Implementation**: Added `namePolicy` optional parameter to `getReadExpression()` and a model type
+check (`kind === "model"`) that uses the name policy to get the PascalCase class name. The name policy
+is passed from the `PropertyMatchingLoop` component where `useCSharpNamePolicy()` is available.
+
+**Design decision**: Extended `getReadExpression()` rather than handling models at the component level.
+This keeps expression-to-type mapping centralized in one function, consistent with how all other types
+are handled. The alternative (component-level handling like PropertySerializer.tsx) was rejected because
+it would duplicate the rendering template.
+
+**Type compatibility note**: The `namePolicy` parameter uses `NamePolicy<string>` from `@alloy-js/core`
+to be compatible with `NamePolicy<CSharpElements>` returned by `useCSharpNamePolicy()`. Using an inline
+type like `{ getName(name: string, element: string): string }` causes TS incompatibility because
+`CSharpElements | undefined` is narrower than `string`.
+
+Files modified: src/components/serialization/PropertyMatchingLoop.tsx
+Tests added: 3 tests covering required nested model, multiple nested models, and derived discriminated model.

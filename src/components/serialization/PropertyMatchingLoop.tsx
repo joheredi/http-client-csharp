@@ -12,9 +12,9 @@
  * 3. Assigns the extracted value to the local variable: `{var} = prop.Value.Get{Type}()`.
  * 4. Calls `continue` to skip to the next JSON property.
  *
- * Properties with types not yet handled (models, enums, collections,
+ * Properties with types not yet handled (enums, collections,
  * dictionaries) are skipped — those are implemented by subsequent
- * tasks (2.3.7–2.3.10). A children slot after all property matches allows
+ * tasks (2.3.8–2.3.10). A children slot after all property matches allows
  * task 2.3.12 to add the additional binary data catch-all.
  *
  * For derived discriminated models, the loop includes ALL properties from
@@ -44,6 +44,7 @@
 
 import { useCSharpNamePolicy } from "@alloy-js/csharp";
 import type { Children } from "@alloy-js/core";
+import type { NamePolicy } from "@alloy-js/core";
 import type {
   SdkBuiltInType,
   SdkDateTimeType,
@@ -113,9 +114,10 @@ export function computeMatchableProperties(
  * Abstract numeric kinds (`numeric`, `integer`, `float`) map to their
  * C# default representations: `double` for numeric/float, `long` for integer.
  *
- * Types not in this map (models, enums, collections, dictionaries) require
+ * Types not in this map (enums, collections, dictionaries) require
  * specialized deserialization and return `null` from `getReadExpression` —
- * those are handled by subsequent tasks.
+ * those are handled by subsequent tasks. Model types are handled
+ * separately via the `DeserializeXxx` static method pattern.
  *
  * Encoded types (DateTime, Duration, bytes, plainDate, plainTime) are handled
  * by dedicated helper functions before consulting this map.
@@ -269,15 +271,19 @@ function getBytesReadExpression(type: SdkBuiltInType): string {
  * - **plainTime** → `prop.Value.GetTimeSpan("T")`
  *
  * Returns `null` for types that need specialized deserialization logic:
- * - **Models** — task 2.3.7 (recursive `DeserializeXxx` call)
  * - **Enums** — task 2.3.8 (conversion via `ToXxx` extension)
  * - **Collections (arrays)** — task 2.3.9 (foreach over array)
  * - **Dictionaries** — task 2.3.10 (foreach over object)
  *
  * @param type - An SDK type from TCGC.
+ * @param namePolicy - Optional C# name policy for resolving model class names.
+ *   Required for model type deserialization (kind === "model").
  * @returns The C# expression string, or `null` if the type is not yet supported.
  */
-export function getReadExpression(type: SdkType): string | null {
+export function getReadExpression(
+  type: SdkType,
+  namePolicy?: NamePolicy<string>,
+): string | null {
   let unwrapped = unwrapNullableType(type);
 
   // Unwrap constant types to get the underlying primitive kind.
@@ -323,6 +329,15 @@ export function getReadExpression(type: SdkType): string | null {
     return `prop.Value.${method}()`;
   }
 
+  // Model types — call static DeserializeXxx method on the model class.
+  // The pattern is: ModelName.DeserializeModelName(prop.Value, options)
+  // This delegates deserialization to the nested model's own static method.
+  if (kind === "model" && namePolicy) {
+    const modelType = unwrapped as SdkModelType;
+    const modelName = namePolicy.getName(modelType.name, "class");
+    return `${modelName}.Deserialize${modelName}(prop.Value, options)`;
+  }
+
   // Types handled by subsequent tasks return null
   return null;
 }
@@ -347,7 +362,8 @@ export function getReadExpression(type: SdkType): string | null {
  *
  * Properties whose types are not yet supported (returning `null` from
  * `getReadExpression`) are silently skipped. This allows subsequent tasks
- * to incrementally add support for more types without changing this component.
+ * to incrementally add support for more types (enums, collections,
+ * dictionaries) without changing this component.
  *
  * @param props - The component props containing the model type and optional children.
  * @returns JSX element rendering the property matching foreach loop.
@@ -363,7 +379,7 @@ export function PropertyMatchingLoop(props: PropertyMatchingLoopProps) {
       {properties.map((p) => {
         const serializedName = p.serializedName;
         const varName = namePolicy.getName(p.name, "parameter");
-        const readExpr = getReadExpression(p.type);
+        const readExpr = getReadExpression(p.type, namePolicy);
         if (!readExpr) return null;
 
         return (
