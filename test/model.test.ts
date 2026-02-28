@@ -39,9 +39,7 @@ describe("ModelFile", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const modelFileKey = Object.keys(outputs).find((k) =>
-      k.includes("Widget"),
-    );
+    const modelFileKey = Object.keys(outputs).find((k) => k.includes("Widget"));
     expect(modelFileKey).toBeDefined();
     expect(modelFileKey).toContain("src/Generated/Models/Widget.cs");
   });
@@ -68,9 +66,7 @@ describe("ModelFile", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const modelFileKey = Object.keys(outputs).find((k) =>
-      k.includes("Widget"),
-    );
+    const modelFileKey = Object.keys(outputs).find((k) => k.includes("Widget"));
     expect(modelFileKey).toBeDefined();
     const modelFile = outputs[modelFileKey!];
 
@@ -100,9 +96,7 @@ describe("ModelFile", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const modelFileKey = Object.keys(outputs).find((k) =>
-      k.includes("Widget"),
-    );
+    const modelFileKey = Object.keys(outputs).find((k) => k.includes("Widget"));
     expect(modelFileKey).toBeDefined();
     const modelFile = outputs[modelFileKey!];
 
@@ -132,9 +126,7 @@ describe("ModelFile", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const modelFileKey = Object.keys(outputs).find((k) =>
-      k.includes("Thing"),
-    );
+    const modelFileKey = Object.keys(outputs).find((k) => k.includes("Thing"));
     expect(modelFileKey).toBeDefined();
     const modelFile = outputs[modelFileKey!];
 
@@ -295,9 +287,7 @@ describe("ModelProperty", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const modelFile = Object.keys(outputs).find((k) =>
-      k.includes("Widget.cs"),
-    );
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
     expect(modelFile).toBeDefined();
     const content = outputs[modelFile!];
 
@@ -328,9 +318,7 @@ describe("ModelProperty", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const modelFile = Object.keys(outputs).find((k) =>
-      k.includes("Result.cs"),
-    );
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Result.cs"));
     expect(modelFile).toBeDefined();
     const content = outputs[modelFile!];
 
@@ -399,9 +387,7 @@ describe("ModelProperty", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const modelFile = Object.keys(outputs).find((k) =>
-      k.includes("Widget.cs"),
-    );
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
     expect(modelFile).toBeDefined();
     const content = outputs[modelFile!];
 
@@ -435,9 +421,7 @@ describe("ModelProperty", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const modelFile = Object.keys(outputs).find((k) =>
-      k.includes("Widget.cs"),
-    );
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
     expect(modelFile).toBeDefined();
     const content = outputs[modelFile!];
 
@@ -477,9 +461,7 @@ describe("ModelProperty", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const modelFile = Object.keys(outputs).find((k) =>
-      k.includes("Widget.cs"),
-    );
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
     expect(modelFile).toBeDefined();
     const content = outputs[modelFile!];
 
@@ -514,9 +496,7 @@ describe("ModelProperty", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const modelFile = Object.keys(outputs).find((k) =>
-      k.includes("Widget.cs"),
-    );
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
     expect(modelFile).toBeDefined();
     const content = outputs[modelFile!];
 
@@ -549,9 +529,7 @@ describe("ModelProperty", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const modelFile = Object.keys(outputs).find((k) =>
-      k.includes("Widget.cs"),
-    );
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
     expect(modelFile).toBeDefined();
     const content = outputs[modelFile!];
 
@@ -592,9 +570,7 @@ describe("ModelProperty", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const modelFile = Object.keys(outputs).find((k) =>
-      k.includes("Widget.cs"),
-    );
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
     expect(modelFile).toBeDefined();
     const content = outputs[modelFile!];
 
@@ -632,19 +608,129 @@ describe("ModelProperty", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const modelFile = Object.keys(outputs).find((k) =>
-      k.includes("Widget.cs"),
-    );
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
     expect(modelFile).toBeDefined();
     const content = outputs[modelFile!];
 
     // Properties should NOT be on the same line — verify they are separated
     const lines = content.split("\n");
-    const nameLineIdx = lines.findIndex((l: string) => l.includes("public string Name"));
+    const nameLineIdx = lines.findIndex((l: string) =>
+      l.includes("public string Name"),
+    );
     const countDocIdx = lines.findIndex((l: string) =>
       l.includes("/// <summary> The count."),
     );
     // The count doc comment should be on a later line than the Name property
     expect(countDocIdx).toBeGreaterThan(nameLineIdx);
+  });
+
+  /**
+   * Validates that collection properties (arrays) are get-only.
+   * In the legacy emitter, collections never have setters regardless of
+   * model usage. Mutation happens via the collection interface (Add, Remove).
+   * Collections use ChangeTracking types for "not set" vs "empty" semantics.
+   */
+  it("generates get-only properties for array collections on input+output models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        tags: string[];
+      }
+
+      @route("/widgets")
+      op createWidget(@body body: Widget): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
+    expect(modelFile).toBeDefined();
+    const content = outputs[modelFile!];
+
+    // Non-collection property on input+output model has get+set
+    expect(content).toMatch(/public\s+string\s+Name\s*\{\s*get;\s*set;\s*\}/);
+    // Collection property should be get-only (no setter)
+    expect(content).toMatch(/public\s+.*Tags\s*\{\s*get;\s*\}/);
+    // Verify no setter on the collection property
+    expect(content).not.toMatch(/Tags\s*\{[^}]*set;/);
+  });
+
+  /**
+   * Validates that optional properties on input-only models get setters.
+   * While required properties on input-only models are get-only (set via
+   * constructor), optional properties need setters so users can set them
+   * via object initializer syntax: `new Model(required) { Optional = val }`.
+   * This matches the legacy emitter's PropertyHasSetter logic.
+   */
+  it("generates set accessor for optional properties on input-only models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model CreateRequest {
+        name: string;
+        description?: string;
+      }
+
+      @route("/create")
+      op createItem(@body body: CreateRequest): void;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) =>
+      k.includes("CreateRequest.cs"),
+    );
+    expect(modelFile).toBeDefined();
+    const content = outputs[modelFile!];
+
+    // Required property on input-only model: get-only (constructor handles it)
+    expect(content).toMatch(/public\s+string\s+Name\s*\{\s*get;\s*\}/);
+    // Optional property on input-only model: get+set (object initializer syntax)
+    expect(content).toMatch(
+      /public\s+string\?\s+Description\s*\{\s*get;\s*set;\s*\}/,
+    );
+  });
+
+  /**
+   * Validates that optional collection properties on input-only models
+   * are still get-only. The collection no-setter rule takes precedence
+   * over the optional-needs-setter rule. Users add items via the collection
+   * interface, not by replacing the whole collection.
+   */
+  it("generates get-only for optional collections on input-only models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model CreateRequest {
+        name: string;
+        tags?: string[];
+      }
+
+      @route("/create")
+      op createItem(@body body: CreateRequest): void;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) =>
+      k.includes("CreateRequest.cs"),
+    );
+    expect(modelFile).toBeDefined();
+    const content = outputs[modelFile!];
+
+    // Optional collection: get-only (collection rule overrides optional rule)
+    expect(content).toMatch(/public\s+.*Tags\s*\{\s*get;\s*\}/);
+    expect(content).not.toMatch(/Tags\s*\{[^}]*set;/);
   });
 });

@@ -293,3 +293,31 @@ Legacy emitter uses `/// <summary> text </summary>` (single-line with spaces ins
 ### Task 1.2.2: Property Spacing in ClassDeclaration
 
 Multiple properties rendered inside ClassDeclaration need explicit newline separation. Use `<For each={...} hardline>` from `@alloy-js/core` to add newline breaks between property renderings.
+
+### Task 1.2.3: Property Setter Rules (Full Logic)
+
+The `propertyHasSetter` function in ModelProperty.tsx now implements the full legacy PropertyProvider.PropertyHasSetter logic. Order matters:
+1. Read-only properties (visibility=[Read]) → never have setters
+2. Output-only models → never have setters
+3. Input-only models, required properties → no setter (constructor handles it)
+4. Input-only models, optional properties → HAS setter (object initializer syntax)
+5. Collection properties → never have setters (mutation via Add/Remove)
+6. Everything else → has setter
+
+Key insight: the old `propertyHasSetter(modelUsage)` was too simple — it treated all input-only properties as get-only. The legacy emitter only makes *required* input-only properties get-only; optional ones need setters for `new Model(required) { Optional = val }` syntax.
+
+### Task 1.2.3: Property Utility Functions in src/utils/property.ts
+
+Created utility functions for required/optional analysis that downstream constructor tasks (1.2.4, 1.2.5) should import:
+- `isConstructorParameter(prop, isStruct?)` — whether prop is a public ctor param
+- `propertyRequiresNullCheck(prop)` — whether prop needs Argument.AssertNotNull (required reference types only)
+- `getPropertyInitializerKind(prop)` — returns one of: change-tracking-list, change-tracking-dict, to-list, to-dict, direct-assign, none
+- `isCSharpReferenceType(type)` — string, model, bytes, url, unknown map to C# reference types
+- `isPropertyReadOnly(prop)` — visibility=[Read] only
+
+## Design Decisions
+
+### Task 1.2.3: Pure utility functions over component-based approach
+Chose pure utility functions in `src/utils/property.ts` over embedding logic in JSX components.
+- **Chosen**: Utility functions — easier to unit test, importable by constructor tasks, matches nullable.ts pattern
+- **Rejected**: Component-based approach — would couple initialization logic to rendering, harder to test

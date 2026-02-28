@@ -14,9 +14,11 @@ import type { SdkModelPropertyType } from "@azure-tools/typespec-client-generato
 import { UsageFlags } from "@azure-tools/typespec-client-generator-core";
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import {
+  isCollectionType,
   isPropertyNullable,
   unwrapNullableType,
 } from "../../utils/nullable.js";
+import { isPropertyReadOnly } from "../../utils/property.js";
 
 /**
  * Props for the {@link ModelProperty} component.
@@ -32,23 +34,46 @@ export interface ModelPropertyProps {
  * Determines whether a model property should have a setter accessor.
  *
  * Follows the legacy emitter's PropertyProvider.PropertyHasSetter logic
- * for the model-usage dimension:
+ * (PropertyProvider.cs lines 192–235):
  *
- * - **Input-only models**: get-only — the public constructor handles
- *   initialization of required properties; optional properties can be
- *   set via object initializer syntax which the constructor will accept.
+ * - **Read-only properties**: get-only — visibility is [Read] only.
  * - **Output-only models**: get-only — properties are populated during
  *   deserialization and not modified by the user.
- * - **Input+Output models**: get+set — the user sets values for requests,
- *   and the server populates values in responses.
+ * - **Input-only models, required properties**: get-only — the public
+ *   constructor handles initialization.
+ * - **Input-only models, optional properties**: get+set — the user sets
+ *   values via object initializer syntax.
+ * - **Collection properties**: get-only — mutation happens via the
+ *   collection interface (Add, Remove), not by replacing the collection.
+ *   Collections use ChangeTracking types for "not set" vs "empty" semantics.
+ * - **Input+Output models, non-collection**: get+set — the user sets
+ *   values for requests, and the server populates values in responses.
  *
+ * @param property - The TCGC SDK model property.
  * @param modelUsage - The UsageFlags bitmap of the containing model.
  * @returns `true` if the property should include a setter.
  */
-export function propertyHasSetter(modelUsage: UsageFlags): boolean {
+export function propertyHasSetter(
+  property: SdkModelPropertyType,
+  modelUsage: UsageFlags,
+): boolean {
   const isInput = (modelUsage & UsageFlags.Input) !== 0;
   const isOutput = (modelUsage & UsageFlags.Output) !== 0;
-  return isInput && isOutput;
+
+  // Read-only properties (visibility: [Read] only) never have setters
+  if (isPropertyReadOnly(property)) return false;
+
+  // Output-only models: no setters (populated by deserialization)
+  if (!isInput) return false;
+
+  // Input-only: required properties don't have setters (constructor handles it)
+  // Optional properties DO need setters for object initializer syntax
+  if (isInput && !isOutput && !property.optional) return false;
+
+  // Collections never have setters — mutation happens via collection interface
+  if (isCollectionType(property.type)) return false;
+
+  return true;
 }
 
 /**
@@ -77,7 +102,7 @@ export function ModelProperty(props: ModelPropertyProps) {
   const { property, modelUsage } = props;
   const nullable = isPropertyNullable(property);
   const type = unwrapNullableType(property.type);
-  const hasSetter = propertyHasSetter(modelUsage);
+  const hasSetter = propertyHasSetter(property, modelUsage);
   const doc = property.doc ?? property.summary;
   const formattedDoc = doc ? `<summary> ${doc} </summary>` : undefined;
 

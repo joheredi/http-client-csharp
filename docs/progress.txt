@@ -416,3 +416,23 @@ TCGC preserves the raw reference (scalars, models, enums). Synthetic types may n
 doc comments, PascalCase naming, scalar type mapping, and property spacing.
 
 Unblocks: 1.2.3 (required vs optional logic), 1.2.6 (additionalBinaryDataProperties), 1.2.7 (XML doc comments)
+
+2026-02-28 — Task 1.2.3: Implement required vs optional property logic (complete)
+
+Created `src/utils/property.ts` with required/optional property analysis utilities:
+- `isCSharpReferenceType(type)` — determines if TCGC type maps to C# reference type (for null validation)
+- `isPropertyReadOnly(property)` — checks if visibility is [Read] only
+- `isConstructorParameter(property, isStruct?)` — whether property is a public constructor param
+- `propertyRequiresNullCheck(property)` — whether property needs Argument.AssertNotNull
+- `getPropertyInitializerKind(property)` — returns initialization kind (change-tracking-list/dict, to-list/dict, direct-assign, none)
+
+Updated `propertyHasSetter` in ModelProperty.tsx:
+- Now accepts property object (not just usage flags) for more nuanced logic
+- Collections never have setters (mutation via collection interface)
+- Read-only properties (visibility=[Read]) never have setters
+- Optional properties on input-only models DO get setters (object initializer syntax)
+- Required properties on input-only models remain get-only (constructor handles init)
+
+Key design decision: Pure utility functions (no JSX) for property analysis. Easier to test in isolation and downstream constructor tasks (1.2.4, 1.2.5) can import these.
+
+Tests: 35 new tests (20 model integration + 35 property-utils unit) covering all new utility functions and updated property behavior. Total: 217 tests passing.
