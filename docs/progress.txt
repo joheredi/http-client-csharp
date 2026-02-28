@@ -210,3 +210,29 @@ Added 6 new types to the System.ClientModel Alloy library declarations:
 **Test coverage:**
 - 10 total tests in fixed-enum.test.ts (7 existing + 3 new)
 - All 64 tests pass across 7 test files
+
+## 2026-02-28 — Task 1.5.1: Create FixedEnumSerializationFile component
+
+**Summary:** Created `src/components/enums/FixedEnumSerializationFile.tsx` that generates `{EnumName}.Serialization.cs` files with serialization extension methods for fixed enums. The component produces an `internal static partial class {EnumName}Extensions` containing:
+
+- **ToSerial{TypeName}** (switch expression): Converts enum → underlying value. Skipped for int-backed enums.
+- **To{EnumName}** (if-chain): Converts underlying value → enum. Uses `StringComparer.OrdinalIgnoreCase.Equals()` for strings, `==` for numerics.
+
+**Files created/modified:**
+- `src/components/enums/FixedEnumSerializationFile.tsx` — main component with SerializeMethod and DeserializeMethod sub-components
+- `src/components/enums/index.ts` — barrel export
+- `src/components/index.ts` — barrel export
+- `src/emitter.tsx` — wired serialization file alongside FixedEnumFile
+- `test/fixed-enum-serialization.test.ts` — 7 tests covering string/int/float-backed enums
+
+**Patterns used:**
+- Renders method bodies as individual string children separated by `{"\n"}`, matching FixedEnumFile's line-by-line approach
+- Uses leading spaces in string literals for internal indentation (e.g., `"    if (...)"` for 4-space indent within method body)
+- Helper functions: `getCSharpTypeInfo()` maps TCGC kinds to C# keywords/framework names, `formatValueLiteral()` formats values with type-appropriate suffixes
+
+**Key observations:**
+- Alloy's rendering engine indents each string child to the current context level; embedded `\n` resets to that level
+- `using System;` rendered as raw text (not via SourceFile auto-using) since we use raw type names for System types
+- ParameterProps in @alloy-js/csharp lacks `this` modifier, so extension methods are rendered as raw strings
+
+**Test count: 71 total (7 new), all passing.**

@@ -133,8 +133,37 @@ The TCGC `SdkTypeBase` has `doc?: string` and `summary?: string` for documentati
 **Why**: The golden file uses single-line `/// <summary> Monday. </summary>`. The Alloy doc components produce multi-line `/// <summary>\n/// Monday.\n/// </summary>`. Raw strings give exact format control.
 
 ### Fixed Enum Value Rendering: Int-backed vs String/Float-backed (2026-02-28)
+
 > **Rule**: Only int-backed fixed enums get explicit initialization values in the C# enum declaration (e.g., `One = 1`). String-backed and float-backed enums have no values — serialization is handled by extension methods.
 >
 > **Implementation**: Use `isSdkIntKind(sdkEnum.valueType.kind)` from TCGC to detect int-backed enums. Render ` = ${member.value}` as a text sibling after `<EnumMember>` in the JSX fragment.
 >
 > **Legacy reference**: `FixedEnumProvider.cs` line 77: `ValueExpression? initializationValue = IsIntValueType ? Literal(inputValue.Value) : null;`
+
+### Extension methods not supported by Alloy's ParameterProps
+
+The `ParameterProps` interface in `@alloy-js/csharp` does not include a `this` modifier for extension method parameters. To generate extension methods, render the full method signature as a raw string child of `ClassDeclaration` rather than using the `Method` component.
+
+### Rendering multiline method bodies in Alloy
+
+Use individual string children separated by `{"\n"}` for each line of a method body. Alloy indents each child to the current context level after a newline. Leading spaces in the string (e.g., `"    if (...)"`) add indentation relative to the base level. Avoid multi-line strings with embedded `\n` as only the first line gets base indentation.
+
+### C# type mapping for enum backing types
+
+Map TCGC scalar kinds to C# types:
+
+- `"string"` → keyword: `string`, framework: `String`
+- `"float32"` → keyword: `float`, framework: `Single`
+- `"float64"` → keyword: `double`, framework: `Double`
+- `"int32"` → keyword: `int`, framework: `Int32`
+- `"int64"` → keyword: `long`, framework: `Int64`
+
+The framework name is used in serialization method suffixes (e.g., `ToSerialString`, `ToSerialSingle`).
+
+## Design Decisions
+
+### Task 1.5.1: FixedEnumSerializationFile rendering approach
+
+**Chosen:** Single component file with SerializeMethod/DeserializeMethod sub-components that render method bodies as line-by-line string children of ClassDeclaration.
+
+**Rejected:** Using Alloy's Method component — ParameterProps lacks `this` modifier for extension methods. Also rejected using `code` template tags for entire methods — difficult to control indentation precisely for complex nested structures (switch expressions, if-chains).
