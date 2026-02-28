@@ -7,6 +7,7 @@ import { ExtensibleEnumSerializationFile } from "./components/enums/ExtensibleEn
 import { FixedEnumFile } from "./components/enums/FixedEnumFile.js";
 import { FixedEnumSerializationFile } from "./components/enums/FixedEnumSerializationFile.js";
 import { HttpClientCSharpOutput } from "./components/HttpClientCSharpOutput.js";
+import { ModelFile } from "./components/models/ModelFile.js";
 import { $lib } from "./lib.js";
 import { type CSharpEmitterOptions, resolveOptions } from "./options.js";
 
@@ -45,6 +46,7 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
   // Render the JSX component tree and write generated C# files to disk
   const fixedEnums = sdkContext.sdkPackage.enums.filter((e) => e.isFixed);
   const extensibleEnums = sdkContext.sdkPackage.enums.filter((e) => !e.isFixed);
+  const models = sdkContext.sdkPackage.models;
 
   const output = (
     <HttpClientCSharpOutput
@@ -67,6 +69,9 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
           .map((e) => (
             <ExtensibleEnumSerializationFile type={e} options={options} />
           ))}
+        {models.map((m) => (
+          <ModelFile type={m} options={options} />
+        ))}
       </CSharpScalarOverrides>
     </HttpClientCSharpOutput>
   );

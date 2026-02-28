@@ -617,7 +617,7 @@
           "title": "Create ModelFile component",
           "description": "Create the ModelFile component that generates a complete model .cs file. It should produce a SourceFile with the standard header (copyright, auto-generated, #nullable disable), using statements (auto-managed by Alloy), file-scoped namespace, and a partial class declaration. Use @alloy-js/csharp SourceFile and ClassDeclaration components. The file path should be src/Generated/Models/{ModelName}.cs. See any model golden file like TestProjects/Local/Sample-TypeSpec/src/Generated/Models/Thing.cs for the exact format.",
           "phase": "phase-1",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "0.3.1",
             "0.3.4",

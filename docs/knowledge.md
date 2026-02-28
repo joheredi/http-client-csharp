@@ -242,3 +242,13 @@ This prevents `int32 extends integer` from incorrectly picking up `integer→lon
 
 ### Stream and IPAddress are not TypeSpec scalars
 Stream and IPAddress were `InputPrimitiveType` kinds in the legacy emitter, but they don't exist as TypeSpec scalars or TCGC `SdkBuiltInKinds`. They must be handled at the model property generation level, not at the TypeExpression override level.
+
+### TCGC decorators not available in test host (Task 1.2.1)
+
+TCGC decorators like `@access(Access.internal)` from `Azure.ClientGenerator.Core` cannot be used in TypeSpec test code because the test host only registers `http-client-csharp` and `@typespec/http` as libraries. The `@azure-tools/typespec-client-generator-core` TypeSpec library isn't explicitly registered. Tests that need to exercise TCGC-specific behaviors should use indirect approaches (e.g., relying on TCGC's analysis of usage patterns) rather than TCGC decorators directly.
+
+### Model file component pattern (Task 1.2.1)
+
+**Chosen approach:** Single `ModelFile` component following the `FixedEnumFile` pattern — one component handles the file-level structure (SourceFile, header, namespace) and the class declaration. Child content is passed through for future tasks to populate with properties, constructors, etc.
+
+**Why:** Consistent with existing enum components. Separation into sub-components (ModelDeclaration, etc.) can happen naturally as complexity grows. The `partial` keyword is always applied since every model class is split across a main file and a serialization file.
