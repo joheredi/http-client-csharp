@@ -379,3 +379,26 @@ Chose `<Constructor>` component over raw strings (like ExtensibleEnumFile does) 
 **Why**: The component is already named `ModelConstructors` (plural). All constructor logic stays co-located, reducing indirection. The two constructors share utilities (`buildParameters` pattern, naming policy).
 
 **Rejected**: Creating a separate `SerializationConstructor.tsx` component — would add unnecessary file and import overhead for a closely related concern.
+
+## Design Decisions
+
+### Task 1.3.1: Abstract base model — minimal modification approach
+
+**Chosen:** Modify existing ModelFile.tsx + ModelProperty.tsx rather than creating a separate DiscriminatorModel.tsx component.
+**Why:** The changes are small (abstract flag + internal access for discriminator property) and don't warrant a new component. All the infrastructure (isModelAbstract, getConstructorAccessModifiers) already existed in ModelConstructors.tsx.
+**Rejected:** Creating DiscriminatorModel.tsx as PRD suggested — overkill for 2 small changes across 2 files.
+
+## Gotchas
+
+### Alloy modifier ordering: `protected private` not `private protected`
+
+When setting both `private: true` and `protected: true` on a Constructor/ClassDeclaration, Alloy outputs `protected private` (not `private protected`). Both are valid C# with identical semantics. Tests should accept either ordering via regex: `/(?:private\s+protected|protected\s+private)/`.
+
+### TCGC discriminator fields on SdkModelType
+
+- `discriminatorProperty?: SdkModelPropertyType` — the property that discriminates (on base model)
+- `discriminatedSubtypes?: Record<string, SdkModelType>` — map of subtypes (on base model)
+- `discriminatorValue?: string` — the value for a specific derived model
+- `baseModel?: SdkModelType` — reference to parent model (on derived model)
+- `property.discriminator: boolean` — flag on individual properties marking them as discriminators
+- There is NO `isAbstract` field — abstractness is derived from having discriminatorProperty + discriminatedSubtypes

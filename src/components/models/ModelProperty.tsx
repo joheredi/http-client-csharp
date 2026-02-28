@@ -77,38 +77,62 @@ export function propertyHasSetter(
 }
 
 /**
+ * Determines whether a model property is a discriminator property.
+ *
+ * Discriminator properties identify the concrete type in a discriminated union
+ * hierarchy. They are rendered with `internal` access and always have get+set
+ * accessors, matching the legacy emitter's PropertyProvider.cs behavior where
+ * discriminator properties use internal accessibility.
+ *
+ * @param property - The TCGC SDK model property.
+ * @returns `true` if the property is marked as a discriminator.
+ */
+export function isDiscriminatorProperty(
+  property: SdkModelPropertyType,
+): boolean {
+  return property.discriminator === true;
+}
+
+/**
  * Generates a C# auto-property for a model class member.
  *
- * Renders a public property with:
+ * Renders a property with the appropriate access modifier:
+ * - **Discriminator properties**: `internal` with get+set — these identify the
+ *   concrete type in a discriminated union and are managed by the serialization
+ *   infrastructure, not exposed publicly.
+ * - **Regular properties**: `public` with accessors determined by model usage.
+ *
+ * All properties include:
  * - The correct C# type via {@link TypeExpression} (with scalar overrides)
  * - Nullable suffix (`T?`) when the property is optional or explicitly nullable
  * - XML doc comment from the TypeSpec `@doc` decorator
- * - Get accessor (always present)
- * - Set accessor (only when the model is used for both input and output)
  *
- * @example Generated output for a required string property on an input+output model:
+ * @example Generated output for a discriminator property:
+ * ```csharp
+ * internal string Kind { get; set; }
+ * ```
+ *
+ * @example Generated output for a regular public property:
  * ```csharp
  * /// <summary> The widget name. </summary>
  * public string Name { get; set; }
- * ```
- *
- * @example Generated output for an optional int32 property on an output-only model:
- * ```csharp
- * /// <summary> The count. </summary>
- * public int? Count { get; }
  * ```
  */
 export function ModelProperty(props: ModelPropertyProps) {
   const { property, modelUsage } = props;
   const nullable = isPropertyNullable(property);
   const type = unwrapNullableType(property.type);
-  const hasSetter = propertyHasSetter(property, modelUsage);
+  const isDiscriminator = isDiscriminatorProperty(property);
+  const hasSetter = isDiscriminator
+    ? true
+    : propertyHasSetter(property, modelUsage);
   const doc = property.doc ?? property.summary;
   const formattedDoc = doc ? `<summary> ${doc} </summary>` : undefined;
 
   return (
     <Property
-      public
+      public={!isDiscriminator}
+      internal={isDiscriminator}
       name={property.name}
       type={<TypeExpression type={type.__raw!} />}
       get

@@ -483,3 +483,25 @@ New exports from ModelConstructors.tsx:
 Added 8 new tests for the serialization constructor. Updated 2 existing tests that assumed only one constructor exists (scoped their assertions to the public constructor specifically).
 
 Pattern: `OverloadConstructor` should be used for any additional constructor overload in the same class to avoid Alloy symbol deduplication.
+
+## 2026-02-28 — Task 1.3.1: Implement abstract base model (complete)
+**What was done:**
+- Modified `src/components/models/ModelFile.tsx`: Added `abstract` prop to ClassDeclaration when `isModelAbstract(type)` returns true. Imported `isModelAbstract` from ModelConstructors.
+- Modified `src/components/models/ModelProperty.tsx`: Added `isDiscriminatorProperty()` utility function. Discriminator properties render with `internal` access and always get+set. Non-discriminator properties unchanged.
+- Added 5 tests in `test/model.test.ts` under "AbstractBaseModel" describe block:
+  1. Abstract partial class generation for discriminated base
+  2. Discriminator property is internal with get/set
+  3. Non-discriminator properties remain public
+  4. Private protected constructor for abstract model
+  5. Non-discriminated model is NOT abstract (negative test)
+
+**Key patterns:**
+- `isModelAbstract()` already existed in ModelConstructors.tsx (checks discriminatorProperty + discriminatedSubtypes). Reused it in ModelFile.tsx.
+- `property.discriminator === true` on SdkModelPropertyType flags the discriminator property.
+- Alloy framework outputs `protected private` (not `private protected`). Both are valid C# with identical semantics.
+
+**Next person should know:**
+- The `isModelAbstract` function is exported from ModelConstructors.tsx and used by both ModelFile.tsx and ModelConstructors.tsx
+- Discriminator detection in TCGC: base model has `discriminatorProperty` + `discriminatedSubtypes`; derived models have `discriminatorValue` + `baseModel`
+- Task 1.3.2 (discriminator property handling in derived models) will need to pass the discriminator value to the base constructor
+- 239 tests passing, build clean

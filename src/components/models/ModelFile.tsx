@@ -8,7 +8,7 @@ import { type Children, For, refkey } from "@alloy-js/core";
 import type { SdkModelType } from "@azure-tools/typespec-client-generator-core";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
-import { ModelConstructors } from "./ModelConstructors.js";
+import { isModelAbstract, ModelConstructors } from "./ModelConstructors.js";
 import { ModelProperty } from "./ModelProperty.js";
 
 /**
@@ -56,6 +56,8 @@ export function ModelFile(props: ModelFileProps) {
   const modelName = namePolicy.getName(props.type.name, "class");
   const isPublic = props.type.access === "public";
 
+  const isAbstract = isModelAbstract(props.type);
+
   return (
     <SourceFile path={`src/Generated/Models/${modelName}.cs`}>
       {header}
@@ -64,6 +66,7 @@ export function ModelFile(props: ModelFileProps) {
         <ClassDeclaration
           public={isPublic}
           internal={!isPublic}
+          abstract={isAbstract}
           partial
           name={modelName}
           refkey={refkey(props.type)}

@@ -1398,3 +1398,221 @@ describe("SerializationConstructor", () => {
     expect(serCtorIdx).toBeGreaterThan(publicCtorIdx);
   });
 });
+
+/**
+ * Tests for abstract base model generation (discriminated unions).
+ *
+ * When a TypeSpec model uses the `@discriminator` decorator, the base model
+ * should be generated as an `abstract partial class` in C#. This is critical
+ * for the discriminated union pattern where:
+ * - The base model cannot be instantiated directly
+ * - The discriminator property is `internal` (not public)
+ * - The constructor is `private protected` (only accessible to derived classes)
+ *
+ * These tests validate the key aspects of task 1.3.1 matching the legacy
+ * emitter's golden files at Spector/http/type/model/inheritance/single-discriminator/.
+ */
+describe("AbstractBaseModel", () => {
+  /**
+   * Validates that a model with @discriminator generates an abstract partial class.
+   *
+   * This is the fundamental test for discriminated unions. Without the `abstract`
+   * keyword, users could instantiate the base model directly, bypassing the type
+   * hierarchy. The legacy emitter's ModelProvider.IsAbstract logic sets this based
+   * on the presence of a DiscriminatorProperty with discriminated subtypes.
+   */
+  it("generates abstract partial class for discriminated base model", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Cat extends Pet {
+        kind: "cat";
+        meow: boolean;
+      }
+
+      model Dog extends Pet {
+        kind: "dog";
+        bark: boolean;
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const petFile = Object.keys(outputs).find((k) => k.includes("Pet.cs"));
+    expect(petFile).toBeDefined();
+    const content = outputs[petFile!];
+
+    // The base model must be abstract partial class
+    expect(content).toMatch(/public\s+abstract\s+partial\s+class\s+Pet/);
+  });
+
+  /**
+   * Validates that the discriminator property is rendered with `internal` access
+   * and always has get+set accessors.
+   *
+   * The discriminator property identifies the concrete type during deserialization.
+   * It must be `internal` (not `public`) because it's managed by the serialization
+   * infrastructure. It always has both get and set, regardless of the model's
+   * input/output usage, because both serialization and deserialization need access.
+   *
+   * Matches the golden file: `internal string Kind { get; set; }`
+   */
+  it("renders discriminator property as internal with get/set", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Cat extends Pet {
+        kind: "cat";
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const petFile = Object.keys(outputs).find((k) => k.includes("Pet.cs"));
+    expect(petFile).toBeDefined();
+    const content = outputs[petFile!];
+
+    // Discriminator property must be internal with get+set
+    expect(content).toMatch(/internal\s+string\s+Kind\s*\{\s*get;\s*set;\s*\}/);
+  });
+
+  /**
+   * Validates that non-discriminator properties on an abstract base model
+   * remain public. Only the discriminator property itself gets internal access.
+   *
+   * This ensures the rest of the model's API surface is not affected by the
+   * discriminated union pattern.
+   */
+  it("keeps non-discriminator properties as public", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+        age: int32;
+      }
+
+      model Cat extends Pet {
+        kind: "cat";
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const petFile = Object.keys(outputs).find((k) => k.includes("Pet.cs"));
+    expect(petFile).toBeDefined();
+    const content = outputs[petFile!];
+
+    // Non-discriminator properties remain public
+    expect(content).toMatch(/public\s+string\s+Name\s*\{/);
+    expect(content).toMatch(/public\s+int\s+Age\s*\{/);
+    // Discriminator property is internal (not public)
+    expect(content).not.toMatch(/public\s+string\s+Kind\s*\{/);
+  });
+
+  /**
+   * Validates that the constructor of an abstract base model is `private protected`.
+   *
+   * Abstract models should not be directly constructable. Only derived classes
+   * should be able to call the base constructor. The `private protected` access
+   * modifier limits access to derived classes within the same assembly, matching
+   * the legacy emitter's ModelProvider.cs (lines 600-604).
+   */
+  it("generates private protected constructor for abstract model", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Cat extends Pet {
+        kind: "cat";
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const petFile = Object.keys(outputs).find((k) => k.includes("Pet.cs"));
+    expect(petFile).toBeDefined();
+    const content = outputs[petFile!];
+
+    // Constructor must be private protected (not public/internal)
+    // Note: Alloy outputs "protected private" which is semantically identical
+    // to "private protected" in C# — both compile to the same access level
+    expect(content).toMatch(/(?:private\s+protected|protected\s+private)\s+Pet\s*\(/);
+  });
+
+  /**
+   * Validates that a non-discriminated model is NOT abstract.
+   *
+   * This is a negative test ensuring that regular models without @discriminator
+   * are not accidentally made abstract. Only models that define a discriminated
+   * union hierarchy should get the abstract modifier.
+   */
+  it("does not make non-discriminated model abstract", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const widgetFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
+    expect(widgetFile).toBeDefined();
+    const content = outputs[widgetFile!];
+
+    // Regular model should NOT be abstract
+    expect(content).not.toMatch(/abstract/);
+    expect(content).toMatch(/public\s+partial\s+class\s+Widget/);
+  });
+});
