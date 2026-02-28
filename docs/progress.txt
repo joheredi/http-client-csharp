@@ -386,3 +386,33 @@ Created nullable type utilities for C# code generation in src/utils/nullable.ts.
   ```
 
 - **Next tasks ready:** 1.2.2 (model property generation — now unblocked), 1.1.5 (type mapping tests — needs 1.1.3 too)
+
+2026-02-28 — Task 1.2.2: Implement model property generation (complete)
+
+Created `src/components/models/ModelProperty.tsx` with:
+- `propertyHasSetter(modelUsage)` — determines setter presence based on UsageFlags bitmap
+  - Input-only models: get-only (constructor handles initialization)
+  - Output-only models: get-only (deserialization populates)
+  - Input+Output models: get+set (user sets for requests, server populates for responses)
+- `ModelProperty` component — renders C# auto-property using Alloy Property component
+  - Uses TypeExpression with `type.__raw!` to convert TCGC SdkType → TypeSpec Type
+  - Nullable via `isPropertyNullable()` from nullable utils
+  - XML doc comments in `/// <summary> text </summary>` format matching legacy emitter
+  - PascalCase naming via Alloy's built-in naming policy
+
+Modified `src/components/models/ModelFile.tsx`:
+- Added `<For>` loop with `hardline` joiner over model properties
+- Each property rendered via `<ModelProperty>` inside ClassDeclaration body
+
+Key design decision: Used Alloy's Property component with auto-property syntax (`{ get; }` / `{ get; set; }`)
+instead of the legacy emitter's `=> throw null` pattern. Auto-properties are functionally correct and
+the serialization partial class (Phase 2) can work with the backing fields.
+
+Important discovery: TypeExpression from @typespec/emitter-framework/csharp expects TypeSpec compiler `Type`,
+NOT TCGC `SdkType`. Use `sdkType.__raw!` to access the raw TypeSpec Type. This works for all types where
+TCGC preserves the raw reference (scalars, models, enums). Synthetic types may need different handling.
+
+10 new tests added covering: get/set accessors, get-only for input/output models, nullable types,
+doc comments, PascalCase naming, scalar type mapping, and property spacing.
+
+Unblocks: 1.2.3 (required vs optional logic), 1.2.6 (additionalBinaryDataProperties), 1.2.7 (XML doc comments)

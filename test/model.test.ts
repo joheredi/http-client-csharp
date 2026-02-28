@@ -253,3 +253,398 @@ describe("ModelFile", () => {
     expect(widgetFile).not.toBe(gadgetFile);
   });
 });
+
+/**
+ * Tests for the ModelProperty component.
+ *
+ * These tests verify that model properties are correctly generated inside
+ * C# model class declarations. Properties must have the correct C# type,
+ * accessor pattern (get-only vs get/set), nullable suffix for optional
+ * value types, and XML doc comments from TypeSpec @doc decorators.
+ *
+ * Why these tests matter:
+ * - Property generation directly affects the public API surface of the SDK.
+ * - Incorrect accessor patterns break the input/output contract: input-only
+ *   models should not expose setters (constructor handles initialization),
+ *   while input+output models need setters for user modification.
+ * - Missing nullable suffixes cause compile errors in user code that passes
+ *   null for optional properties.
+ * - Doc comments are the primary documentation surface for SDK consumers.
+ */
+describe("ModelProperty", () => {
+  /**
+   * Validates that properties on input+output models have both get and set
+   * accessors. When a model is used as both request body and response body,
+   * the user needs to set property values (input) and read them back (output).
+   * This matches the legacy emitter's InputOutputRecord pattern.
+   */
+  it("generates get/set properties for input+output models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/widgets")
+      op createWidget(@body body: Widget): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) =>
+      k.includes("Widget.cs"),
+    );
+    expect(modelFile).toBeDefined();
+    const content = outputs[modelFile!];
+
+    expect(content).toMatch(/public\s+string\s+Name\s*\{\s*get;\s*set;\s*\}/);
+  });
+
+  /**
+   * Validates that properties on output-only models have only a get accessor.
+   * Output models are populated by deserialization — the user never sets
+   * property values directly. This matches the legacy emitter's OutputRecord
+   * pattern where properties use get-only syntax.
+   */
+  it("generates get-only properties for output-only models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Result {
+        id: int32;
+        name: string;
+      }
+
+      @route("/results")
+      op getResult(): Result;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) =>
+      k.includes("Result.cs"),
+    );
+    expect(modelFile).toBeDefined();
+    const content = outputs[modelFile!];
+
+    // Verify get-only (no set accessor)
+    expect(content).toMatch(/public\s+int\s+Id\s*\{\s*get;\s*\}/);
+    expect(content).toMatch(/public\s+string\s+Name\s*\{\s*get;\s*\}/);
+    expect(content).not.toContain("set;");
+  });
+
+  /**
+   * Validates that properties on input-only models have only a get accessor.
+   * Input models are initialized via the constructor — the user passes values
+   * at construction time. Individual property setters are not needed because
+   * the constructor handles required property initialization.
+   * This matches the legacy emitter's InputRecord pattern.
+   */
+  it("generates get-only properties for input-only models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model CreateRequest {
+        name: string;
+      }
+
+      @route("/create")
+      op createItem(@body body: CreateRequest): void;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) =>
+      k.includes("CreateRequest.cs"),
+    );
+    expect(modelFile).toBeDefined();
+    const content = outputs[modelFile!];
+
+    expect(content).toMatch(/public\s+string\s+Name\s*\{\s*get;\s*\}/);
+    expect(content).not.toContain("set;");
+  });
+
+  /**
+   * Validates that optional properties of value types render as nullable.
+   * In C#, value types (int, bool, float, etc.) cannot be null by default.
+   * When a TypeSpec property is optional (`prop?: int32`), the C# type must
+   * use the nullable suffix (`int?`) so the property can represent "not set".
+   * This matches the legacy emitter's nullable property handling.
+   */
+  it("renders optional value types as nullable", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        count?: int32;
+      }
+
+      @route("/widgets")
+      op getWidget(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) =>
+      k.includes("Widget.cs"),
+    );
+    expect(modelFile).toBeDefined();
+    const content = outputs[modelFile!];
+
+    // Required string property — not nullable
+    expect(content).toMatch(/public\s+string\s+Name\s*\{/);
+    // Optional int32 property — nullable (int?)
+    expect(content).toMatch(/public\s+int\?\s+Count\s*\{/);
+  });
+
+  /**
+   * Validates that optional reference types also render as nullable.
+   * Even though reference types are already nullable under #nullable disable,
+   * the legacy emitter consistently adds `?` for optional properties to match
+   * the generated output format.
+   */
+  it("renders optional reference types as nullable", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        description?: string;
+      }
+
+      @route("/widgets")
+      op getWidget(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) =>
+      k.includes("Widget.cs"),
+    );
+    expect(modelFile).toBeDefined();
+    const content = outputs[modelFile!];
+
+    // Required string — not nullable
+    expect(content).toMatch(/public\s+string\s+Name\s*\{/);
+    expect(content).not.toMatch(/public\s+string\?\s+Name/);
+    // Optional string — nullable
+    expect(content).toMatch(/public\s+string\?\s+Description\s*\{/);
+  });
+
+  /**
+   * Validates that XML doc comments from TypeSpec @doc decorators are
+   * rendered as C# XML documentation on properties. Doc comments use the
+   * `/// <summary> text </summary>` format matching the legacy emitter.
+   * This is the primary documentation surface for SDK consumers using
+   * IntelliSense/code completion.
+   */
+  it("renders XML doc comments from @doc decorator", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        /** The display name of the widget. */
+        name: string;
+        /** Optional description for the widget. */
+        description?: string;
+      }
+
+      @route("/widgets")
+      op getWidget(): Widget;
+      @route("/create")
+      op createWidget(@body body: Widget): void;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) =>
+      k.includes("Widget.cs"),
+    );
+    expect(modelFile).toBeDefined();
+    const content = outputs[modelFile!];
+
+    // Doc comments use /// <summary> format
+    expect(content).toContain(
+      "/// <summary> The display name of the widget. </summary>",
+    );
+    expect(content).toContain(
+      "/// <summary> Optional description for the widget. </summary>",
+    );
+  });
+
+  /**
+   * Validates that properties without @doc decorator have no doc comments.
+   * Properties should not get empty or placeholder documentation — only
+   * properties with explicit documentation from TypeSpec get XML doc comments.
+   */
+  it("omits doc comments when @doc is not present", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/widgets")
+      op getWidget(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) =>
+      k.includes("Widget.cs"),
+    );
+    expect(modelFile).toBeDefined();
+    const content = outputs[modelFile!];
+
+    // No doc comment for undocumented property
+    expect(content).not.toContain("/// <summary>");
+    expect(content).not.toContain("///");
+  });
+
+  /**
+   * Validates that property names follow PascalCase convention in C#.
+   * TypeSpec uses camelCase for property names, but C# conventions require
+   * PascalCase for public properties. The Alloy naming policy handles this
+   * transformation automatically.
+   */
+  it("converts property names to PascalCase", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        displayName: string;
+        itemCount?: int32;
+      }
+
+      @route("/widgets")
+      op getWidget(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) =>
+      k.includes("Widget.cs"),
+    );
+    expect(modelFile).toBeDefined();
+    const content = outputs[modelFile!];
+
+    // camelCase → PascalCase
+    expect(content).toContain("DisplayName");
+    expect(content).toContain("ItemCount");
+    // Should not contain original camelCase names as property declarations
+    expect(content).not.toMatch(/public\s+\w+\s+displayName/);
+    expect(content).not.toMatch(/public\s+\w+\??\s+itemCount/);
+  });
+
+  /**
+   * Validates that scalar types are correctly mapped to their C# equivalents.
+   * This tests the TypeExpression + CSharpScalarOverrides pipeline for
+   * common property types. Critical because wrong type mappings cause
+   * compile errors or runtime serialization failures.
+   */
+  it("maps TypeSpec scalar types to correct C# types", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        id: int32;
+        bigId: int64;
+        price: float64;
+        active: boolean;
+      }
+
+      @route("/widgets")
+      op getWidget(): Widget;
+      @route("/create")
+      op createWidget(@body body: Widget): void;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) =>
+      k.includes("Widget.cs"),
+    );
+    expect(modelFile).toBeDefined();
+    const content = outputs[modelFile!];
+
+    expect(content).toMatch(/public\s+string\s+Name/);
+    expect(content).toMatch(/public\s+int\s+Id/);
+    expect(content).toMatch(/public\s+long\s+BigId/);
+    expect(content).toMatch(/public\s+double\s+Price/);
+    expect(content).toMatch(/public\s+bool\s+Active/);
+  });
+
+  /**
+   * Validates that multiple properties are properly separated with newlines.
+   * Without proper separation, doc comments of subsequent properties would
+   * run into the previous property declaration on the same line.
+   */
+  it("separates multiple properties with newlines", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        /** The name. */
+        name: string;
+        /** The count. */
+        count?: int32;
+      }
+
+      @route("/widgets")
+      op getWidget(): Widget;
+      @route("/create")
+      op createWidget(@body body: Widget): void;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) =>
+      k.includes("Widget.cs"),
+    );
+    expect(modelFile).toBeDefined();
+    const content = outputs[modelFile!];
+
+    // Properties should NOT be on the same line — verify they are separated
+    const lines = content.split("\n");
+    const nameLineIdx = lines.findIndex((l: string) => l.includes("public string Name"));
+    const countDocIdx = lines.findIndex((l: string) =>
+      l.includes("/// <summary> The count."),
+    );
+    // The count doc comment should be on a later line than the Name property
+    expect(countDocIdx).toBeGreaterThan(nameLineIdx);
+  });
+});

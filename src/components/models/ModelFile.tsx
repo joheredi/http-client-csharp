@@ -4,10 +4,11 @@ import {
   SourceFile,
   useCSharpNamePolicy,
 } from "@alloy-js/csharp";
-import { type Children, refkey } from "@alloy-js/core";
+import { type Children, For, refkey } from "@alloy-js/core";
 import type { SdkModelType } from "@azure-tools/typespec-client-generator-core";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
+import { ModelProperty } from "./ModelProperty.js";
 
 /**
  * Props for the {@link ModelFile} component.
@@ -66,6 +67,11 @@ export function ModelFile(props: ModelFileProps) {
           name={modelName}
           refkey={refkey(props.type)}
         >
+          <For each={props.type.properties} hardline>
+            {(p) => (
+              <ModelProperty property={p} modelUsage={props.type.usage} />
+            )}
+          </For>
           {props.children}
         </ClassDeclaration>
       </Namespace>

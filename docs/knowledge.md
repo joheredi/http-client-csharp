@@ -227,20 +227,25 @@ Per the ExtensibleEnumProvider source code, both `Equals(object)` and `GetHashCo
 ## Design Decisions
 
 ### Task 1.1.2: Scalar Override Approach
+
 **Chosen**: `Experimental_ComponentOverrides` provider with `forTypeKind("Scalar")` and `forTypeKind("Intrinsic")`.
 **Rejected**: Standalone CSharpTypeExpression wrapper component.
 **Why**: The override provider automatically applies to ALL `<TypeExpression>` usages in the subtree, including those inside emitter-framework components (like ClassDeclaration's type rendering). A wrapper would only work where explicitly used and miss framework-internal calls.
 
 ### Scalar Base Chain Resolution Gotcha
+
 When overriding scalars via `forTypeKind("Scalar")`, the callback receives ALL scalars including built-in ones like `int32` that inherit from overridden parents like `integer`. The `getScalarOverride()` function uses `intrinsicNameToCSharpType` from `@typespec/emitter-framework/csharp` to distinguish:
+
 - **Built-in scalars** (in intrinsic map): check only the direct name against the override map
 - **User-defined scalars** (not in intrinsic map): walk the baseScalar chain to inherit overrides
-This prevents `int32 extends integer` from incorrectly picking up `integer→long`.
+  This prevents `int32 extends integer` from incorrectly picking up `integer→long`.
 
 ### System.BinaryData default import
+
 `System` from `@alloy-js/csharp/global/System` is a **default export** (use `import System from ...` not `import { System } from ...`).
 
 ### Stream and IPAddress are not TypeSpec scalars
+
 Stream and IPAddress were `InputPrimitiveType` kinds in the legacy emitter, but they don't exist as TypeSpec scalars or TCGC `SdkBuiltInKinds`. They must be handled at the model property generation level, not at the TypeExpression override level.
 
 ### TCGC decorators not available in test host (Task 1.2.1)
@@ -263,6 +268,28 @@ TCGC decorators like `@access(Access.internal)` from `Azure.ClientGenerator.Core
 ## Design Decisions
 
 ### Nullable Utility Design (Task 1.1.4)
+
 **Chosen:** Three separate functions (`isPropertyNullable`, `unwrapNullableType`, `isCollectionType`) that compose independently.
 **Rejected:** Single `resolvePropertyType()` returning `{ type, nullable }` — less flexible, harder to use in contexts where only one piece is needed.
 **Reason:** Components may need just the nullable check (e.g., for constructor parameter validation) or just the unwrap (e.g., for serialization type dispatch). Separate functions are more reusable.
+
+### Task 1.2.2: Model Property TypeExpression Pattern
+
+TypeExpression from `@typespec/emitter-framework/csharp` expects TypeSpec compiler `Type`, NOT TCGC `SdkType`. Every SdkType has `__raw?: Type` on SdkTypeBase. Use `sdkType.__raw!` to pass to TypeExpression. This works for all types where TCGC preserves the raw reference (scalars, models, enums). For nullable types, call `unwrapNullableType()` first to strip SdkNullableType, then access `.__raw!` on the inner type.
+
+### Task 1.2.2: Property Accessor Pattern
+
+Model property setters are determined by model usage flags (UsageFlags bitmap):
+
+- Input-only (Input flag only): get-only — constructor handles initialization
+- Output-only (Output flag only): get-only — deserialization populates
+- Input+Output (both flags): get+set — user modification + server population
+  Use bitwise AND to check: `(usage & UsageFlags.Input) !== 0 && (usage & UsageFlags.Output) !== 0`
+
+### Task 1.2.2: Doc Comment Format
+
+Legacy emitter uses `/// <summary> text </summary>` (single-line with spaces inside tags). The Alloy Property component's `doc` prop renders `/// text` without summary tags. Wrap doc text in `<summary> ${text} </summary>` before passing to the Property's `doc` prop.
+
+### Task 1.2.2: Property Spacing in ClassDeclaration
+
+Multiple properties rendered inside ClassDeclaration need explicit newline separation. Use `<For each={...} hardline>` from `@alloy-js/core` to add newline breaks between property renderings.
