@@ -131,3 +131,10 @@ The TCGC `SdkTypeBase` has `doc?: string` and `summary?: string` for documentati
 **Rejected**: `<DocComment><DocSummary>...</DocSummary></DocComment>` which produces multi-line format.
 
 **Why**: The golden file uses single-line `/// <summary> Monday. </summary>`. The Alloy doc components produce multi-line `/// <summary>\n/// Monday.\n/// </summary>`. Raw strings give exact format control.
+
+### Fixed Enum Value Rendering: Int-backed vs String/Float-backed (2026-02-28)
+> **Rule**: Only int-backed fixed enums get explicit initialization values in the C# enum declaration (e.g., `One = 1`). String-backed and float-backed enums have no values — serialization is handled by extension methods.
+>
+> **Implementation**: Use `isSdkIntKind(sdkEnum.valueType.kind)` from TCGC to detect int-backed enums. Render ` = ${member.value}` as a text sibling after `<EnumMember>` in the JSX fragment.
+>
+> **Legacy reference**: `FixedEnumProvider.cs` line 77: `ValueExpression? initializationValue = IsIntValueType ? Literal(inputValue.Value) : null;`

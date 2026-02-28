@@ -1056,7 +1056,7 @@
           "title": "Handle string-backed fixed enums",
           "description": "String-backed fixed enums require a serialization extension class because C# enums can't hold string values directly. The enum members don't have initialization values. Serialization/deserialization is handled by the extension class (task 1.5).",
           "phase": "phase-1",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "1.4.1"
           ],
@@ -1079,7 +1079,7 @@
           "title": "Handle int-backed fixed enums",
           "description": "Int-backed fixed enums have explicit integer initialization values on each member. E.g., `One = 1, Two = 2, Four = 4`. The values come from the InputEnumTypeValue.Value field.",
           "phase": "phase-1",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "1.4.1"
           ],
@@ -1101,7 +1101,7 @@
           "title": "Handle float-backed fixed enums",
           "description": "Float-backed fixed enums behave like string-backed \u2014 no initialization on members since C# enums can't hold float values. Serialization handled by extension class.",
           "phase": "phase-1",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "1.4.1"
           ],

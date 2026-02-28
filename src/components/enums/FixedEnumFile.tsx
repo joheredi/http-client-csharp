@@ -6,9 +6,10 @@ import {
   useCSharpNamePolicy,
 } from "@alloy-js/csharp";
 import { For, refkey } from "@alloy-js/core";
-import type {
-  SdkEnumType,
-  SdkEnumValueType,
+import {
+  isSdkIntKind,
+  type SdkEnumType,
+  type SdkEnumValueType,
 } from "@azure-tools/typespec-client-generator-core";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
@@ -38,12 +39,27 @@ function getEnumMemberDescription(member: SdkEnumValueType): string {
 }
 
 /**
+ * Determines whether a fixed enum is backed by an integer type.
+ *
+ * Only int-backed fixed enums include explicit initialization values in the
+ * generated C# enum (e.g., `One = 1`). String-backed and float-backed enums
+ * omit values because C# enums cannot hold string or float constants —
+ * serialization is handled by separate extension methods instead.
+ *
+ * @param sdkEnum - The TCGC enum type to inspect.
+ * @returns `true` if the enum's underlying value type is an integer kind.
+ */
+function isIntValueType(sdkEnum: SdkEnumType): boolean {
+  return isSdkIntKind(sdkEnum.valueType.kind);
+}
+
+/**
  * Generates a C# source file containing a fixed (non-extensible) enum declaration.
  *
- * Fixed enums map to standard C# `enum` types. String-backed enums have no
- * explicit initialization values — serialization is handled by extension methods
- * in a separate serialization file. Int-backed enums include explicit integer
- * values (handled by downstream tasks 1.4.3).
+ * Fixed enums map to standard C# `enum` types. Int-backed enums include explicit
+ * integer initialization values (e.g., `One = 1`). String-backed and float-backed
+ * enums omit values — serialization is handled by extension methods in a separate
+ * serialization file.
  *
  * The generated file includes the standard license header, namespace declaration,
  * and XML documentation comments for each enum member.
@@ -65,11 +81,23 @@ function getEnumMemberDescription(member: SdkEnumValueType): string {
  *     }
  * }
  * ```
+ *
+ * @example Generated output for an int-backed enum:
+ * ```csharp
+ * public enum Priority
+ * {
+ *     /// <summary> Low. </summary>
+ *     Low = 0,
+ *     /// <summary> High. </summary>
+ *     High = 1
+ * }
+ * ```
  */
 export function FixedEnumFile(props: FixedEnumFileProps) {
   const header = getLicenseHeader(props.options);
   const namePolicy = useCSharpNamePolicy();
   const enumName = namePolicy.getName(props.type.name, "enum");
+  const hasIntValues = isIntValueType(props.type);
 
   return (
     <SourceFile path={`src/Generated/Models/${enumName}.cs`}>
@@ -86,6 +114,7 @@ export function FixedEnumFile(props: FixedEnumFileProps) {
                   {`/// <summary> ${description} </summary>`}
                   {"\n"}
                   <EnumMember name={memberName} refkey={refkey(member)} />
+                  {hasIntValues ? ` = ${member.value}` : ""}
                 </>
               );
             }}

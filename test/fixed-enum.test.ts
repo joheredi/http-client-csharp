@@ -209,6 +209,126 @@ describe("FixedEnumFile", () => {
   });
 
   /**
+   * Validates that int-backed fixed enums include explicit initialization values
+   * on each member (e.g., `One = 1, Two = 2`). This is critical because C# enums
+   * natively support integer values, and the generated code must preserve the
+   * specific integer mappings defined in the TypeSpec source. The legacy emitter
+   * only embeds values for int-backed enums (not string or float).
+   */
+  it("emits initialization values for int-backed fixed enums", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      enum Priority {
+        Low: 0,
+        Medium: 1,
+        High: 2,
+        Critical: 10,
+      }
+
+      @route("/test")
+      op test(@query priority: Priority): void;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const enumFileKey = Object.keys(outputs).find((k) =>
+      k.includes("Priority"),
+    );
+    expect(enumFileKey).toBeDefined();
+    const enumFile = outputs[enumFileKey!];
+
+    // Int-backed enums must have "= value" assignments
+    expect(enumFile).toContain("Low = 0");
+    expect(enumFile).toContain("Medium = 1");
+    expect(enumFile).toContain("High = 2");
+    expect(enumFile).toContain("Critical = 10");
+  });
+
+  /**
+   * Validates that float-backed fixed enums do NOT include initialization values.
+   * C# enums cannot hold float constants, so float values are handled by
+   * serialization extension methods (similar to string-backed enums).
+   * This matches the legacy emitter's behavior where only int-backed enums
+   * get explicit values.
+   */
+  it("does not emit initialization values for float-backed fixed enums", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      enum Temperature {
+        Cold: 32.5,
+        Warm: 72.0,
+        Hot: 100.5,
+      }
+
+      @route("/test")
+      op test(@query temp: Temperature): void;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const enumFileKey = Object.keys(outputs).find((k) =>
+      k.includes("Temperature"),
+    );
+    expect(enumFileKey).toBeDefined();
+    const enumFile = outputs[enumFileKey!];
+
+    // Float-backed enums should NOT have "=" assignments
+    expect(enumFile).not.toMatch(/Cold\s*=/);
+    expect(enumFile).not.toMatch(/Warm\s*=/);
+    expect(enumFile).not.toMatch(/Hot\s*=/);
+
+    // But members should still exist
+    expect(enumFile).toContain("Cold");
+    expect(enumFile).toContain("Warm");
+    expect(enumFile).toContain("Hot");
+  });
+
+  /**
+   * Validates that int-backed enums with non-sequential values preserve the
+   * exact integer values. This covers flag-style enums where values are
+   * powers of 2 or otherwise non-contiguous.
+   */
+  it("preserves non-sequential int values", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      enum Permissions {
+        Read: 1,
+        Write: 2,
+        Execute: 4,
+        Admin: 8,
+      }
+
+      @route("/test")
+      op test(@query perm: Permissions): void;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const enumFileKey = Object.keys(outputs).find((k) =>
+      k.includes("Permissions"),
+    );
+    expect(enumFileKey).toBeDefined();
+    const enumFile = outputs[enumFileKey!];
+
+    expect(enumFile).toContain("Read = 1");
+    expect(enumFile).toContain("Write = 2");
+    expect(enumFile).toContain("Execute = 4");
+    expect(enumFile).toContain("Admin = 8");
+  });
+
+  /**
    * Validates that @doc decorators on enum members are used for XML doc
    * comments instead of the fallback member name. This ensures explicit
    * documentation takes precedence.

@@ -190,3 +190,23 @@ Added 6 new types to the System.ClientModel Alloy library declarations:
 **Known issues:**
 - Namespace brace style is K&R (`namespace N {`) instead of Allman (`namespace N\n{`). This is an Alloy Block formatting default — not controllable at component level.
 - @alloy-js/csharp SourceFile doesn't have a `header` prop. Header is injected as raw text children before Namespace.
+
+## 2026-02-28 — Tasks 1.4.2, 1.4.3, 1.4.4: Handle string/int/float-backed fixed enums
+**What was done:**
+- Added `isIntValueType()` helper to FixedEnumFile.tsx that uses TCGC's `isSdkIntKind()` to detect int-backed enums
+- Modified FixedEnumFile to conditionally render ` = ${member.value}` after EnumMember for int-backed enums
+- String-backed and float-backed enums remain without initialization values (C# can't hold string/float constants)
+- Added 3 new tests: int-backed enum values, float-backed enum no-values, non-sequential int values (flag-style)
+
+**Design decisions:**
+- Append value text as sibling after EnumMember in JSX fragment (e.g., `<EnumMember .../>{" = 1"}`) rather than using `code` template tag — simpler and preserves refkey tracking
+- Used `isSdkIntKind` from TCGC rather than manual kind string checks — future-proof against new int types
+
+**Patterns used:**
+- `isSdkIntKind(sdkEnum.valueType.kind)` to classify backing type
+- TypeSpec integer enum syntax: `enum Priority { Low: 0, High: 1 }` for int-backed
+- TypeSpec float enum syntax: `enum Temp { Cold: 32.5 }` for float-backed
+
+**Test coverage:**
+- 10 total tests in fixed-enum.test.ts (7 existing + 3 new)
+- All 64 tests pass across 7 test files
