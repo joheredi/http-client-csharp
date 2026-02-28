@@ -4749,4 +4749,211 @@ describe("PropertyMatchingLoop", () => {
     expect(content).toContain('if (prop.NameEquals("radius"u8))');
     expect(content).toContain("radius = prop.Value.GetDouble();");
   });
+
+  /**
+   * Validates that a string-backed fixed enum property generates the
+   * `To{EnumName}()` extension method call during deserialization.
+   *
+   * Fixed string enums use `prop.Value.GetString().To{EnumName}()` because
+   * the extension method validates and maps the wire string to the C# enum
+   * value. This is the inverse of `ToSerialString()` used in the write path.
+   */
+  it("deserializes string-backed fixed enum with To{EnumName}()", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      enum Status {
+        active: "active",
+        inactive: "inactive",
+      }
+
+      model Widget {
+        status: Status;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("status"u8))');
+    expect(content).toContain("status = prop.Value.GetString().ToStatus();");
+    expect(content).toContain("continue;");
+  });
+
+  /**
+   * Validates that an int-backed fixed enum property generates the
+   * `To{EnumName}()` extension method call during deserialization.
+   *
+   * Int-backed fixed enums use `prop.Value.GetInt32().To{EnumName}()` because
+   * the extension method validates the integer and maps it to the C# enum.
+   * Unlike serialization (which uses a direct cast), deserialization always
+   * needs the extension method for validation.
+   */
+  it("deserializes int-backed fixed enum with To{EnumName}()", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      enum Priority {
+        low: 1,
+        medium: 2,
+        high: 3,
+      }
+
+      model Task {
+        priority: Priority;
+      }
+
+      @route("/test")
+      op test(): Task;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Task.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("priority"u8))');
+    expect(content).toContain("priority = prop.Value.GetInt32().ToPriority();");
+  });
+
+  /**
+   * Validates that a float-backed fixed enum property generates the
+   * `To{EnumName}()` extension method call during deserialization.
+   *
+   * Float-backed fixed enums use `prop.Value.GetSingle().To{EnumName}()`.
+   * This mirrors the pattern of string-backed enums but uses the float getter.
+   */
+  it("deserializes float-backed fixed enum with To{EnumName}()", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      enum Rating {
+        low: 1.0,
+        medium: 2.5,
+        high: 5.0,
+      }
+
+      model Review {
+        rating: Rating;
+      }
+
+      @route("/test")
+      op test(): Review;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Review.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("rating"u8))');
+    expect(content).toContain("rating = prop.Value.GetSingle().ToRating();");
+  });
+
+  /**
+   * Validates that a string-backed extensible enum (union) generates a
+   * constructor call during deserialization: `new {EnumName}(prop.Value.GetString())`.
+   *
+   * Extensible enums are readonly structs that accept any value, so deserialization
+   * simply wraps the raw JSON value in the constructor. This is the inverse of
+   * `.ToString()` used in the write path.
+   */
+  it("deserializes string-backed extensible enum with new constructor", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      union Color {
+        string,
+        red: "red",
+        green: "green",
+        blue: "blue",
+      }
+
+      model Widget {
+        color: Color;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("color"u8))');
+    expect(content).toContain("color = new Color(prop.Value.GetString());");
+    expect(content).toContain("continue;");
+  });
+
+  /**
+   * Validates that an int-backed extensible enum (union) generates a
+   * constructor call during deserialization: `new {EnumName}(prop.Value.GetInt32())`.
+   *
+   * Numeric extensible enums use the same constructor pattern as string enums
+   * but with the appropriate numeric getter method.
+   */
+  it("deserializes int-backed extensible enum with new constructor", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      union Level {
+        int32,
+        low: 1,
+        medium: 5,
+        high: 10,
+      }
+
+      model Widget {
+        level: Level;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("level"u8))');
+    expect(content).toContain("level = new Level(prop.Value.GetInt32());");
+  });
 });

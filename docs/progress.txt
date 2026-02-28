@@ -1143,3 +1143,32 @@ Added bytes/BinaryData serialization support to the JSON write path in PropertyS
 - Task 2.3.2 (null check) — already implemented
 
 Total tests: 408 (all passing). 3 new tests added.
+
+## 2026-02-28 — Task 2.3.8: Implement enum deserialization (complete)
+
+Added enum deserialization to the JSON read path in PropertyMatchingLoop.tsx.
+
+**Changes:**
+- `src/components/serialization/PropertyMatchingLoop.tsx`:
+  - Added `SdkEnumType` import from TCGC
+  - Created `getEnumReadExpression()` function that handles both fixed and extensible enums:
+    - Fixed enums: `prop.Value.Get{Type}().To{EnumName}()` (extension method)
+    - Extensible enums: `new {EnumName}(prop.Value.Get{Type}())` (constructor)
+  - Added `kind === "enum"` case to `getReadExpression()` between primitive and model handlers
+  - Updated JSDoc to include enums in supported types, removed enum from unsupported list
+
+- `test/model-serialization.test.ts`:
+  - Added 5 new tests in PropertyMatchingLoop describe block:
+    - String-backed fixed enum → `prop.Value.GetString().ToStatus()`
+    - Int-backed fixed enum → `prop.Value.GetInt32().ToPriority()`
+    - Float-backed fixed enum → `prop.Value.GetSingle().ToRating()`
+    - String-backed extensible enum → `new Color(prop.Value.GetString())`
+    - Int-backed extensible enum → `new Level(prop.Value.GetInt32())`
+
+**Design decision:** Added `getEnumReadExpression()` as a private helper in PropertyMatchingLoop.tsx (same file), mirroring how `getEnumWriteInfo()` lives in PropertySerializer.tsx. The read path reuses READ_METHOD_MAP for the getter method selection, keeping the approach DRY.
+
+**Key insight:** Enum deserialization is the inverse of serialization but NOT symmetric:
+- Write: Fixed int enums use direct cast `(int)value`, but Read: uses extension method `GetInt32().ToEnum()`
+- Write: Extensible string enums use `.ToString()`, but Read: uses constructor `new Enum(GetString())`
+
+Total tests: 413 (all passing). 5 new tests added.

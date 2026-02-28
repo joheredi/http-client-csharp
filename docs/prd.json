@@ -2273,7 +2273,7 @@
           "title": "Implement enum deserialization",
           "description": "Fixed enums: use the To{EnumName} extension method. Extensible enums: use `new ExtensibleEnum(element.GetString())` or implicit conversion.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.3.5"
           ],

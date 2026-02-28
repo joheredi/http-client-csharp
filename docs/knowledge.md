@@ -709,3 +709,7 @@ When generating struct models, use `<StructDeclaration>` from `@alloy-js/csharp`
 ### Enum serialization in collections
 
 Enum items in collections are automatically handled because `renderValueWrite` falls through to `getWriteMethodInfo` for non-array/non-model types. The `valueTransform` applies to the loop variable `item` the same way it applies to property names.
+
+### Enum deserialization read path
+
+Enum deserialization uses `getEnumReadExpression()` in PropertyMatchingLoop.tsx, mirroring the write path's `getEnumWriteInfo()` in PropertySerializer.tsx. The key asymmetry: fixed int enums serialize with direct cast `(int)value` but deserialize with extension method `GetInt32().ToEnum()` — both directions need the extension method for deserialization validation. The getter method reuses `READ_METHOD_MAP` (same as primitives) since enum backing types are always primitives.
