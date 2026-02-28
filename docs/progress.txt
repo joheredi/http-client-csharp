@@ -525,3 +525,28 @@ Pattern: `OverloadConstructor` should be used for any additional constructor ove
 - ALL future declaration components MUST use `efCsharpRefkey` from `src/utils/refkey.ts`
 - Task 1.3.3 (derived model discriminator) should handle: base class inheritance, discriminator value in base constructor call, skipping discriminator property redeclaration
 - The EnumMember refkeys in FixedEnumFile still use plain `refkey(member)` — this may need updating if enum member values are referenced via TypeExpression
+
+## 2026-02-28 — Task 1.3.3: Implement derived model discriminator (complete)
+
+### What was done
+- Added base class inheritance to ModelFile.tsx (`baseType` prop on ClassDeclaration using `efCsharpRefkey(baseModel.__raw!)`)
+- Extended OverloadConstructor with `baseInitializer` prop for `: base(...)` syntax
+- Implemented `DerivedModelConstructors` component handling:
+  - Public ctor: base non-discriminator params + own params, chains to base with discriminator literal
+  - Serialization ctor: base serialization params + own non-discriminator props, chains to base
+- String discriminators use C# string literal: `"eagle"`
+- Enum discriminators use enum type refkey + member name: `DogKind.Golden`
+- Discriminator override property filtered from derived model's own params, serialization params, assignments, and property declarations
+- Added 6 new tests (246 total), all passing
+
+### Patterns used
+- `efCsharpRefkey(enumType.__raw!)` for enum type reference in discriminator literals (NOT `refkey(enumValue)` which doesn't resolve across files)
+- `!p.discriminator` filter to exclude discriminator override from derived model's own properties
+- `ModelConstructorProps` interface extends `ConstructorProps` with optional `baseInitializer`
+
+### Important for next tasks
+- Task 1.3.4 (Unknown discriminator variant): Will need to add the "Unknown" derived type that acts as fallback for unrecognized discriminator values
+- Task 1.3.5 (derived model additional properties): Should handle additional properties inherited from base model
+- The `isDerivedDiscriminatedModel()` function is exported for use by other components
+- For multi-level discriminator chains (1.3.6), `getBasePublicCtorParams` only looks at immediate parent — will need to walk the hierarchy
+- `buildSerializationParameters` is reused for both base and derived; the `includeAdditionalBinaryData` flag on `buildSerializationAssignments` controls whether the derived model adds its own `_additionalBinaryDataProperties` assignment

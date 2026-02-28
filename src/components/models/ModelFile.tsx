@@ -9,7 +9,11 @@ import type { SdkModelType } from "@azure-tools/typespec-client-generator-core";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { efCsharpRefkey } from "../../utils/refkey.js";
-import { isModelAbstract, ModelConstructors } from "./ModelConstructors.js";
+import {
+  isDerivedDiscriminatedModel,
+  isModelAbstract,
+  ModelConstructors,
+} from "./ModelConstructors.js";
 import { ModelProperty } from "./ModelProperty.js";
 
 /**
@@ -59,6 +63,14 @@ export function ModelFile(props: ModelFileProps) {
 
   const isAbstract = isModelAbstract(props.type);
 
+  // For derived discriminated models, filter out the discriminator override
+  // property — it's inherited from the base class and should not be
+  // re-declared on the derived model.
+  const isDerived = isDerivedDiscriminatedModel(props.type);
+  const renderProperties = isDerived
+    ? props.type.properties.filter((p) => !p.discriminator)
+    : props.type.properties;
+
   return (
     <SourceFile path={`src/Generated/Models/${modelName}.cs`}>
       {header}
@@ -71,10 +83,15 @@ export function ModelFile(props: ModelFileProps) {
           partial
           name={modelName}
           refkey={efCsharpRefkey(props.type.__raw!)}
+          baseType={
+            props.type.baseModel
+              ? efCsharpRefkey(props.type.baseModel.__raw!)
+              : undefined
+          }
         >
           <ModelConstructors type={props.type} />
-          {props.type.properties.length > 0 ? "\n\n" : ""}
-          <For each={props.type.properties} hardline>
+          {renderProperties.length > 0 ? "\n\n" : ""}
+          <For each={renderProperties} hardline>
             {(p) => (
               <ModelProperty property={p} modelUsage={props.type.usage} />
             )}

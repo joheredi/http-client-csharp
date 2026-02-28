@@ -908,7 +908,7 @@
           "title": "Implement derived model discriminator",
           "description": "Derived models pass their discriminator literal value to the base constructor. For string discriminators: `base(\"eagle\", wingspan)`. For enum discriminators: `base(DogKind.Golden, weight)`. The derived class public constructor does not expose the discriminator parameter. See the golden files for exact patterns.",
           "phase": "phase-1",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "1.3.2"
           ],

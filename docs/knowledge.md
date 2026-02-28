@@ -412,3 +412,23 @@ When setting both `private: true` and `protected: true` on a Constructor/ClassDe
 **Root cause**: `efRefkey` is NOT publicly exported from `@typespec/emitter-framework/csharp`. Our utility recreates it using the same `Symbol.for("emitter-framework:csharp")` prefix.
 
 **Any new declaration component** (ClassDeclaration, StructDeclaration, EnumDeclaration) must use `efCsharpRefkey` or `declarationRefkeys` from `src/utils/refkey.ts`.
+
+## Design Decisions
+
+### Derived Model Discriminator Constructor Chaining (Task 1.3.3)
+**Approach chosen**: Extend OverloadConstructor with `baseInitializer` prop, separate `DerivedModelConstructors` component.
+**Why**: Clean separation of base/derived model logic. The `baseInitializer` prop renders `: base(...)` between `<Parameters>` and `<Block>` in the OverloadConstructor.
+**Rejected**: Inline base call in constructor body — would render inside `{}` block, syntactically wrong for C# constructor initializers.
+
+### Enum Discriminator Literal Reference
+**Approach chosen**: Compose `EnumType.MemberName` using `efCsharpRefkey(enumType.__raw!) + "." + namePolicy.getName(memberName, "enum-member")`.
+**Why**: `refkey(enumValue)` from `@alloy-js/core` doesn't resolve across files when the enum declaration is in a separate file. Using `efCsharpRefkey` for the enum TYPE works because it matches the emitter-framework's refkey derivation used in FixedEnumFile/ExtensibleEnumFile.
+**Rejected**: `refkey(discriminatorProp.type)` — produced `<Unresolved Symbol>` in output.
+
+### Discriminator Property Filtering on Derived Models
+Derived models in TCGC include the discriminator override property in their `properties` array (e.g., `kind: "cat"` on Cat). This property must be filtered out from:
+1. Own constructor parameters (not exposed to users)
+2. Own serialization parameters (already in base params)
+3. Own serialization assignments (base ctor handles it)
+4. Property declarations (inherited from base class)
+Use `!p.discriminator` filter on `type.properties` to get the "own non-discriminator properties".

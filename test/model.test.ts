@@ -1662,3 +1662,300 @@ describe("AbstractBaseModel", () => {
     expect(content).toMatch(/public\s+partial\s+class\s+Widget/);
   });
 });
+
+/**
+ * Tests for derived discriminated model constructor generation.
+ *
+ * Derived models in a discriminated hierarchy chain to their base class
+ * constructor with the discriminator literal value. This is critical for
+ * correct C# inheritance: the base class stores the discriminator property,
+ * and derived classes pass their specific value via `: base(...)`.
+ *
+ * These tests validate:
+ * - Base class constructor chaining syntax (`: base(...)`)
+ * - String discriminator literals in base calls
+ * - Enum discriminator member references in base calls
+ * - Class inheritance syntax (`: BaseClass`)
+ * - Discriminator not exposed as a public constructor parameter
+ * - Serialization constructor includes base params + own params
+ *
+ * Reference: legacy emitter golden files at
+ * TestProjects/Spector/http/type/model/inheritance/single-discriminator/
+ */
+describe("DerivedModelDiscriminator", () => {
+  /**
+   * Validates that a derived model's class declaration extends the base class.
+   *
+   * Without `: Bird` in the class declaration, C# would not recognize Eagle as
+   * a subtype of Bird, breaking polymorphism and the discriminated union pattern.
+   * The ClassDeclaration must include `baseType` pointing to the base model.
+   */
+  it("generates class that extends base model", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Bird {
+        kind: string;
+        wingspan: int32;
+      }
+
+      model Eagle extends Bird {
+        kind: "eagle";
+      }
+
+      @route("/test")
+      op test(): Bird;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const eagleFile = Object.keys(outputs).find((k) => k.includes("Eagle.cs"));
+    expect(eagleFile).toBeDefined();
+    const content = outputs[eagleFile!];
+
+    // Derived class must extend the base class
+    expect(content).toMatch(/public\s+partial\s+class\s+Eagle\s*:\s*Bird/);
+  });
+
+  /**
+   * Validates string discriminator base constructor chaining.
+   *
+   * The public constructor must pass the string literal discriminator value
+   * to the base constructor (e.g., `base("eagle", wingspan)`). This ensures
+   * the base class's discriminator property is correctly initialized.
+   *
+   * The discriminator must NOT appear as a public constructor parameter.
+   * Only non-discriminator base model params should be exposed.
+   *
+   * Reference: Eagle.cs — `public Eagle(int wingspan) : base("eagle", wingspan)`
+   */
+  it("chains public constructor to base with string discriminator literal", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Bird {
+        kind: string;
+        wingspan: int32;
+      }
+
+      model Eagle extends Bird {
+        kind: "eagle";
+      }
+
+      @route("/test")
+      op test(@body body: Bird): void;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const eagleFile = Object.keys(outputs).find((k) => k.includes("Eagle.cs"));
+    expect(eagleFile).toBeDefined();
+    const content = outputs[eagleFile!];
+
+    // Public ctor chains to base with string literal discriminator + base params
+    expect(content).toMatch(
+      /public\s+Eagle\(int\s+wingspan\)\s*:\s*base\("eagle",\s*wingspan\)/,
+    );
+
+    // Discriminator "kind" should NOT be a parameter in the public constructor
+    expect(content).not.toMatch(/public\s+Eagle\(.*string\s+kind/);
+  });
+
+  /**
+   * Validates serialization constructor chains to base with all base params.
+   *
+   * The internal serialization constructor includes ALL base model's serialization
+   * parameters (including the discriminator and additionalBinaryDataProperties)
+   * followed by the derived model's own properties. The base call passes through
+   * all base serialization parameters.
+   *
+   * Reference: Eagle.cs —
+   * `internal Eagle(string kind, int wingspan, IDictionary<string, BinaryData> additionalBinaryDataProperties, ...)`
+   * `: base(kind, wingspan, additionalBinaryDataProperties)`
+   */
+  it("chains serialization constructor to base with base serialization params", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Bird {
+        kind: string;
+        wingspan: int32;
+      }
+
+      model Eagle extends Bird {
+        kind: "eagle";
+        eyeColor: string;
+      }
+
+      @route("/test")
+      op test(@body body: Bird): Bird;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const eagleFile = Object.keys(outputs).find((k) => k.includes("Eagle.cs"));
+    expect(eagleFile).toBeDefined();
+    const content = outputs[eagleFile!];
+
+    // Serialization ctor includes base params + own params (may span multiple lines)
+    expect(content).toMatch(
+      /internal\s+Eagle\([\s\S]*?string\s+kind[\s\S]*?int\s+wingspan[\s\S]*?IDictionary<string,\s*BinaryData>\s+additionalBinaryDataProperties[\s\S]*?string\s+eyeColor[\s\S]*?\)/,
+    );
+
+    // Serialization ctor chains to base with all base serialization params
+    expect(content).toMatch(
+      /:\s*base\(kind,\s*wingspan,\s*additionalBinaryDataProperties\)/,
+    );
+  });
+
+  /**
+   * Validates that derived model only assigns its own properties in constructor body.
+   *
+   * Base model properties (like wingspan) are handled by the base constructor.
+   * The derived model's serialization constructor body should only assign its
+   * own properties. This prevents double-assignment and matches the legacy emitter.
+   */
+  it("assigns only own properties in derived serialization constructor body", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Bird {
+        kind: string;
+        wingspan: int32;
+      }
+
+      model Eagle extends Bird {
+        kind: "eagle";
+        eyeColor: string;
+      }
+
+      @route("/test")
+      op test(@body body: Bird): Bird;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const eagleFile = Object.keys(outputs).find((k) => k.includes("Eagle.cs"));
+    expect(eagleFile).toBeDefined();
+    const content = outputs[eagleFile!];
+
+    // Own property assigned in serialization ctor body
+    expect(content).toMatch(/EyeColor\s*=\s*eyeColor;/);
+
+    // Base properties should NOT be assigned in derived ctor body
+    expect(content).not.toMatch(/Wingspan\s*=\s*wingspan;/);
+    expect(content).not.toMatch(/Kind\s*=\s*kind;/);
+
+    // additionalBinaryDataProperties should NOT be assigned in derived ctor
+    expect(content).not.toMatch(/_additionalBinaryDataProperties\s*=\s*additionalBinaryDataProperties;/);
+  });
+
+  /**
+   * Validates enum discriminator base constructor chaining.
+   *
+   * When the discriminator property is an enum type, the derived model's
+   * public constructor passes the enum member reference (e.g., `DogKind.Golden`)
+   * instead of a string literal. This ensures type safety.
+   *
+   * Reference: Golden.cs — `public Golden(int weight) : base(DogKind.Golden, weight)`
+   */
+  it("chains public constructor to base with enum discriminator literal", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      enum DogKind {
+        golden: "golden",
+        husky: "husky",
+      }
+
+      @discriminator("kind")
+      model Dog {
+        kind: DogKind;
+        weight: int32;
+      }
+
+      model Golden extends Dog {
+        kind: DogKind.golden;
+      }
+
+      @route("/test")
+      op test(@body body: Dog): void;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const goldenFile = Object.keys(outputs).find((k) =>
+      k.includes("Golden.cs"),
+    );
+    expect(goldenFile).toBeDefined();
+    const content = outputs[goldenFile!];
+
+    // Public ctor chains to base with enum member discriminator + base params
+    expect(content).toMatch(
+      /public\s+Golden\(int\s+weight\)\s*:\s*base\(DogKind\.Golden,\s*weight\)/,
+    );
+  });
+
+  /**
+   * Validates that derived model public constructor includes own required params.
+   *
+   * When a derived model has its own required (non-discriminator) properties,
+   * they should appear as constructor parameters after the base model's params.
+   * The base call only includes base params, not derived params.
+   */
+  it("includes own required params in derived public constructor", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Cat extends Pet {
+        kind: "cat";
+        indoor: boolean;
+      }
+
+      @route("/test")
+      op test(@body body: Pet): void;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const catFile = Object.keys(outputs).find((k) => k.includes("Cat.cs"));
+    expect(catFile).toBeDefined();
+    const content = outputs[catFile!];
+
+    // Public ctor includes base non-discriminator params + own params
+    expect(content).toMatch(
+      /public\s+Cat\(string\s+name,\s*bool\s+indoor\)\s*:\s*base\("cat",\s*name\)/,
+    );
+
+    // Own property assigned in the public ctor body
+    expect(content).toMatch(/Indoor\s*=\s*indoor;/);
+  });
+});
