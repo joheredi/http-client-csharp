@@ -357,3 +357,32 @@ Created the ModelFile component that generates C# model class file skeletons fro
 **Gotcha:** Cannot use `@access(Access.internal)` from TCGC in tests because the Azure.ClientGenerator.Core TypeSpec library isn't registered in the test host's library list. The internal test was rewritten to verify public access on a standard model instead.
 
 **Next tasks ready:** 1.2.2 (model property generation), 1.2.6 (additionalBinaryDataProperties), 1.2.7 (model XML doc comments) — all depend only on 1.2.1.
+
+2026-02-28 — Task 1.1.4: Create nullable type utilities (complete)
+
+Created nullable type utilities for C# code generation in src/utils/nullable.ts.
+
+- **Key deliverables:**
+  - `isPropertyNullable(property)` — determines if a property should render as T? in C#
+  - `unwrapNullableType(type)` — strips SdkNullableType wrapper for TypeExpression
+  - `isCollectionType(type)` — checks array/dict (collections are never nullable)
+  - 26 unit tests in test/nullable.test.ts covering all type categories
+
+- **Design decision:** Three separate functions (not a single combined resolver) for composability. The property nullable check accepts any `{ type: SdkType; optional: boolean }` shape, not just SdkModelPropertyType, for flexibility across property-like contexts.
+
+- **Rules implemented (matching legacy PropertyProvider.cs lines 86-88):**
+  - Optional non-collection types → nullable (both value and reference types, matching legacy)
+  - Required types → not nullable
+  - Collections (array/dict) → never nullable, even when wrapped in SdkNullableType
+  - Explicitly nullable types (SdkNullableType wrapper) → nullable (unless collection)
+
+- **TCGC insight:** SdkNullableType is TCGC's representation of `T | null`. It wraps the inner type. The `optional` flag on properties is orthogonal — a property can be optional without SdkNullableType, or have SdkNullableType without being optional.
+
+- **Usage pattern for downstream tasks (1.2.2 model properties):**
+  ```tsx
+  const innerType = unwrapNullableType(prop.type);
+  const nullable = isPropertyNullable(prop);
+  <Property type={<TypeExpression type={innerType} />} nullable={nullable} />
+  ```
+
+- **Next tasks ready:** 1.2.2 (model property generation — now unblocked), 1.1.5 (type mapping tests — needs 1.1.3 too)

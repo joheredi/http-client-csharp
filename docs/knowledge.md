@@ -252,3 +252,17 @@ TCGC decorators like `@access(Access.internal)` from `Azure.ClientGenerator.Core
 **Chosen approach:** Single `ModelFile` component following the `FixedEnumFile` pattern — one component handles the file-level structure (SourceFile, header, namespace) and the class declaration. Child content is passed through for future tasks to populate with properties, constructors, etc.
 
 **Why:** Consistent with existing enum components. Separation into sub-components (ModelDeclaration, etc.) can happen naturally as complexity grows. The `partial` keyword is always applied since every model class is split across a main file and a serialization file.
+
+## Nullable Type Handling (Task 1.1.4)
+
+- **TCGC `SdkNullableType`**: TCGC wraps types in `SdkNullableType { kind: "nullable", type: SdkType }` when the TypeSpec definition includes `| null`. This is orthogonal to the `optional` flag on properties.
+- **`unwrapNullableType` before `TypeExpression`**: Always unwrap SdkNullableType before passing to TypeExpression, then control nullability via the `nullable` prop on Property. This prevents double `?` (T??).
+- **Collection-never-nullable rule**: Arrays and dicts are NEVER nullable, even when wrapped in SdkNullableType. The isCollectionType check unwraps nullable before testing kind.
+- **Reference type nullable with `#nullable disable`**: Under `#nullable disable`, `string?` = `string`. We still emit `?` for optional reference types to match legacy emitter output.
+
+## Design Decisions
+
+### Nullable Utility Design (Task 1.1.4)
+**Chosen:** Three separate functions (`isPropertyNullable`, `unwrapNullableType`, `isCollectionType`) that compose independently.
+**Rejected:** Single `resolvePropertyType()` returning `{ type, nullable }` — less flexible, harder to use in contexts where only one piece is needed.
+**Reason:** Components may need just the nullable check (e.g., for constructor parameter validation) or just the unwrap (e.g., for serialization type dispatch). Separate functions are more reusable.

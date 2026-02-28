@@ -569,7 +569,7 @@
           "title": "Create nullable type utilities",
           "description": "Create utility functions for nullable type handling. Rules: optional non-collection value types become T? (Nullable<T>). Optional reference types stay as-is (already nullable in C# with #nullable disable). Required types are never nullable. Collections are never nullable (use ChangeTrackingList for 'undefined' semantics instead). See PropertyProvider.cs lines 86-100 in the legacy generator.",
           "phase": "phase-1",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "1.1.1"
           ],
