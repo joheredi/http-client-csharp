@@ -532,12 +532,14 @@ Created `src/builtins/system.ts` and `src/builtins/system-text-json.ts` as separ
 ## Design Decisions
 
 ### Property Serialization Architecture (Task 2.2.3)
+
 - **Chosen**: Property iteration is INSIDE `JsonModelWriteCore` component (iterates `model.properties`, renders `WritePropertySerialization` for each)
 - **Why**: The component already has the model type prop; keeping iteration internal is cohesive and avoids coupling emitter.tsx to serialization details
 - **Rejected**: Passing property writes as children from `emitter.tsx` — makes emitter too complex, couples it to serialization internals
 - **Extension point**: `getWriteMethodInfo()` in `PropertySerializer.tsx` returns `WriteMethodInfo { methodName, formatArg? }` or `null`. Handles primitives, DateTime (with encoding), plainDate, plainTime. Future tasks (Duration 2.2.5, Bytes 2.2.6, etc.) should add cases to this function.
 
 ### DateTime Serialization (Task 2.2.4)
+
 - **Chosen**: Evolve `getWriteMethodName` → `getWriteMethodInfo` returning `{ methodName, formatArg? }`
 - **Why**: Clean single return type covers both format-less primitives and format-aware types (DateTime, Duration, bytes)
 - **Encoding mapping**: rfc3339→"O", rfc7231→"R", unixTimestamp→"U", plainDate→"D", plainTime→"T"
@@ -546,9 +548,21 @@ Created `src/builtins/system.ts` and `src/builtins/system-text-json.ts` as separ
 ## Gotchas
 
 ### CSharp Name Policy Element Types
+
 - Use `"class-property"` (not `"property"`) with `useCSharpNamePolicy().getName()` for PascalCase property names
 - Valid elements: `"class"`, `"constant"`, `"variable"`, `"struct"`, `"enum"`, `"enum-member"`, `"function"`, `"interface"`, `"record"`, `"class-member-private"`, `"class-member-public"`, `"class-method"`, `"class-property"`, `"parameter"`, `"type-parameter"`, `"namespace"`
 
 ### Constant Type Unwrapping for Serialization
+
 - When determining the writer method for a property, unwrap both nullable (`SdkNullableType`) AND constant (`SdkConstantType`) to get the underlying primitive kind
 - Constants still serialize via their property accessor (e.g., `writer.WriteStringValue(Kind)`), but the writer method selection needs the underlying type
+
+## Design Decisions
+
+### Duration serialization: valueTransform pattern (Task 2.2.5)
+- `WriteMethodInfo` now has an optional `valueTransform?: (propertyName: string) => string` callback
+- When present, the property name is passed through it before rendering (e.g., `name → name.TotalSeconds`)
+- This pattern will be reused for bytes serialization (2.2.6) and any future type that needs value wrapping
+- The `INTEGER_KINDS` set determines whether `Convert.ToInt32()` wrapping is needed for numeric duration encodings
+- DurationKnownEncoding values are: `"ISO8601"`, `"seconds"`, `"milliseconds"` (from `@typespec/compiler`)
+- `SdkDurationType` has `encode` (the encoding) and `wireType` (the target type, e.g., int32, float64)

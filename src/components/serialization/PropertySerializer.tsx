@@ -12,12 +12,14 @@
  * - **Boolean** → `WriteBooleanValue`
  * - **DateTime** (utcDateTime, offsetDateTime) → `WriteStringValue` or
  *   `WriteNumberValue` with format specifier depending on encoding
+ * - **Duration** → `WriteStringValue` with `"P"` for ISO8601, or
+ *   `WriteNumberValue` with `.TotalSeconds`/`.TotalMilliseconds` for numeric
+ *   encodings (integer variants wrapped in `Convert.ToInt32`)
  * - **plainDate** → `WriteStringValue` with `"D"` format
  * - **plainTime** → `WriteStringValue` with `"T"` format
  *
  * Non-primitive types (models, enums, collections, dictionaries,
- * Duration, bytes) return `null` and are handled by subsequent tasks:
- * - 2.2.5: Duration serialization
+ * bytes) return `null` and are handled by subsequent tasks:
  * - 2.2.6: Bytes serialization
  * - 2.2.7: Nested model serialization
  * - 2.2.8: Enum serialization
@@ -42,12 +44,31 @@
  * writer.WriteNumberValue(Timestamp, "U");
  * ```
  *
+ * @example Generated output for a Duration property (ISO8601):
+ * ```csharp
+ * writer.WritePropertyName("timeout"u8);
+ * writer.WriteStringValue(Timeout, "P");
+ * ```
+ *
+ * @example Generated output for a Duration property (seconds, float):
+ * ```csharp
+ * writer.WritePropertyName("delay"u8);
+ * writer.WriteNumberValue(Delay.TotalSeconds);
+ * ```
+ *
+ * @example Generated output for a Duration property (seconds, integer):
+ * ```csharp
+ * writer.WritePropertyName("ttl"u8);
+ * writer.WriteNumberValue(Convert.ToInt32(Ttl.TotalSeconds));
+ * ```
+ *
  * @module
  */
 
 import { useCSharpNamePolicy } from "@alloy-js/csharp";
 import type {
   SdkDateTimeType,
+  SdkDurationType,
   SdkModelPropertyType,
   SdkType,
 } from "@azure-tools/typespec-client-generator-core";
@@ -94,6 +115,28 @@ const NUMBER_KINDS = new Set([
 const BOOLEAN_KINDS = new Set(["boolean"]);
 
 /**
+ * Integer SDK type kinds used to determine whether a numeric duration
+ * encoding requires `Convert.ToInt32()` wrapping.
+ *
+ * When a duration is encoded as seconds or milliseconds with an integer
+ * wire type, the value must be truncated via `Convert.ToInt32()` to match
+ * the legacy emitter's behavior. Float/double wire types pass through
+ * the raw `TotalSeconds` or `TotalMilliseconds` value.
+ */
+const INTEGER_KINDS = new Set([
+  "int8",
+  "int16",
+  "int32",
+  "int64",
+  "uint8",
+  "uint16",
+  "uint32",
+  "uint64",
+  "safeint",
+  "integer",
+]);
+
+/**
  * Information about how to write a property value to a `Utf8JsonWriter`.
  *
  * For primitive types, only `methodName` is set. For types that require
@@ -107,10 +150,19 @@ export interface WriteMethodInfo {
   methodName: string;
   /**
    * Optional format specifier argument (e.g., `"O"` for RFC3339, `"R"` for
-   * RFC7231, `"U"` for Unix timestamp). When present, generates a two-argument
-   * call like `writer.WriteStringValue(prop, "O")`.
+   * RFC7231, `"U"` for Unix timestamp, `"P"` for ISO8601 Duration). When
+   * present, generates a two-argument call like `writer.WriteStringValue(prop, "O")`.
    */
   formatArg?: string;
+  /**
+   * Optional value transformation function. When present, the property name
+   * is passed through this function to produce the value expression.
+   *
+   * Used for Duration types where the value needs wrapping, e.g.:
+   * - `(name) => \`${name}.TotalSeconds\`` for float duration seconds
+   * - `(name) => \`Convert.ToInt32(${name}.TotalSeconds)\`` for integer duration seconds
+   */
+  valueTransform?: (propertyName: string) => string;
 }
 
 /**
@@ -139,13 +191,71 @@ function getDateTimeWriteInfo(type: SdkDateTimeType): WriteMethodInfo {
 }
 
 /**
+ * Returns the write method info for a `SdkDurationType` based on its encoding.
+ *
+ * Duration (TimeSpan) supports three encoding strategies:
+ * - `"ISO8601"` (default) → `WriteStringValue` with `"P"` format. The "P" format
+ *   triggers `TypeFormatters.ToString(value, "P")` which uses `XmlConvert.ToString()`
+ *   to produce ISO 8601 duration strings like `"P1DT2H3M4S"`.
+ * - `"seconds"` → `WriteNumberValue` with the `.TotalSeconds` property. Integer wire
+ *   types wrap in `Convert.ToInt32()` to truncate fractional seconds.
+ * - `"milliseconds"` → `WriteNumberValue` with the `.TotalMilliseconds` property.
+ *   Integer wire types wrap in `Convert.ToInt32()` for the same reason.
+ *
+ * @param type - An `SdkDurationType` with its encoding and wireType resolved by TCGC.
+ * @returns Write method info with the correct method name, optional format specifier,
+ *   and optional value transformation for numeric encodings.
+ */
+function getDurationWriteInfo(type: SdkDurationType): WriteMethodInfo {
+  switch (type.encode) {
+    case "seconds":
+      return getDurationNumericWriteInfo(type, "TotalSeconds");
+    case "milliseconds":
+      return getDurationNumericWriteInfo(type, "TotalMilliseconds");
+    case "ISO8601":
+    default:
+      // ISO8601 is the default encoding for duration in JSON.
+      // Uses the "P" format specifier which delegates to XmlConvert.ToString().
+      return { methodName: "WriteStringValue", formatArg: "P" };
+  }
+}
+
+/**
+ * Returns write method info for a numeric duration encoding (seconds or milliseconds).
+ *
+ * When the wire type is an integer kind, the value is wrapped in `Convert.ToInt32()`
+ * to truncate fractional values, matching the legacy emitter's behavior. For float or
+ * double wire types, the raw `TotalSeconds` or `TotalMilliseconds` value is used directly.
+ *
+ * @param type - The `SdkDurationType` whose `wireType` determines integer vs float behavior.
+ * @param totalProperty - The TimeSpan property to access (`"TotalSeconds"` or `"TotalMilliseconds"`).
+ * @returns Write method info with a `valueTransform` that wraps the property name appropriately.
+ */
+function getDurationNumericWriteInfo(
+  type: SdkDurationType,
+  totalProperty: string,
+): WriteMethodInfo {
+  if (INTEGER_KINDS.has(type.wireType.kind)) {
+    return {
+      methodName: "WriteNumberValue",
+      valueTransform: (name: string) =>
+        `Convert.ToInt32(${name}.${totalProperty})`,
+    };
+  }
+  return {
+    methodName: "WriteNumberValue",
+    valueTransform: (name: string) => `${name}.${totalProperty}`,
+  };
+}
+
+/**
  * Determines the `Utf8JsonWriter` write method and optional format specifier
  * for a given SDK type.
  *
  * Unwraps nullable wrappers and constant types to find the underlying
  * kind, then maps it to the appropriate writer method. For types that
- * require encoding-aware serialization (DateTime, plainDate, plainTime),
- * also returns the format specifier argument.
+ * require encoding-aware serialization (DateTime, Duration, plainDate,
+ * plainTime), also returns the format specifier and/or value transform.
  *
  * @param type - An SDK type from TCGC.
  * @returns Write method info, or `null` if the type requires a different
@@ -173,9 +283,16 @@ export function getWriteMethodInfo(type: SdkType): WriteMethodInfo | null {
     return getDateTimeWriteInfo(unwrapped as SdkDateTimeType);
   }
 
+  // Duration types — encoding determines method, format, and value transform.
+  if (kind === "duration") {
+    return getDurationWriteInfo(unwrapped as SdkDurationType);
+  }
+
   // Plain date/time — always use fixed ISO format specifiers.
-  if (kind === "plainDate") return { methodName: "WriteStringValue", formatArg: "D" };
-  if (kind === "plainTime") return { methodName: "WriteStringValue", formatArg: "T" };
+  if (kind === "plainDate")
+    return { methodName: "WriteStringValue", formatArg: "D" };
+  if (kind === "plainTime")
+    return { methodName: "WriteStringValue", formatArg: "T" };
 
   return null;
 }
@@ -188,10 +305,12 @@ export function getWriteMethodInfo(type: SdkType): WriteMethodInfo | null {
  *    name using a UTF-8 byte literal for performance.
  * 2. `writer.WriteXxxValue(PropertyName[, "format"]);` — writes the property value
  *    using the appropriate `Utf8JsonWriter` method. For types with encoding
- *    (DateTime, plainDate, plainTime), a format specifier argument is included.
+ *    (DateTime, Duration, plainDate, plainTime), a format specifier argument
+ *    is included. For Duration with numeric encoding, a value transform wraps
+ *    the property access (e.g., `Property.TotalSeconds`).
  *
  * Returns `null` for non-primitive types (models, enums, collections, etc.)
- * which are handled by subsequent tasks (2.2.5–2.2.10).
+ * which are handled by subsequent tasks (2.2.6–2.2.10).
  *
  * @param props - The component props containing the property to serialize.
  * @returns JSX element with the write statements, or `null` for unsupported types.
@@ -207,12 +326,15 @@ export function WritePropertySerialization(
 
   const serializedName = property.serializedName;
   const csharpName = namePolicy.getName(property.name, "class-property");
+  const valuePart = writeInfo.valueTransform
+    ? writeInfo.valueTransform(csharpName)
+    : csharpName;
   const formatPart = writeInfo.formatArg ? `, "${writeInfo.formatArg}"` : "";
 
   return (
     <>
       {`\n    writer.WritePropertyName("${serializedName}"u8);`}
-      {`\n    writer.${writeInfo.methodName}(${csharpName}${formatPart});`}
+      {`\n    writer.${writeInfo.methodName}(${valuePart}${formatPart});`}
     </>
   );
 }

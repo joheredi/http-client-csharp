@@ -1510,4 +1510,176 @@ describe("PropertySerialization", () => {
     expect(content).toContain('writer.WritePropertyName("startTime"u8);');
     expect(content).toContain('writer.WriteStringValue(StartTime, "T");');
   });
+
+  /**
+   * Validates that a duration property with default encoding (ISO8601) generates
+   * `writer.WriteStringValue(Timeout, "P")`. The "P" format specifier triggers
+   * `TypeFormatters.ToString(value, "P")` which uses `XmlConvert.ToString()` to
+   * produce ISO 8601 duration strings like "P1DT2H3M4S". Without the "P" format,
+   * TimeSpan.ToString() would produce a different format (e.g., "1.02:03:04").
+   */
+  it("serializes duration property with ISO8601 encoding (default)", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        timeout: duration;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('writer.WritePropertyName("timeout"u8);');
+    expect(content).toContain('writer.WriteStringValue(Timeout, "P");');
+  });
+
+  /**
+   * Validates that a duration property encoded as seconds with a float wire type
+   * generates `writer.WriteNumberValue(Delay.TotalSeconds)`. Float/double wire
+   * types pass the raw TotalSeconds value without truncation, preserving fractional
+   * seconds. This is the standard numeric duration encoding for REST APIs.
+   */
+  it("serializes duration property with seconds encoding (float)", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        @encode(DurationKnownEncoding.seconds, float64)
+        delay: duration;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('writer.WritePropertyName("delay"u8);');
+    expect(content).toContain("writer.WriteNumberValue(Delay.TotalSeconds);");
+  });
+
+  /**
+   * Validates that a duration property encoded as seconds with an integer wire type
+   * generates `writer.WriteNumberValue(Convert.ToInt32(Ttl.TotalSeconds))`. Integer
+   * wire types require Convert.ToInt32() to truncate fractional seconds — without it,
+   * the JSON output could contain unexpected decimal values for a field that should
+   * be an integer.
+   */
+  it("serializes duration property with seconds encoding (integer)", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        @encode(DurationKnownEncoding.seconds, int32)
+        ttl: duration;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('writer.WritePropertyName("ttl"u8);');
+    expect(content).toContain(
+      "writer.WriteNumberValue(Convert.ToInt32(Ttl.TotalSeconds));",
+    );
+  });
+
+  /**
+   * Validates that a duration property encoded as milliseconds with a float wire type
+   * generates `writer.WriteNumberValue(Latency.TotalMilliseconds)`. This encoding is
+   * used by APIs that measure durations in milliseconds with fractional precision
+   * (e.g., performance metrics).
+   */
+  it("serializes duration property with milliseconds encoding (float)", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        @encode(DurationKnownEncoding.milliseconds, float64)
+        latency: duration;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('writer.WritePropertyName("latency"u8);');
+    expect(content).toContain(
+      "writer.WriteNumberValue(Latency.TotalMilliseconds);",
+    );
+  });
+
+  /**
+   * Validates that a duration property encoded as milliseconds with an integer wire type
+   * generates `writer.WriteNumberValue(Convert.ToInt32(PollInterval.TotalMilliseconds))`.
+   * Integer millisecond encoding is used when APIs require whole-number millisecond values
+   * (e.g., retry-after headers, polling intervals).
+   */
+  it("serializes duration property with milliseconds encoding (integer)", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        @encode(DurationKnownEncoding.milliseconds, int32)
+        pollInterval: duration;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('writer.WritePropertyName("pollInterval"u8);');
+    expect(content).toContain(
+      "writer.WriteNumberValue(Convert.ToInt32(PollInterval.TotalMilliseconds));",
+    );
+  });
 });

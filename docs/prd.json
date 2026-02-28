@@ -1897,7 +1897,7 @@
           "title": "Implement Duration serialization",
           "description": "TimeSpan serialization: ISO8601\u2192WriteStringValue(value, \"P\"), Seconds\u2192WriteNumberValue(TotalSeconds), Milliseconds\u2192WriteNumberValue(TotalMilliseconds). Float variants use double TotalSeconds.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.2.3"
           ],

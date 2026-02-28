@@ -763,3 +763,23 @@ Added 5 tests in `model-serialization.test.ts`:
 Pattern: The `WriteMethodInfo` interface is designed to be extensible for Duration (2.2.5)
 and Bytes (2.2.6) which also need format specifiers. Future tasks should add cases to
 `getWriteMethodInfo` following the same pattern.
+
+---
+2026-02-28 — Task 2.2.5: Implement Duration serialization (complete)
+
+- Added `getDurationWriteInfo()` and `getDurationNumericWriteInfo()` to `PropertySerializer.tsx`
+- Duration encoding → C# output mapping:
+  - ISO8601 (default) → `writer.WriteStringValue(Prop, "P")`
+  - seconds + float → `writer.WriteNumberValue(Prop.TotalSeconds)`
+  - seconds + int → `writer.WriteNumberValue(Convert.ToInt32(Prop.TotalSeconds))`
+  - milliseconds + float → `writer.WriteNumberValue(Prop.TotalMilliseconds)`
+  - milliseconds + int → `writer.WriteNumberValue(Convert.ToInt32(Prop.TotalMilliseconds))`
+- Extended `WriteMethodInfo` with optional `valueTransform` callback to handle value wrapping
+  (e.g., `.TotalSeconds`, `Convert.ToInt32(...)`) — this is reusable for bytes (2.2.6)
+- Added `INTEGER_KINDS` set for wire type checking (integer vs float distinction)
+- Updated `WritePropertySerialization` to use `valueTransform` when present
+- Added 5 new tests covering all duration encoding variants
+- All 313 tests pass
+- Design decision: Chose `valueTransform` callback over separate handling in component
+  for clean separation of type analysis vs rendering. Rejected string templates (less type-safe)
+  and prefix/suffix pattern (awkward with nested parens).
