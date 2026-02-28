@@ -2236,3 +2236,240 @@ describe("RequiredNullableWritePattern", () => {
     expect(content).toContain('writer.WriteNull("endpoint"u8);');
   });
 });
+
+/**
+ * Tests for the JsonDeserialize component.
+ *
+ * These tests verify that the emitter generates the `DeserializeXxx` static
+ * deserialization method inside model `.Serialization.cs` files. The
+ * JsonDeserialize component produces the core deserialization method skeleton:
+ * method signature with correct parameters, null check, and children slot.
+ *
+ * Why these tests matter:
+ * - The deserialization method is the entry point for JSON→model conversion,
+ *   required by the `IJsonModel<T>.Create` explicit interface implementation.
+ * - Validates the method signature pattern (`internal static {Model} Deserialize{Model}`).
+ * - Ensures the null check handles `JsonValueKind.Null` consistently.
+ * - Verifies using directives for `System.Text.Json` and `System.ClientModel.Primitives`
+ *   are generated via builtin refkeys.
+ * - Confirms the method is placed inside the serialization partial class.
+ */
+describe("JsonDeserialize", () => {
+  /**
+   * Validates the deserialization method signature follows the legacy emitter's
+   * convention: `internal static {Model} Deserialize{Model}(JsonElement, ModelReaderWriterOptions)`.
+   * The `internal static` modifier is critical — the method is called by the
+   * IJsonModel<T>.Create implementation but should not be part of the public API.
+   */
+  it("generates deserialization method with correct signature", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+    const content = outputs[fileKey!];
+
+    expect(content).toContain(
+      "internal static Widget DeserializeWidget(JsonElement element, ModelReaderWriterOptions options)",
+    );
+  });
+
+  /**
+   * Validates that the deserialization method includes a null check at the top.
+   * When a JSON element is null, the method should return null immediately rather
+   * than attempting to deserialize properties. This is essential for handling
+   * nullable model references in JSON payloads.
+   */
+  it("generates null check that returns null for null JSON element", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain("if (element.ValueKind == JsonValueKind.Null)");
+    expect(content).toContain("return null;");
+  });
+
+  /**
+   * Validates that using directives for System.Text.Json are generated.
+   * The method signature references `JsonElement` and the body references
+   * `JsonValueKind` — both require `using System.Text.Json;` to compile.
+   * The using is auto-generated via Alloy's builtin refkey system when
+   * `SystemTextJson.JsonElement` is referenced in the code template.
+   */
+  it("generates using directive for System.Text.Json", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain("using System.Text.Json;");
+  });
+
+  /**
+   * Validates that the deserialization method is generated for derived models.
+   * Each model in a discriminated hierarchy gets its own deserialization method,
+   * not just the base model. The return type and method name must match the
+   * specific derived model type.
+   */
+  it("generates deserialization method for derived models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Dog extends Pet {
+        kind: "dog";
+        breed: string;
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    // Check base model
+    const petFile = Object.keys(outputs).find((k) =>
+      k.includes("Pet.Serialization.cs"),
+    );
+    expect(petFile).toBeDefined();
+    const petContent = outputs[petFile!];
+    expect(petContent).toContain(
+      "internal static Pet DeserializePet(JsonElement element, ModelReaderWriterOptions options)",
+    );
+
+    // Check derived model
+    const dogFile = Object.keys(outputs).find((k) =>
+      k.includes("Dog.Serialization.cs"),
+    );
+    expect(dogFile).toBeDefined();
+    const dogContent = outputs[dogFile!];
+    expect(dogContent).toContain(
+      "internal static Dog DeserializeDog(JsonElement element, ModelReaderWriterOptions options)",
+    );
+  });
+
+  /**
+   * Validates that the deserialization method is placed inside the serialization
+   * partial class, after the write core method and deserialization constructor.
+   * The method must be within the class body for correct C# partial class semantics.
+   */
+  it("is placed inside the serialization partial class", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // The deserialization method should appear after the write core method
+    const writeIndex = content.indexOf("JsonModelWriteCore");
+    const deserializeIndex = content.indexOf("DeserializeWidget");
+    expect(writeIndex).toBeGreaterThan(-1);
+    expect(deserializeIndex).toBeGreaterThan(-1);
+    expect(deserializeIndex).toBeGreaterThan(writeIndex);
+  });
+
+  /**
+   * Validates the complete structure of the deserialization method body.
+   * The null check should be properly indented inside the method body with
+   * Allman-style braces matching the legacy emitter's golden file format.
+   */
+  it("generates correctly indented method body", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Check the overall method structure with indentation
+    expect(content).toContain("internal static Widget DeserializeWidget(JsonElement element, ModelReaderWriterOptions options)");
+    expect(content).toMatch(/DeserializeWidget\(JsonElement element, ModelReaderWriterOptions options\)\n\s*\{/);
+    expect(content).toContain("    if (element.ValueKind == JsonValueKind.Null)");
+    expect(content).toContain("        return null;");
+  });
+});

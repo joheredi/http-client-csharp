@@ -2123,7 +2123,7 @@
           "title": "Create JsonDeserialize component",
           "description": "Generate the static DeserializeXxx(JsonElement element, ModelReaderWriterOptions options) method. This is the core deserialization method.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.1.1"
           ],

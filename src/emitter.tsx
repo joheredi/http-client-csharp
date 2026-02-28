@@ -15,6 +15,7 @@ import { ModelFile } from "./components/models/ModelFile.js";
 import { UnknownDiscriminatorModelFile } from "./components/models/UnknownDiscriminatorModel.js";
 import { ModelSerializationFile } from "./components/serialization/ModelSerializationFile.js";
 import { DeserializationConstructor } from "./components/serialization/DeserializationConstructor.js";
+import { JsonDeserialize } from "./components/serialization/JsonDeserialize.js";
 import { JsonModelWriteCore } from "./components/serialization/JsonModelWriteCore.js";
 import { $lib } from "./lib.js";
 import { type CSharpEmitterOptions, resolveOptions } from "./options.js";
@@ -90,6 +91,8 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
             <JsonModelWriteCore type={m} />
             {"\n\n"}
             <DeserializationConstructor type={m} />
+            {"\n\n"}
+            <JsonDeserialize type={m} />
           </ModelSerializationFile>
         ))}
       </CSharpScalarOverrides>
