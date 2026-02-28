@@ -1959,3 +1959,291 @@ describe("DerivedModelDiscriminator", () => {
     expect(content).toMatch(/Indoor\s*=\s*indoor;/);
   });
 });
+
+/**
+ * Tests for the UnknownDiscriminatorModelFile component.
+ *
+ * For every abstract discriminated base model, the emitter generates an
+ * internal `Unknown{BaseName}` class that serves as the deserialization
+ * fallback when the discriminator value doesn't match any known variant.
+ *
+ * These tests validate:
+ * - The Unknown variant file is generated with the correct name and path
+ * - The class is `internal partial` and extends the base model
+ * - The constructor parameters match the base model's serialization ctor
+ * - The discriminator parameter has a null-guard with "unknown" fallback
+ * - String and enum discriminator types are handled correctly
+ *
+ * Why these tests matter:
+ * - The Unknown variant is required for safe deserialization of payloads
+ *   with unrecognized discriminator values. Without it, deserialization
+ *   of unknown subtypes would fail at runtime.
+ * - Validates the class structure matches the legacy emitter's output
+ *   (e.g., UnknownBird.cs, UnknownPet.cs from Spector test golden files).
+ */
+describe("UnknownDiscriminatorModel", () => {
+  /**
+   * Validates that a file named `Unknown{BaseName}.cs` is generated for
+   * abstract discriminated base models.
+   *
+   * Without this file, the SDK cannot deserialize payloads with unknown
+   * discriminator values, causing runtime failures.
+   */
+  it("generates Unknown variant file for abstract discriminated base", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Bird {
+        kind: string;
+        wingspan: int32;
+      }
+
+      model Eagle extends Bird {
+        kind: "eagle";
+      }
+
+      @route("/test")
+      op test(): Bird;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    // Unknown variant file should be generated
+    const unknownFile = Object.keys(outputs).find((k) =>
+      k.includes("UnknownBird.cs"),
+    );
+    expect(unknownFile).toBeDefined();
+  });
+
+  /**
+   * Validates the class declaration for the Unknown variant:
+   * - `internal` access (not user-instantiable)
+   * - `partial` modifier (supports extension via partial classes)
+   * - Inherits from the base model
+   *
+   * This must match the legacy emitter's pattern:
+   * `internal partial class UnknownBird : Bird`
+   */
+  it("generates internal partial class extending base model", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Bird {
+        kind: string;
+        wingspan: int32;
+      }
+
+      model Eagle extends Bird {
+        kind: "eagle";
+      }
+
+      @route("/test")
+      op test(): Bird;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const unknownFile = Object.keys(outputs).find((k) =>
+      k.includes("UnknownBird.cs"),
+    );
+    expect(unknownFile).toBeDefined();
+    const content = outputs[unknownFile!];
+
+    // Must be internal partial and extend the base model
+    expect(content).toMatch(
+      /internal\s+partial\s+class\s+UnknownBird\s*:\s*Bird/,
+    );
+  });
+
+  /**
+   * Validates the constructor for string discriminator Unknown variants:
+   * - Constructor is `internal`
+   * - Parameters match base model's serialization constructor
+   *   (all properties + additionalBinaryDataProperties)
+   * - Base call null-guards the discriminator: `kind ?? "unknown"`
+   * - All other params passed through as-is
+   *
+   * Reference: UnknownBird.cs —
+   * `internal UnknownBird(string kind, int wingspan,
+   *     IDictionary<string, BinaryData> additionalBinaryDataProperties)
+   *     : base(kind ?? "unknown", wingspan, additionalBinaryDataProperties)`
+   */
+  it("generates constructor with string discriminator null-guard", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Bird {
+        kind: string;
+        wingspan: int32;
+      }
+
+      model Eagle extends Bird {
+        kind: "eagle";
+      }
+
+      @route("/test")
+      op test(): Bird;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const unknownFile = Object.keys(outputs).find((k) =>
+      k.includes("UnknownBird.cs"),
+    );
+    expect(unknownFile).toBeDefined();
+    const content = outputs[unknownFile!];
+
+    // Internal constructor with base model's serialization params
+    expect(content).toMatch(
+      /internal\s+UnknownBird\([\s\S]*?string\s+kind[\s\S]*?int\s+wingspan[\s\S]*?IDictionary<string,\s*BinaryData>\s+additionalBinaryDataProperties[\s\S]*?\)/,
+    );
+
+    // Base call with null-coalescing on discriminator
+    expect(content).toMatch(
+      /:\s*base\(kind\s*\?\?\s*"unknown",\s*wingspan,\s*additionalBinaryDataProperties\)/,
+    );
+  });
+
+  /**
+   * Validates that enum discriminator Unknown variants use the default-check
+   * pattern instead of null-coalescing.
+   *
+   * Extensible enums in C# are structs (value types) and cannot be null.
+   * Instead, the pattern `kind != default ? kind : "unknown"` checks for
+   * the default struct value. The "unknown" string is implicitly converted
+   * to the extensible enum type.
+   *
+   * Reference: UnknownDog.cs —
+   * `internal UnknownDog(DogKind kind, ...)
+   *     : base(kind != default ? kind : "unknown", ...)`
+   */
+  it("generates constructor with enum discriminator default-check guard", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      enum DogKind {
+        golden: "golden",
+        husky: "husky",
+      }
+
+      @discriminator("kind")
+      model Dog {
+        kind: DogKind;
+        weight: int32;
+      }
+
+      model Golden extends Dog {
+        kind: DogKind.golden;
+      }
+
+      @route("/test")
+      op test(): Dog;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const unknownFile = Object.keys(outputs).find((k) =>
+      k.includes("UnknownDog.cs"),
+    );
+    expect(unknownFile).toBeDefined();
+    const content = outputs[unknownFile!];
+
+    // Internal constructor with base model's serialization params (enum type for discriminator)
+    expect(content).toMatch(
+      /internal\s+UnknownDog\([\s\S]*?DogKind\s+kind[\s\S]*?int\s+weight[\s\S]*?IDictionary<string,\s*BinaryData>\s+additionalBinaryDataProperties[\s\S]*?\)/,
+    );
+
+    // Base call with default-check guard for enum discriminator
+    expect(content).toMatch(
+      /:\s*base\(kind\s*!=\s*default\s*\?\s*kind\s*:\s*"unknown",\s*weight,\s*additionalBinaryDataProperties\)/,
+    );
+  });
+
+  /**
+   * Validates that non-discriminated models do NOT get an Unknown variant.
+   *
+   * Only abstract discriminated base models (those with @discriminator and
+   * subtypes) should have Unknown variants. Regular models and non-abstract
+   * models should not generate Unknown files.
+   */
+  it("does not generate Unknown variant for non-discriminated models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Thing {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Thing;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const unknownFiles = Object.keys(outputs).filter((k) =>
+      k.includes("Unknown"),
+    );
+    expect(unknownFiles).toHaveLength(0);
+  });
+
+  /**
+   * Validates that the Unknown variant constructor body is empty.
+   *
+   * The Unknown variant has no own properties — all data is stored in the
+   * base class. Therefore, the constructor body should contain no assignments.
+   * All initialization is handled by the base constructor call.
+   */
+  it("generates constructor with empty body", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Bird {
+        kind: string;
+        wingspan: int32;
+      }
+
+      model Eagle extends Bird {
+        kind: "eagle";
+      }
+
+      @route("/test")
+      op test(): Bird;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const unknownFile = Object.keys(outputs).find((k) =>
+      k.includes("UnknownBird.cs"),
+    );
+    expect(unknownFile).toBeDefined();
+    const content = outputs[unknownFile!];
+
+    // The constructor body should be empty (no property assignments)
+    // Match the block after the base initializer
+    expect(content).toMatch(
+      /:\s*base\([^)]+\)\s*\{\s*\}/s,
+    );
+  });
+});

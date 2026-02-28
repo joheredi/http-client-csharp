@@ -550,3 +550,29 @@ Pattern: `OverloadConstructor` should be used for any additional constructor ove
 - The `isDerivedDiscriminatedModel()` function is exported for use by other components
 - For multi-level discriminator chains (1.3.6), `getBasePublicCtorParams` only looks at immediate parent — will need to walk the hierarchy
 - `buildSerializationParameters` is reused for both base and derived; the `includeAdditionalBinaryData` flag on `buildSerializationAssignments` controls whether the derived model adds its own `_additionalBinaryDataProperties` assignment
+
+## 2026-02-28 — Task 1.3.4: Implement Unknown discriminator variant (complete)
+
+**What was done:**
+- Created `src/components/models/UnknownDiscriminatorModel.tsx` — new component that generates `Unknown{BaseName}.cs` for each abstract discriminated base model
+- Modified `src/components/models/ModelConstructors.tsx` — exported `OverloadConstructor`, `buildSerializationParameters`, and `ModelConstructorProps` for reuse
+- Modified `src/emitter.tsx` — added rendering of `UnknownDiscriminatorModelFile` for models matching `isModelAbstract()`
+- Added 6 new tests (252 total passing)
+
+**Pattern details:**
+- Unknown variant is `internal partial class Unknown{BaseName} : {BaseName}`
+- Single internal constructor with base model's serialization params (all props + additionalBinaryDataProperties)
+- String discriminator null-guard: `kind ?? "unknown"`
+- Enum discriminator default-check: `kind != default ? kind : "unknown"` (works via extensible enum implicit string conversion)
+- Constructor body is empty (all initialization done by base ctor)
+- Unknown variant is NOT in TCGC model — it's synthesized by the emitter for each abstract discriminated base
+
+**Key decisions:**
+- Reused `OverloadConstructor` from ModelConstructors.tsx instead of creating a new component (simpler, works fine even with single constructor)
+- Used `buildSerializationParameters` for constructor params (exact same signature as base model's serialization ctor)
+- `isModelAbstract()` (already exported) used in emitter.tsx to filter which models get Unknown variants
+
+**Notes for future tasks:**
+- Task 1.3.5 (additional properties on derived models): may need to handle Unknown variants with additional properties
+- Task 1.3.6 (multi-level discriminator chains): Unknown variant for mid-level base models would need params from the full inheritance chain (recursive collection of serialization params)
+- Task 2.4.3 (Unknown fallback deserialization): will need a `DeserializeUnknown{Name}` method that creates the Unknown variant instance

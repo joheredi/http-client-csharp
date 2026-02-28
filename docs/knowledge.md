@@ -416,19 +416,37 @@ When setting both `private: true` and `protected: true` on a Constructor/ClassDe
 ## Design Decisions
 
 ### Derived Model Discriminator Constructor Chaining (Task 1.3.3)
+
 **Approach chosen**: Extend OverloadConstructor with `baseInitializer` prop, separate `DerivedModelConstructors` component.
 **Why**: Clean separation of base/derived model logic. The `baseInitializer` prop renders `: base(...)` between `<Parameters>` and `<Block>` in the OverloadConstructor.
 **Rejected**: Inline base call in constructor body — would render inside `{}` block, syntactically wrong for C# constructor initializers.
 
 ### Enum Discriminator Literal Reference
+
 **Approach chosen**: Compose `EnumType.MemberName` using `efCsharpRefkey(enumType.__raw!) + "." + namePolicy.getName(memberName, "enum-member")`.
 **Why**: `refkey(enumValue)` from `@alloy-js/core` doesn't resolve across files when the enum declaration is in a separate file. Using `efCsharpRefkey` for the enum TYPE works because it matches the emitter-framework's refkey derivation used in FixedEnumFile/ExtensibleEnumFile.
 **Rejected**: `refkey(discriminatorProp.type)` — produced `<Unresolved Symbol>` in output.
 
 ### Discriminator Property Filtering on Derived Models
+
 Derived models in TCGC include the discriminator override property in their `properties` array (e.g., `kind: "cat"` on Cat). This property must be filtered out from:
+
 1. Own constructor parameters (not exposed to users)
 2. Own serialization parameters (already in base params)
 3. Own serialization assignments (base ctor handles it)
 4. Property declarations (inherited from base class)
-Use `!p.discriminator` filter on `type.properties` to get the "own non-discriminator properties".
+   Use `!p.discriminator` filter on `type.properties` to get the "own non-discriminator properties".
+
+## Design Decisions
+
+### Task 1.3.4: Unknown discriminator variant — reuse OverloadConstructor
+**Chosen:** Export and reuse `OverloadConstructor` + `buildSerializationParameters` from ModelConstructors.tsx in the new `UnknownDiscriminatorModel.tsx` component.
+**Why:** The Unknown variant's constructor needs `: base(...)` chaining which only OverloadConstructor supports (standard `<Constructor>` from alloy-csharp doesn't have `baseInitializer`). The `buildSerializationParameters` produces exactly the right parameter list. Minimal code duplication.
+**Rejected:** Creating a new `BaseChainedConstructor` component — would duplicate OverloadConstructor logic for no benefit. Also rejected extending ModelFile.tsx — the Unknown variant has fundamentally different structure (internal, no properties, single constructor) that warrants a separate component.
+
+### Unknown variant is emitter-synthesized, not from TCGC
+The `Unknown{BaseName}` class does NOT exist in TCGC's `discriminatedSubtypes` map. It's synthesized by the C# emitter in `emitter.tsx` by filtering `models` with `isModelAbstract()`. The legacy emitter does this in `InputModelType.cs` (line 108-128) where it creates a synthetic `InputModelType` with discriminatorValue="unknown". Our approach generates the file directly from the abstract base model's metadata without creating intermediate model objects.
+
+### String vs enum discriminator null-guard patterns
+- String discriminators: `paramName ?? "unknown"` (null-coalescing, because strings are reference types)
+- Enum discriminators: `paramName != default ? paramName : "unknown"` (default-check, because extensible enums are structs/value types that can't be null, and "unknown" string gets implicitly converted to the enum type via its implicit operator)

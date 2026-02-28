@@ -933,7 +933,7 @@
           "title": "Implement Unknown discriminator variant",
           "description": "Generate an internal Unknown{BaseName} class for every abstract discriminated base model. It inherits from the base, has an internal constructor that accepts the discriminator (with null-guard for strings, != default guard for structs), and passes it to the base. See UnknownBird.cs in the single-discriminator golden files.",
           "phase": "phase-1",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "1.3.3"
           ],

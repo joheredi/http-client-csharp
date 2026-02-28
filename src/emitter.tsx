@@ -7,7 +7,9 @@ import { ExtensibleEnumSerializationFile } from "./components/enums/ExtensibleEn
 import { FixedEnumFile } from "./components/enums/FixedEnumFile.js";
 import { FixedEnumSerializationFile } from "./components/enums/FixedEnumSerializationFile.js";
 import { HttpClientCSharpOutput } from "./components/HttpClientCSharpOutput.js";
+import { isModelAbstract } from "./components/models/ModelConstructors.js";
 import { ModelFile } from "./components/models/ModelFile.js";
+import { UnknownDiscriminatorModelFile } from "./components/models/UnknownDiscriminatorModel.js";
 import { $lib } from "./lib.js";
 import { type CSharpEmitterOptions, resolveOptions } from "./options.js";
 
@@ -72,6 +74,11 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
         {models.map((m) => (
           <ModelFile type={m} options={options} />
         ))}
+        {models
+          .filter((m) => isModelAbstract(m))
+          .map((m) => (
+            <UnknownDiscriminatorModelFile type={m} options={options} />
+          ))}
       </CSharpScalarOverrides>
     </HttpClientCSharpOutput>
   );

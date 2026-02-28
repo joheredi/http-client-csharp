@@ -332,7 +332,7 @@ export const ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME =
  * @param namePolicy - The C# naming policy for parameter name conversion.
  * @returns An array of ParameterProps for the Constructor component.
  */
-function buildSerializationParameters(
+export function buildSerializationParameters(
   properties: SdkModelPropertyType[],
   namePolicy: ReturnType<typeof useCSharpNamePolicy>,
 ): ParameterProps[] {
@@ -404,7 +404,7 @@ function buildSerializationAssignments(
  * Adds support for `: base(...)` constructor chaining used by derived
  * discriminated models.
  */
-interface ModelConstructorProps extends ConstructorProps {
+export interface ModelConstructorProps extends ConstructorProps {
   /** Content rendered inside `: base(...)`. When provided, the constructor chains to the base class. */
   baseInitializer?: Children;
 }
@@ -424,7 +424,7 @@ interface ModelConstructorProps extends ConstructorProps {
  *
  * @see https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/classes-and-structs/constructors
  */
-function OverloadConstructor(props: ModelConstructorProps) {
+export function OverloadConstructor(props: ModelConstructorProps) {
   const scope = useNamedTypeScope();
   const name = scope.ownerSymbol.name;
   const ctorSymbol = new MethodSymbol(name, scope.members, "constructor", {
