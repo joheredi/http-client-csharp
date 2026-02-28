@@ -1029,7 +1029,7 @@
           "title": "Create FixedEnumFile component",
           "description": "Generate a C# enum declaration from a non-extensible TCGC InputEnumType. Use @alloy-js/csharp EnumDeclaration and EnumMember. File path: src/Generated/Models/{EnumName}.cs. Each member has XML doc comment. String-backed enums have no initialization values. Int-backed enums have explicit integer values. See golden files at Spector/http/type/enum/fixed/.",
           "phase": "phase-1",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "0.3.1",
             "0.3.4"

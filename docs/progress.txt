@@ -160,3 +160,33 @@ Added 6 new types to the System.ClientModel Alloy library declarations:
 - This unblocks 1.4.1 (FixedEnumFile), 1.6.1 (ExtensibleEnumFile), and 1.2.1 (ModelFile, which also needs 1.1.2)
 - The `header` prop on Alloy SourceFile renders content before `using` directives with an automatic blank line separator
 - Do NOT use `<Prose>` for the header — it collapses whitespace and word-wraps, destroying the exact format
+
+## 2026-02-28 — Task 1.4.1: Create FixedEnumFile component
+**What was done:**
+- Created `src/components/enums/FixedEnumFile.tsx` — generates C# enum files from TCGC SdkEnumType
+- Component uses @alloy-js/csharp EnumDeclaration + EnumMember directly (not emitter-framework wrapper)
+- Doc comments use TCGC `summary` → `doc` → `{name}.` fallback chain matching legacy DocHelpers
+- Header rendered as raw text children in C# SourceFile (SourceFile lacks `header` prop)
+- Wired into emitter.tsx: filters `sdkContext.sdkPackage.enums` by `isFixed` and renders FixedEnumFile for each
+- Created `src/components/enums/index.ts` barrel export
+- Updated `src/components/index.ts` to export FixedEnumFile
+- Added `HttpTester` to `test/test-host.ts` with `.importLibraries()` for HTTP decorator support
+- Created `test/fixed-enum.test.ts` with 7 tests covering: enum generation, header, doc comments, namespace, no values for string-backed, no output when empty, @doc decorator
+
+**Design decisions:**
+- Used @alloy-js/csharp EnumDeclaration directly instead of emitter-framework wrapper because:
+  1. Need control over doc comment generation (TCGC fallback to member name)
+  2. Need future extensibility for int-backed enum values (EnumMember lacks value prop)
+  3. TCGC types are our primary data source, not TypeSpec types
+- Single-line doc comment format `/// <summary> ... </summary>` via raw strings (matching golden file)
+- Header as children (not prop) because @alloy-js/csharp SourceFile doesn't expose a `header` prop
+
+**Patterns used:**
+- `useCSharpNamePolicy()` for enum and member naming
+- `refkey(sdkType)` with TCGC objects as seeds for stable cross-file references
+- `<For each={...} joiner={",\n"}>` for comma-separated enum members
+- `HttpTester = Tester.importLibraries()` to enable `using TypeSpec.Http;` in tests
+
+**Known issues:**
+- Namespace brace style is K&R (`namespace N {`) instead of Allman (`namespace N\n{`). This is an Alloy Block formatting default — not controllable at component level.
+- @alloy-js/csharp SourceFile doesn't have a `header` prop. Header is injected as raw text children before Namespace.
