@@ -5175,4 +5175,239 @@ describe("PropertyMatchingLoop", () => {
     expect(content).toContain("array.Add(array0);");
     expect(content).toContain("matrix = array;");
   });
+
+  /**
+   * Validates that a Record<string, string> property generates the correct
+   * Dictionary<string, string> deserialization pattern with EnumerateObject
+   * and prop0.Name/prop0.Value accessors.
+   *
+   * This is the foundational dictionary deserialization test. Dictionaries
+   * use EnumerateObject() (not EnumerateArray()) because JSON objects map
+   * to C# dictionaries. The inner loop variable is prop0 (not prop) to
+   * avoid shadowing the outer property matching loop's prop variable.
+   */
+  it("deserializes string dictionary with Dictionary<string, string> and EnumerateObject", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        metadata: Record<string>;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("metadata"u8))');
+    expect(content).toContain(
+      "Dictionary<string, string> dictionary = new Dictionary<string, string>();",
+    );
+    expect(content).toContain(
+      "foreach (var prop0 in prop.Value.EnumerateObject())",
+    );
+    expect(content).toContain(
+      "dictionary.Add(prop0.Name, prop0.Value.GetString());",
+    );
+    expect(content).toContain("metadata = dictionary;");
+    expect(content).toContain("continue;");
+  });
+
+  /**
+   * Validates that a Record<string, int32> property generates the correct
+   * Dictionary<string, int> deserialization with GetInt32() for values.
+   *
+   * Tests numeric dictionary value deserialization — the value read expression
+   * must use the correct JsonElement getter for the value type, same as
+   * how primitive scalars and array items use type-specific getters.
+   */
+  it("deserializes int32 dictionary with Dictionary<string, int> and GetInt32", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        counts: Record<int32>;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("counts"u8))');
+    expect(content).toContain(
+      "Dictionary<string, int> dictionary = new Dictionary<string, int>();",
+    );
+    expect(content).toContain(
+      "foreach (var prop0 in prop.Value.EnumerateObject())",
+    );
+    expect(content).toContain(
+      "dictionary.Add(prop0.Name, prop0.Value.GetInt32());",
+    );
+    expect(content).toContain("counts = dictionary;");
+  });
+
+  /**
+   * Validates that a Record<string, ModelType> property generates the correct
+   * dictionary deserialization calling the static DeserializeXxx method on each
+   * value.
+   *
+   * Model dictionary values are critical because they test recursive
+   * deserialization delegation: each dictionary value is a full JSON object
+   * deserialized by calling the nested model's own Deserialize method, using
+   * prop0.Value as the accessor instead of prop.Value.
+   */
+  it("deserializes model dictionary with DeserializeXxx per value", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Part {
+        id: string;
+      }
+
+      model Widget {
+        partMap: Record<Part>;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("partMap"u8))');
+    expect(content).toContain(
+      "foreach (var prop0 in prop.Value.EnumerateObject())",
+    );
+    expect(content).toContain(
+      "dictionary.Add(prop0.Name, Part.DeserializePart(prop0.Value, options));",
+    );
+    expect(content).toContain("partMap = dictionary;");
+  });
+
+  /**
+   * Validates that a Record<string, EnumType> property generates the correct
+   * dictionary deserialization using the extensible enum constructor pattern
+   * for each value.
+   *
+   * Tests the intersection of dictionary and enum deserialization patterns.
+   * Extensible enum values in a dictionary must use `new EnumName(getter())`
+   * with the prop0.Value accessor, not the outer prop.Value.
+   */
+  it("deserializes extensible enum dictionary with new constructor per value", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      union Priority {
+        string,
+        low: "low",
+        medium: "medium",
+        high: "high",
+      }
+
+      model Widget {
+        priorities: Record<Priority>;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("priorities"u8))');
+    expect(content).toContain(
+      "foreach (var prop0 in prop.Value.EnumerateObject())",
+    );
+    expect(content).toContain(
+      "dictionary.Add(prop0.Name, new Priority(prop0.Value.GetString()));",
+    );
+    expect(content).toContain("priorities = dictionary;");
+  });
+
+  /**
+   * Validates that a nested Record<string, Record<string, string>> generates
+   * recursive dictionary deserialization with depth-suffixed variables.
+   *
+   * Nested dictionaries are the dictionary equivalent of nested arrays — they
+   * require recursive foreach loops with distinct variable names at each depth.
+   * The outer dictionary uses dictionary/prop0, the inner uses dictionary0/prop1.
+   * This matches the legacy emitter's automatic variable numbering.
+   */
+  it("deserializes nested dictionary with recursive foreach loops", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        nested: Record<Record<string>>;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (prop.NameEquals("nested"u8))');
+    // Outer dictionary loop
+    expect(content).toContain(
+      "foreach (var prop0 in prop.Value.EnumerateObject())",
+    );
+    // Inner dictionary with depth-suffixed variable names
+    expect(content).toContain(
+      "Dictionary<string, string> dictionary0 = new Dictionary<string, string>();",
+    );
+    expect(content).toContain(
+      "foreach (var prop1 in prop0.Value.EnumerateObject())",
+    );
+    expect(content).toContain(
+      "dictionary0.Add(prop1.Name, prop1.Value.GetString());",
+    );
+    expect(content).toContain("dictionary.Add(prop0.Name, dictionary0);");
+    expect(content).toContain("nested = dictionary;");
+  });
 });

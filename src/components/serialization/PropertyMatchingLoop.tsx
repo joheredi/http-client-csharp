@@ -12,8 +12,8 @@
  * 3. Assigns the extracted value to the local variable: `{var} = prop.Value.Get{Type}()`.
  * 4. Calls `continue` to skip to the next JSON property.
  *
- * Properties with types not yet handled (dictionaries) are skipped —
- * those are implemented by subsequent tasks (2.3.10). A children slot
+ * Properties with types not yet handled are skipped —
+ * those are implemented by subsequent tasks. A children slot
  * after all property matches allows task 2.3.12 to add the additional
  * binary data catch-all.
  *
@@ -49,6 +49,7 @@ import type {
   SdkArrayType,
   SdkBuiltInType,
   SdkDateTimeType,
+  SdkDictionaryType,
   SdkDurationType,
   SdkEnumType,
   SdkModelPropertyType,
@@ -117,10 +118,10 @@ export function computeMatchableProperties(
  * Abstract numeric kinds (`numeric`, `integer`, `float`) map to their
  * C# default representations: `double` for numeric/float, `long` for integer.
  *
- * Types not in this map (collections, dictionaries) require
+ * Types not in this map (collections) require
  * specialized deserialization and return `null` from `getReadExpression` —
  * collections are handled by `renderArrayDeserialization`, and dictionaries
- * by task 2.3.10. Model types are handled
+ * by `renderDictionaryDeserialization`. Model types are handled
  * separately via the `DeserializeXxx` static method pattern.
  *
  * Encoded types (DateTime, Duration, bytes, plainDate, plainTime) are handled
@@ -336,7 +337,7 @@ function getEnumReadExpression(
  *
  * Returns `null` for types that need specialized deserialization logic:
  * - **Collections (arrays)** — handled by `renderArrayDeserialization`
- * - **Dictionaries** — task 2.3.10 (foreach over object)
+ * - **Dictionaries** — handled by `renderDictionaryDeserialization`
  *
  * @param type - An SDK type from TCGC.
  * @param namePolicy - Optional C# name policy for resolving model/enum class names.
@@ -510,6 +511,22 @@ function renderArrayDeserialization(
         {`\n${innerIndent}${arrayVar}.Add(${innerArrayVar});`}
       </>
     );
+  } else if (unwrappedItemType.kind === "dict") {
+    // Dictionary inside array — delegate to dictionary deserialization
+    const dictBlock = renderDictionaryDeserialization(
+      unwrappedItemType as SdkDictionaryType,
+      itemVar,
+      innerIndent,
+      namePolicy,
+      0,
+    );
+    if (!dictBlock) return null;
+    foreachBody = (
+      <>
+        {dictBlock}
+        {`\n${innerIndent}${arrayVar}.Add(dictionary);`}
+      </>
+    );
   } else {
     // Leaf type — use getReadExpression for the item value
     const itemReadExpr = getReadExpression(itemType, namePolicy, itemVar);
@@ -525,6 +542,141 @@ function renderArrayDeserialization(
       <TypeExpression type={unwrappedItemType.__raw!} />
       {`>();`}
       {`\n${indent}foreach (var ${itemVar} in ${accessor}.EnumerateArray())`}
+      {`\n${indent}{`}
+      {foreachBody}
+      {`\n${indent}}`}
+    </>
+  );
+}
+
+/**
+ * Returns the variable name for the local dictionary at a given nesting depth.
+ *
+ * Follows the legacy emitter's naming convention:
+ * - depth 0: `"dictionary"` (top-level dictionary)
+ * - depth 1: `"dictionary0"` (first nested dictionary)
+ * - depth 2: `"dictionary1"` (second nested dictionary)
+ *
+ * @param depth - The current nesting depth (0-based).
+ * @returns The variable name string.
+ */
+function getDictionaryVarName(depth: number): string {
+  return depth === 0 ? "dictionary" : `dictionary${depth - 1}`;
+}
+
+/**
+ * Returns the loop variable name for the dictionary foreach at a given nesting depth.
+ *
+ * Uses `prop0`, `prop1`, etc. instead of `prop` because the outer property
+ * matching loop already uses `prop` as its iteration variable. Starting at
+ * `prop0` avoids variable shadowing.
+ *
+ * @param depth - The current nesting depth (0-based).
+ * @returns The loop variable name string.
+ */
+function getDictionaryPropVarName(depth: number): string {
+  return `prop${depth}`;
+}
+
+/**
+ * Renders the dictionary deserialization block for a `Record<string, T>` property.
+ *
+ * Generates the pattern:
+ * ```csharp
+ * Dictionary<string, T> dictionary = new Dictionary<string, T>();
+ * foreach (var prop0 in {accessor}.EnumerateObject())
+ * {
+ *     dictionary.Add(prop0.Name, {valueReadExpr});
+ * }
+ * ```
+ *
+ * Handles nested dictionaries recursively — a `Dictionary<string, Dictionary<string, int>>`
+ * produces nested `Dictionary` declarations and `foreach` loops. Variable names use
+ * depth suffixes (`dictionary`, `dictionary0`; `prop0`, `prop1`) matching the legacy
+ * emitter's naming convention.
+ *
+ * Also handles dictionaries containing arrays by delegating to `renderArrayDeserialization`.
+ *
+ * @param dictType - The TCGC `SdkDictionaryType` whose values are being deserialized.
+ * @param accessor - The C# expression for the JsonElement to enumerate
+ *   (e.g., `"prop.Value"` for top-level, `"prop0.Value"` for nested).
+ * @param indent - Whitespace indentation prefix for the generated block.
+ * @param namePolicy - C# name policy for resolving type names.
+ * @param depth - Current nesting depth (0 for top-level dictionary).
+ * @returns JSX element with the dictionary deserialization block, or `null` if
+ *   the value type is not yet supported.
+ */
+function renderDictionaryDeserialization(
+  dictType: SdkDictionaryType,
+  accessor: string,
+  indent: string,
+  namePolicy: NamePolicy<string>,
+  depth: number = 0,
+): Children | null {
+  const valueType = dictType.valueType;
+  const unwrappedValueType = unwrapNullableType(valueType);
+  const innerIndent = indent + "    ";
+  const dictVar = getDictionaryVarName(depth);
+  const propVar = getDictionaryPropVarName(depth);
+
+  let foreachBody: Children;
+
+  if (unwrappedValueType.kind === "dict") {
+    // Nested dictionary — recursive: build inner dict then add to outer
+    const innerBlock = renderDictionaryDeserialization(
+      unwrappedValueType as SdkDictionaryType,
+      `${propVar}.Value`,
+      innerIndent,
+      namePolicy,
+      depth + 1,
+    );
+    if (!innerBlock) return null;
+    const innerDictVar = getDictionaryVarName(depth + 1);
+    foreachBody = (
+      <>
+        {innerBlock}
+        {`\n${innerIndent}${dictVar}.Add(${propVar}.Name, ${innerDictVar});`}
+      </>
+    );
+  } else if (unwrappedValueType.kind === "array") {
+    // Array inside dictionary — delegate to array deserialization
+    const arrayBlock = renderArrayDeserialization(
+      unwrappedValueType as SdkArrayType,
+      `${propVar}.Value`,
+      innerIndent,
+      namePolicy,
+      0,
+    );
+    if (!arrayBlock) return null;
+    foreachBody = (
+      <>
+        {arrayBlock}
+        {`\n${innerIndent}${dictVar}.Add(${propVar}.Name, array);`}
+      </>
+    );
+  } else {
+    // Leaf type — use getReadExpression for the value
+    const valueReadExpr = getReadExpression(
+      valueType,
+      namePolicy,
+      `${propVar}.Value`,
+    );
+    if (!valueReadExpr) return null;
+    foreachBody = (
+      <>
+        {`\n${innerIndent}${dictVar}.Add(${propVar}.Name, ${valueReadExpr});`}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {`\n${indent}Dictionary<string, `}
+      <TypeExpression type={unwrappedValueType.__raw!} />
+      {`> ${dictVar} = new Dictionary<string, `}
+      <TypeExpression type={unwrappedValueType.__raw!} />
+      {`>();`}
+      {`\n${indent}foreach (var ${propVar} in ${accessor}.EnumerateObject())`}
       {`\n${indent}{`}
       {foreachBody}
       {`\n${indent}}`}
@@ -551,9 +703,9 @@ function renderArrayDeserialization(
  * ```
  *
  * Properties whose types are not yet supported (returning `null` from
- * `getReadExpression` and not array types) are silently skipped. This
+ * `getReadExpression` and not array/dict types) are silently skipped. This
  * allows subsequent tasks to incrementally add support for more types
- * (dictionaries) without changing this component.
+ * without changing this component.
  *
  * @param props - The component props containing the model type and optional children.
  * @returns JSX element rendering the property matching foreach loop.
@@ -587,6 +739,28 @@ export function PropertyMatchingLoop(props: PropertyMatchingLoopProps) {
               {"\n        {"}
               {arrayBlock}
               {`\n            ${varName} = array;`}
+              {"\n            continue;"}
+              {"\n        }"}
+            </>
+          );
+        }
+
+        // Dictionary types need a multi-line block with Dictionary<string, T> + foreach
+        if (unwrapped.kind === "dict") {
+          const dictBlock = renderDictionaryDeserialization(
+            unwrapped as SdkDictionaryType,
+            "prop.Value",
+            "            ",
+            namePolicy,
+            0,
+          );
+          if (!dictBlock) return null;
+          return (
+            <>
+              {`\n        if (prop.NameEquals("${serializedName}"u8))`}
+              {"\n        {"}
+              {dictBlock}
+              {`\n            ${varName} = dictionary;`}
               {"\n            continue;"}
               {"\n        }"}
             </>

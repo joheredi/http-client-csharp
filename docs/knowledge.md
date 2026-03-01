@@ -728,3 +728,29 @@ Enum deserialization uses `getEnumReadExpression()` in PropertyMatchingLoop.tsx,
 - **Chosen**: Extend `PropertyMatchingLoop.tsx` with helper functions (`renderArrayDeserialization`), mirroring the write path's `renderArraySerialization`/`renderValueWrite` pattern in `PropertySerializer.tsx`.
 - **Why**: Collection rendering is tightly coupled to the property matching flow (needs accessor, indent, namePolicy). Consistent with how serialization collections are handled.
 - **Rejected**: Creating a separate `CollectionDeserializer.tsx` component — adds indirection without benefit since collection deserialization is always embedded in the property matching loop.
+
+## Dictionary Deserialization (Task 2.3.10)
+
+### Design Decision
+- **Chosen approach**: `renderDictionaryDeserialization` function parallel to `renderArrayDeserialization`
+- **Rejected**: Unified collection rendering function (too much coupling, harder to maintain)
+- **Reason**: Consistent with existing array pattern, simpler, follows legacy emitter structure
+
+### Variable Naming Convention
+- Dictionary var: `dictionary` (depth 0), `dictionary0` (depth 1), `dictionary1` (depth 2)
+- Prop var: `prop0` (depth 0), `prop1` (depth 1) — starts at 0 because outer loop uses `prop`
+- This differs from arrays where `item` is at depth 0 (no existing `item` variable to shadow)
+
+### Generated Pattern
+```csharp
+Dictionary<string, T> dictionary = new Dictionary<string, T>();
+foreach (var prop0 in prop.Value.EnumerateObject())
+{
+    dictionary.Add(prop0.Name, prop0.Value.GetXxx());
+}
+```
+
+### Cross-Collection Nesting
+- Arrays in dictionaries: `renderDictionaryDeserialization` delegates to `renderArrayDeserialization`
+- Dictionaries in arrays: `renderArrayDeserialization` delegates to `renderDictionaryDeserialization`
+- Both reset their depth counters when crossing collection type boundaries

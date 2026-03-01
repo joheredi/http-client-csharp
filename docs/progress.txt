@@ -1200,3 +1200,18 @@ Total tests: 413 (all passing). 5 new tests added.
 - Null checking for collection items is NOT included (task 2.3.11)
 - Dictionary deserialization is the next step (task 2.3.10) — same pattern but with `EnumerateObject()` and `Dictionary<string, T>`
 - The `pnpm format` and `pnpm lint` commands fail due to a pre-existing submodule dependency issue (missing prettier-plugin-organize-imports in alloy submodule)
+
+2026-03-01 — Task 2.3.10: Implement dictionary deserialization (complete)
+- Added `renderDictionaryDeserialization` function to PropertyMatchingLoop.tsx
+- Mirrors the existing `renderArrayDeserialization` pattern
+- Generates `Dictionary<string, T>` declarations with `EnumerateObject()` foreach loops
+- Inner loop variable is `prop0` (not `prop`) to avoid shadowing the outer loop
+- Variable naming: dictionary/dictionary0/dictionary1 at depth 0/1/2; prop0/prop1/prop2
+- Handles nested dictionaries recursively with depth-suffixed variables
+- Handles arrays inside dictionaries by delegating to renderArrayDeserialization
+- Handles dictionaries inside arrays by adding dict branch to renderArrayDeserialization
+- Added helper functions: getDictionaryVarName(depth), getDictionaryPropVarName(depth)
+- Updated PropertyMatchingLoop component with dict case alongside array case
+- 5 tests added: string dict, int32 dict, model dict, extensible enum dict, nested dict
+- Note: TypeSpec `enum` is fixed by default; use `union` for extensible enums in tests
+- Next: Task 2.3.11 (null value handling) or 2.3.12 (additional binary data capture)
