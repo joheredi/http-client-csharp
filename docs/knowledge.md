@@ -994,7 +994,8 @@ Tests must use `using TypeSpec.Versioning;` in the TypeSpec code (NOT `import "@
 
 ## Design Decisions
 
-### Task 1.2.6: Raw strings for _additionalBinaryDataProperties field
+### Task 1.2.6: Raw strings for \_additionalBinaryDataProperties field
+
 The `<Field>` component from `@alloy-js/csharp` doesn't support `private protected` combined
 access modifiers. Its `accessibilityFromProps` function iterates `["public", "internal", "protected", "private"]`
 and returns on first match, so passing `{private: true, protected: true}` yields just `"protected"`.
@@ -1002,6 +1003,7 @@ Solution: Use raw strings for the field declaration. This is consistent with how
 constructor already renders `IDictionary<string, BinaryData>` as a string type parameter.
 
 ### Root model detection for field generation
+
 A model is a "root model" (should declare `_additionalBinaryDataProperties`) when `model.baseModel === undefined`.
 Derived models inherit the field from their base. The legacy emitter walks the entire ancestor chain
 checking for the field, but in practice this always means: only models without a base get the field.

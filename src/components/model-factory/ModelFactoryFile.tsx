@@ -67,13 +67,6 @@ export function ModelFactoryFile(props: ModelFactoryFileProps) {
   // exposed for testing/mocking purposes.
   const publicModels = props.models.filter((m) => m.access === "public");
 
-  // DEBUG: log model access values
-  console.log("ModelFactoryFile: models count =", props.models.length);
-  props.models.forEach((m) =>
-    console.log(`  model ${m.name}: access=${m.access}`),
-  );
-  console.log("  public models:", publicModels.length);
-
   if (publicModels.length === 0) return false;
 
   const factoryClassName = `${props.packageName}ModelFactory`;

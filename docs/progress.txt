@@ -1536,3 +1536,17 @@ Changes made:
 Design decision: Used raw strings (not `<Field>` component) because the Alloy `Field` component
 doesn't support `private protected` combined access modifiers — its `accessibilityFromProps`
 returns on first match only.
+
+2026-03-01 — Task 1.8.1: Create ModelFactoryFile component (already implemented, marked done)
+
+This task was already fully implemented in a prior loop. Found:
+- `src/components/model-factory/ModelFactoryFile.tsx` — generates `{PackageName}ModelFactory.cs`
+- `src/components/model-factory/ModelFactoryMethod.tsx` — generates individual factory methods
+- `test/model-factory.test.ts` — 7 tests all passing
+
+Cleanup done: removed debug `console.log` statements from ModelFactoryFile.tsx.
+
+Remaining 1.8.x tasks NOT yet done:
+- 1.8.2: Collection null-coalescing (ChangeTrackingList/Dict), `ToList()` in ctor calls
+- 1.8.3: Abstract models → instantiate Unknown variant
+- 1.8.4: Discriminator param exclusion from factory methods
