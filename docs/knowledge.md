@@ -846,3 +846,16 @@ All 5 interface methods for IJsonModel<T> and IPersistableModel<T> are now imple
 - For derived discriminated models, param order is: base params (including additionalBinaryDataProperties) + own non-override props
 - Legacy emitter uses multi-line format for many-param models, but single-line is functionally correct
 - **Gotcha**: The null-coalescing fallback for optional nullable list params (`?? new ChangeTrackingList<T>()`) is handled by task 2.3.11, not here
+
+## Inline String Literal Union Types (Task 11.1.5)
+
+**Problem**: TypeSpec inline unions like `color: "red" | "blue"` crash TypeExpression because the raw type is an unnamed Union, but TypeExpression only handles named and nullable unions.
+
+**Solution**: The `forTypeKind("Union", ...)` override in `CSharpTypeExpression.tsx` intercepts unnamed non-nullable unions and emits `<Reference refkey={efCsharpRefkey(union)} />`. This works because:
+1. TCGC converts inline literal unions to `SdkEnumType`
+2. The enum file declarations register `efCsharpRefkey(rawType)` as their refkey
+3. So the Reference resolves to the generated enum declaration
+
+**Important**: When adding new `forTypeKind` overrides, be careful about `props.default` — accessing it for types that would throw in the default TypeExpression will propagate the throw. Only use `props.default` when you know the default behavior won't crash.
+
+**Nullable detection**: The `hasNullVariant()` helper checks for Intrinsic types with name "null" or "void" to distinguish nullable unions from literal unions, without depending on internal emitter-framework utilities.

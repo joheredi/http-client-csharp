@@ -2828,4 +2828,55 @@ describe("ModelUsageGoldenFiles", () => {
     );
     expect(content).toMatch(/public\s+int\?\s+Limit\s*\{\s*get;\s*set;\s*\}/);
   });
+
+  /**
+   * Validates that inline string literal union types (e.g., `"red" | "blue"`)
+   * are correctly resolved to the generated enum type in model properties.
+   *
+   * This is critical because TCGC converts inline string literal unions to
+   * `SdkEnumType` with `isUnionAsEnum: true`, but the raw TypeSpec type
+   * remains an unnamed `Union`. Without the Union override in
+   * CSharpTypeExpression, `TypeExpression` would crash with
+   * "Unsupported type for TypeExpression: Union" because it only handles
+   * named unions and nullable unions by default.
+   *
+   * The fix adds a `forTypeKind("Union")` override that references the
+   * generated enum declaration via `efCsharpRefkey` for unnamed non-nullable
+   * unions.
+   */
+  it("resolves inline string literal union types to generated enum", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Widget {
+        name: string;
+        color: "red" | "blue" | "green";
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    // The model file should reference the generated enum type, not crash
+    const modelFile = Object.keys(outputs).find(
+      (k) => k.includes("Widget.cs") && !k.includes("Serialization"),
+    );
+    expect(modelFile).toBeDefined();
+
+    const modelContent = outputs[modelFile!];
+    // The property type should be the generated enum name (WidgetColor),
+    // not "string" or a crash
+    expect(modelContent).toMatch(/public\s+WidgetColor\s+Color\s*\{/);
+
+    // The enum file should also be generated
+    const enumFile = Object.keys(outputs).find((k) =>
+      k.includes("WidgetColor.cs"),
+    );
+    expect(enumFile).toBeDefined();
+  });
 });

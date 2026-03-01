@@ -1338,3 +1338,25 @@ Tests: 14 new tests across 2 test files (json-model-create-core.test.ts, json-mo
 - The legacy emitter uses multi-line return format for models with many params (>5), but single-line is functionally correct
 - Optional nullable list params use `?? new ChangeTrackingList<T>()` in legacy — this is a separate concern for null handling (task 2.3.11)
 - Pre-existing test failures unchanged (6 total: XML-only model, nested dictionary, 3 smoke dotnet builds, Widget union crash)
+
+---
+2026-03-01 — Task 11.1.5: Handle inline string literal union types in TypeExpression (complete)
+
+Problem: The emitter crashed with "Unsupported type for TypeExpression: Union ("red" | "blue")" when a model property used an inline string literal union type. The upstream TypeExpression only handles named unions and nullable unions, but inline literal unions are unnamed.
+
+Root cause: TCGC converts inline string literal unions to SdkEnumType, and the emitter generates enum files for them. But when ModelProperty passes type.__raw! to TypeExpression, the raw type is an unnamed TypeSpec Union, which TypeExpression doesn't know how to handle.
+
+Fix: Added a `forTypeKind("Union", ...)` override in CSharpTypeExpression.tsx using the existing Experimental_ComponentOverridesConfig pattern. The override:
+- Delegates named unions and nullable unions to the default TypeExpression
+- For unnamed non-nullable unions (inline literal unions), emits a <Reference refkey={efCsharpRefkey(union)} /> that resolves to the generated enum declaration
+
+Key design decision: Used the override mechanism rather than fixing individual callsites (ModelProperty, serialization, etc.) because:
+1. Centralizes the fix for ALL TypeExpression usages
+2. Follows the existing pattern (scalar and intrinsic overrides are already there)
+3. The enum file declarations already register efCsharpRefkey(rawType) as their refkey
+
+Files changed:
+- src/components/CSharpTypeExpression.tsx — Added Union override and hasNullVariant helper
+- test/model.test.ts — Added test for inline string literal union type resolution
+
+Pattern: The override mechanism in CSharpTypeExpression.tsx now handles three type kinds: Union, Scalar, and Intrinsic. Future type expression overrides should follow the same pattern.

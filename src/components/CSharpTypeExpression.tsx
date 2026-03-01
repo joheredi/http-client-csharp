@@ -1,12 +1,13 @@
 import { type Children } from "@alloy-js/core";
-import { createLibrary } from "@alloy-js/csharp";
+import { createLibrary, Reference } from "@alloy-js/csharp";
 import System from "@alloy-js/csharp/global/System";
-import type { IntrinsicType, Scalar } from "@typespec/compiler";
+import type { IntrinsicType, Scalar, Union } from "@typespec/compiler";
 import {
   Experimental_ComponentOverrides,
   Experimental_ComponentOverridesConfig,
 } from "@typespec/emitter-framework";
 import { intrinsicNameToCSharpType } from "@typespec/emitter-framework/csharp";
+import { efCsharpRefkey } from "../utils/refkey.js";
 
 /**
  * Library declaration for System.BinaryData.
@@ -100,9 +101,33 @@ function getScalarOverride(scalar: Scalar): Children | undefined {
 }
 
 /**
+ * Checks whether a TypeSpec Union has a null or void variant.
+ *
+ * Used to distinguish nullable unions (e.g., `T | null`) from inline
+ * literal unions (e.g., `"red" | "blue"`). Nullable unions are handled
+ * by the default TypeExpression; literal unions need the enum override.
+ *
+ * @param union - A TypeSpec Union type.
+ * @returns `true` if any variant is the `null` or `void` intrinsic.
+ */
+function hasNullVariant(union: Union): boolean {
+  return Array.from(union.variants.values()).some(
+    (v) =>
+      v.type.kind === "Intrinsic" &&
+      (v.type.name === "null" || v.type.name === "void"),
+  );
+}
+
+/**
  * Experimental_ComponentOverrides configuration for the HTTP client C# emitter.
  *
  * Overrides TypeExpression's type rendering for:
+ *
+ * **Unions** (inline literal unions):
+ * - Unnamed non-nullable unions (e.g., `"red" | "blue"`) are inline string
+ *   literal unions that TCGC converts to `SdkEnumType`. These are referenced
+ *   via `efCsharpRefkey` to resolve to the generated enum declaration.
+ * - Named unions and nullable unions delegate to the default TypeExpression.
  *
  * **Scalars** (7 overrides):
  * - bytes → BinaryData, integer/safeint → long, numeric/float → double,
@@ -115,6 +140,21 @@ function getScalarOverride(scalar: Scalar): Children | undefined {
  * TypeExpression rendering via `props.default`.
  */
 const csharpTypeOverrides = Experimental_ComponentOverridesConfig()
+  .forTypeKind("Union", {
+    reference: (props) => {
+      // Named unions and nullable unions are handled correctly by the
+      // default TypeExpression — delegate to it.
+      if (props.type.name || hasNullVariant(props.type)) {
+        return props.default;
+      }
+
+      // Unnamed non-nullable unions are inline string literal unions
+      // (e.g., `"red" | "blue"`) that TCGC converts to SdkEnumType.
+      // The enum declarations register efCsharpRefkey(rawType), so we
+      // reference the same key to resolve to the generated enum type.
+      return <Reference refkey={efCsharpRefkey(props.type)} />;
+    },
+  })
   .forTypeKind("Scalar", {
     reference: (props) => {
       const override = getScalarOverride(props.type as Scalar);
