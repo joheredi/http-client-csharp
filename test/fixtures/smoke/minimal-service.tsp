@@ -9,3 +9,6 @@ model Widget {
   name: string;
   count: int32;
 }
+
+@route("/widgets")
+op getWidget(): Widget;

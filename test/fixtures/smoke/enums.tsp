@@ -22,3 +22,6 @@ model Item {
   color: Color;
   priority: Priority;
 }
+
+@route("/items")
+op getItem(): Item;

@@ -3299,6 +3299,145 @@
           ]
         }
       ]
+    },
+    {
+      "id": "phase-11",
+      "title": "Smoke Test Build Failures",
+      "description": "Issues discovered by smoke-testing the emitter output with `dotnet build`. The smoke tests compile TypeSpec fixtures from `test/fixtures/smoke/` and run `dotnet build` on the generated output in `temp/smoke/`. These tasks fix the C# compilation errors found in the generated code. Run `pnpm test -- test/smoke.test.ts` to verify fixes.",
+      "tasks": [
+        {
+          "id": "11.1.1",
+          "title": "Add missing using directives in generated model files",
+          "description": "Generated model `.cs` files reference types like `IDictionary<string, BinaryData>`, `Argument`, and `BinaryData` without emitting the required `using` directives. The `@alloy-js/csharp` SourceFile component auto-manages `using` statements when types are referenced via refkeys, but the model constructors emit raw string code for these types instead of using Alloy symbol references.\n\n**Affected files:** All generated `{Model}.cs` files (e.g., `Widget.cs`, `Person.cs`, `Item.cs`).\n\n**Missing usings:**\n- `using System;` (for `BinaryData`)\n- `using System.Collections.Generic;` (for `IDictionary<,>`)\n\n**Root cause:** The model constructor that accepts `IDictionary<string, BinaryData> additionalBinaryDataProperties` is emitted as raw code strings (via the `code` template tag or string interpolation) rather than using Alloy refkeys for `IDictionary` and `BinaryData`. When types are referenced as plain strings, the C# SourceFile component cannot detect them and cannot auto-add `using` directives.\n\n**How to fix:** Either:\n1. Use Alloy refkeys for `IDictionary` and `BinaryData` in the model constructor generation so `using` directives are auto-managed, or\n2. Explicitly add the required `using` directives to the `SourceFile` component's `using` prop array: `<SourceFile path={...} using={['System', 'System.Collections.Generic']}>`.\n\n**Files to investigate:**\n- `src/components/models/ModelFile.tsx` — where `<SourceFile>` is created for model files\n- `src/components/models/ModelConstructors.tsx` — where constructors with `IDictionary<string, BinaryData>` are generated\n- `src/builtins/` — where SCM builtin types like `BinaryData` may be defined with refkeys\n\n**Verification:** After fixing, run `pnpm test -- test/smoke.test.ts -t 'minimal'` and check that `dotnet build temp/smoke/minimal-service/src` produces no CS0246 errors.",
+          "phase": "phase-11",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "create": [],
+            "modify": ["src/components/models/ModelFile.tsx"],
+            "reference": [
+              "temp/smoke/minimal-service/src/Generated/Models/Widget.cs",
+              "src/components/models/ModelConstructors.tsx",
+              "src/builtins/"
+            ]
+          },
+          "acceptance_criteria": [
+            "Generated model .cs files include `using System;` when BinaryData is referenced",
+            "Generated model .cs files include `using System.Collections.Generic;` when IDictionary is referenced",
+            "No CS0246 errors for IDictionary or BinaryData when running dotnet build on generated output"
+          ]
+        },
+        {
+          "id": "11.1.2",
+          "title": "Generate missing IJsonModel<T> and IPersistableModel<T> interface methods",
+          "description": "The serialization file (`{Model}.Serialization.cs`) declares that the model implements `IJsonModel<T>` but only generates `JsonModelWriteCore`, `DeserializeXxx`, and a deserialization constructor. The following required interface members from `System.ClientModel.Primitives` are missing, causing CS0535 errors:\n\n**Missing methods on IJsonModel<T>:**\n- `T Create(ref Utf8JsonReader reader, ModelReaderWriterOptions options)` — reads JSON from a Utf8JsonReader\n- `void Write(Utf8JsonWriter writer, ModelReaderWriterOptions options)` — calls `JsonModelWriteCore`; the public entry point\n\n**Missing methods on IPersistableModel<T> (inherited by IJsonModel<T>):**\n- `T Create(BinaryData data, ModelReaderWriterOptions options)` — deserializes from BinaryData\n- `BinaryData Write(ModelReaderWriterOptions options)` — serializes to BinaryData\n- `string GetFormatFromOptions(ModelReaderWriterOptions options)` — returns `\"J\"` for JSON format\n\n**Legacy reference:** See the legacy generator's `MrwSerializationTypeDefinition.cs` in `submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator.ClientModel/src/Providers/MrwSerializationTypeDefinition.cs`. It generates all 5 methods plus `JsonModelWriteCore`. The pattern is:\n```csharp\nvoid IJsonModel<T>.Write(Utf8JsonWriter writer, ModelReaderWriterOptions options) {\n    writer.WriteStartObject();\n    JsonModelWriteCore(writer, options);\n    writer.WriteEndObject();\n}\nT IJsonModel<T>.Create(ref Utf8JsonReader reader, ModelReaderWriterOptions options) {\n    // ... validate format, call JsonSerializer.Deserialize or DeserializeXxx\n}\nBinaryData IPersistableModel<T>.Write(ModelReaderWriterOptions options) {\n    // ... validate format, call ModelReaderWriter.Write(this, options)\n}\nT IPersistableModel<T>.Create(BinaryData data, ModelReaderWriterOptions options) {\n    // ... validate format, call JsonSerializer.Deserialize or DeserializeXxx from data\n}\nstring IPersistableModel<T>.GetFormatFromOptions(ModelReaderWriterOptions options) => \"J\";\n```\n\n**Files to modify:**\n- `src/components/serialization/ModelSerializationFile.tsx` — the component that wraps the serialization partial class\n- May need new components for each missing method, following the existing pattern of `JsonModelWriteCore.tsx`, `DeserializationConstructor.tsx`, etc.\n\n**Verification:** After fixing, `dotnet build temp/smoke/minimal-service/src` should produce no CS0535 errors.",
+          "phase": "phase-11",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "create": [],
+            "modify": ["src/components/serialization/ModelSerializationFile.tsx"],
+            "reference": [
+              "temp/smoke/minimal-service/src/Generated/Models/Widget.Serialization.cs",
+              "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator.ClientModel/src/Providers/MrwSerializationTypeDefinition.cs",
+              "src/components/serialization/JsonModelWriteCore.tsx"
+            ]
+          },
+          "acceptance_criteria": [
+            "Generated serialization files implement IJsonModel<T>.Write()",
+            "Generated serialization files implement IJsonModel<T>.Create()",
+            "Generated serialization files implement IPersistableModel<T>.Write()",
+            "Generated serialization files implement IPersistableModel<T>.Create()",
+            "Generated serialization files implement IPersistableModel<T>.GetFormatFromOptions()",
+            "No CS0535 'does not implement interface member' errors from dotnet build"
+          ]
+        },
+        {
+          "id": "11.1.3",
+          "title": "Generate SCM helper types: Argument, Optional, ChangeTrackingDictionary",
+          "description": "Generated model and serialization code references helper types that are not defined anywhere in the output:\n\n1. **`Argument`** — used as `Argument.AssertNotNull(value, nameof(value))` in model constructors for null-checking required parameters. The legacy generator emits this as `src/Generated/Internal/Argument.cs`.\n\n2. **`Optional`** — used as `Optional.IsDefined(property)` in serialization code to check if optional properties have values before serializing. Legacy: `src/Generated/Internal/Optional.cs`.\n\n3. **`ChangeTrackingDictionary<TKey, TValue>`** — used in deserialization as `new ChangeTrackingDictionary<string, BinaryData>()` to track additional properties. Legacy: `src/Generated/Internal/ChangeTrackingDictionary.cs`.\n\nThese types are **not from NuGet packages** — they are source-generated helper classes that the legacy generator includes in every generated project under `src/Generated/Internal/`. The new emitter must also generate them.\n\n**Options for implementation:**\n- (A) Generate them as JSX components (like the model/enum components), or\n- (B) Include them as static builtin source files that are always emitted (similar to how `src/builtins/` already has some SCM types registered)\n\nThe builtin approach (B) is simpler and matches the legacy pattern. The files are small, stable helper classes that don't vary per TypeSpec input.\n\n**Legacy references:**\n- `submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator/src/Providers/ArgumentDefinition.cs`\n- `submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator/src/Providers/OptionalDefinition.cs`\n- `submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator/src/Providers/ChangeTrackingListDefinition.cs`\n- `submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator/src/Providers/ChangeTrackingDictionaryDefinition.cs`\n- Test golden files in `submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/Internal/`\n\n**Verification:** After fixing, the generated output should include `Internal/Argument.cs`, `Internal/Optional.cs`, and `Internal/ChangeTrackingDictionary.cs` under `src/Generated/Internal/`, and `dotnet build` should find all referenced helper types.",
+          "phase": "phase-11",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "create": [],
+            "modify": ["src/emitter.tsx"],
+            "reference": [
+              "src/builtins/",
+              "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/Internal/"
+            ]
+          },
+          "acceptance_criteria": [
+            "Generated output includes Argument helper class",
+            "Generated output includes Optional helper class",
+            "Generated output includes ChangeTrackingDictionary helper class",
+            "No CS0103 or CS0246 errors for Argument, Optional, or ChangeTrackingDictionary from dotnet build"
+          ]
+        },
+        {
+          "id": "11.1.4",
+          "title": "Fix DeserializeXxx methods to return constructed object",
+          "description": "The generated `DeserializeXxx` static methods in `{Model}.Serialization.cs` files iterate over JSON properties and assign to local variables, but **never return the constructed model object**. The method body ends without a `return` statement.\n\n**Current generated code (Widget.Serialization.cs):**\n```csharp\ninternal static Widget DeserializeWidget(JsonElement element, ModelReaderWriterOptions options)\n{\n    // ... null check ...\n    string name = default;\n    int count = default;\n    IDictionary<string, BinaryData> additionalBinaryDataProperties = new ChangeTrackingDictionary<string, BinaryData>();\n    foreach (var prop in element.EnumerateObject())\n    {\n        // ... property matching ...\n    }\n    // ← MISSING: return new Widget(name, count, additionalBinaryDataProperties);\n}\n```\n\n**Expected:** The method should end with:\n```csharp\nreturn new Widget(name, count, additionalBinaryDataProperties);\n```\n\n**Root cause:** The `JsonDeserialize` component (or the component that renders the Deserialize method body) does not emit the final `return new T(...)` statement after the property-matching loop.\n\n**Files to investigate:**\n- `src/components/serialization/JsonDeserialize.tsx` — renders the `DeserializeXxx` method\n- `src/components/serialization/PropertyMatchingLoop.tsx` — renders the `foreach` loop\n- `src/components/serialization/DeserializeVariableDeclarations.tsx` — renders the local variable declarations\n\n**Legacy reference:** `submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator.ClientModel/src/Providers/MrwSerializationTypeDefinition.cs` — search for `BuildDeserializeBody` or the return statement in the deserialize method.\n\n**Verification:** After fixing, `DeserializeWidget(...)` should return a `new Widget(...)` with all deserialized fields passed to the constructor.",
+          "phase": "phase-11",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "create": [],
+            "modify": ["src/components/serialization/JsonDeserialize.tsx"],
+            "reference": [
+              "temp/smoke/minimal-service/src/Generated/Models/Widget.Serialization.cs",
+              "src/components/serialization/PropertyMatchingLoop.tsx",
+              "src/components/serialization/DeserializeVariableDeclarations.tsx"
+            ]
+          },
+          "acceptance_criteria": [
+            "DeserializeXxx methods end with a return statement constructing the model",
+            "The return statement passes all deserialized local variables to the model constructor",
+            "No CS0161 'not all code paths return a value' errors from dotnet build"
+          ]
+        },
+        {
+          "id": "11.1.5",
+          "title": "Handle inline string literal union types in TypeExpression",
+          "description": "The emitter crashes with `Unsupported type for TypeExpression: Union (\"red\" | \"blue\")` when a model property uses an inline string literal union type like `color: \"red\" | \"blue\"`. This is tested by `test/fixtures/smoke/widget.tsp`.\n\n**Error location:** `@typespec/emitter-framework/src/csharp/components/type-expression.tsx:52` — the switch/case in `TypeExpression` only handles nullable unions (`T | null`) but throws for all other union types.\n\n**TCGC behavior:** TCGC converts inline string literal unions to `SdkEnumType` with `isUnionAsEnum: true` and places them in `sdkPackage.enums`. These should be handled as fixed enums by the emitter. However, the crash occurs because somewhere in the serialization pipeline, the **raw TypeSpec Union type** (not the TCGC SdkEnumType) is being passed to `TypeExpression`.\n\n**Root cause analysis:** The emitter iterates `sdkContext.sdkPackage.models` and for each model property, the type-expression component receives the TCGC SDK type. But for properties whose type is a union-as-enum, the type resolution may be passing the underlying TypeSpec `Union` type instead of the TCGC `SdkEnumType` to `TypeExpression`.\n\n**Possible fixes:**\n1. In `CSharpTypeExpression.tsx`, add handling for `Union` types by looking up the corresponding TCGC enum type\n2. Ensure the model property type resolution always uses TCGC SDK types (not raw TypeSpec types) when passing to `TypeExpression`\n3. Add a union-to-enum mapping in the emitter for inline literal unions\n\n**Files to investigate:**\n- `src/components/CSharpTypeExpression.tsx` — the custom type expression overrides\n- `src/components/models/ModelFile.tsx` — how model property types are resolved\n- `node_modules/@typespec/emitter-framework/src/csharp/components/type-expression.tsx` — the upstream TypeExpression\n\n**Test fixture:** `test/fixtures/smoke/widget.tsp` — contains `color: \"red\" | \"blue\"` which triggers the crash.\n\n**Verification:** After fixing, `pnpm test -- test/smoke.test.ts -t 'Widget'` should not crash and the generated enum/model code should compile with `dotnet build`.",
+          "phase": "phase-11",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "create": [],
+            "modify": ["src/components/CSharpTypeExpression.tsx"],
+            "reference": [
+              "test/fixtures/smoke/widget.tsp",
+              "node_modules/@typespec/emitter-framework/src/csharp/components/type-expression.tsx",
+              "src/components/models/ModelFile.tsx"
+            ]
+          },
+          "acceptance_criteria": [
+            "Emitter does not crash on inline string literal union types like '\"red\" | \"blue\"'",
+            "Inline literal unions are generated as C# fixed enums or extensible enums",
+            "The widget.tsp smoke test compiles and dotnet build succeeds"
+          ]
+        },
+        {
+          "id": "11.1.6",
+          "title": "Fix array deserialization to call .ToArray()",
+          "description": "In the generated deserialization code for array properties, a `List<T>` is built up from the JSON array but then assigned directly to a `T[]`-typed local variable without calling `.ToArray()`. This causes a CS0029 type mismatch error.\n\n**Current generated code (Person.Serialization.cs):**\n```csharp\nif (prop.NameEquals(\"tags\"u8))\n{\n    List<string> array = new List<string>();\n    foreach (var item in prop.Value.EnumerateArray())\n    {\n        array.Add(item.GetString());\n    }\n    tags = array;  // ← CS0029: Cannot implicitly convert List<string> to string[]\n    continue;\n}\n```\n\n**Expected:**\n```csharp\ntags = array.ToArray();  // or tags = [.. array]; in modern C#\n```\n\n**Root cause:** The `PropertyMatchingLoop` component (or the array deserialization logic within it) builds up a `List<T>` but does not append `.ToArray()` before assigning to the local variable.\n\n**Files to investigate:**\n- `src/components/serialization/PropertyMatchingLoop.tsx` — generates the property matching cases\n- Any array-specific deserialization logic\n\n**Note:** This error may currently be masked because the `DeserializeXxx` method has no return statement (issue 11.1.4), so the compiler may not reach this code path. Once 11.1.4 is fixed, this error will surface.\n\n**Verification:** After fixing, array properties should deserialize with `.ToArray()` and `dotnet build` should produce no CS0029 errors.",
+          "phase": "phase-11",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "create": [],
+            "modify": ["src/components/serialization/PropertyMatchingLoop.tsx"],
+            "reference": [
+              "temp/smoke/complex-models/src/Generated/Models/Person.Serialization.cs"
+            ]
+          },
+          "acceptance_criteria": [
+            "Array property deserialization calls .ToArray() when assigning List<T> to T[] variable",
+            "No CS0029 type conversion errors from dotnet build"
+          ]
+        }
+      ]
     }
   ]
 }

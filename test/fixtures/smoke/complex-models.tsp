@@ -17,3 +17,6 @@ model Person {
   address: Address;
   tags: string[];
 }
+
+@route("/people")
+op getPerson(): Person;
