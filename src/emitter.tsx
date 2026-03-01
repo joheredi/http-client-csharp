@@ -21,6 +21,8 @@ import { DeserializationConstructor } from "./components/serialization/Deseriali
 import { DeserializeVariableDeclarations } from "./components/serialization/DeserializeVariableDeclarations.js";
 import { JsonDeserialize } from "./components/serialization/JsonDeserialize.js";
 import { JsonModelWriteCore } from "./components/serialization/JsonModelWriteCore.js";
+import { PersistableModelCreateCore } from "./components/serialization/PersistableModelCreateCore.js";
+import { PersistableModelWriteCore } from "./components/serialization/PersistableModelWriteCore.js";
 import { PropertyMatchingLoop } from "./components/serialization/PropertyMatchingLoop.js";
 import { $lib } from "./lib.js";
 import { type CSharpEmitterOptions, resolveOptions } from "./options.js";
@@ -112,6 +114,10 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
         {models.map((m) => (
           <ModelSerializationFile type={m} options={options}>
             <JsonModelWriteCore type={m} />
+            {"\n\n"}
+            <PersistableModelWriteCore type={m} />
+            {"\n\n"}
+            <PersistableModelCreateCore type={m} />
             {"\n\n"}
             <DeserializationConstructor type={m} />
             {"\n\n"}

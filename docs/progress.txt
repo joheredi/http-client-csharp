@@ -1233,3 +1233,19 @@ Total tests: 413 (all passing). 5 new tests added.
 - 7 tests added: string dict, int32 dict, model dict, extensible enum dict, nested dict, optional dict, dict alongside scalars
 - Note: `SdkDictionaryType` imported from TCGC alongside existing array/model types
 - Next: Task 2.2.13 (read-only property guards) or 2.2.14 (additional binary data serialization) or 2.3.11 (null value handling)
+
+2026-03-01 — Task 2.1.4: Generate PersistableModel write/create methods (complete)
+
+Created two new serialization components:
+- `src/components/serialization/PersistableModelWriteCore.tsx` — generates `PersistableModelWriteCore` method that serializes model to `BinaryData` via format dispatch (JSON "J" → `ModelReaderWriter.Write`)
+- `src/components/serialization/PersistableModelCreateCore.tsx` — generates `PersistableModelCreateCore` method that deserializes model from `BinaryData` via format dispatch (JSON "J" → `JsonDocument.Parse` → `Deserialize{Model}`)
+
+Key design decisions:
+- Two separate component files (following existing JsonModelWriteCore.tsx pattern)
+- `getRootModelType(model)` utility exported from PersistableModelCreateCore for finding the root ancestor in inheritance chains. Used for return type of CreateCore on derived models.
+- Root models: `protected virtual`, derived models: `protected override`
+- Return type: WriteCore always returns `BinaryData`. CreateCore returns root base type for polymorphic compatibility.
+- Deferred: `SampleTypeSpecContext.Default` parameter (task 5.3.1) and `ModelSerializationExtensions.JsonDocumentOptions` parameter (task 5.1.5) — both are optional C# parameters
+
+Wired into emitter.tsx between JsonModelWriteCore and DeserializationConstructor.
+15 tests added in test/persistable-model-methods.test.ts covering root models, derived models, format dispatch, error handling, and using directives.

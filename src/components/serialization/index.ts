@@ -8,6 +8,11 @@ export { JsonModelWriteCore } from "./JsonModelWriteCore.js";
 export type { JsonModelWriteCoreProps } from "./JsonModelWriteCore.js";
 export { ModelSerializationFile } from "./ModelSerializationFile.js";
 export type { ModelSerializationFileProps } from "./ModelSerializationFile.js";
+export { PersistableModelCreateCore } from "./PersistableModelCreateCore.js";
+export type { PersistableModelCreateCoreProps } from "./PersistableModelCreateCore.js";
+export { getRootModelType } from "./PersistableModelCreateCore.js";
+export { PersistableModelWriteCore } from "./PersistableModelWriteCore.js";
+export type { PersistableModelWriteCoreProps } from "./PersistableModelWriteCore.js";
 export {
   computeMatchableProperties,
   getReadExpression,

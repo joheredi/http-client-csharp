@@ -1735,7 +1735,7 @@
           "title": "Generate PersistableModel write/create methods",
           "description": "Generate PersistableModelWriteCore and PersistableModelCreateCore methods. These dispatch on format string: 'J' \u2192 JSON path, 'X' \u2192 XML path. WriteCore uses ModelReaderWriter.Write for JSON. CreateCore uses JsonDocument.Parse for JSON. Both are protected virtual (or override for derived models).",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.1.1"
           ],
