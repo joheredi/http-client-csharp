@@ -947,3 +947,47 @@ The discriminator serialized name comes from `model.discriminatorProperty!.seria
 **Approach**: Check `(type.usage & UsageFlags.Input) !== 0` from TCGC to determine if a model gets the implicit BinaryContent operator.
 
 **Legacy mapping**: The legacy emitter uses `RootInputModels.Contains(_inputModel)` which checks if the model is directly used as an operation parameter. TCGC's `UsageFlags.Input` covers the same concept. Unknown discriminator models (auto-generated fallback types) are NOT in the `models` array from TCGC, so no additional filtering is needed.
+
+## Alloy EnumMember Name Policy Gotcha
+
+The `<EnumMember>` component from `@alloy-js/csharp` automatically applies `pascalCase()` name policy to member names. This strips underscores: `V2024_06_01_Preview` becomes `V2024_06_01Preview`. To preserve exact names (e.g., API version enum members), use `namekey(name, { ignoreNamePolicy: true })`:
+
+```tsx
+import { namekey } from "@alloy-js/core";
+<EnumMember
+  name={namekey("V2024_06_01_Preview", { ignoreNamePolicy: true })}
+/>;
+```
+
+## Constructor Body Formatting in Alloy
+
+Multi-line method/constructor bodies must use explicit `"\n"` strings for line breaks. Each `code` template tag is treated as inline. The pattern used across serialization components:
+
+```tsx
+{
+  code`public MyClass(int arg)`;
+}
+{
+  ("\n{\n");
+}
+{
+  ("    body line;\n");
+}
+{
+  ("}");
+}
+```
+
+Do NOT use `\n` inside `code` template strings — use separate string elements.
+
+## TypeSpec Test Pattern for Versioned Services
+
+Tests must use `using TypeSpec.Versioning;` in the TypeSpec code (NOT `import "@typespec/versioning"`). The `HttpTester.importLibraries()` handles the import automatically. `@typespec/versioning` must be in the `libraries` array in `test-host.ts`.
+
+## Design Decisions
+
+### ClientOptionsFile (Task 3.1.1): Single Component vs Split
+
+**Chosen:** Single component (`ClientOptionsFile.tsx`) that generates the entire file.
+**Rejected:** Splitting into separate `ServiceVersionEnum.tsx` and `VersionConstructor.tsx` components.
+**Reason:** The file is small (~40 lines of C# output). All parts (enum, constructor, properties) are tightly coupled to the same version data. Splitting adds files/indirection without benefit.

@@ -7,7 +7,7 @@ import {
 } from "@typespec/compiler/testing";
 import { HttpClientCsharpTestLibrary } from "../src/testing/index.js";
 export const ApiTester = createTester(resolvePath(import.meta.dirname, ".."), {
-  libraries: ["http-client-csharp", "@typespec/http"],
+  libraries: ["http-client-csharp", "@typespec/http", "@typespec/versioning"],
 });
 
 export const Tester = ApiTester.emit("http-client-csharp");

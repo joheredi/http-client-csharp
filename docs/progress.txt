@@ -1485,3 +1485,31 @@ Created `test/cast-operators.test.ts` with 4 tests:
 Key design decision: Used raw `code` template approach since Alloy C# lacks `OperatorDeclaration` component. The `Method` component doesn't support `implicit`/`operator` modifiers. Raw code templates with refkeys for `BinaryContent` type handle the using directive; `ModelSerializationExtensions.WireOptions` is raw string pending task 5.1.5.
 
 Known gap: `using` directive for `ModelSerializationExtensions`'s namespace won't be auto-generated until task 5.1.5 creates the infrastructure file with a refkey. This is acceptable since the generated code won't compile without infrastructure files anyway.
+
+## 2026-03-01 — Tasks 3.1.1/3.1.2/3.1.3: Create ClientOptionsFile component (complete)
+
+Created `src/components/client-options/ClientOptionsFile.tsx` — generates `{ClientName}Options : ClientPipelineOptions` with:
+- Nested `ServiceVersion` enum with monotonic ordinals starting at 1
+- `LatestVersion` const field pointing to the last enum member
+- Constructor with switch expression mapping enum values to version strings
+- Internal `Version` property
+
+Created `src/utils/version.ts` — `toApiVersionMemberName()` converts version strings to C# enum member names:
+- "2024-07-16-preview" → "V2024_07_16_Preview"
+- Prefix "V", replace dashes/dots with underscores, title-case each segment
+
+Added `NotSupportedException` to `src/builtins/system.ts` for the constructor throw arm.
+
+Updated `src/emitter.tsx` to render `<ClientOptionsFile>` for each client in `sdkContext.sdkPackage.clients`.
+
+Key patterns used:
+- `namekey(name, { ignoreNamePolicy: true })` on `<EnumMember>` to prevent C# name policy from mangling version names (e.g., V2024_06_01_Preview → V2024_06_01Preview)
+- Explicit `"\n"` strings + `code` template tags for constructor body formatting (matching existing patterns in serialization components)
+- `SystemClientModelPrimitives.ClientPipelineOptions` as base class via Alloy library reference
+- `System.NotSupportedException` in `code` tag for auto-using generation
+
+Test: `test/client-options.test.ts` with 4 tests covering versioned, single-version, unversioned, and dash-format scenarios.
+
+Added `@typespec/versioning` as devDependency and to test-host libraries for versioned TypeSpec tests.
+
+Design decision: Skip ClientOptions generation when client has no API versions (empty apiVersions array). This prevents generating a class with an empty ServiceVersion enum for unversioned services.

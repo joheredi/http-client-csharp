@@ -2,6 +2,7 @@ import { createSdkContext } from "@azure-tools/typespec-client-generator-core";
 import { existsSync } from "fs";
 import { type EmitContext, resolvePath } from "@typespec/compiler";
 import { writeOutput } from "@typespec/emitter-framework";
+import { ClientOptionsFile } from "./components/client-options/ClientOptionsFile.js";
 import { CSharpScalarOverrides } from "./components/CSharpTypeExpression.js";
 import { ExtensibleEnumFile } from "./components/enums/ExtensibleEnumFile.js";
 import { ExtensibleEnumSerializationFile } from "./components/enums/ExtensibleEnumSerializationFile.js";
@@ -71,6 +72,7 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
   const fixedEnums = sdkContext.sdkPackage.enums.filter((e) => e.isFixed);
   const extensibleEnums = sdkContext.sdkPackage.enums.filter((e) => !e.isFixed);
   const models = sdkContext.sdkPackage.models;
+  const clients = sdkContext.sdkPackage.clients;
 
   // Resolve the package name for the generated library
   const packageName = resolvePackageName(sdkContext, options["package-name"]);
@@ -96,6 +98,9 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
       )}
       {shouldGenerateProject && <SolutionFile packageName={packageName} />}
       <CSharpScalarOverrides>
+        {clients.map((c) => (
+          <ClientOptionsFile client={c} options={options} />
+        ))}
         {fixedEnums.map((e) => (
           <FixedEnumFile type={e} options={options} />
         ))}

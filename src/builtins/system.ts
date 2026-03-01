@@ -32,4 +32,16 @@ export const System = createLibrary("System", {
     kind: "class",
     members: {},
   },
+
+  /**
+   * Exception thrown when a method is invoked with an argument value that
+   * is not supported. Used in the ClientOptions constructor switch expression
+   * to reject unrecognized ServiceVersion values.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/system.notsupportedexception
+   */
+  NotSupportedException: {
+    kind: "class",
+    members: {},
+  },
 });
