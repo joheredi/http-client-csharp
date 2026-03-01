@@ -1575,7 +1575,7 @@
           "title": "Implement factory methods",
           "description": "Each factory method takes parameters matching the full serialization constructor minus additionalBinaryDataProperties. Collections default to null-coalesced with `new List<T>()`. Returns `new ModelType(params..., null)` (null for raw data).",
           "phase": "phase-1",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "1.8.1"
           ],

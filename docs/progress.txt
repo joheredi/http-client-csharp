@@ -1620,3 +1620,31 @@ Root clients get: endpoint field, mocking constructor, Pipeline property. Primar
 ### Pre-existing failures (not related to this task)
 - model-serialization.test.ts: 2 failures
 - smoke.test.ts: 4 failures
+
+2026-03-01 — Task 1.8.2: Implement factory methods with collection handling (complete)
+
+Refactored ModelFactoryMethod.tsx to handle collection property types in factory method generation:
+
+Key deliverables:
+- Created computeSerializationProperties() function that returns SdkModelPropertyType[] in serialization constructor order (mirrors computeSerializationCtorParams but returns raw properties for type inspection)
+- Array properties: parameter type converted from IList<T> to IEnumerable<T>, null-coalesced with ChangeTrackingList<T>, constructor arg uses .ToList()
+- Dictionary properties: parameter type kept as IDictionary<string, T>, null-coalesced with ChangeTrackingDictionary<string, T>, constructor arg passed as-is
+- Non-collection properties: unchanged (TypeExpression + direct pass-through)
+- Nullable collection value types handled correctly (valueType.kind === "nullable" check)
+- Used code template for IEnumerable<T> parameter type rendering
+
+Design decisions:
+- Worked directly with SdkModelPropertyType[] instead of ParameterProps[] to access type.kind for collection detection
+- Used isArrayCollection/isDictCollection/getCollectionValueType from utils/collections.ts
+- ChangeTrackingList/Dictionary used as raw strings (no builtins needed — they're in the same namespace as models)
+- IEnumerable rendered via code template with TypeExpression for element types
+
+4 new tests in test/model-factory.test.ts:
+- Array → IEnumerable conversion + ChangeTrackingList init + .ToList()
+- Dictionary → ChangeTrackingDictionary init
+- Mixed scalar and collection properties
+- Clean method body regression test (no collections)
+
+All 577 tests pass (6 pre-existing smoke failures unrelated). Build succeeds.
+
+Next tasks ready: 1.8.3 (abstract models in factory), 1.8.4 (discriminator exclusion in factory)
