@@ -1550,3 +1550,37 @@ Remaining 1.8.x tasks NOT yet done:
 - 1.8.2: Collection null-coalescing (ChangeTrackingList/Dict), `ToList()` in ctor calls
 - 1.8.3: Abstract models → instantiate Unknown variant
 - 1.8.4: Discriminator param exclusion from factory methods
+
+## 2026-03-01 — Task 3.2.1: Create ClientFile component
+
+### What was done
+- Created `src/components/clients/ClientFile.tsx` — generates C# partial class files for both root and sub-clients
+- Created `src/utils/clients.ts` — `getAllClients()` utility that flattens the TCGC client tree (BFS traversal)
+- Added `Uri` to `src/builtins/system.ts` for endpoint field type references
+- Updated `src/emitter.tsx` to render ClientFile for all clients (root + sub-clients)
+- Created `test/client-file.test.ts` with 6 tests covering root clients, sub-clients, doc comments, and edge cases
+
+### Generated output structure
+For sub-clients:
+```csharp
+public partial class SubClient {
+    private readonly Uri _endpoint;
+    protected SubClient() { }
+    internal SubClient(ClientPipeline pipeline, Uri endpoint) { _endpoint = endpoint; Pipeline = pipeline; }
+    public ClientPipeline Pipeline { get; }
+}
+```
+Root clients get: endpoint field, mocking constructor, Pipeline property. Primary constructors (with auth) deferred to task 3.2.3.
+
+### Patterns used
+- `OverloadConstructor` from ModelConstructors.tsx for multiple constructors in same class (avoids Alloy name conflicts)
+- `getAllClients()` BFS traversal because `sdkPackage.clients` only contains root-level clients; sub-clients are in `.children`
+- `System.Uri` builtin for auto-generating `using System;` directives
+- Root vs sub-client detection: `client.parent !== undefined`
+- Doc comment: root uses `client.doc ?? client.summary`, sub-client uses "The {Name} sub-client."
+
+### What the next person should know
+- TCGC does NOT produce clients for `@service namespace X;` without operations — no client file is generated for empty services
+- Tasks 3.2.2/3.2.3/3.2.4 will modify ClientFile to add auth fields, primary constructors, and sub-client factory methods
+- The `{props.children}` slot in ClientFile goes after the Pipeline property — good for injecting operation methods
+- Pre-existing failures: smoke tests (4) and model-serialization (2) are unrelated

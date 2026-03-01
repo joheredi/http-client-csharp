@@ -1007,3 +1007,29 @@ constructor already renders `IDictionary<string, BinaryData>` as a string type p
 A model is a "root model" (should declare `_additionalBinaryDataProperties`) when `model.baseModel === undefined`.
 Derived models inherit the field from their base. The legacy emitter walks the entire ancestor chain
 checking for the field, but in practice this always means: only models without a base get the field.
+
+### sdkPackage.clients only contains root-level clients
+
+The `sdkContext.sdkPackage.clients` array is documented as "First level clients of the package." Sub-clients are accessed through each client's `children` property. Use `getAllClients()` from `src/utils/clients.ts` to get a flat list of all clients (BFS traversal).
+
+### TCGC does not produce clients for empty services
+
+A TypeSpec with `@service namespace X;` and no operations produces an empty `sdkPackage.clients` array. Tests that expect a client class must include at least one operation.
+
+### OverloadConstructor required for multiple constructors in same class
+
+Alloy's standard `<Constructor>` component creates a MethodSymbol that triggers name deduplication. When multiple constructors exist in the same `<ClassDeclaration>`, use `OverloadConstructor` from `src/components/models/ModelConstructors.tsx` which sets `ignoreNameConflict: true`. This applies to client classes (mocking + internal constructors) and model classes (public + serialization constructors).
+
+### System.Uri builtin added for client endpoint fields
+
+`System.Uri` was added to `src/builtins/system.ts` for use in client endpoint fields. Reference as `System.Uri` in JSX components to auto-generate `using System;`.
+
+## Design Decisions
+
+### ClientFile: Single component for root + sub-clients (task 3.2.1)
+
+**Chosen approach**: Single `ClientFile` component that handles both root and sub-clients, with branching based on `client.parent !== undefined`.
+
+**Why**: The class structure is nearly identical for both (endpoint field, mocking constructor, Pipeline property). The only difference is that sub-clients get an additional internal constructor. Following the ModelFile pattern of one component per concern.
+
+**Rejected**: Separate `RootClientFile` and `SubClientFile` components — would duplicate the common structure (endpoint field, mocking constructor, Pipeline property) with only minor differences.

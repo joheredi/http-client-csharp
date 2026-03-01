@@ -3,6 +3,7 @@ import { existsSync } from "fs";
 import { type EmitContext, resolvePath } from "@typespec/compiler";
 import { writeOutput } from "@typespec/emitter-framework";
 import { ClientOptionsFile } from "./components/client-options/ClientOptionsFile.js";
+import { ClientFile } from "./components/clients/ClientFile.js";
 import { CSharpScalarOverrides } from "./components/CSharpTypeExpression.js";
 import { ExtensibleEnumFile } from "./components/enums/ExtensibleEnumFile.js";
 import { ExtensibleEnumSerializationFile } from "./components/enums/ExtensibleEnumSerializationFile.js";
@@ -34,6 +35,7 @@ import { PersistableModelWriteCore } from "./components/serialization/Persistabl
 import { PropertyMatchingLoop } from "./components/serialization/PropertyMatchingLoop.js";
 import { $lib } from "./lib.js";
 import { type CSharpEmitterOptions, resolveOptions } from "./options.js";
+import { getAllClients } from "./utils/clients.js";
 import { resolvePackageName } from "./utils/package-name.js";
 
 /**
@@ -73,6 +75,7 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
   const extensibleEnums = sdkContext.sdkPackage.enums.filter((e) => !e.isFixed);
   const models = sdkContext.sdkPackage.models;
   const clients = sdkContext.sdkPackage.clients;
+  const allClients = getAllClients(clients);
 
   // Resolve the package name for the generated library
   const packageName = resolvePackageName(sdkContext, options["package-name"]);
@@ -100,6 +103,9 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
       <CSharpScalarOverrides>
         {clients.map((c) => (
           <ClientOptionsFile client={c} options={options} />
+        ))}
+        {allClients.map((c) => (
+          <ClientFile client={c} options={options} />
         ))}
         {fixedEnums.map((e) => (
           <FixedEnumFile type={e} options={options} />

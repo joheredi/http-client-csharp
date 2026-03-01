@@ -44,4 +44,16 @@ export const System = createLibrary("System", {
     kind: "class",
     members: {},
   },
+
+  /**
+   * Represents a Uniform Resource Identifier (URI).
+   * Used as the type for the `_endpoint` field in generated client classes
+   * and as a constructor parameter for service endpoints.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/system.uri
+   */
+  Uri: {
+    kind: "class",
+    members: {},
+  },
 });
