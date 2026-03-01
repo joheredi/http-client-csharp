@@ -906,22 +906,44 @@ The discriminator serialized name comes from `model.discriminatorProperty!.seria
 ## Null Value Handling in Deserialization (Task 2.3.11)
 
 ### Property-Level Null Checks
+
 - Use `getNullCheckBehavior(property)` from PropertyMatchingLoop.tsx to determine null handling
 - Three behaviors: `assign-null`, `skip`, `empty-collection` (or `null` for no check)
 - The null check goes INSIDE the `if (prop.NameEquals(...))` block, BEFORE value extraction
 - `JsonValueKind.Null` works as raw text because the serialization file already has `using System.Text.Json;` from other references
 
 ### Item-Level Null Checks in Collections
+
 - Only generated when `valueType.kind === "nullable"` — i.e., TCGC wraps the item in `SdkNullableType`
 - This differs slightly from the legacy emitter which checks `TypeRequiresNullCheckInSerialization` (all reference types including string get null checks)
 - For our emitter, `string[]` items do NOT get null checks (string.GetString() naturally returns null), only `(string | null)[]` does
 - This difference is functionally equivalent for strings but may produce slightly different generated code structure
 
 ### ChangeTracking Types for Empty-Collection Case
+
 - `ChangeTrackingList<T>` and `ChangeTrackingDictionary<string, T>` are plain text in the generated output
 - Use `TypeExpression` for the generic type parameter to get proper type resolution
 - The "empty-collection" case is for required nullable collections (`items: string[] | null`) — rare but important for wire-format fidelity
 
 ### Design Decision
+
 - Null check logic is inline in PropertyMatchingLoop.tsx (not a separate component) because it's tightly coupled with property matching and needs access to variable names, indentation, and property metadata
 - Helper functions (`getNullCheckBehavior`, `renderPropertyNullCheck`, `itemNeedsNullCheck`) are exported for unit testing
+
+## Design Decisions
+
+### Cast Operators: Raw Code Template Approach (2026-03-01)
+
+**Chosen**: Raw `code` template with refkeys for type references, raw strings for infrastructure type references.
+
+**Why**: Alloy C# lacks `OperatorDeclaration` component. The `Method` component doesn't support `implicit`/`operator` modifiers. Using `code` templates is the established pattern (see PersistableModelWriteCore, JsonModelWriteCore) for generating method-like constructs that don't fit existing Alloy components.
+
+**For `ModelSerializationExtensions.WireOptions`**: Used raw string reference since `ModelSerializationExtensions` is a generated infrastructure class (task 5.1.5) that doesn't exist yet. Creating it prematurely would be scope creep. The `using` directive will be auto-added when 5.1.5 defines the class with a refkey.
+
+**Rejected**: Creating a minimal `ModelSerializationExtensions` declaration — would conflict with the full implementation in task 5.1.5.
+
+### Input Model Detection for Cast Operators (2026-03-01)
+
+**Approach**: Check `(type.usage & UsageFlags.Input) !== 0` from TCGC to determine if a model gets the implicit BinaryContent operator.
+
+**Legacy mapping**: The legacy emitter uses `RootInputModels.Contains(_inputModel)` which checks if the model is directly used as an operation parameter. TCGC's `UsageFlags.Input` covers the same concept. Unknown discriminator models (auto-generated fallback types) are NOT in the `models` array from TCGC, so no additional filtering is needed.

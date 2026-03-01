@@ -1464,3 +1464,24 @@ Modified `src/components/serialization/PropertyMatchingLoop.tsx` to handle `Json
 **Patterns used:** Inline rendering in PropertyMatchingLoop (no separate component), raw string templates for JsonValueKind.Null (already has `using System.Text.Json` from other serialization code), TypeExpression for ChangeTracking generic parameters.
 
 **Tests:** 549 passing (15 new), 6 pre-existing failures (model-serialization XML, nested dict depth, 4 smoke tests).
+
+2026-03-01 — Task 2.5.1: Implement implicit BinaryContent operator (complete)
+
+Created `src/components/serialization/CastOperators.tsx` with `ImplicitBinaryContentOperator` component:
+- Generates `public static implicit operator BinaryContent(T model)` on input model serialization classes
+- Only generated when model has `UsageFlags.Input` flag (models used as operation parameters)
+- Method body: null check + `BinaryContent.Create(model, ModelSerializationExtensions.WireOptions)`
+- Uses `SystemClientModel.BinaryContent` refkey for auto `using System.ClientModel;` directive
+- `ModelSerializationExtensions.WireOptions` is raw string (infrastructure file not yet generated — task 5.1.5)
+
+Modified `src/emitter.tsx` to include the component as a child of `ModelSerializationFile`.
+Updated `src/components/serialization/index.ts` to export the new component.
+Created `test/cast-operators.test.ts` with 4 tests:
+- Input model gets the operator
+- Output-only model does NOT get the operator
+- Round-trip (input+output) model gets the operator
+- Multi-word model names produce correct camelCase parameter names
+
+Key design decision: Used raw `code` template approach since Alloy C# lacks `OperatorDeclaration` component. The `Method` component doesn't support `implicit`/`operator` modifiers. Raw code templates with refkeys for `BinaryContent` type handle the using directive; `ModelSerializationExtensions.WireOptions` is raw string pending task 5.1.5.
+
+Known gap: `using` directive for `ModelSerializationExtensions`'s namespace won't be auto-generated until task 5.1.5 creates the infrastructure file with a refkey. This is acceptable since the generated code won't compile without infrastructure files anyway.

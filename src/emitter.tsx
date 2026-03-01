@@ -10,12 +10,14 @@ import { FixedEnumSerializationFile } from "./components/enums/FixedEnumSerializ
 import { HttpClientCSharpOutput } from "./components/HttpClientCSharpOutput.js";
 import { ProjectFile } from "./components/infrastructure/ProjectFile.js";
 import { SolutionFile } from "./components/infrastructure/SolutionFile.js";
+import { ModelFactoryFile } from "./components/model-factory/ModelFactoryFile.js";
 import {
   hasDiscriminatedSubtypes,
   isModelAbstract,
 } from "./components/models/ModelConstructors.js";
 import { ModelFile } from "./components/models/ModelFile.js";
 import { UnknownDiscriminatorModelFile } from "./components/models/UnknownDiscriminatorModel.js";
+import { ImplicitBinaryContentOperator } from "./components/serialization/CastOperators.js";
 import { ModelSerializationFile } from "./components/serialization/ModelSerializationFile.js";
 import { DeserializationConstructor } from "./components/serialization/DeserializationConstructor.js";
 import { DeserializeReturnStatement } from "./components/serialization/DeserializeReturnStatement.js";
@@ -139,8 +141,15 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
               <PropertyMatchingLoop type={m} />
               <DeserializeReturnStatement type={m} />
             </JsonDeserialize>
+            {"\n\n"}
+            <ImplicitBinaryContentOperator type={m} />
           </ModelSerializationFile>
         ))}
+        <ModelFactoryFile
+          models={models}
+          packageName={packageName}
+          options={options}
+        />
       </CSharpScalarOverrides>
     </HttpClientCSharpOutput>
   );

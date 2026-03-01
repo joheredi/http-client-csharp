@@ -2514,7 +2514,7 @@
           "title": "Implement implicit BinaryContent operator",
           "description": "Generate `public static implicit operator BinaryContent(T model)` on input model serialization classes. Returns null if model is null, otherwise BinaryContent.Create(model, WireOptions).",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.1.1"
           ],

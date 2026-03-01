@@ -1,3 +1,5 @@
+export { ImplicitBinaryContentOperator } from "./CastOperators.js";
+export type { ImplicitBinaryContentOperatorProps } from "./CastOperators.js";
 export { DeserializationConstructor } from "./DeserializationConstructor.js";
 export type { DeserializationConstructorProps } from "./DeserializationConstructor.js";
 export { DeserializeReturnStatement } from "./DeserializeReturnStatement.js";
