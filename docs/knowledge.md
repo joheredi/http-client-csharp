@@ -806,8 +806,30 @@ foreach (var prop0 in prop.Value.EnumerateObject())
 ## Design Decisions
 
 ### Task 2.6.1: IJsonModel.Write wrapper component
+
 - **Approach chosen**: Separate `JsonModelInterfaceWrite.tsx` component file, following the same pattern as `PersistableModelInterfaceMethods.tsx`
 - **Approach rejected**: Embedding in `JsonModelWriteCore` — would mix the `protected virtual/override` core method with the explicit interface method, reducing modularity
 - Both root and derived models need their own `IJsonModel<T>.Write` because `IJsonModel<T>` is parameterized by model type (IJsonModel<Pet> ≠ IJsonModel<Dog>)
 - The method body is identical for root and derived models — polymorphic dispatch happens inside `JsonModelWriteCore`
 - No `this.` prefix on `JsonModelWriteCore(writer, options)` call — matches legacy emitter's standard output (Dog.Serialization.cs)
+
+## Design Decisions
+
+### JsonModelCreateCore vs PersistableModelCreateCore pattern differences (2026-03-01)
+- **JsonModelCreateCore** uses `if (format != "J") { throw ... }` pattern (no switch/case)
+- **PersistableModelCreateCore** uses `switch (format) { case "J": ... default: throw ... }` pattern
+- **JsonModelCreateCore** uses `using JsonDocument document = JsonDocument.ParseValue(ref reader);` (using declaration, no braces)
+- **PersistableModelCreateCore** uses `using (JsonDocument document = JsonDocument.Parse(data)) { ... }` (using statement with braces)
+- Both follow the same virtual/override + root-return-type pattern for inheritance
+- These differences match the legacy emitter's output exactly
+
+### IJsonModel<T> interface completion status (2026-03-01)
+All 5 interface methods for IJsonModel<T> and IPersistableModel<T> are now implemented:
+1. `IJsonModel<T>.Write` → JsonModelInterfaceWrite.tsx (was already done)
+2. `IJsonModel<T>.Create` → JsonModelInterfaceCreate.tsx (NEW)
+3. `IPersistableModel<T>.Write` → PersistableModelInterfaceMethods.tsx (was already done)
+4. `IPersistableModel<T>.Create` → PersistableModelInterfaceMethods.tsx (was already done)
+5. `IPersistableModel<T>.GetFormatFromOptions` → PersistableModelInterfaceMethods.tsx (was already done)
+
+### Utf8JsonReader added to builtins (2026-03-01)
+`Utf8JsonReader` was added to `src/builtins/system-text-json.ts`. It's used in `JsonModelCreateCore` and `JsonModelInterfaceCreate` for the `ref Utf8JsonReader reader` parameter. Also added `JsonDocument.ParseValue` static method for parsing from a reader.

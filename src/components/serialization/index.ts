@@ -4,6 +4,10 @@ export { DeserializeVariableDeclarations } from "./DeserializeVariableDeclaratio
 export type { DeserializeVariableDeclarationsProps } from "./DeserializeVariableDeclarations.js";
 export { JsonDeserialize } from "./JsonDeserialize.js";
 export type { JsonDeserializeProps } from "./JsonDeserialize.js";
+export { JsonModelCreateCore } from "./JsonModelCreateCore.js";
+export type { JsonModelCreateCoreProps } from "./JsonModelCreateCore.js";
+export { JsonModelInterfaceCreate } from "./JsonModelInterfaceCreate.js";
+export type { JsonModelInterfaceCreateProps } from "./JsonModelInterfaceCreate.js";
 export { JsonModelInterfaceWrite } from "./JsonModelInterfaceWrite.js";
 export type { JsonModelInterfaceWriteProps } from "./JsonModelInterfaceWrite.js";
 export { JsonModelWriteCore } from "./JsonModelWriteCore.js";

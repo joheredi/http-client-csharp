@@ -11,6 +11,18 @@ import { createLibrary } from "@alloy-js/csharp";
  */
 export const SystemTextJson = createLibrary("System.Text.Json", {
   /**
+   * Provides a high-performance API for forward-only, read-only access to
+   * UTF-8 encoded JSON text. Used as the reader parameter in IJsonModel.Create
+   * and JsonModelCreateCore methods. Passed by ref since it is a mutable struct.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/system.text.json.utf8jsonreader
+   */
+  Utf8JsonReader: {
+    kind: "class",
+    members: {},
+  },
+
+  /**
    * Provides a high-performance API for forward-only, non-cached writing of
    * UTF-8 encoded JSON text. Used as the writer parameter in JsonModelWriteCore
    * and IJsonModel.Write methods.
@@ -61,6 +73,8 @@ export const SystemTextJson = createLibrary("System.Text.Json", {
     members: {
       /** Parses text representing a single JSON value into a JsonDocument. */
       Parse: { kind: "method", methodKind: "ordinary", isStatic: true },
+      /** Parses one JSON value (including objects or arrays) from the provided reader. */
+      ParseValue: { kind: "method", methodKind: "ordinary", isStatic: true },
     },
   },
 

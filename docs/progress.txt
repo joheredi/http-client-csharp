@@ -1300,3 +1300,20 @@ Wired into emitter.tsx between JsonModelWriteCore and DeserializationConstructor
 - Task 2.6.2 (JsonModelCreateCore) is the natural next step — implements IJsonModel<T>.Create
 - The IJsonModel<T>.Create method validates format, parses JsonDocument from reader, calls DeserializeXxx
 - Pre-existing test failures unchanged (6 total: XML-only model, nested dictionary, 4 smoke tests)
+
+2026-03-01 — Tasks 11.1.2 + 2.6.2: Implement IJsonModel<T>.Create and JsonModelCreateCore (complete)
+
+Created two new serialization components that complete the IJsonModel<T> interface:
+
+1. `src/components/serialization/JsonModelCreateCore.tsx` — generates the `protected virtual T JsonModelCreateCore(ref Utf8JsonReader reader, ModelReaderWriterOptions options)` method. This is the core deserialization entry point called by IJsonModel<T>.Create. Pattern mirrors PersistableModelCreateCore but uses `JsonDocument.ParseValue(ref reader)` instead of `JsonDocument.Parse(data)`, and `if/throw` instead of `switch/case`. Returns root base type for derived models.
+
+2. `src/components/serialization/JsonModelInterfaceCreate.tsx` — generates the explicit interface method `T IJsonModel<T>.Create(ref Utf8JsonReader reader, ModelReaderWriterOptions options) => JsonModelCreateCore(ref reader, options);`. Includes cast for derived models (same pattern as PersistableModelInterfaceMethods.Create).
+
+Also updated:
+- `src/builtins/system-text-json.ts` — added `Utf8JsonReader` type and `JsonDocument.ParseValue` method
+- `src/emitter.tsx` — wired up both new components in ModelSerializationFile children
+- `src/components/serialization/index.ts` — added barrel exports
+
+Assessment: Task 11.1.2 claimed all 5 interface methods were missing, but 4/5 already existed. Only IJsonModel<T>.Create was actually missing. Task 2.6.2 (JsonModelCreateCore) was a prerequisite for the Create method.
+
+Tests: 14 new tests across 2 test files (json-model-create-core.test.ts, json-model-interface-create.test.ts). All passing.

@@ -20,6 +20,8 @@ import { ModelSerializationFile } from "./components/serialization/ModelSerializ
 import { DeserializationConstructor } from "./components/serialization/DeserializationConstructor.js";
 import { DeserializeVariableDeclarations } from "./components/serialization/DeserializeVariableDeclarations.js";
 import { JsonDeserialize } from "./components/serialization/JsonDeserialize.js";
+import { JsonModelCreateCore } from "./components/serialization/JsonModelCreateCore.js";
+import { JsonModelInterfaceCreate } from "./components/serialization/JsonModelInterfaceCreate.js";
 import { JsonModelInterfaceWrite } from "./components/serialization/JsonModelInterfaceWrite.js";
 import { JsonModelWriteCore } from "./components/serialization/JsonModelWriteCore.js";
 import { PersistableModelCreateCore } from "./components/serialization/PersistableModelCreateCore.js";
@@ -124,6 +126,10 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
             <PersistableModelCreateCore type={m} />
             {"\n\n"}
             <PersistableModelInterfaceMethods type={m} />
+            {"\n\n"}
+            <JsonModelInterfaceCreate type={m} />
+            {"\n\n"}
+            <JsonModelCreateCore type={m} />
             {"\n\n"}
             <DeserializationConstructor type={m} />
             {"\n\n"}

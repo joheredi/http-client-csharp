@@ -2619,7 +2619,7 @@
           "title": "Implement JsonModelCreateCore",
           "description": "Generate JsonModelCreateCore that validates format, parses JsonDocument from reader, calls DeserializeXxx.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.3.1"
           ],
@@ -4122,7 +4122,7 @@
           "title": "Generate missing IJsonModel<T> and IPersistableModel<T> interface methods",
           "description": "The serialization file (`{Model}.Serialization.cs`) declares that the model implements `IJsonModel<T>` but only generates `JsonModelWriteCore`, `DeserializeXxx`, and a deserialization constructor. The following required interface members from `System.ClientModel.Primitives` are missing, causing CS0535 errors:\n\n**Missing methods on IJsonModel<T>:**\n- `T Create(ref Utf8JsonReader reader, ModelReaderWriterOptions options)` \u2014 reads JSON from a Utf8JsonReader\n- `void Write(Utf8JsonWriter writer, ModelReaderWriterOptions options)` \u2014 calls `JsonModelWriteCore`; the public entry point\n\n**Missing methods on IPersistableModel<T> (inherited by IJsonModel<T>):**\n- `T Create(BinaryData data, ModelReaderWriterOptions options)` \u2014 deserializes from BinaryData\n- `BinaryData Write(ModelReaderWriterOptions options)` \u2014 serializes to BinaryData\n- `string GetFormatFromOptions(ModelReaderWriterOptions options)` \u2014 returns `\"J\"` for JSON format\n\n**Legacy reference:** See the legacy generator's `MrwSerializationTypeDefinition.cs` in `submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator.ClientModel/src/Providers/MrwSerializationTypeDefinition.cs`. It generates all 5 methods plus `JsonModelWriteCore`. The pattern is:\n```csharp\nvoid IJsonModel<T>.Write(Utf8JsonWriter writer, ModelReaderWriterOptions options) {\n    writer.WriteStartObject();\n    JsonModelWriteCore(writer, options);\n    writer.WriteEndObject();\n}\nT IJsonModel<T>.Create(ref Utf8JsonReader reader, ModelReaderWriterOptions options) {\n    // ... validate format, call JsonSerializer.Deserialize or DeserializeXxx\n}\nBinaryData IPersistableModel<T>.Write(ModelReaderWriterOptions options) {\n    // ... validate format, call ModelReaderWriter.Write(this, options)\n}\nT IPersistableModel<T>.Create(BinaryData data, ModelReaderWriterOptions options) {\n    // ... validate format, call JsonSerializer.Deserialize or DeserializeXxx from data\n}\nstring IPersistableModel<T>.GetFormatFromOptions(ModelReaderWriterOptions options) => \"J\";\n```\n\n**Files to modify:**\n- `src/components/serialization/ModelSerializationFile.tsx` \u2014 the component that wraps the serialization partial class\n- May need new components for each missing method, following the existing pattern of `JsonModelWriteCore.tsx`, `DeserializationConstructor.tsx`, etc.\n\n**Verification:** After fixing, `dotnet build temp/smoke/minimal-service/src` should produce no CS0535 errors.",
           "phase": "phase-11",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],
