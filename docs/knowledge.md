@@ -892,6 +892,7 @@ When writing inline TypeSpec in tests, do NOT use `using TypeSpec.Rest;`. The `L
 ### Discriminated base models use dispatch, not property matching (Task 2.4.1)
 
 **Key insight:** Models with `hasDiscriminatedSubtypes()` (abstract bases and intermediate models) do NOT use the standard deserialization body (variable declarations → property matching loop → constructor return). Instead, they use discriminator dispatch:
+
 1. `TryGetProperty("{discriminatorName}"u8, out JsonElement discriminator)` to peek
 2. `switch (discriminator.GetString())` to dispatch to derived `DeserializeXxx` methods
 3. Unknown fallback: `return Unknown{Base}.DeserializeUnknown{Base}(element, options)`
@@ -901,3 +902,26 @@ The `discriminatedSubtypes` map is a flat `Record<string, SdkModelType>` contain
 The discriminator serialized name comes from `model.discriminatorProperty!.serializedName`.
 
 **Gotcha:** Tasks 2.4.1/2.4.2/2.4.3 are inseparable — they were implemented together. Future loops finding them already done should just mark them as done.
+
+## Null Value Handling in Deserialization (Task 2.3.11)
+
+### Property-Level Null Checks
+- Use `getNullCheckBehavior(property)` from PropertyMatchingLoop.tsx to determine null handling
+- Three behaviors: `assign-null`, `skip`, `empty-collection` (or `null` for no check)
+- The null check goes INSIDE the `if (prop.NameEquals(...))` block, BEFORE value extraction
+- `JsonValueKind.Null` works as raw text because the serialization file already has `using System.Text.Json;` from other references
+
+### Item-Level Null Checks in Collections
+- Only generated when `valueType.kind === "nullable"` — i.e., TCGC wraps the item in `SdkNullableType`
+- This differs slightly from the legacy emitter which checks `TypeRequiresNullCheckInSerialization` (all reference types including string get null checks)
+- For our emitter, `string[]` items do NOT get null checks (string.GetString() naturally returns null), only `(string | null)[]` does
+- This difference is functionally equivalent for strings but may produce slightly different generated code structure
+
+### ChangeTracking Types for Empty-Collection Case
+- `ChangeTrackingList<T>` and `ChangeTrackingDictionary<string, T>` are plain text in the generated output
+- Use `TypeExpression` for the generic type parameter to get proper type resolution
+- The "empty-collection" case is for required nullable collections (`items: string[] | null`) — rare but important for wire-format fidelity
+
+### Design Decision
+- Null check logic is inline in PropertyMatchingLoop.tsx (not a separate component) because it's tightly coupled with property matching and needs access to variable names, indentation, and property metadata
+- Helper functions (`getNullCheckBehavior`, `renderPropertyNullCheck`, `itemNeedsNullCheck`) are exported for unit testing

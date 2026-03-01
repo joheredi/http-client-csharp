@@ -57,7 +57,11 @@ import type {
   SdkType,
 } from "@azure-tools/typespec-client-generator-core";
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
-import { unwrapNullableType } from "../../utils/nullable.js";
+import {
+  isCollectionType,
+  isPropertyNullable,
+  unwrapNullableType,
+} from "../../utils/nullable.js";
 import {
   isBaseDiscriminatorOverride,
   isDerivedDiscriminatedModel,
@@ -105,6 +109,162 @@ export function computeMatchableProperties(
   }
 
   return [...model.properties];
+}
+
+/**
+ * Describes how a property should handle `JsonValueKind.Null` during
+ * deserialization. Used by the property matching loop to generate the
+ * appropriate null-handling code block before the value extraction.
+ *
+ * - `"assign-null"` — nullable non-collection: `propVar = null; continue;`
+ * - `"skip"` — optional collection: `continue;` (leave tracking collection as-is)
+ * - `"empty-collection"` — required nullable collection:
+ *   `propVar = new ChangeTrackingList<T>(); continue;`
+ */
+export type NullCheckBehavior = "assign-null" | "skip" | "empty-collection";
+
+/**
+ * Determines the null-check behavior for a property during deserialization.
+ *
+ * Matches the legacy emitter's `DeserializationPropertyNullCheckStatement` in
+ * `MrwSerializationTypeDefinition.cs` (lines 1449–1491):
+ *
+ * 1. **Nullable non-collection** → `"assign-null"`: assign null and continue.
+ * 2. **Optional collection** → `"skip"`: just continue (leave ChangeTracking default).
+ * 3. **Required but explicitly nullable collection** → `"empty-collection"`:
+ *    assign a new ChangeTracking instance to represent "was null on the wire".
+ * 4. **Required non-nullable** (scalar or collection) → `null`: no null check.
+ *
+ * @param property - An SDK model property from TCGC.
+ * @returns The null-check behavior, or `null` if no check is needed.
+ */
+export function getNullCheckBehavior(
+  property: SdkModelPropertyType,
+): NullCheckBehavior | null {
+  const isCollection = isCollectionType(property.type);
+
+  if (!isCollection) {
+    // Non-collection: null check only when the property is nullable
+    // (optional or explicitly SdkNullableType-wrapped).
+    if (isPropertyNullable(property)) {
+      return "assign-null";
+    }
+    return null;
+  }
+
+  // Collection properties
+  if (property.optional) {
+    // Optional collection: skip null (leave ChangeTracking default)
+    return "skip";
+  }
+
+  if (property.type.kind === "nullable") {
+    // Required but explicitly nullable collection: empty tracking instance
+    return "empty-collection";
+  }
+
+  // Required non-nullable collection: no null check
+  return null;
+}
+
+/**
+ * Renders the property-level null-check block inside a `prop.NameEquals(...)` if.
+ *
+ * The generated block checks `prop.Value.ValueKind == JsonValueKind.Null` and
+ * takes action based on the {@link NullCheckBehavior}:
+ *
+ * - `"assign-null"` → `varName = null; continue;`
+ * - `"skip"` → `continue;`
+ * - `"empty-collection"` → `varName = new ChangeTrackingList<T>(); continue;`
+ *   (or `ChangeTrackingDictionary<string, T>()` for dict properties).
+ *
+ * @param behavior - The null-check behavior determined by {@link getNullCheckBehavior}.
+ * @param varName - The local variable name for the property.
+ * @param property - The SDK model property (used for collection element type in empty-collection).
+ * @returns JSX fragment for the null-check block.
+ */
+function renderPropertyNullCheck(
+  behavior: NullCheckBehavior,
+  varName: string,
+  property: SdkModelPropertyType,
+): Children {
+  const nullCondition =
+    "\n            if (prop.Value.ValueKind == JsonValueKind.Null)";
+  const openBrace = "\n            {";
+  const closeBrace = "\n            }";
+
+  if (behavior === "assign-null") {
+    return (
+      <>
+        {nullCondition}
+        {openBrace}
+        {`\n                ${varName} = null;`}
+        {"\n                continue;"}
+        {closeBrace}
+      </>
+    );
+  }
+
+  if (behavior === "skip") {
+    return (
+      <>
+        {nullCondition}
+        {openBrace}
+        {"\n                continue;"}
+        {closeBrace}
+      </>
+    );
+  }
+
+  // "empty-collection": required nullable collection → new ChangeTracking instance
+  const unwrapped = unwrapNullableType(property.type);
+  if (unwrapped.kind === "array") {
+    const elementType = unwrapNullableType(
+      (unwrapped as SdkArrayType).valueType,
+    );
+    return (
+      <>
+        {nullCondition}
+        {openBrace}
+        {`\n                ${varName} = new ChangeTrackingList<`}
+        <TypeExpression type={elementType.__raw!} />
+        {">();"}
+        {"\n                continue;"}
+        {closeBrace}
+      </>
+    );
+  }
+
+  // Dictionary collection
+  const valueType = unwrapNullableType(
+    (unwrapped as SdkDictionaryType).valueType,
+  );
+  return (
+    <>
+      {nullCondition}
+      {openBrace}
+      {`\n                ${varName} = new ChangeTrackingDictionary<string, `}
+      <TypeExpression type={valueType.__raw!} />
+      {">();"}
+      {"\n                continue;"}
+      {closeBrace}
+    </>
+  );
+}
+
+/**
+ * Checks whether a collection's item/value type requires null checks
+ * during element-level deserialization.
+ *
+ * Returns `true` when the raw (pre-unwrap) type is `SdkNullableType`,
+ * meaning the TypeSpec definition explicitly allows null items
+ * (e.g., `(string | null)[]`).
+ *
+ * @param rawItemType - The collection's valueType before unwrapping nullable.
+ * @returns `true` if item-level null checks should be generated.
+ */
+function itemNeedsNullCheck(rawItemType: SdkType): boolean {
+  return rawItemType.kind === "nullable";
 }
 
 /**
@@ -531,7 +691,25 @@ function renderArrayDeserialization(
     // Leaf type — use getReadExpression for the item value
     const itemReadExpr = getReadExpression(itemType, namePolicy, itemVar);
     if (!itemReadExpr) return null;
-    foreachBody = <>{`\n${innerIndent}${arrayVar}.Add(${itemReadExpr});`}</>;
+
+    if (itemNeedsNullCheck(itemType)) {
+      // Nullable items: check for JsonValueKind.Null before extracting
+      const deeperIndent = innerIndent + "    ";
+      foreachBody = (
+        <>
+          {`\n${innerIndent}if (${itemVar}.ValueKind == JsonValueKind.Null)`}
+          {`\n${innerIndent}{`}
+          {`\n${deeperIndent}${arrayVar}.Add(null);`}
+          {`\n${innerIndent}}`}
+          {`\n${innerIndent}else`}
+          {`\n${innerIndent}{`}
+          {`\n${deeperIndent}${arrayVar}.Add(${itemReadExpr});`}
+          {`\n${innerIndent}}`}
+        </>
+      );
+    } else {
+      foreachBody = <>{`\n${innerIndent}${arrayVar}.Add(${itemReadExpr});`}</>;
+    }
   }
 
   return (
@@ -662,11 +840,29 @@ function renderDictionaryDeserialization(
       `${propVar}.Value`,
     );
     if (!valueReadExpr) return null;
-    foreachBody = (
-      <>
-        {`\n${innerIndent}${dictVar}.Add(${propVar}.Name, ${valueReadExpr});`}
-      </>
-    );
+
+    if (itemNeedsNullCheck(valueType)) {
+      // Nullable dict values: check for JsonValueKind.Null before extracting
+      const deeperIndent = innerIndent + "    ";
+      foreachBody = (
+        <>
+          {`\n${innerIndent}if (${propVar}.Value.ValueKind == JsonValueKind.Null)`}
+          {`\n${innerIndent}{`}
+          {`\n${deeperIndent}${dictVar}.Add(${propVar}.Name, null);`}
+          {`\n${innerIndent}}`}
+          {`\n${innerIndent}else`}
+          {`\n${innerIndent}{`}
+          {`\n${deeperIndent}${dictVar}.Add(${propVar}.Name, ${valueReadExpr});`}
+          {`\n${innerIndent}}`}
+        </>
+      );
+    } else {
+      foreachBody = (
+        <>
+          {`\n${innerIndent}${dictVar}.Add(${propVar}.Name, ${valueReadExpr});`}
+        </>
+      );
+    }
   }
 
   return (
@@ -697,10 +893,21 @@ function renderDictionaryDeserialization(
  * ```csharp
  * if (prop.NameEquals("serializedName"u8))
  * {
+ *     if (prop.Value.ValueKind == JsonValueKind.Null)
+ *     {
+ *         variableName = null;
+ *         continue;
+ *     }
  *     variableName = prop.Value.GetXxx();
  *     continue;
  * }
  * ```
+ *
+ * Null handling varies by property kind (see {@link getNullCheckBehavior}):
+ * - Nullable non-collections: assign null and continue
+ * - Optional collections: just continue (leave ChangeTracking default)
+ * - Required nullable collections: assign new ChangeTracking instance
+ * - Required non-nullable: no null check
  *
  * Properties whose types are not yet supported (returning `null` from
  * `getReadExpression` and not array/dict types) are silently skipped. This
@@ -722,6 +929,7 @@ export function PropertyMatchingLoop(props: PropertyMatchingLoopProps) {
         const serializedName = p.serializedName;
         const varName = namePolicy.getName(p.name, "parameter");
         const unwrapped = unwrapNullableType(p.type);
+        const nullBehavior = getNullCheckBehavior(p);
 
         // Array types need a multi-line block with List<T> + foreach
         if (unwrapped.kind === "array") {
@@ -737,6 +945,8 @@ export function PropertyMatchingLoop(props: PropertyMatchingLoopProps) {
             <>
               {`\n        if (prop.NameEquals("${serializedName}"u8))`}
               {"\n        {"}
+              {nullBehavior !== null &&
+                renderPropertyNullCheck(nullBehavior, varName, p)}
               {arrayBlock}
               {`\n            ${varName} = array.ToArray();`}
               {"\n            continue;"}
@@ -759,6 +969,8 @@ export function PropertyMatchingLoop(props: PropertyMatchingLoopProps) {
             <>
               {`\n        if (prop.NameEquals("${serializedName}"u8))`}
               {"\n        {"}
+              {nullBehavior !== null &&
+                renderPropertyNullCheck(nullBehavior, varName, p)}
               {dictBlock}
               {`\n            ${varName} = dictionary;`}
               {"\n            continue;"}
@@ -775,6 +987,8 @@ export function PropertyMatchingLoop(props: PropertyMatchingLoopProps) {
           <>
             {`\n        if (prop.NameEquals("${serializedName}"u8))`}
             {"\n        {"}
+            {nullBehavior !== null &&
+              renderPropertyNullCheck(nullBehavior, varName, p)}
             {`\n            ${varName} = ${readExpr};`}
             {"\n            continue;"}
             {"\n        }"}

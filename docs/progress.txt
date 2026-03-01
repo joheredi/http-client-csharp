@@ -1436,3 +1436,31 @@ Key patterns:
 - `model.discriminatorProperty.serializedName` gives the JSON property name for TryGetProperty
 - `model.discriminatedSubtypes` is a flat Record<string, SdkModelType> of all descendant subtypes
 - Unknown variant name follows pattern `Unknown{BaseName}`
+
+## 2026-03-01 — Task 2.3.11: Implement null value handling (complete)
+
+Modified `src/components/serialization/PropertyMatchingLoop.tsx` to handle `JsonValueKind.Null` during JSON deserialization.
+
+**Changes:**
+- Added `NullCheckBehavior` type and `getNullCheckBehavior(property)` function that determines the null-handling strategy for each property variant
+- Added `renderPropertyNullCheck(behavior, varName, property)` function that generates the C# null-check block
+- Added `itemNeedsNullCheck(rawItemType)` helper for collection element null checks
+- Modified `PropertyMatchingLoop` component to insert property-level null checks before value extraction
+- Modified `renderArrayDeserialization` to add if/else null checks for nullable array items
+- Modified `renderDictionaryDeserialization` to add if/else null checks for nullable dict values
+- Imported `isCollectionType` and `isPropertyNullable` from nullable utils
+- Created `test/null-value-handling.test.ts` with 15 tests: 11 unit tests for `getNullCheckBehavior` and 4 integration tests
+
+**Three property-level null check behaviors:**
+1. `assign-null` — nullable non-collection: `propVar = null; continue;`
+2. `skip` — optional collection: `continue;` (leave ChangeTracking default)
+3. `empty-collection` — required nullable collection: `propVar = new ChangeTrackingList<T>(); continue;`
+
+**Item-level null checks:**
+- Only generated when `valueType.kind === "nullable"` (TCGC marks items explicitly nullable)
+- Arrays: `if (item.ValueKind == JsonValueKind.Null) { array.Add(null); } else { array.Add(value); }`
+- Dicts: `if (prop0.Value.ValueKind == JsonValueKind.Null) { dictionary.Add(prop0.Name, null); } else { ... }`
+
+**Patterns used:** Inline rendering in PropertyMatchingLoop (no separate component), raw string templates for JsonValueKind.Null (already has `using System.Text.Json` from other serialization code), TypeExpression for ChangeTracking generic parameters.
+
+**Tests:** 549 passing (15 new), 6 pre-existing failures (model-serialization XML, nested dict depth, 4 smoke tests).

@@ -2333,7 +2333,7 @@
           "title": "Implement null value handling",
           "description": "Handle JsonValueKind.Null for each property variant: nullable\u2192assign null, required nullable collection\u2192new empty list, optional\u2192continue.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.3.4"
           ],
