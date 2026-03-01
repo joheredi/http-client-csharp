@@ -1033,3 +1033,38 @@ Alloy's standard `<Constructor>` component creates a MethodSymbol that triggers 
 **Why**: The class structure is nearly identical for both (endpoint field, mocking constructor, Pipeline property). The only difference is that sub-clients get an additional internal constructor. Following the ModelFile pattern of one component per concern.
 
 **Rejected**: Separate `RootClientFile` and `SubClientFile` components — would duplicate the common structure (endpoint field, mocking constructor, Pipeline property) with only minor differences.
+
+## Client Fields (Task 3.2.2)
+
+### Auth field patterns
+- API key auth: `_keyCredential` (ApiKeyCredential), `AuthorizationHeader` (const string), optional `AuthorizationApiKeyPrefix` (const string)
+- OAuth2 auth: `_tokenProvider` (AuthenticationTokenProvider), `AuthorizationScopes` (static readonly string[])
+- Auth fields are ONLY generated on root clients. Sub-clients inherit auth through the pipeline.
+- The `AuthenticationTokenProvider` builtin was added to `SystemClientModelPrimitives` in `system-client-model.ts`.
+
+### Alloy Field component limitations
+- `<Field>` does NOT support `const` modifier. Use raw strings for const fields: `{`private const string AuthorizationHeader = "x-api-key";`}`
+- `<Field>` supports: `static`, `readonly`, `volatile`, `new` modifiers
+- Naming policy for fields: private fields get `_` prefix + camelCase. So `name="keyCredential"` → `_keyCredential`.
+
+### TCGC type system gotchas
+- `Oauth2Auth` in `@typespec/http` uses lowercase 'a' (not `OAuth2Auth`)
+- `Oauth2Auth` takes 1 type argument (flows only), not 2
+- `SdkBuiltInKinds` = TypeSpec `IntrinsicScalarName` minus utcDateTime/offsetDateTime/duration, plus "unknown"
+- Valid SdkBuiltInKinds: bytes, numeric, integer, float, int64, int32, int16, int8, uint64, uint32, uint16, uint8, safeint, float32, float64, decimal, decimal128, string, plainDate, plainTime, boolean, url, unknown
+- SdkBuiltInKinds does NOT include: uuid, password, eTag, ipAddress, ipV4Address, ipV6Address
+
+### Client initialization parameters
+- `client.clientInitialization.parameters` contains: endpoint (kind: "endpoint"), credential (kind: "credential"), method params (kind: "method")
+- API version appears as method param with `isApiVersionParam: true` when TypeSpec has explicit `@query apiVersion: string`
+- For versioned services without explicit param, TCGC may handle version through options, not init params
+
+### Cross-file type references for clients
+- Use `refkey(client)` on ClassDeclaration to create a stable key for client classes
+- Sub-client caching fields reference child types via `refkey(childClient)` — Alloy resolves across files
+- Since the same TCGC SdkClientType object is passed to both parent and child ClientFile, `refkey(obj)` produces matching keys
+
+### Design Decision: Client fields approach
+- **Chosen**: Utility functions in `client-params.ts` + inline Field rendering in ClientFile
+- **Rejected**: Separate ClientFields component (too much indirection for field declarations)
+- **Reason**: Follows existing patterns (ClientOptionsFile), utility functions are reusable by constructor generation (task 3.2.3)

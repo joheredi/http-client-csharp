@@ -2782,7 +2782,7 @@
           "title": "Implement client fields",
           "description": "Generate client fields: _endpoint (Uri), auth credential fields, _apiVersion, sub-client cache fields. See ClientProvider.BuildFields.",
           "phase": "phase-3",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "3.2.1"
           ],

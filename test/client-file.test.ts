@@ -211,4 +211,264 @@ describe("ClientFile", () => {
     );
     expect(clientFiles).toHaveLength(0);
   });
+
+  /**
+   * Verifies that a root client with API key authentication generates the
+   * correct auth credential fields:
+   * - `_keyCredential` (ApiKeyCredential) for storing the API key
+   * - `AuthorizationHeader` (const string) for the header name
+   *
+   * Auth fields are only generated on root clients, not sub-clients, because
+   * sub-clients inherit authentication through the pipeline passed by the parent.
+   * The `using System.ClientModel;` directive must be auto-generated for
+   * the ApiKeyCredential type reference.
+   */
+  it("generates API key auth fields for root client", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @useAuth(ApiKeyAuth<ApiKeyLocation.header, "x-api-key">)
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op testOp(): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Verify API key credential field
+    expect(clientFile).toContain(
+      "private readonly ApiKeyCredential _keyCredential;",
+    );
+
+    // Verify authorization header constant
+    expect(clientFile).toContain(
+      'private const string AuthorizationHeader = "x-api-key";',
+    );
+
+    // Verify using directive for System.ClientModel (where ApiKeyCredential lives)
+    expect(clientFile).toContain("using System.ClientModel;");
+  });
+
+  /**
+   * Verifies that a root client with OAuth2 authentication generates the
+   * correct token provider fields:
+   * - `_tokenProvider` (AuthenticationTokenProvider) for managing tokens
+   * - `AuthorizationScopes` (static readonly string[]) for the required scopes
+   *
+   * This matches the legacy emitter's field pattern for OAuth2-authenticated
+   * services. The `using System.ClientModel.Primitives;` directive must be
+   * auto-generated for the AuthenticationTokenProvider type reference.
+   */
+  it("generates OAuth2 auth fields for root client", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @useAuth(OAuth2Auth<[{
+        type: OAuth2FlowType.implicit,
+        authorizationUrl: "https://login.example.com/authorize",
+        refreshUrl: "https://login.example.com/refresh",
+        tokenUrl: "https://login.example.com/token"
+      }]>)
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op testOp(): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Verify token provider field
+    expect(clientFile).toContain(
+      "private readonly AuthenticationTokenProvider _tokenProvider;",
+    );
+
+    // Verify authorization scopes array
+    expect(clientFile).toContain(
+      "private static readonly string[] AuthorizationScopes = new string[]",
+    );
+
+    // Verify using directive for System.ClientModel.Primitives
+    expect(clientFile).toContain("using System.ClientModel.Primitives;");
+  });
+
+  /**
+   * Verifies that a root client with sub-clients generates caching fields
+   * for lazy sub-client instantiation. The caching field pattern
+   * (`private ChildType _cachedChildName`) enables thread-safe lazy
+   * initialization via Interlocked.CompareExchange in factory methods.
+   *
+   * The caching fields must NOT be readonly (they're set lazily, not in
+   * the constructor). The type must resolve to the sub-client class via
+   * refkey cross-file resolution.
+   */
+  it("generates sub-client caching fields on root client", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op testOp(): void;
+
+      @route("/pets")
+      interface PetOperations {
+        @route("/get")
+        @get op getPet(): void;
+      }
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Verify sub-client caching field (NOT readonly, lazy initialized)
+    expect(clientFile).toContain("private PetOperations _cachedPetOperations;");
+
+    // Caching field should NOT be readonly
+    expect(clientFile).not.toContain("readonly PetOperations");
+  });
+
+  /**
+   * Verifies that sub-clients do NOT have auth credential fields.
+   * Sub-clients inherit authentication through the pipeline created
+   * by the parent client. Only root clients generate auth fields.
+   *
+   * This matches the legacy emitter's behavior in ClientProvider.BuildFields()
+   * where auth fields are skipped when ClientOptions is null (sub-clients).
+   */
+  it("does not generate auth fields on sub-clients", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @useAuth(ApiKeyAuth<ApiKeyLocation.header, "x-api-key">)
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op testOp(): void;
+
+      @route("/pets")
+      interface PetOperations {
+        @route("/get")
+        @get op getPet(): void;
+      }
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    // Root client should have auth fields
+    const rootFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(rootFile).toContain("ApiKeyCredential _keyCredential");
+
+    // Sub-client should NOT have auth fields
+    const subFile = outputs["src/Generated/PetOperations.cs"];
+    expect(subFile).toBeDefined();
+    expect(subFile).not.toContain("ApiKeyCredential");
+    expect(subFile).not.toContain("AuthorizationHeader");
+  });
+
+  /**
+   * Verifies that a client-level method parameter (like apiVersion) is
+   * generated as a private readonly field on the client class.
+   *
+   * When a TypeSpec operation has a client-level parameter (annotated with
+   * `@query apiVersion: string`), TCGC marks it as a client initialization
+   * parameter. The emitter must generate a corresponding field so the
+   * constructor (task 3.2.3) can store and the operations can use the value.
+   */
+  it("generates method parameter fields for client-level params", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+      using TypeSpec.Versioning;
+
+      @versioned(Versions)
+      @service
+      namespace TestService;
+
+      enum Versions {
+        v2024_01_01: "2024-01-01",
+      }
+
+      @route("/test")
+      @get op testOp(@query apiVersion: string): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Verify API version field is generated as private readonly string
+    expect(clientFile).toContain("private readonly string _apiVersion;");
+  });
+
+  /**
+   * Verifies the complete field ordering for a root client with auth,
+   * API version, and sub-clients. Fields must appear in this order
+   * to match the legacy emitter's output:
+   * 1. _endpoint (always first)
+   * 2. Auth fields (credential + header constant)
+   * 3. Additional method params (_apiVersion, etc.)
+   * 4. Sub-client caching fields
+   *
+   * This ordering is important for API surface consistency with the
+   * legacy generator and for code review predictability.
+   */
+  it("generates fields in correct order", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+      using TypeSpec.Versioning;
+
+      @versioned(Versions)
+      @useAuth(ApiKeyAuth<ApiKeyLocation.header, "x-api-key">)
+      @service
+      namespace TestService;
+
+      enum Versions {
+        v2024_01_01: "2024-01-01",
+      }
+
+      @route("/test")
+      @get op testOp(@query apiVersion: string): void;
+
+      @route("/pets")
+      interface PetOperations {
+        @route("/get")
+        @get op getPet(): void;
+      }
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Verify all fields are present
+    expect(clientFile).toContain("private readonly Uri _endpoint;");
+    expect(clientFile).toContain(
+      "private readonly ApiKeyCredential _keyCredential;",
+    );
+    expect(clientFile).toContain(
+      'private const string AuthorizationHeader = "x-api-key";',
+    );
+    expect(clientFile).toContain("private readonly string _apiVersion;");
+    expect(clientFile).toContain("private PetOperations _cachedPetOperations;");
+
+    // Verify ordering: endpoint → auth → apiVersion → cache fields
+    const endpointIdx = clientFile.indexOf("_endpoint");
+    const authIdx = clientFile.indexOf("_keyCredential");
+    const headerIdx = clientFile.indexOf("AuthorizationHeader");
+    const versionIdx = clientFile.indexOf("_apiVersion");
+    const cacheIdx = clientFile.indexOf("_cachedPetOperations");
+
+    expect(endpointIdx).toBeLessThan(authIdx);
+    expect(authIdx).toBeLessThan(headerIdx);
+    expect(headerIdx).toBeLessThan(versionIdx);
+    expect(versionIdx).toBeLessThan(cacheIdx);
+  });
 });

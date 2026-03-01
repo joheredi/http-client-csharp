@@ -239,6 +239,18 @@ export const SystemClientModelPrimitives = createLibrary(
     },
 
     /**
+     * Abstract base class for token-based authentication providers.
+     * Stored as a private field in generated client classes for OAuth2/bearer
+     * token authentication scenarios.
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.primitives.authenticationtokenprovider
+     */
+    AuthenticationTokenProvider: {
+      kind: "class",
+      members: {},
+    },
+
+    /**
      * Flags enum that controls how the pipeline handles error responses.
      * Used with RequestOptions.ErrorOptions to suppress automatic exception
      * throwing on non-success status codes.

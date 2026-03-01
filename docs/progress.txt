@@ -1584,3 +1584,39 @@ Root clients get: endpoint field, mocking constructor, Pipeline property. Primar
 - Tasks 3.2.2/3.2.3/3.2.4 will modify ClientFile to add auth fields, primary constructors, and sub-client factory methods
 - The `{props.children}` slot in ClientFile goes after the Pipeline property — good for injecting operation methods
 - Pre-existing failures: smoke tests (4) and model-serialization (2) are unrelated
+
+## 2026-03-01 — Task 3.2.2: Implement client fields
+
+### What was done
+- Added `AuthenticationTokenProvider` builtin to `src/builtins/system-client-model.ts`
+- Created `src/utils/client-params.ts` with utility functions for extracting client parameter info from TCGC:
+  - `getAuthInfo(client)` — extracts API key and OAuth2 auth scheme details
+  - `getClientMethodParameters(client)` — returns non-endpoint, non-credential method params
+  - `getEndpointParameter(client)` — extracts the endpoint parameter
+  - `getFieldTypeForParam(param)` — maps TCGC SDK types to C# type names
+- Modified `src/components/clients/ClientFile.tsx` to generate all client fields:
+  - API key auth fields: `_keyCredential` (ApiKeyCredential), `AuthorizationHeader` (const string)
+  - OAuth2 auth fields: `_tokenProvider` (AuthenticationTokenProvider), `AuthorizationScopes` (static readonly string[])
+  - Method parameter fields (e.g., `_apiVersion`) as private readonly
+  - Sub-client caching fields (e.g., `_cachedPetOperations`) — NOT readonly, for lazy init
+- Added `refkey(client)` to ClassDeclaration for cross-file type references (sub-client cache fields)
+- Added 6 new tests covering all field types, ordering, and sub-client auth exclusion
+
+### Key patterns
+- Auth fields are ONLY on root clients (no parent). Sub-clients inherit auth through the pipeline.
+- Const fields (AuthorizationHeader) use raw strings since Alloy's Field component doesn't support `const`.
+- Sub-client cache fields reference child client types via `refkey(child)` for cross-file resolution.
+- API version field type is always `string` regardless of TCGC's underlying type (matches legacy behavior).
+- Field order matches legacy: endpoint → auth → method params → cache fields.
+
+### TCGC notes
+- `client.clientInitialization.parameters` includes endpoint, credential, and method params
+- API version shows up as a method param with `isApiVersionParam: true` when the TypeSpec has `@query apiVersion: string`
+- For versioned services without explicit apiVersion param, TCGC may not include it in init params
+- `Oauth2Auth` in @typespec/http uses lowercase 'a' (not `OAuth2Auth`)
+- `Oauth2Auth` takes 1 type argument (not 2)
+- SdkBuiltInKinds does NOT include uuid, password, eTag, ipV4Address, etc. — only TypeSpec intrinsic scalar names
+
+### Pre-existing failures (not related to this task)
+- model-serialization.test.ts: 2 failures
+- smoke.test.ts: 4 failures
