@@ -1005,7 +1005,7 @@
           "title": "Write inheritance tests",
           "description": "Write tests for model inheritance covering: single string discriminator, enum discriminator, unknown variant generation, multi-level discriminators. Compare against golden files.",
           "phase": "phase-1",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "1.3.6"
           ],
