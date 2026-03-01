@@ -1317,3 +1317,24 @@ Also updated:
 Assessment: Task 11.1.2 claimed all 5 interface methods were missing, but 4/5 already existed. Only IJsonModel<T>.Create was actually missing. Task 2.6.2 (JsonModelCreateCore) was a prerequisite for the Create method.
 
 Tests: 14 new tests across 2 test files (json-model-create-core.test.ts, json-model-interface-create.test.ts). All passing.
+
+## 2026-03-01 — Tasks 11.1.4 + 2.3.13: Fix DeserializeXxx methods to return constructed object (complete)
+
+### What was done
+- Created `src/components/serialization/DeserializeReturnStatement.tsx` component
+- Generates the `return new ModelName(param1, param2, ..., additionalBinaryDataProperties);` statement at the end of the `DeserializeXxx` method
+- Exported `computeVariableInfos` and `VariableInfo` from DeserializeVariableDeclarations.tsx to share the variable ordering logic
+- Wired into emitter.tsx as child of `<JsonDeserialize>` after `<PropertyMatchingLoop>`
+- Updated serialization/index.ts barrel exports
+- 6 tests added in test/deserialize-return-statement.test.ts
+
+### Design decision
+- Created a separate component file (DeserializeReturnStatement.tsx) rather than embedding in JsonDeserialize.tsx
+- Reused `computeVariableInfos` from DeserializeVariableDeclarations to ensure return statement parameter order exactly matches variable declaration order
+- Single-line return statement format (matches legacy for models with few params like Dog)
+- Tasks 11.1.4 and 2.3.13 are the same thing — 11.1.4 is the bug fix, 2.3.13 is the planned task
+
+### Notes for next iteration
+- The legacy emitter uses multi-line return format for models with many params (>5), but single-line is functionally correct
+- Optional nullable list params use `?? new ChangeTrackingList<T>()` in legacy — this is a separate concern for null handling (task 2.3.11)
+- Pre-existing test failures unchanged (6 total: XML-only model, nested dictionary, 3 smoke dotnet builds, Widget union crash)

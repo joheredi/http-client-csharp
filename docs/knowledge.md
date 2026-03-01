@@ -816,6 +816,7 @@ foreach (var prop0 in prop.Value.EnumerateObject())
 ## Design Decisions
 
 ### JsonModelCreateCore vs PersistableModelCreateCore pattern differences (2026-03-01)
+
 - **JsonModelCreateCore** uses `if (format != "J") { throw ... }` pattern (no switch/case)
 - **PersistableModelCreateCore** uses `switch (format) { case "J": ... default: throw ... }` pattern
 - **JsonModelCreateCore** uses `using JsonDocument document = JsonDocument.ParseValue(ref reader);` (using declaration, no braces)
@@ -824,7 +825,9 @@ foreach (var prop0 in prop.Value.EnumerateObject())
 - These differences match the legacy emitter's output exactly
 
 ### IJsonModel<T> interface completion status (2026-03-01)
+
 All 5 interface methods for IJsonModel<T> and IPersistableModel<T> are now implemented:
+
 1. `IJsonModel<T>.Write` → JsonModelInterfaceWrite.tsx (was already done)
 2. `IJsonModel<T>.Create` → JsonModelInterfaceCreate.tsx (NEW)
 3. `IPersistableModel<T>.Write` → PersistableModelInterfaceMethods.tsx (was already done)
@@ -832,4 +835,14 @@ All 5 interface methods for IJsonModel<T> and IPersistableModel<T> are now imple
 5. `IPersistableModel<T>.GetFormatFromOptions` → PersistableModelInterfaceMethods.tsx (was already done)
 
 ### Utf8JsonReader added to builtins (2026-03-01)
+
 `Utf8JsonReader` was added to `src/builtins/system-text-json.ts`. It's used in `JsonModelCreateCore` and `JsonModelInterfaceCreate` for the `ref Utf8JsonReader reader` parameter. Also added `JsonDocument.ParseValue` static method for parsing from a reader.
+
+### DeserializeReturnStatement Pattern (Task 11.1.4 / 2.3.13)
+
+- Created as separate component `DeserializeReturnStatement.tsx` following the per-component pattern
+- Shares `computeVariableInfos` from `DeserializeVariableDeclarations.tsx` to ensure constructor args match variable declarations exactly
+- The `computeVariableInfos` function and `VariableInfo` type are exported from DeserializeVariableDeclarations
+- For derived discriminated models, param order is: base params (including additionalBinaryDataProperties) + own non-override props
+- Legacy emitter uses multi-line format for many-param models, but single-line is functionally correct
+- **Gotcha**: The null-coalescing fallback for optional nullable list params (`?? new ChangeTrackingList<T>()`) is handled by task 2.3.11, not here

@@ -18,6 +18,7 @@ import { ModelFile } from "./components/models/ModelFile.js";
 import { UnknownDiscriminatorModelFile } from "./components/models/UnknownDiscriminatorModel.js";
 import { ModelSerializationFile } from "./components/serialization/ModelSerializationFile.js";
 import { DeserializationConstructor } from "./components/serialization/DeserializationConstructor.js";
+import { DeserializeReturnStatement } from "./components/serialization/DeserializeReturnStatement.js";
 import { DeserializeVariableDeclarations } from "./components/serialization/DeserializeVariableDeclarations.js";
 import { JsonDeserialize } from "./components/serialization/JsonDeserialize.js";
 import { JsonModelCreateCore } from "./components/serialization/JsonModelCreateCore.js";
@@ -136,6 +137,7 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
             <JsonDeserialize type={m}>
               <DeserializeVariableDeclarations type={m} />
               <PropertyMatchingLoop type={m} />
+              <DeserializeReturnStatement type={m} />
             </JsonDeserialize>
           </ModelSerializationFile>
         ))}

@@ -68,7 +68,7 @@ export interface DeserializeVariableDeclarationsProps {
  * Represents a single variable to declare in the deserialization method.
  * Either a model property variable or the synthetic additionalBinaryDataProperties.
  */
-type VariableInfo =
+export type VariableInfo =
   | { kind: "property"; property: SdkModelPropertyType }
   | { kind: "additional-binary-data" };
 
@@ -84,7 +84,7 @@ type VariableInfo =
  * @param model - The TCGC SDK model type.
  * @returns Ordered list of variable infos for declaration generation.
  */
-function computeVariableInfos(model: SdkModelType): VariableInfo[] {
+export function computeVariableInfos(model: SdkModelType): VariableInfo[] {
   if (isDerivedDiscriminatedModel(model)) {
     const baseInfos = computeVariableInfos(model.baseModel!);
     const ownProps = model.properties.filter(
