@@ -852,6 +852,7 @@ All 5 interface methods for IJsonModel<T> and IPersistableModel<T> are now imple
 **Problem**: TypeSpec inline unions like `color: "red" | "blue"` crash TypeExpression because the raw type is an unnamed Union, but TypeExpression only handles named and nullable unions.
 
 **Solution**: The `forTypeKind("Union", ...)` override in `CSharpTypeExpression.tsx` intercepts unnamed non-nullable unions and emits `<Reference refkey={efCsharpRefkey(union)} />`. This works because:
+
 1. TCGC converts inline literal unions to `SdkEnumType`
 2. The enum file declarations register `efCsharpRefkey(rawType)` as their refkey
 3. So the Reference resolves to the generated enum declaration

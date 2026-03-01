@@ -1360,3 +1360,20 @@ Files changed:
 - test/model.test.ts — Added test for inline string literal union type resolution
 
 Pattern: The override mechanism in CSharpTypeExpression.tsx now handles three type kinds: Union, Scalar, and Intrinsic. Future type expression overrides should follow the same pattern.
+
+2026-03-01 — Task 11.1.6: Fix array deserialization to call .ToArray() (complete)
+
+Problem: Generated deserialization code assigns a List<T> directly to a T[]-typed variable without calling .ToArray(), causing CS0029 type mismatch errors.
+
+Root cause: PropertyMatchingLoop.tsx builds a List<T> during array deserialization but DeserializeVariableDeclarations.tsx declares variables with TypeExpression which renders arrays as T[].
+
+Fix: Added .ToArray() in three locations in PropertyMatchingLoop.tsx:
+1. Top-level array property assignment: `varName = array.ToArray();`
+2. Nested array added to outer list: `arrayVar.Add(innerArrayVar.ToArray());`
+3. Array inside dictionary: `dictVar.Add(propVar.Name, array.ToArray());`
+
+Updated 6 test expectations in model-serialization.test.ts to match the corrected output.
+
+Result: 5 additional tests now pass (484 vs 479 before). All 6 remaining failures are pre-existing and unrelated.
+
+Pattern: When List<T> is used as an intermediate collection during deserialization, always call .ToArray() before assigning to a T[]-typed variable or adding to a collection that expects T[].

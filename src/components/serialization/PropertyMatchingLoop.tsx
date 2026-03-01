@@ -508,7 +508,7 @@ function renderArrayDeserialization(
     foreachBody = (
       <>
         {innerBlock}
-        {`\n${innerIndent}${arrayVar}.Add(${innerArrayVar});`}
+        {`\n${innerIndent}${arrayVar}.Add(${innerArrayVar}.ToArray());`}
       </>
     );
   } else if (unwrappedItemType.kind === "dict") {
@@ -651,7 +651,7 @@ function renderDictionaryDeserialization(
     foreachBody = (
       <>
         {arrayBlock}
-        {`\n${innerIndent}${dictVar}.Add(${propVar}.Name, array);`}
+        {`\n${innerIndent}${dictVar}.Add(${propVar}.Name, array.ToArray());`}
       </>
     );
   } else {
@@ -738,7 +738,7 @@ export function PropertyMatchingLoop(props: PropertyMatchingLoopProps) {
               {`\n        if (prop.NameEquals("${serializedName}"u8))`}
               {"\n        {"}
               {arrayBlock}
-              {`\n            ${varName} = array;`}
+              {`\n            ${varName} = array.ToArray();`}
               {"\n            continue;"}
               {"\n        }"}
             </>

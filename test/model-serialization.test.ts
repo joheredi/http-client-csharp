@@ -5330,7 +5330,7 @@ describe("PropertyMatchingLoop", () => {
       "foreach (var item in prop.Value.EnumerateArray())",
     );
     expect(content).toContain("array.Add(item.GetString());");
-    expect(content).toContain("tags = array;");
+    expect(content).toContain("tags = array.ToArray();");
     expect(content).toContain("continue;");
   });
 
@@ -5369,7 +5369,7 @@ describe("PropertyMatchingLoop", () => {
       "foreach (var item in prop.Value.EnumerateArray())",
     );
     expect(content).toContain("array.Add(item.GetInt32());");
-    expect(content).toContain("scores = array;");
+    expect(content).toContain("scores = array.ToArray();");
   });
 
   /**
@@ -5415,7 +5415,7 @@ describe("PropertyMatchingLoop", () => {
     expect(content).toContain(
       "array.Add(Part.DeserializePart(item, options));",
     );
-    expect(content).toContain("parts = array;");
+    expect(content).toContain("parts = array.ToArray();");
   });
 
   /**
@@ -5455,7 +5455,7 @@ describe("PropertyMatchingLoop", () => {
 
     expect(content).toContain('if (prop.NameEquals("priorities"u8))');
     expect(content).toContain("array.Add(new Priority(item.GetString()));");
-    expect(content).toContain("priorities = array;");
+    expect(content).toContain("priorities = array.ToArray();");
   });
 
   /**
@@ -5500,8 +5500,8 @@ describe("PropertyMatchingLoop", () => {
     expect(content).toContain("List<int> array0 = new List<int>();");
     expect(content).toContain("foreach (var item0 in item.EnumerateArray())");
     expect(content).toContain("array0.Add(item0.GetInt32());");
-    expect(content).toContain("array.Add(array0);");
-    expect(content).toContain("matrix = array;");
+    expect(content).toContain("array.Add(array0.ToArray());");
+    expect(content).toContain("matrix = array.ToArray();");
   });
 
   /**
