@@ -715,13 +715,16 @@ Enum items in collections are automatically handled because `renderValueWrite` f
 Enum deserialization uses `getEnumReadExpression()` in PropertyMatchingLoop.tsx, mirroring the write path's `getEnumWriteInfo()` in PropertySerializer.tsx. The key asymmetry: fixed int enums serialize with direct cast `(int)value` but deserialize with extension method `GetInt32().ToEnum()` — both directions need the extension method for deserialization validation. The getter method reuses `READ_METHOD_MAP` (same as primitives) since enum backing types are always primitives.
 
 ## Collection deserialization: accessor parameter refactoring (Task 2.3.9)
+
 - **getReadExpression now accepts `accessor` parameter** (default `"prop.Value"`). All helper functions (getDateTimeReadExpression, getDurationReadExpression, etc.) also accept `accessor`. This enables reuse for collection items where the accessor is `"item"` or `"item0"` for nested collections.
 - **renderArrayDeserialization pattern**: Uses `List<T>` (not `IList<T>`) for the intermediate variable, matching the legacy emitter's deserialization pattern. Variable naming follows depth convention: `array`/`item` at depth 0, `array0`/`item0` at depth 1, etc.
 - **TypeExpression for List<T> generic param**: Use `<TypeExpression type={unwrappedItemType.__raw!} />` to render the C# type name for the List<T> generic parameter. This generates proper `using` directives automatically.
 - **Null checking for items is separate**: Task 2.3.11 handles null value checking. Collection deserialization (2.3.9) generates the basic loop without null guards.
 
 ## Design Decisions
+
 ### Collection deserialization approach (Task 2.3.9)
+
 - **Chosen**: Extend `PropertyMatchingLoop.tsx` with helper functions (`renderArrayDeserialization`), mirroring the write path's `renderArraySerialization`/`renderValueWrite` pattern in `PropertySerializer.tsx`.
 - **Why**: Collection rendering is tightly coupled to the property matching flow (needs accessor, indent, namePolicy). Consistent with how serialization collections are handled.
 - **Rejected**: Creating a separate `CollectionDeserializer.tsx` component — adds indirection without benefit since collection deserialization is always embedded in the property matching loop.

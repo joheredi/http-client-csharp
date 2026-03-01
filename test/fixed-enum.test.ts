@@ -205,7 +205,8 @@ describe("FixedEnumFile", () => {
     `);
 
     expect(diagnostics).toHaveLength(0);
-    expect(Object.keys(outputs)).toHaveLength(0);
+    const csFiles = Object.keys(outputs).filter((k) => k.endsWith(".cs"));
+    expect(csFiles).toHaveLength(0);
   });
 
   /**

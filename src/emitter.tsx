@@ -1,5 +1,6 @@
 import { createSdkContext } from "@azure-tools/typespec-client-generator-core";
-import { type EmitContext } from "@typespec/compiler";
+import { existsSync } from "fs";
+import { type EmitContext, resolvePath } from "@typespec/compiler";
 import { writeOutput } from "@typespec/emitter-framework";
 import { CSharpScalarOverrides } from "./components/CSharpTypeExpression.js";
 import { ExtensibleEnumFile } from "./components/enums/ExtensibleEnumFile.js";
@@ -7,6 +8,8 @@ import { ExtensibleEnumSerializationFile } from "./components/enums/ExtensibleEn
 import { FixedEnumFile } from "./components/enums/FixedEnumFile.js";
 import { FixedEnumSerializationFile } from "./components/enums/FixedEnumSerializationFile.js";
 import { HttpClientCSharpOutput } from "./components/HttpClientCSharpOutput.js";
+import { ProjectFile } from "./components/infrastructure/ProjectFile.js";
+import { SolutionFile } from "./components/infrastructure/SolutionFile.js";
 import {
   hasDiscriminatedSubtypes,
   isModelAbstract,
@@ -21,6 +24,7 @@ import { JsonModelWriteCore } from "./components/serialization/JsonModelWriteCor
 import { PropertyMatchingLoop } from "./components/serialization/PropertyMatchingLoop.js";
 import { $lib } from "./lib.js";
 import { type CSharpEmitterOptions, resolveOptions } from "./options.js";
+import { resolvePackageName } from "./utils/package-name.js";
 
 /**
  * TypeSpec emitter entry point for the C# HTTP client generator.
@@ -59,12 +63,29 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
   const extensibleEnums = sdkContext.sdkPackage.enums.filter((e) => !e.isFixed);
   const models = sdkContext.sdkPackage.models;
 
+  // Resolve the package name for the generated library
+  const packageName = resolvePackageName(sdkContext, options["package-name"]);
+
+  // Determine whether to generate project scaffolding (.csproj, .sln).
+  // Skip if the .csproj already exists and user hasn't set new-project: true.
+  const csprojPath = resolvePath(
+    context.emitterOutputDir,
+    "src",
+    `${packageName}.csproj`,
+  );
+  const shouldGenerateProject =
+    options["new-project"] || !existsSync(csprojPath);
+
   const output = (
     <HttpClientCSharpOutput
       program={context.program}
       options={options}
       sdkContext={sdkContext}
     >
+      {shouldGenerateProject && (
+        <ProjectFile packageName={packageName} options={options} />
+      )}
+      {shouldGenerateProject && <SolutionFile packageName={packageName} />}
       <CSharpScalarOverrides>
         {fixedEnums.map((e) => (
           <FixedEnumFile type={e} options={options} />

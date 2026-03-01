@@ -13,6 +13,9 @@ importers:
       "@alloy-js/csharp":
         specifier: 0.22.0
         version: 0.22.0
+      "@alloy-js/msbuild":
+        specifier: 0.22.0
+        version: 0.22.0
       "@alloy-js/typescript":
         specifier: 0.22.0
         version: 0.22.0

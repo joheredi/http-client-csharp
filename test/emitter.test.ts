@@ -54,18 +54,19 @@ describe("$onEmit", () => {
   });
 
   /**
-   * Verifies that the emitter produces no output files at this stage.
-   * The component tree is intentionally empty — child components for models,
-   * enums, and clients will be added by later tasks. This confirms that
-   * $onEmit + TCGC integration doesn't produce unexpected artifacts.
+   * Verifies that an empty service produces project scaffolding files
+   * (.csproj and .sln) but no C# source files.
    */
-  it("produces no output files for an empty service", async () => {
+  it("produces only project scaffolding for an empty service", async () => {
     const [{ outputs }, diagnostics] = await Tester.compileAndDiagnose(`
       @service
       namespace TestService;
     `);
     expect(diagnostics).toHaveLength(0);
-    expect(Object.keys(outputs)).toHaveLength(0);
+    const csFiles = Object.keys(outputs).filter((k) => k.endsWith(".cs"));
+    expect(csFiles).toHaveLength(0);
+    expect(Object.keys(outputs).some((k) => k.endsWith(".csproj"))).toBe(true);
+    expect(Object.keys(outputs).some((k) => k.endsWith(".sln"))).toBe(true);
   });
 
   /**

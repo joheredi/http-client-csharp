@@ -25,13 +25,15 @@ describe("HttpClientCSharpOutput", () => {
   });
 
   /**
-   * Verifies that an empty HttpClientCSharpOutput produces no output files.
-   * The root component is intentionally empty at this stage — child components
-   * (models, enums, clients) will be added by later tasks.
+   * Verifies that an empty service still produces project scaffolding files
+   * (.csproj and .sln) but no C# source files.
    */
-  it("produces no output files when empty", async () => {
+  it("produces only project scaffolding when empty", async () => {
     const [{ outputs }, diagnostics] = await Tester.compileAndDiagnose(`op test(): void;`);
     expect(diagnostics).toHaveLength(0);
-    expect(Object.keys(outputs)).toHaveLength(0);
+    const csFiles = Object.keys(outputs).filter((k) => k.endsWith(".cs"));
+    expect(csFiles).toHaveLength(0);
+    expect(Object.keys(outputs).some((k) => k.endsWith(".csproj"))).toBe(true);
+    expect(Object.keys(outputs).some((k) => k.endsWith(".sln"))).toBe(true);
   });
 });
