@@ -732,16 +732,19 @@ Enum deserialization uses `getEnumReadExpression()` in PropertyMatchingLoop.tsx,
 ## Dictionary Deserialization (Task 2.3.10)
 
 ### Design Decision
+
 - **Chosen approach**: `renderDictionaryDeserialization` function parallel to `renderArrayDeserialization`
 - **Rejected**: Unified collection rendering function (too much coupling, harder to maintain)
 - **Reason**: Consistent with existing array pattern, simpler, follows legacy emitter structure
 
 ### Variable Naming Convention
+
 - Dictionary var: `dictionary` (depth 0), `dictionary0` (depth 1), `dictionary1` (depth 2)
 - Prop var: `prop0` (depth 0), `prop1` (depth 1) — starts at 0 because outer loop uses `prop`
 - This differs from arrays where `item` is at depth 0 (no existing `item` variable to shadow)
 
 ### Generated Pattern
+
 ```csharp
 Dictionary<string, T> dictionary = new Dictionary<string, T>();
 foreach (var prop0 in prop.Value.EnumerateObject())
@@ -751,6 +754,15 @@ foreach (var prop0 in prop.Value.EnumerateObject())
 ```
 
 ### Cross-Collection Nesting
+
 - Arrays in dictionaries: `renderDictionaryDeserialization` delegates to `renderArrayDeserialization`
 - Dictionaries in arrays: `renderArrayDeserialization` delegates to `renderDictionaryDeserialization`
 - Both reset their depth counters when crossing collection type boundaries
+
+## Design Decisions
+
+### Dictionary Serialization (Write Path) — Task 2.2.10
+**Approach chosen**: Mirror `renderArraySerialization` with `renderDictionarySerialization` + `renderDictionaryProperty`.
+**Why**: Minimal change surface, consistent architecture, enables dict↔array cross-nesting through `renderValueWrite` dispatch.
+**Rejected**: Unified collection handler (too much refactoring, would change array behavior).
+**Key difference from arrays**: Dicts use `foreach (var item ...)` instead of typed `foreach (Type item ...)`. Nested dicts use depth-based variable names (`item`, `item0`, `item1`) instead of shadowing, because outer `.Key`/`.Value` members are referenced in inner `foreach` expressions.

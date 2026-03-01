@@ -1215,3 +1215,21 @@ Total tests: 413 (all passing). 5 new tests added.
 - 5 tests added: string dict, int32 dict, model dict, extensible enum dict, nested dict
 - Note: TypeSpec `enum` is fixed by default; use `union` for extensible enums in tests
 - Next: Task 2.3.11 (null value handling) or 2.3.12 (additional binary data capture)
+
+2026-03-01 — Task 2.2.10: Implement dictionary serialization (complete)
+
+- Added `renderDictionarySerialization` function to PropertySerializer.tsx
+- Mirrors the existing `renderArraySerialization` pattern for the write path
+- Generates `WriteStartObject → foreach (var item in Dict) → WritePropertyName(item.Key) → serialize value → WriteEndObject`
+- Uses `var` for foreach type (unlike arrays which use explicit types)
+- Null checks for reference type values: `if (item.Value == null) { WriteNullValue(); continue; }`
+- Depth-based variable naming: `item` (depth 0), `item0` (depth 1), `item1` (depth 2)
+- Unlike arrays which shadow `item`, dicts need distinct names because outer `.Key`/`.Value` access continues in inner `foreach` expressions
+- Added `renderDictionaryProperty` function for Optional guard wrapping (mirrors `renderCollectionProperty`)
+- Updated `renderValueWrite` to dispatch dict types to `renderDictionarySerialization`
+- Updated `WritePropertySerialization` component to handle `dict` type properties
+- Handles nested dicts recursively, arrays inside dicts via delegation to `renderArraySerialization`
+- Added `getDictItemVarName(depth)` helper function
+- 7 tests added: string dict, int32 dict, model dict, extensible enum dict, nested dict, optional dict, dict alongside scalars
+- Note: `SdkDictionaryType` imported from TCGC alongside existing array/model types
+- Next: Task 2.2.13 (read-only property guards) or 2.2.14 (additional binary data serialization) or 2.3.11 (null value handling)

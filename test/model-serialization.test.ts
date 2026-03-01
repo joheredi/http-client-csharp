@@ -3314,15 +3314,345 @@ describe("CollectionSerialization", () => {
 });
 
 /**
- * Tests for nested model property serialization.
+ * Tests for dictionary property serialization (JSON write path).
  *
- * When a model property is itself a model type, the serializer generates
- * `writer.WriteObjectValue(PropertyName, options)` which delegates to
- * the nested model's own `IJsonModel<T>.Write` implementation. This avoids
- * duplicating serialization logic and follows the Composite pattern.
+ * When a model property is a `Record<T>` type (Dictionary<string, T>), the
+ * serializer generates `WriteStartObject`, a `foreach` loop that writes each
+ * key-value pair using `WritePropertyName(item.Key)` and the appropriate value
+ * writer, then `WriteEndObject`.
  *
- * The generic type parameter on `WriteObjectValue` is intentionally omitted
- * because C# infers it from the argument type. This matches the legacy emitter's
+ * These tests matter because:
+ * - Dictionaries are the second most common collection type after arrays.
+ * - The `foreach (var item ...)` pattern differs from arrays which use typed
+ *   variables (e.g., `foreach (string item ...)`).
+ * - Key writing (`WritePropertyName(item.Key)`) is unique to dictionaries.
+ * - Null checks for reference type values must work correctly.
+ * - Nested dictionaries require depth-based variable naming (`item`, `item0`,
+ *   `item1`) to avoid ambiguity, unlike arrays which shadow `item`.
+ * - Optional dictionary guards use `IsCollectionDefined` (same as arrays).
+ */
+describe("DictionarySerialization", () => {
+  /**
+   * Validates that a required `Record<string>` property generates the
+   * WriteStartObject/foreach/WriteEndObject pattern with null checks for
+   * string values (reference type in C#).
+   */
+  it("serializes required string dictionary with WriteStartObject and foreach", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        tags: Record<string>;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Property name write
+    expect(content).toContain('writer.WritePropertyName("tags"u8);');
+
+    // Dictionary structure
+    expect(content).toContain("writer.WriteStartObject();");
+    expect(content).toContain("foreach (var item in Tags)");
+    expect(content).toContain("writer.WritePropertyName(item.Key);");
+    expect(content).toContain("writer.WriteEndObject();");
+
+    // Null check for reference type values (string is a reference type in C#)
+    expect(content).toContain("if (item.Value == null)");
+    expect(content).toContain("writer.WriteNullValue();");
+    expect(content).toContain("continue;");
+
+    // Value serialization
+    expect(content).toContain("writer.WriteStringValue(item.Value);");
+
+    // Should NOT have Optional guard (required property)
+    expect(content).not.toContain("Optional.IsCollectionDefined(Tags)");
+  });
+
+  /**
+   * Validates that a required `Record<int32>` property generates a foreach
+   * loop WITHOUT null checks. int is a non-nullable value type in C#, so
+   * dictionary values cannot be null.
+   */
+  it("serializes required int32 dictionary without null check", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        counts: Record<int32>;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Dictionary structure
+    expect(content).toContain('writer.WritePropertyName("counts"u8);');
+    expect(content).toContain("writer.WriteStartObject();");
+    expect(content).toContain("foreach (var item in Counts)");
+    expect(content).toContain("writer.WritePropertyName(item.Key);");
+    expect(content).toContain("writer.WriteNumberValue(item.Value);");
+    expect(content).toContain("writer.WriteEndObject();");
+
+    // No null check for int value type
+    expect(content).not.toContain("if (item.Value == null)");
+  });
+
+  /**
+   * Validates that a `Record<ModelType>` dictionary serializes each value
+   * using `WriteObjectValue(item.Value, options)`, delegating to the nested
+   * model's own `IJsonModel<T>.Write` implementation.
+   */
+  it("serializes model dictionary with WriteObjectValue per value", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Pet {
+        name: string;
+      }
+
+      model Owner {
+        pets: Record<Pet>;
+      }
+
+      @route("/test")
+      op test(): Owner;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Owner.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('writer.WritePropertyName("pets"u8);');
+    expect(content).toContain("writer.WriteStartObject();");
+    expect(content).toContain("foreach (var item in Pets)");
+    expect(content).toContain("writer.WritePropertyName(item.Key);");
+
+    // Null check for model values (reference type)
+    expect(content).toContain("if (item.Value == null)");
+
+    // Model value serialization via WriteObjectValue
+    expect(content).toContain("writer.WriteObjectValue(item.Value, options);");
+    expect(content).toContain("writer.WriteEndObject();");
+  });
+
+  /**
+   * Validates that an extensible enum dictionary serializes each value using
+   * the appropriate instance method (e.g., `.ToString()` for string-backed).
+   *
+   * Extensible enums are readonly structs (value types) in C#, so they don't
+   * need null checks in the foreach loop.
+   */
+  it("serializes extensible enum dictionary with ToString per value", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      union Color {
+        red: "red",
+        blue: "blue",
+        string,
+      }
+
+      model Widget {
+        colors: Record<Color>;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('writer.WritePropertyName("colors"u8);');
+    expect(content).toContain("writer.WriteStartObject();");
+    expect(content).toContain("foreach (var item in Colors)");
+    expect(content).toContain("writer.WritePropertyName(item.Key);");
+    expect(content).toContain(
+      "writer.WriteStringValue(item.Value.ToString());",
+    );
+    expect(content).toContain("writer.WriteEndObject();");
+
+    // No null check for extensible enum (value type struct)
+    expect(content).not.toContain("if (item.Value == null)");
+  });
+
+  /**
+   * Validates that nested dictionaries (`Record<Record<string>>`) produce
+   * nested WriteStartObject/WriteEndObject blocks with depth-based variable
+   * names: `item` for the outer loop and `item0` for the inner loop.
+   *
+   * This is critical because unlike arrays (which shadow `item`), dictionaries
+   * must use distinct variable names at each depth to avoid ambiguity when
+   * accessing `.Key` and `.Value` members.
+   */
+  it("serializes nested dictionary with depth-based variable names", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        matrix: Record<Record<string>>;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Outer dictionary structure
+    expect(content).toContain('writer.WritePropertyName("matrix"u8);');
+
+    // Should have two WriteStartObject (outer + inner) and two WriteEndObject
+    const startObjCount = (content.match(/writer\.WriteStartObject\(\)/g) || [])
+      .length;
+    const endObjCount = (content.match(/writer\.WriteEndObject\(\)/g) || [])
+      .length;
+    expect(startObjCount).toBe(2);
+    expect(endObjCount).toBe(2);
+
+    // Outer loop uses `item`, inner loop uses `item0`
+    expect(content).toContain("foreach (var item in Matrix)");
+    expect(content).toContain("writer.WritePropertyName(item.Key);");
+    expect(content).toContain("foreach (var item0 in item.Value)");
+    expect(content).toContain("writer.WritePropertyName(item0.Key);");
+
+    // Inner value serialization
+    expect(content).toContain("writer.WriteStringValue(item0.Value);");
+  });
+
+  /**
+   * Validates that an optional dictionary property is wrapped in an
+   * `Optional.IsCollectionDefined` guard, preventing serialization of
+   * dictionaries that haven't been set (tracked via ChangeTrackingDictionary).
+   */
+  it("wraps optional dictionary in IsCollectionDefined guard", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        metadata?: Record<string>;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Optional guard
+    expect(content).toContain("if (Optional.IsCollectionDefined(Metadata))");
+
+    // Dictionary content inside guard
+    expect(content).toContain('writer.WritePropertyName("metadata"u8);');
+    expect(content).toContain("writer.WriteStartObject();");
+    expect(content).toContain("foreach (var item in Metadata)");
+    expect(content).toContain("writer.WritePropertyName(item.Key);");
+    expect(content).toContain("writer.WriteStringValue(item.Value);");
+    expect(content).toContain("writer.WriteEndObject();");
+  });
+
+  /**
+   * Validates that a dictionary property coexists with scalar properties
+   * in the same model. Both should appear in the generated JsonModelWriteCore
+   * method in declaration order.
+   */
+  it("serializes dictionary alongside scalar properties", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        metadata: Record<string>;
+        count: int32;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Scalar properties
+    expect(content).toContain('writer.WritePropertyName("name"u8);');
+    expect(content).toContain("writer.WriteStringValue(Name);");
+    expect(content).toContain('writer.WritePropertyName("count"u8);');
+    expect(content).toContain("writer.WriteNumberValue(Count);");
+
+    // Dictionary property
+    expect(content).toContain('writer.WritePropertyName("metadata"u8);');
+    expect(content).toContain("writer.WriteStartObject();");
+    expect(content).toContain("foreach (var item in Metadata)");
+    expect(content).toContain("writer.WriteEndObject();");
+
+    // Verify order: name before metadata before count
+    const nameIdx = content.indexOf('writer.WritePropertyName("name"u8)');
+    const metaIdx = content.indexOf('writer.WritePropertyName("metadata"u8)');
+    const countIdx = content.indexOf('writer.WritePropertyName("count"u8)');
+    expect(nameIdx).toBeLessThan(metaIdx);
+    expect(metaIdx).toBeLessThan(countIdx);
+  });
+});
+
+/**
  * generated output (e.g., `writer.WriteObjectValue(RequiredModel, options)`).
  *
  * These tests matter because:
@@ -5124,9 +5454,7 @@ describe("PropertyMatchingLoop", () => {
     const content = outputs[fileKey!];
 
     expect(content).toContain('if (prop.NameEquals("priorities"u8))');
-    expect(content).toContain(
-      "array.Add(new Priority(item.GetString()));",
-    );
+    expect(content).toContain("array.Add(new Priority(item.GetString()));");
     expect(content).toContain("priorities = array;");
   });
 

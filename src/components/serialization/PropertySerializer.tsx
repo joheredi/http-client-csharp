@@ -24,10 +24,9 @@
  * - **Enums** → Fixed enums serialize via extension methods (`ToSerialString`,
  *   `ToSerialSingle`) or direct casts (`(int)value`); extensible enums use
  *   instance methods (`ToString`, `ToSerialInt32`)
- *
- * Non-primitive types (dictionaries) return `null` and are
- * handled by subsequent tasks:
- * - 2.2.10: Dictionary serialization
+ * - **Dictionaries (Record)** → `WriteStartObject` + `foreach` loop with
+ *   `WritePropertyName(item.Key)` + value serialization + `WriteEndObject`.
+ *   Nested dictionaries use depth-based variable names (`item`, `item0`, `item1`).
  *
  * @example Generated output for a string property:
  * ```csharp
@@ -87,6 +86,7 @@ import {
   type SdkArrayType,
   type SdkBuiltInType,
   type SdkDateTimeType,
+  type SdkDictionaryType,
   type SdkDurationType,
   type SdkEnumType,
   type SdkModelPropertyType,
@@ -594,20 +594,38 @@ function collectionItemNeedsNullCheck(itemType: SdkType): boolean {
 }
 
 /**
+ * Returns the loop variable name for dictionary serialization at a given nesting depth.
+ *
+ * Matches the legacy emitter's `ForEachStatement` naming convention:
+ * - Depth 0 → `"item"` (outermost dictionary loop)
+ * - Depth 1 → `"item0"` (first nested dictionary)
+ * - Depth 2 → `"item1"` (second nested dictionary)
+ *
+ * Unlike arrays (which shadow `item` at every level), dictionaries use distinct
+ * variable names because the outer variable's `.Key` and `.Value` members may still
+ * be referenced in the inner scope (e.g., in the `foreach` expression `item.Value`).
+ *
+ * @param depth - The nesting depth of the dictionary (0 = outermost).
+ * @returns The loop variable name for this depth level.
+ */
+function getDictItemVarName(depth: number): string {
+  return depth === 0 ? "item" : `item${depth - 1}`;
+}
+
+/**
  * Renders the serialization statements for a single value expression.
  *
- * Handles three categories:
+ * Handles four categories:
  * - **Primitive types** — delegates to `getWriteMethodInfo` to produce
  *   `writer.WriteXxxValue(expr[, format])`.
  * - **Array types** — recursively renders `WriteStartArray`, `foreach` loop,
  *   item serialization, and `WriteEndArray`.
+ * - **Dictionary types** — renders `WriteStartObject`, `foreach` loop with
+ *   `WritePropertyName(item.Key)`, value serialization, and `WriteEndObject`.
  * - **Model types** — renders `writer.WriteObjectValue(expr, options)` which
  *   delegates to the nested model's own `IJsonModel<T>.Write`.
  * - **Enum types** — handled via `getWriteMethodInfo` using value transforms
  *   for extension methods, casts, or instance methods.
- *
- * Returns `null` for types not yet supported (dictionaries),
- * allowing the caller to skip rendering for those properties.
  *
  * @param type - The SDK type of the value to serialize.
  * @param valueExpr - The C# expression that produces the value (e.g., property
@@ -626,6 +644,15 @@ function renderValueWrite(
   if (unwrapped.kind === "array") {
     return renderArraySerialization(
       unwrapped as SdkArrayType,
+      valueExpr,
+      indent,
+    );
+  }
+
+  // Dictionary types — recursive dictionary serialization
+  if (unwrapped.kind === "dict") {
+    return renderDictionarySerialization(
+      unwrapped as SdkDictionaryType,
       valueExpr,
       indent,
     );
@@ -718,6 +745,104 @@ function renderArraySerialization(
 }
 
 /**
+ * Renders the complete dictionary serialization block for a dictionary value.
+ *
+ * Generates the pattern:
+ * ```csharp
+ * writer.WriteStartObject();
+ * foreach (var item in DictionaryProp)
+ * {
+ *     writer.WritePropertyName(item.Key);
+ *     writer.WriteXxxValue(item.Value);
+ * }
+ * writer.WriteEndObject();
+ * ```
+ *
+ * Handles nested dictionaries recursively — a `Record<Record<string>>` produces
+ * nested `WriteStartObject`/`WriteEndObject` pairs with nested `foreach` loops.
+ * Unlike arrays (which shadow `item` at every level), dictionary loops use
+ * depth-based variable names (`item`, `item0`, `item1`, ...) because the outer
+ * variable's `.Key`/`.Value` members may still be referenced in the `foreach`
+ * expression of inner loops (e.g., `foreach (var item0 in item.Value)`).
+ *
+ * For reference type values, a null check is inserted:
+ * `if (item.Value == null) { WriteNullValue(); continue; }`.
+ *
+ * Uses `var` for the foreach type declaration (not an explicit type like arrays)
+ * matching the legacy emitter's `ForEachStatement("item", dictionary, ...)` pattern.
+ *
+ * @param dictType - The TCGC `SdkDictionaryType` whose entries are being serialized.
+ * @param valueExpr - The C# expression for the dictionary (e.g., `"Names"` or `"item.Value"`).
+ * @param indent - Whitespace indentation prefix for the generated block.
+ * @param depth - Nesting depth for dictionary variable naming (0 = outermost).
+ * @returns JSX element with the complete dictionary serialization, or `null` if
+ *   the value type is not yet supported.
+ */
+function renderDictionarySerialization(
+  dictType: SdkDictionaryType,
+  valueExpr: string,
+  indent: string,
+  depth: number = 0,
+): Children | null {
+  const valueType = dictType.valueType;
+  const unwrappedValueType = unwrapNullableType(valueType);
+  const innerIndent = indent + "    ";
+  const loopVar = getDictItemVarName(depth);
+
+  // Build value serialization based on the value type
+  let valueSerialization: Children | null;
+
+  if (unwrappedValueType.kind === "dict") {
+    // Nested dictionary — recurse with incremented depth
+    valueSerialization = renderDictionarySerialization(
+      unwrappedValueType as SdkDictionaryType,
+      `${loopVar}.Value`,
+      innerIndent,
+      depth + 1,
+    );
+  } else if (unwrappedValueType.kind === "array") {
+    // Array inside dictionary — delegate to array serialization
+    valueSerialization = renderArraySerialization(
+      unwrappedValueType as SdkArrayType,
+      `${loopVar}.Value`,
+      innerIndent,
+    );
+  } else {
+    // Primitive, model, or enum — delegate to renderValueWrite
+    valueSerialization = renderValueWrite(
+      valueType,
+      `${loopVar}.Value`,
+      innerIndent,
+    );
+  }
+
+  if (valueSerialization === null) return null;
+
+  const needsNull = collectionItemNeedsNullCheck(valueType);
+
+  return (
+    <>
+      {`\n${indent}writer.WriteStartObject();`}
+      {`\n${indent}foreach (var ${loopVar} in ${valueExpr})`}
+      {`\n${indent}{`}
+      {`\n${innerIndent}writer.WritePropertyName(${loopVar}.Key);`}
+      {needsNull && (
+        <>
+          {`\n${innerIndent}if (${loopVar}.Value == null)`}
+          {`\n${innerIndent}{`}
+          {`\n${innerIndent}    writer.WriteNullValue();`}
+          {`\n${innerIndent}    continue;`}
+          {`\n${innerIndent}}`}
+        </>
+      )}
+      {valueSerialization}
+      {`\n${indent}}`}
+      {`\n${indent}writer.WriteEndObject();`}
+    </>
+  );
+}
+
+/**
  * Renders collection property serialization with appropriate property name
  * writing and optional guards.
  *
@@ -783,6 +908,75 @@ function renderCollectionProperty(
 }
 
 /**
+ * Renders dictionary property serialization with appropriate property name
+ * writing and optional guards.
+ *
+ * Generates `WriteStartObject`, a `foreach` loop that writes each key-value pair
+ * using `WritePropertyName(item.Key)` and the appropriate value writer, then
+ * `WriteEndObject`. Matches the legacy emitter's dictionary serialization pattern.
+ *
+ * Handles both guarded (optional/required-nullable) and unguarded (required)
+ * dictionary properties. The property name write and dictionary value
+ * serialization are placed inside the guard block when needed.
+ *
+ * @param property - The SDK model property being serialized.
+ * @param dictType - The unwrapped `SdkDictionaryType` for the property.
+ * @param serializedName - The JSON wire name for the property.
+ * @param csharpName - The PascalCase C# property name.
+ * @returns JSX element with the complete dictionary serialization, or `null`
+ *   if the dictionary values can't be serialized yet.
+ */
+function renderDictionaryProperty(
+  property: SdkModelPropertyType,
+  dictType: SdkDictionaryType,
+  serializedName: string,
+  csharpName: string,
+) {
+  if (needsOptionalGuard(property)) {
+    const guardMethod = getOptionalGuardMethodName(property);
+    const reqNullable = isRequiredNullable(property);
+    const dictContent = renderDictionarySerialization(
+      dictType,
+      csharpName,
+      "        ",
+    );
+    if (dictContent === null) return null;
+
+    return (
+      <>
+        {`\n    if (Optional.${guardMethod}(${csharpName}))`}
+        {"\n    {"}
+        {`\n        writer.WritePropertyName("${serializedName}"u8);`}
+        {dictContent}
+        {"\n    }"}
+        {reqNullable && (
+          <>
+            {"\n    else"}
+            {"\n    {"}
+            {`\n        writer.WriteNull("${serializedName}"u8);`}
+            {"\n    }"}
+          </>
+        )}
+      </>
+    );
+  }
+
+  const dictContent = renderDictionarySerialization(
+    dictType,
+    csharpName,
+    "    ",
+  );
+  if (dictContent === null) return null;
+
+  return (
+    <>
+      {`\n    writer.WritePropertyName("${serializedName}"u8);`}
+      {dictContent}
+    </>
+  );
+}
+
+/**
  * Renders model property serialization with appropriate property name
  * writing and optional guards.
  *
@@ -838,7 +1032,7 @@ function renderModelProperty(
  * Generates the serialization statements for a single model property.
  *
  * Produces C# statements for writing the property to a `Utf8JsonWriter`.
- * Handles four categories of types:
+ * Handles five categories of types:
  *
  * **Primitive types** — `writer.WritePropertyName("name"u8)` followed by
  * `writer.WriteXxxValue(Name)` with optional format specifier.
@@ -848,12 +1042,15 @@ function renderModelProperty(
  * each item, and `writer.WriteEndArray()`. Nested collections are handled
  * recursively with nested foreach loops.
  *
+ * **Dictionary types (Record)** — `writer.WritePropertyName("name"u8)` followed
+ * by `writer.WriteStartObject()`, a `foreach` loop that writes each key-value
+ * pair with `WritePropertyName(item.Key)` and the appropriate value writer,
+ * and `writer.WriteEndObject()`. Nested dictionaries use depth-based variable
+ * names (`item`, `item0`, `item1`, ...).
+ *
  * **Model types** — `writer.WritePropertyName("pet"u8)` followed by
  * `writer.WriteObjectValue(Pet, options)` which delegates to the nested
  * model's own `IJsonModel<T>.Write` implementation.
- *
- * **Unsupported types** (dictionaries) — returns `null`,
- * handled by subsequent tasks (2.2.10).
  *
  * Optional properties are wrapped in `Optional.IsDefined` / `IsCollectionDefined`
  * guards. Required nullable properties get an `else { WriteNull }` branch.
@@ -912,6 +1109,16 @@ export function WritePropertySerialization(
     return renderCollectionProperty(
       property,
       unwrapped as SdkArrayType,
+      serializedName,
+      csharpName,
+    );
+  }
+
+  // Dictionary types — WriteStartObject/foreach/WriteEndObject serialization
+  if (unwrapped.kind === "dict") {
+    return renderDictionaryProperty(
+      property,
+      unwrapped as SdkDictionaryType,
       serializedName,
       csharpName,
     );

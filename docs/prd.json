@@ -2000,7 +2000,7 @@
           "title": "Implement dictionary serialization",
           "description": "Dictionaries: WriteStartObject \u2192 foreach KVP \u2192 WritePropertyName(key) \u2192 serialize value \u2192 WriteEndObject.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.2.3"
           ],
