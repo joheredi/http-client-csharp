@@ -1377,3 +1377,22 @@ Updated 6 test expectations in model-serialization.test.ts to match the correcte
 Result: 5 additional tests now pass (484 vs 479 before). All 6 remaining failures are pre-existing and unrelated.
 
 Pattern: When List<T> is used as an intermediate collection during deserialization, always call .ToArray() before assigning to a T[]-typed variable or adding to a collection that expects T[].
+
+2026-03-01 — Task 1.1.3: Create collection type utilities (complete)
+
+Created `src/utils/collections.ts` with pure utility functions for C# collection type determination:
+- `getCollectionPropertyVariant(type, isReadOnly)` — determines IList/IReadOnlyList/IDictionary/IReadOnlyDictionary based on read-only status
+- `getCollectionParameterVariant(type)` — determines IEnumerable (arrays) or IDictionary (dicts) for constructor params
+- `getCollectionValueType(type)` — extracts element/value type from collections
+- `isArrayCollection(type)` / `isDictCollection(type)` — type guards
+
+Matches legacy emitter's 3-layer system:
+1. TypeFactory.CreateCSharpType → IList<T>, IDictionary<string,T>
+2. CSharpType.GetOutputType → IReadOnlyList<T>, IReadOnlyDictionary<string,T>
+3. CSharpType.GetInputType → IEnumerable<T> for array parameters
+
+Key design decision: Pure utility functions (no JSX, no Alloy deps) returning string identifiers. Components use these with `code` template tags and Alloy Generic.* library references for rendering. Follows the same pattern as property.ts and nullable.ts.
+
+Test: 32 tests in test/collections.test.ts covering all variants, nullable unwrapping, error cases, and cross-function consistency.
+
+Next: Task 1.1.5 (type mapping tests) is now unblocked by this work.
