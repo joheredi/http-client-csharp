@@ -129,10 +129,15 @@ describe("DeserializeReturnStatement", () => {
   });
 
   /**
-   * Validates that the base model in a discriminated hierarchy also gets
-   * a correct return statement with its own properties and additionalBinaryDataProperties.
+   * Validates that the base model in a discriminated hierarchy uses discriminator
+   * dispatch instead of a standard return statement. Base models with discriminated
+   * subtypes peek at the discriminator property and dispatch to derived deserializers,
+   * falling back to the Unknown variant for unrecognized values.
+   *
+   * This is important because abstract base models cannot be directly instantiated,
+   * so their deserialization method delegates to the correct derived type.
    */
-  it("generates return statement for base discriminated model", async () => {
+  it("generates discriminator dispatch for base discriminated model", async () => {
     const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
@@ -162,8 +167,19 @@ describe("DeserializeReturnStatement", () => {
     expect(petFileKey).toBeDefined();
     const petContent = outputs[petFileKey!];
 
+    // Base discriminated model should NOT have a standard return new statement
+    expect(petContent).not.toContain("return new Pet(");
+
+    // Should have discriminator dispatch instead
     expect(petContent).toContain(
-      "return new Pet(kind, name, additionalBinaryDataProperties);",
+      'if (element.TryGetProperty("kind"u8, out JsonElement discriminator))',
+    );
+    expect(petContent).toContain("switch (discriminator.GetString())");
+    expect(petContent).toContain(
+      "return Dog.DeserializeDog(element, options);",
+    );
+    expect(petContent).toContain(
+      "return UnknownPet.DeserializeUnknownPet(element, options);",
     );
   });
 

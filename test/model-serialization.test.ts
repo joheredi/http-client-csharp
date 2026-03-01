@@ -2958,6 +2958,181 @@ describe("JsonDeserialize", () => {
     );
     expect(content).toContain("        return null;");
   });
+
+  /**
+   * Validates that abstract discriminated base models render discriminator
+   * dispatch instead of the standard property matching body. The deserialization
+   * method should peek at the discriminator property using TryGetProperty,
+   * then switch on the discriminator string value to dispatch to the correct
+   * derived type's deserialization method.
+   *
+   * This is critical because abstract base models cannot be directly instantiated.
+   * Their deserialization methods serve as dispatch points for the polymorphic
+   * type hierarchy.
+   */
+  it("generates discriminator peek and switch for discriminated base model", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Dog extends Pet {
+        kind: "dog";
+        breed: string;
+      }
+
+      model Cat extends Pet {
+        kind: "cat";
+        indoor: boolean;
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const petFile = Object.keys(outputs).find((k) =>
+      k.includes("Pet.Serialization.cs"),
+    );
+    expect(petFile).toBeDefined();
+    const petContent = outputs[petFile!];
+
+    // Method signature still present
+    expect(petContent).toContain(
+      "internal static Pet DeserializePet(JsonElement element, ModelReaderWriterOptions options)",
+    );
+
+    // Null check still present
+    expect(petContent).toContain(
+      "if (element.ValueKind == JsonValueKind.Null)",
+    );
+
+    // Discriminator peek: TryGetProperty with serialized name
+    expect(petContent).toContain(
+      'if (element.TryGetProperty("kind"u8, out JsonElement discriminator))',
+    );
+
+    // Switch on discriminator string value
+    expect(petContent).toContain("switch (discriminator.GetString())");
+
+    // Dispatch to each derived type
+    expect(petContent).toContain('case "dog":');
+    expect(petContent).toContain(
+      "return Dog.DeserializeDog(element, options);",
+    );
+    expect(petContent).toContain('case "cat":');
+    expect(petContent).toContain(
+      "return Cat.DeserializeCat(element, options);",
+    );
+
+    // Unknown fallback
+    expect(petContent).toContain(
+      "return UnknownPet.DeserializeUnknownPet(element, options);",
+    );
+
+    // Should NOT have property matching loop or variable declarations
+    expect(petContent).not.toContain(
+      "foreach (var prop in element.EnumerateObject())",
+    );
+    expect(petContent).not.toContain("string kind = default;");
+  });
+
+  /**
+   * Validates that non-discriminated models are unaffected by discriminator
+   * dispatch logic. Regular models should continue to use the standard
+   * deserialization body (variable declarations + property matching loop +
+   * constructor return).
+   */
+  it("does not generate discriminator dispatch for non-discriminated model", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        count: int32;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const widgetFile = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    expect(widgetFile).toBeDefined();
+    const content = outputs[widgetFile!];
+
+    // Should NOT have discriminator dispatch
+    expect(content).not.toContain("TryGetProperty");
+    expect(content).not.toContain("discriminator.GetString()");
+    expect(content).not.toContain("UnknownWidget");
+
+    // Should have standard deserialization body
+    expect(content).toContain("string name = default;");
+    expect(content).toContain(
+      "foreach (var prop in element.EnumerateObject())",
+    );
+  });
+
+  /**
+   * Validates that derived models (leaf models in the hierarchy) still use the
+   * standard deserialization body with property matching, not discriminator
+   * dispatch. Only models WITH discriminated subtypes use dispatch; concrete
+   * derived models without subtypes iterate over properties normally.
+   */
+  it("generates standard deserialization for derived model without subtypes", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Dog extends Pet {
+        kind: "dog";
+        breed: string;
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const dogFile = Object.keys(outputs).find((k) =>
+      k.includes("Dog.Serialization.cs"),
+    );
+    expect(dogFile).toBeDefined();
+    const dogContent = outputs[dogFile!];
+
+    // Dog should use standard deserialization (not discriminator dispatch)
+    expect(dogContent).not.toContain("TryGetProperty");
+    expect(dogContent).not.toContain("discriminator.GetString()");
+
+    // Dog should have property matching loop
+    expect(dogContent).toContain(
+      "foreach (var prop in element.EnumerateObject())",
+    );
+    expect(dogContent).toContain('string kind = "dog";');
+  });
 });
 
 /**
@@ -3111,13 +3286,14 @@ describe("DeserializeVariableDeclarations", () => {
   });
 
   /**
-   * Validates that the base model in a discriminated hierarchy uses `default`
-   * for the discriminator variable (not a literal). The base model doesn't
-   * know which subtype it will deserialize into, so the discriminator variable
-   * starts as `default` and is populated from JSON during the property
-   * matching loop.
+   * Validates that the base model in a discriminated hierarchy does NOT render
+   * variable declarations. Instead, the deserialization method uses discriminator
+   * dispatch (peek + switch + fallback) to delegate to derived type deserializers.
+   * The base model's deserialization body never declares local variables because
+   * it never iterates over properties itself — it dispatches to the correct
+   * derived type based on the discriminator value.
    */
-  it("uses default for discriminator in base model", async () => {
+  it("uses discriminator dispatch instead of variable declarations for base model", async () => {
     const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
@@ -3147,9 +3323,15 @@ describe("DeserializeVariableDeclarations", () => {
     expect(petFile).toBeDefined();
     const petContent = outputs[petFile!];
 
-    // Base model discriminator uses default, not a literal
-    expect(petContent).toContain("string kind = default;");
-    expect(petContent).toContain("string name = default;");
+    // Base model should NOT have variable declarations
+    expect(petContent).not.toContain("string kind = default;");
+    expect(petContent).not.toContain("string name = default;");
+
+    // Should have discriminator dispatch instead
+    expect(petContent).toContain(
+      'if (element.TryGetProperty("kind"u8, out JsonElement discriminator))',
+    );
+    expect(petContent).toContain("switch (discriminator.GetString())");
   });
 
   /**
@@ -4692,12 +4874,13 @@ describe("PropertyMatchingLoop", () => {
   });
 
   /**
-   * Validates that the discriminator property in a base model is matched
-   * and deserialized like any other string property. Even though the
-   * discriminator has special semantics, its value extraction follows the
-   * same pattern — the JSON value overwrites the pre-initialized default.
+   * Validates that a discriminated base model uses discriminator dispatch
+   * instead of the property matching loop. Base models with discriminated
+   * subtypes don't iterate over properties — they peek at the discriminator
+   * and dispatch to derived type deserializers. The property matching loop
+   * only runs in concrete derived models (e.g., Dog), not in the abstract base (Pet).
    */
-  it("matches discriminator property in base model", async () => {
+  it("uses discriminator dispatch instead of property matching for base model", async () => {
     const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
@@ -4728,8 +4911,20 @@ describe("PropertyMatchingLoop", () => {
     expect(petKey).toBeDefined();
     const petContent = outputs[petKey!];
 
-    expect(petContent).toContain('if (prop.NameEquals("kind"u8))');
-    expect(petContent).toContain("kind = prop.Value.GetString();");
+    // Base model should NOT have property matching loop
+    expect(petContent).not.toContain('if (prop.NameEquals("kind"u8))');
+    expect(petContent).not.toContain(
+      "foreach (var prop in element.EnumerateObject())",
+    );
+
+    // Should have discriminator dispatch instead
+    expect(petContent).toContain(
+      'if (element.TryGetProperty("kind"u8, out JsonElement discriminator))',
+    );
+    expect(petContent).toContain('case "dog":');
+    expect(petContent).toContain(
+      "return Dog.DeserializeDog(element, options);",
+    );
   });
 
   /**

@@ -1414,3 +1414,25 @@ All inheritance tests pass. 2 unrelated test failures exist (XML-only models, ne
 - Added 7 tests in ReadOnlyPropertyGuards describe block covering: required read-only string/int32/boolean, optional read-only, writable-only model, indentation, mixed properties
 - TypeSpec test definitions use `@visibility(Lifecycle.Read)` (from compiler stdlib, NOT `using TypeSpec.Rest`)
 - No regressions: same 6 pre-existing failures, 531 tests pass
+
+## 2026-03-01 — Tasks 2.4.1/2.4.2/2.4.3: Implement discriminator deserialization dispatch (complete)
+
+Created `src/components/serialization/DiscriminatorDeserialization.tsx` — a new component that generates
+the discriminator dispatch block for models with discriminated subtypes:
+- Peeks at discriminator property via `element.TryGetProperty("{name}"u8, out JsonElement discriminator)`
+- Switches on `discriminator.GetString()` to dispatch to derived type deserializers
+- Falls back to `Unknown{Base}.Deserialize{Unknown}(element, options)` for unrecognized values
+
+Modified `JsonDeserialize.tsx` to conditionally render the discriminator dispatch for models with
+`hasDiscriminatedSubtypes()` instead of the standard body (variable declarations + property matching + return).
+
+Tasks 2.4.1/2.4.2/2.4.3 implemented together as one atomic change since peek, switch, and fallback are
+inseparable — an empty switch doesn't compile, and without the fallback there's no return path.
+
+Updated 3 existing tests that verified the OLD incorrect behavior (standard body for discriminated base models)
+and added 3 new tests for the correct discriminator dispatch behavior.
+
+Key patterns:
+- `model.discriminatorProperty.serializedName` gives the JSON property name for TryGetProperty
+- `model.discriminatedSubtypes` is a flat Record<string, SdkModelType> of all descendant subtypes
+- Unknown variant name follows pattern `Unknown{BaseName}`

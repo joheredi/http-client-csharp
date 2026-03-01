@@ -9,8 +9,12 @@
  * The generated method includes:
  * - **Method signature**: `internal static {Model} Deserialize{Model}(JsonElement element, ModelReaderWriterOptions options)`
  * - **Null check**: Returns null early if the JSON element is `JsonValueKind.Null`.
- * - **Children slot**: Subsequent tasks add variable declarations (2.3.3),
- *   the property matching loop (2.3.4–2.3.12), and the constructor return (2.3.13).
+ * - **Discriminator dispatch** (for models with discriminated subtypes): Peeks at the
+ *   discriminator property, switches on its value to dispatch to derived deserializers,
+ *   and falls back to the Unknown variant for unrecognized values.
+ * - **Children slot** (for non-discriminated models): Subsequent tasks add variable
+ *   declarations (2.3.3), the property matching loop (2.3.4–2.3.12), and the
+ *   constructor return (2.3.13).
  *
  * The method name follows the legacy emitter's convention: `Deserialize{PascalCaseModelName}`.
  * Uses `code` templates with builtin refkeys to auto-generate `using` directives
@@ -36,6 +40,8 @@ import { code, type Children } from "@alloy-js/core";
 import type { SdkModelType } from "@azure-tools/typespec-client-generator-core";
 import { SystemClientModelPrimitives } from "../../builtins/system-client-model.js";
 import { SystemTextJson } from "../../builtins/system-text-json.js";
+import { hasDiscriminatedSubtypes } from "../models/ModelConstructors.js";
+import { DiscriminatorDeserialization } from "./DiscriminatorDeserialization.js";
 
 /**
  * Props for the {@link JsonDeserialize} component.
@@ -60,6 +66,10 @@ export interface JsonDeserializeProps {
  * model instance. The method name follows the legacy emitter's convention:
  * `Deserialize{PascalCaseModelName}`.
  *
+ * For models with discriminated subtypes, the method body renders a discriminator
+ * dispatch (peek + switch + Unknown fallback) instead of the standard deserialization
+ * body (variable declarations + property matching loop + constructor return).
+ *
  * The null check returns null for class models. Struct support (returning `default`)
  * is future work (task 1.2.8).
  *
@@ -69,6 +79,7 @@ export interface JsonDeserializeProps {
 export function JsonDeserialize(props: JsonDeserializeProps) {
   const namePolicy = useCSharpNamePolicy();
   const modelName = namePolicy.getName(props.type.name, "class");
+  const isDiscriminated = hasDiscriminatedSubtypes(props.type);
 
   return (
     <>
@@ -78,7 +89,11 @@ export function JsonDeserialize(props: JsonDeserializeProps) {
       {"\n    {"}
       {"\n        return null;"}
       {"\n    }"}
-      {props.children}
+      {isDiscriminated ? (
+        <DiscriminatorDeserialization type={props.type} />
+      ) : (
+        props.children
+      )}
       {"\n}"}
     </>
   );

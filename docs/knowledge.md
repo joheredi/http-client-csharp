@@ -888,3 +888,16 @@ When writing inline TypeSpec in tests, do NOT use `using TypeSpec.Rest;`. The `L
 **Chosen:** Combined conditions with `&&` (e.g., `options.Format != "W" && Optional.IsDefined(Prop)`)
 **Rejected:** Nested if blocks (outer format check wrapping inner optional check)
 **Reason:** The combined approach matches the legacy emitter's output pattern and keeps the same indentation depth. For required-nullable read-only, we use `else if (options.Format != "W")` instead of `else` to avoid writing null in wire format — this is a subtle correctness requirement.
+
+### Discriminated base models use dispatch, not property matching (Task 2.4.1)
+
+**Key insight:** Models with `hasDiscriminatedSubtypes()` (abstract bases and intermediate models) do NOT use the standard deserialization body (variable declarations → property matching loop → constructor return). Instead, they use discriminator dispatch:
+1. `TryGetProperty("{discriminatorName}"u8, out JsonElement discriminator)` to peek
+2. `switch (discriminator.GetString())` to dispatch to derived `DeserializeXxx` methods
+3. Unknown fallback: `return Unknown{Base}.DeserializeUnknown{Base}(element, options)`
+
+The `discriminatedSubtypes` map is a flat `Record<string, SdkModelType>` containing ALL descendants (not just direct children). This means a 3-level hierarchy Animal → Pet → Dog will have Animal dispatching to both Pet and Dog.
+
+The discriminator serialized name comes from `model.discriminatorProperty!.serializedName`.
+
+**Gotcha:** Tasks 2.4.1/2.4.2/2.4.3 are inseparable — they were implemented together. Future loops finding them already done should just mark them as done.

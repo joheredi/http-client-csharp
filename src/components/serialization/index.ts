@@ -10,6 +10,8 @@ export type {
   DeserializeVariableDeclarationsProps,
   VariableInfo,
 } from "./DeserializeVariableDeclarations.js";
+export { DiscriminatorDeserialization } from "./DiscriminatorDeserialization.js";
+export type { DiscriminatorDeserializationProps } from "./DiscriminatorDeserialization.js";
 export { JsonDeserialize } from "./JsonDeserialize.js";
 export type { JsonDeserializeProps } from "./JsonDeserialize.js";
 export { JsonModelCreateCore } from "./JsonModelCreateCore.js";
