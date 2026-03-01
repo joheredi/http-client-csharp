@@ -20,6 +20,7 @@ import { ModelSerializationFile } from "./components/serialization/ModelSerializ
 import { DeserializationConstructor } from "./components/serialization/DeserializationConstructor.js";
 import { DeserializeVariableDeclarations } from "./components/serialization/DeserializeVariableDeclarations.js";
 import { JsonDeserialize } from "./components/serialization/JsonDeserialize.js";
+import { JsonModelInterfaceWrite } from "./components/serialization/JsonModelInterfaceWrite.js";
 import { JsonModelWriteCore } from "./components/serialization/JsonModelWriteCore.js";
 import { PersistableModelCreateCore } from "./components/serialization/PersistableModelCreateCore.js";
 import { PersistableModelInterfaceMethods } from "./components/serialization/PersistableModelInterfaceMethods.js";
@@ -114,6 +115,8 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
           ))}
         {models.map((m) => (
           <ModelSerializationFile type={m} options={options}>
+            <JsonModelInterfaceWrite type={m} />
+            {"\n\n"}
             <JsonModelWriteCore type={m} />
             {"\n\n"}
             <PersistableModelWriteCore type={m} />

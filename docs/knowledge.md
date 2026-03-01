@@ -802,3 +802,12 @@ foreach (var prop0 in prop.Value.EnumerateObject())
 - TypeSpec models with 3+ level discriminated hierarchies (Dog extends Pet extends Animal) produce TCGC diagnostics
 - 2-level hierarchies (Dog extends Animal) work fine
 - Tests should stick to 2-level hierarchies for discriminated models
+
+## Design Decisions
+
+### Task 2.6.1: IJsonModel.Write wrapper component
+- **Approach chosen**: Separate `JsonModelInterfaceWrite.tsx` component file, following the same pattern as `PersistableModelInterfaceMethods.tsx`
+- **Approach rejected**: Embedding in `JsonModelWriteCore` — would mix the `protected virtual/override` core method with the explicit interface method, reducing modularity
+- Both root and derived models need their own `IJsonModel<T>.Write` because `IJsonModel<T>` is parameterized by model type (IJsonModel<Pet> ≠ IJsonModel<Dog>)
+- The method body is identical for root and derived models — polymorphic dispatch happens inside `JsonModelWriteCore`
+- No `this.` prefix on `JsonModelWriteCore(writer, options)` call — matches legacy emitter's standard output (Dog.Serialization.cs)

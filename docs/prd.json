@@ -2599,7 +2599,7 @@
           "title": "Implement IJsonModel.Write wrapper",
           "description": "Generate `void IJsonModel<T>.Write(Utf8JsonWriter writer, ModelReaderWriterOptions options)` that calls WriteStartObject \u2192 JsonModelWriteCore \u2192 WriteEndObject.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.2.1"
           ],

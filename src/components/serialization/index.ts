@@ -4,6 +4,8 @@ export { DeserializeVariableDeclarations } from "./DeserializeVariableDeclaratio
 export type { DeserializeVariableDeclarationsProps } from "./DeserializeVariableDeclarations.js";
 export { JsonDeserialize } from "./JsonDeserialize.js";
 export type { JsonDeserializeProps } from "./JsonDeserialize.js";
+export { JsonModelInterfaceWrite } from "./JsonModelInterfaceWrite.js";
+export type { JsonModelInterfaceWriteProps } from "./JsonModelInterfaceWrite.js";
 export { JsonModelWriteCore } from "./JsonModelWriteCore.js";
 export type { JsonModelWriteCoreProps } from "./JsonModelWriteCore.js";
 export { ModelSerializationFile } from "./ModelSerializationFile.js";

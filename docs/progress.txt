@@ -1271,3 +1271,32 @@ Wired into emitter.tsx between JsonModelWriteCore and DeserializationConstructor
 - The IJsonModel<T>.Write method has a multi-line body (WriteStartObject → JsonModelWriteCore → WriteEndObject), not expression-bodied
 - Multi-level discriminator chains (3+ levels) may produce TCGC diagnostics — tests should use 2-level hierarchies
 - Smoke tests remain failing due to pre-existing issues (dotnet build and Union type)
+
+## 2026-03-01 — Task 2.6.1: Implement IJsonModel.Write wrapper (complete)
+
+### What was done
+- Created `src/components/serialization/JsonModelInterfaceWrite.tsx` component
+- Generates the explicit `IJsonModel<T>.Write` interface implementation:
+  ```csharp
+  void IJsonModel<Widget>.Write(Utf8JsonWriter writer, ModelReaderWriterOptions options)
+  {
+      writer.WriteStartObject();
+      JsonModelWriteCore(writer, options);
+      writer.WriteEndObject();
+  }
+  ```
+- Both root and derived models get their own method (IJsonModel<T> is parameterized by model type)
+- Wired into emitter.tsx before JsonModelWriteCore (first component inside ModelSerializationFile)
+- Exported from serialization index.ts
+- 5 tests added in test/json-model-interface-write.test.ts
+
+### Design decision
+- Created a separate component file (like PersistableModelInterfaceMethods) rather than embedding in JsonModelWriteCore
+- Used `code` templates with builtin refkeys for IJsonModel, Utf8JsonWriter, ModelReaderWriterOptions
+- Method body uses plain strings for writer.WriteStartObject()/WriteEndObject() since they're instance method calls on the writer parameter
+- No `this.` prefix on JsonModelWriteCore call (matches legacy Dog.Serialization.cs output)
+
+### Notes for next iteration
+- Task 2.6.2 (JsonModelCreateCore) is the natural next step — implements IJsonModel<T>.Create
+- The IJsonModel<T>.Create method validates format, parses JsonDocument from reader, calls DeserializeXxx
+- Pre-existing test failures unchanged (6 total: XML-only model, nested dictionary, 4 smoke tests)
