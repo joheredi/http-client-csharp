@@ -1249,3 +1249,25 @@ Key design decisions:
 
 Wired into emitter.tsx between JsonModelWriteCore and DeserializationConstructor.
 15 tests added in test/persistable-model-methods.test.ts covering root models, derived models, format dispatch, error handling, and using directives.
+
+## 2026-03-01 — Task 2.1.5: Generate explicit interface implementations (complete)
+
+### What was done
+- Created `src/components/serialization/PersistableModelInterfaceMethods.tsx` component
+- Generates three explicit `IPersistableModel<T>` interface implementations:
+  1. `BinaryData IPersistableModel<T>.Write(ModelReaderWriterOptions options) => PersistableModelWriteCore(options);`
+  2. `T IPersistableModel<T>.Create(BinaryData data, ModelReaderWriterOptions options) => PersistableModelCreateCore(data, options);`
+  3. `string IPersistableModel<T>.GetFormatFromOptions(ModelReaderWriterOptions options) => "J";`
+- For derived models, Create method includes a cast: `(T)PersistableModelCreateCore(data, options)` because the virtual method returns the root base type
+- Wired into emitter.tsx between PersistableModelCreateCore and DeserializationConstructor
+- 6 tests added in test/persistable-model-interface.test.ts
+
+### Design decision
+- Used `code` templates with builtin refkeys (not Alloy Method component) because Alloy's Method component doesn't support explicit interface implementations (no `explicitInterface` prop)
+- Follows the same pattern as PersistableModelWriteCore and PersistableModelCreateCore
+
+### Notes for next iteration
+- IJsonModel<T> explicit interface implementations are separate tasks (2.6.1 Write, 2.6.2 Create/JsonModelCreateCore)
+- The IJsonModel<T>.Write method has a multi-line body (WriteStartObject → JsonModelWriteCore → WriteEndObject), not expression-bodied
+- Multi-level discriminator chains (3+ levels) may produce TCGC diagnostics — tests should use 2-level hierarchies
+- Smoke tests remain failing due to pre-existing issues (dotnet build and Union type)

@@ -1761,7 +1761,7 @@
           "title": "Generate explicit interface implementations",
           "description": "Generate the one-liner explicit interface implementations: `BinaryData IPersistableModel<T>.Write(options) => PersistableModelWriteCore(options);`, `T IPersistableModel<T>.Create(data, options) => PersistableModelCreateCore(data, options);`, `string IPersistableModel<T>.GetFormatFromOptions(options) => \"J\";`.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.1.4"
           ],

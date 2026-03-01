@@ -22,6 +22,7 @@ import { DeserializeVariableDeclarations } from "./components/serialization/Dese
 import { JsonDeserialize } from "./components/serialization/JsonDeserialize.js";
 import { JsonModelWriteCore } from "./components/serialization/JsonModelWriteCore.js";
 import { PersistableModelCreateCore } from "./components/serialization/PersistableModelCreateCore.js";
+import { PersistableModelInterfaceMethods } from "./components/serialization/PersistableModelInterfaceMethods.js";
 import { PersistableModelWriteCore } from "./components/serialization/PersistableModelWriteCore.js";
 import { PropertyMatchingLoop } from "./components/serialization/PropertyMatchingLoop.js";
 import { $lib } from "./lib.js";
@@ -118,6 +119,8 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
             <PersistableModelWriteCore type={m} />
             {"\n\n"}
             <PersistableModelCreateCore type={m} />
+            {"\n\n"}
+            <PersistableModelInterfaceMethods type={m} />
             {"\n\n"}
             <DeserializationConstructor type={m} />
             {"\n\n"}

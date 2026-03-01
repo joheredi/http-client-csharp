@@ -771,6 +771,7 @@ foreach (var prop0 in prop.Value.EnumerateObject())
 ### PersistableModel Method Patterns (Task 2.1.4)
 
 #### Root type resolution for PersistableModelCreateCore
+
 - Derived models must return the ROOT base type (not immediate parent) in `PersistableModelCreateCore`
 - For Dog → Pet → Animal, return type is `Animal` (the root)
 - `getRootModelType()` traverses `baseModel` chain to find root
@@ -778,22 +779,26 @@ foreach (var prop0 in prop.Value.EnumerateObject())
 - The `nameof()` in error messages uses the CURRENT model name
 
 #### Abstract models get full method bodies
+
 - Abstract discriminated base models (like Animal) get FULL method bodies with switch statements
 - NOT `=> throw null` stubs — the agent incorrectly reported this for Bird/Fish
 - Both abstract and concrete root models use `protected virtual`
 
 #### Unknown discriminator models are special
+
 - UnknownAnimal's PersistableModelCreateCore calls `DeserializeAnimal` (BASE model, not `DeserializeUnknownAnimal`)
 - Uses `IPersistableModel<Animal>` (base model) for cast, not `IPersistableModel<UnknownAnimal>`
 - Uses `nameof(Animal)` in error messages (base model name)
 - Unknown models are NOT in `sdkPackage.models` — they're generated separately
 
 #### Deferred optional parameters
+
 - `ModelReaderWriter.Write(this, options)` is missing the 3rd param `SampleTypeSpecContext.Default` (task 5.3.1)
 - `JsonDocument.Parse(data)` is missing the 2nd param `ModelSerializationExtensions.JsonDocumentOptions` (task 5.1.5)
 - Both parameters are optional in C# and can be added when their infrastructure tasks are completed
 
 #### TCGC 3-level discriminated hierarchy limitation
+
 - TypeSpec models with 3+ level discriminated hierarchies (Dog extends Pet extends Animal) produce TCGC diagnostics
 - 2-level hierarchies (Dog extends Animal) work fine
 - Tests should stick to 2-level hierarchies for discriminated models
