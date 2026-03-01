@@ -79,8 +79,21 @@ export function ModelFile(props: ModelFileProps) {
     ? props.type.properties.filter((p) => !isBaseDiscriminatorOverride(p))
     : props.type.properties;
 
+  // Only root models (no base model) declare the _additionalBinaryDataProperties
+  // field. Derived models inherit it from their base class. The access modifier
+  // is `private protected` for classes (allowing derived class access) and
+  // `private` for structs (which cannot be inherited).
+  const isRoot = props.type.baseModel === undefined;
+  const fieldModifier = isStruct ? "private" : "private protected";
+
   const members = (
     <>
+      {isRoot && (
+        <>
+          {`/// <summary> Keeps track of any properties unknown to the library. </summary>\n${fieldModifier} readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;`}
+          {"\n\n"}
+        </>
+      )}
       <ModelConstructors type={props.type} isStruct={isStruct} />
       {renderProperties.length > 0 ? "\n\n" : ""}
       <For each={renderProperties} hardline>

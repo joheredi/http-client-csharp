@@ -247,6 +247,180 @@ describe("ModelFile", () => {
 });
 
 /**
+ * Tests for the _additionalBinaryDataProperties field on model classes.
+ *
+ * This field stores unknown JSON properties that are not mapped to known model
+ * properties, enabling round-trip serialization fidelity. It is declared only
+ * on root models (not derived) because derived models inherit the field from
+ * their base class.
+ *
+ * Why these tests matter:
+ * - The field must use `private protected readonly` for classes (allowing
+ *   derived class access) and `private readonly` for structs.
+ * - Missing the field breaks serialization round-tripping: unknown properties
+ *   would be silently dropped during deserialization.
+ * - Generating the field on derived models would cause a C# compiler error
+ *   (duplicate field in hierarchy).
+ */
+describe("AdditionalBinaryDataPropertiesField", () => {
+  /**
+   * Validates that root models (no base model) declare the
+   * _additionalBinaryDataProperties field with the correct signature:
+   * `private protected readonly IDictionary<string, BinaryData>`.
+   */
+  it("generates field on root model with private protected readonly", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        count: int32;
+      }
+
+      @route("/widgets")
+      op getWidget(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
+    expect(modelFile).toBeDefined();
+    const content = outputs[modelFile!];
+
+    // Field declaration with correct modifiers and type
+    expect(content).toContain(
+      "private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;",
+    );
+    // Doc comment for the field
+    expect(content).toContain(
+      "/// <summary> Keeps track of any properties unknown to the library. </summary>",
+    );
+  });
+
+  /**
+   * Validates that the field appears before constructors in the class body,
+   * matching the legacy emitter's golden file format where the field is the
+   * first member declared in the class.
+   */
+  it("renders field before constructors", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/widgets")
+      op getWidget(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
+    const content = outputs[modelFile!];
+
+    const fieldIndex = content.indexOf("_additionalBinaryDataProperties;");
+    const ctorIndex = content.indexOf("Widget(");
+    expect(fieldIndex).toBeGreaterThan(-1);
+    expect(ctorIndex).toBeGreaterThan(-1);
+    expect(fieldIndex).toBeLessThan(ctorIndex);
+  });
+
+  /**
+   * Validates that derived models in a discriminated hierarchy do NOT declare
+   * the _additionalBinaryDataProperties field. The field is inherited from
+   * the root base model. Generating it again would cause a C# compiler error.
+   */
+  it("omits field on derived discriminated models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Bird {
+        kind: string;
+        wingspan: int32;
+      }
+
+      model Eagle extends Bird {
+        kind: "eagle";
+        eyeColor: string;
+      }
+
+      @route("/birds")
+      op getBird(): Bird;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    // Base model (Bird) should have the field
+    const birdFile = Object.keys(outputs).find(
+      (k) => k.includes("Bird.cs") && !k.includes("Unknown"),
+    );
+    expect(birdFile).toBeDefined();
+    const birdContent = outputs[birdFile!];
+    expect(birdContent).toContain(
+      "private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;",
+    );
+
+    // Derived model (Eagle) should NOT have the field
+    const eagleFile = Object.keys(outputs).find((k) => k.includes("Eagle.cs"));
+    expect(eagleFile).toBeDefined();
+    const eagleContent = outputs[eagleFile!];
+    expect(eagleContent).not.toContain(
+      "IDictionary<string, BinaryData> _additionalBinaryDataProperties;",
+    );
+  });
+
+  /**
+   * Validates that abstract base models (discriminated union roots) also
+   * get the field. Even though abstract models cannot be instantiated directly,
+   * they still need the field for derived models to inherit.
+   */
+  it("generates field on abstract base models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Cat extends Pet {
+        kind: "cat";
+        meows: boolean;
+      }
+
+      @route("/pets")
+      op getPet(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const petFile = Object.keys(outputs).find(
+      (k) => k.includes("Pet.cs") && !k.includes("Unknown"),
+    );
+    expect(petFile).toBeDefined();
+    const petContent = outputs[petFile!];
+    expect(petContent).toContain(
+      "private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;",
+    );
+  });
+});
+
+/**
  * Tests for the ModelProperty component.
  *
  * These tests verify that model properties are correctly generated inside
@@ -500,9 +674,24 @@ describe("ModelProperty", () => {
     expect(modelFile).toBeDefined();
     const content = outputs[modelFile!];
 
-    // No doc comment for undocumented property
-    expect(content).not.toContain("/// <summary>");
-    expect(content).not.toContain("///");
+    // The _additionalBinaryDataProperties field has its own generated doc comment,
+    // but undocumented properties should not get doc comments. Split the output at
+    // the properties section and verify no property-level doc comments appear.
+    // Count occurrences of doc comments — only the field should have one.
+    const summaryMatches = content.match(/\/\/\/ <summary>/g) || [];
+    expect(summaryMatches).toHaveLength(1); // Only the field's doc comment
+    expect(content).toContain(
+      "Keeps track of any properties unknown to the library",
+    );
+
+    // Verify the Name property itself has no doc comment by checking the line above it
+    const lines = content.split("\n");
+    const namePropertyIndex = lines.findIndex((l: string) =>
+      l.includes("public string Name"),
+    );
+    expect(namePropertyIndex).toBeGreaterThan(0);
+    const lineAboveProperty = lines[namePropertyIndex - 1];
+    expect(lineAboveProperty).not.toContain("///");
   });
 
   /**

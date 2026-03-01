@@ -1513,3 +1513,26 @@ Test: `test/client-options.test.ts` with 4 tests covering versioned, single-vers
 Added `@typespec/versioning` as devDependency and to test-host libraries for versioned TypeSpec tests.
 
 Design decision: Skip ClientOptions generation when client has no API versions (empty apiVersions array). This prevents generating a class with an empty ServiceVersion enum for unversioned services.
+
+2026-03-01 — Task 1.2.6: Implement additionalBinaryDataProperties field (complete)
+
+Added the `_additionalBinaryDataProperties` field declaration to root model classes.
+
+Changes made:
+- `src/components/models/ModelFile.tsx`: Added conditional field rendering before constructors.
+  Only root models (no base model) get the field. Uses `private protected readonly` for classes
+  and `private readonly` for structs, matching the legacy emitter's `BuildRawDataField()` logic.
+  Field type is `IDictionary<string, BinaryData>` (raw string, consistent with how the
+  serialization constructor already renders this type).
+
+- `test/model.test.ts`: Added 4 tests in new `AdditionalBinaryDataPropertiesField` describe block:
+  1. Verifies field on root model with correct `private protected readonly` signature
+  2. Verifies field renders before constructors
+  3. Verifies field is omitted on derived discriminated models
+  4. Verifies field on abstract base models
+  Also updated "omits doc comments when @doc is not present" test to account for the field's
+  generated doc comment (not a TypeSpec @doc).
+
+Design decision: Used raw strings (not `<Field>` component) because the Alloy `Field` component
+doesn't support `private protected` combined access modifiers — its `accessibilityFromProps`
+returns on first match only.
