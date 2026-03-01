@@ -860,3 +860,31 @@ All 5 interface methods for IJsonModel<T> and IPersistableModel<T> are now imple
 **Important**: When adding new `forTypeKind` overrides, be careful about `props.default` — accessing it for types that would throw in the default TypeExpression will propagate the throw. Only use `props.default` when you know the default behavior won't crash.
 
 **Nullable detection**: The `hasNullVariant()` helper checks for Intrinsic types with name "null" or "void" to distinguish nullable unions from literal unions, without depending on internal emitter-framework utilities.
+
+## Read-Only Property Serialization Guards (Task 2.2.13)
+
+### Pattern
+
+Read-only properties (`@visibility(Lifecycle.Read)`) are only serialized when `options.Format != "W"` (non-wire format). The guard wraps the property write:
+
+- Required read-only: `if (options.Format != "W") { ... }`
+- Optional read-only: `if (options.Format != "W" && Optional.IsDefined(Prop)) { ... }`
+- Required-nullable read-only: combined guard with `else if (options.Format != "W") { WriteNull }` to avoid writing null in wire format
+
+### Key Helper Functions (PropertySerializer.tsx)
+
+- `needsSerializationGuard(property)` — returns true if any guard needed (read-only OR optional)
+- `buildGuardCondition(property, csharpName)` — builds the combined condition string
+- `renderElseNull(property, serializedName)` — renders the else-null branch (simple `else` or `else if` for read-only)
+
+### Gotcha: TypeSpec.Rest is NOT available in test host
+
+When writing inline TypeSpec in tests, do NOT use `using TypeSpec.Rest;`. The `Lifecycle` enum is part of the TypeSpec compiler's standard library and is available without any `using` statement. Using `TypeSpec.Rest` causes `invalid-ref` diagnostics.
+
+## Design Decisions
+
+### Read-Only Guards: Combined vs Nested
+
+**Chosen:** Combined conditions with `&&` (e.g., `options.Format != "W" && Optional.IsDefined(Prop)`)
+**Rejected:** Nested if blocks (outer format check wrapping inner optional check)
+**Reason:** The combined approach matches the legacy emitter's output pattern and keeps the same indentation depth. For required-nullable read-only, we use `else if (options.Format != "W")` instead of `else` to avoid writing null in wire format — this is a subtle correctness requirement.

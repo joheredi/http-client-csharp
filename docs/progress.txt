@@ -1404,3 +1404,13 @@ Task 1.3.7 was found to already be fully implemented during prior tasks (1.3.1�
 - test/model-serialization.test.ts: 18 tests covering serialization aspects of inheritance hierarchies
 All acceptance criteria verified: string discriminator ✅, enum discriminator ✅, unknown variants ✅, multi-level discriminators ✅.
 All inheritance tests pass. 2 unrelated test failures exist (XML-only models, nested dictionary serialization) — not in scope.
+
+2026-03-01 — Task 2.2.13: Implement read-only property guards
+- Added `needsSerializationGuard()`, `buildGuardCondition()`, and `renderElseNull()` helpers to PropertySerializer.tsx
+- Modified all 4 render paths (primitive, collection, dictionary, model) to use combined read-only + optional guards
+- Read-only properties now wrapped in `if (options.Format != "W")` guard
+- Optional read-only properties combine guards: `if (options.Format != "W" && Optional.IsDefined(Prop))`
+- Required-nullable read-only uses `else if (options.Format != "W")` for the null branch
+- Added 7 tests in ReadOnlyPropertyGuards describe block covering: required read-only string/int32/boolean, optional read-only, writable-only model, indentation, mixed properties
+- TypeSpec test definitions use `@visibility(Lifecycle.Read)` (from compiler stdlib, NOT `using TypeSpec.Rest`)
+- No regressions: same 6 pre-existing failures, 531 tests pass

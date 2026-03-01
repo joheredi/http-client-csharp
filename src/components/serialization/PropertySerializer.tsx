@@ -94,7 +94,10 @@ import {
 } from "@azure-tools/typespec-client-generator-core";
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import { isCollectionType, unwrapNullableType } from "../../utils/nullable.js";
-import { isCSharpReferenceType } from "../../utils/property.js";
+import {
+  isCSharpReferenceType,
+  isPropertyReadOnly,
+} from "../../utils/property.js";
 
 /**
  * Props for the {@link WritePropertySerialization} component.
@@ -538,6 +541,81 @@ export function getOptionalGuardMethodName(
 }
 
 /**
+ * Determines whether a property needs any serialization guard (read-only
+ * format check, optional check, or both).
+ *
+ * A property needs a guard if:
+ * - It is read-only (`@visibility(Lifecycle.Read)`) — serialized only when
+ *   `options.Format != "W"` (non-wire format).
+ * - It is optional or required-nullable — needs `Optional.IsDefined` /
+ *   `Optional.IsCollectionDefined` guard.
+ * - Both — the guards are combined with `&&`.
+ *
+ * @param property - An SDK model property from TCGC.
+ * @returns `true` if the property requires any guard during serialization.
+ */
+export function needsSerializationGuard(
+  property: SdkModelPropertyType,
+): boolean {
+  return needsOptionalGuard(property) || isPropertyReadOnly(property);
+}
+
+/**
+ * Builds the complete `if` condition for a serialization guard.
+ *
+ * Combines read-only and optional guard conditions with `&&`:
+ * - Read-only only: `options.Format != "W"`
+ * - Optional only: `Optional.IsDefined(Prop)` or `Optional.IsCollectionDefined(Prop)`
+ * - Both: `options.Format != "W" && Optional.IsDefined(Prop)`
+ *
+ * @param property - An SDK model property from TCGC.
+ * @param csharpName - The PascalCase C# property name for the Optional guard.
+ * @returns The combined guard condition string.
+ */
+export function buildGuardCondition(
+  property: SdkModelPropertyType,
+  csharpName: string,
+): string {
+  const parts: string[] = [];
+  if (isPropertyReadOnly(property)) {
+    parts.push('options.Format != "W"');
+  }
+  if (needsOptionalGuard(property)) {
+    const guardMethod = getOptionalGuardMethodName(property);
+    parts.push(`Optional.${guardMethod}(${csharpName})`);
+  }
+  return parts.join(" && ");
+}
+
+/**
+ * Renders the `else` or `else if` branch for writing null when a
+ * required-nullable property is not defined.
+ *
+ * For non-read-only required-nullable properties, generates a simple `else`
+ * branch. For read-only required-nullable properties, generates an `else if
+ * (options.Format != "W")` branch to avoid writing null in wire format.
+ *
+ * @param property - An SDK model property from TCGC.
+ * @param serializedName - The JSON wire name for the `WriteNull` call.
+ * @returns JSX element with the else-null branch, or `null` if not needed.
+ */
+function renderElseNull(
+  property: SdkModelPropertyType,
+  serializedName: string,
+): Children | null {
+  if (!isRequiredNullable(property)) return null;
+  const readOnly = isPropertyReadOnly(property);
+  return (
+    <>
+      {readOnly ? `\n    else if (options.Format != "W")` : "\n    else"}
+      {"\n    {"}
+      {`\n        writer.WriteNull("${serializedName}"u8);`}
+      {"\n    }"}
+    </>
+  );
+}
+
+/**
  * Renders the `writer.WritePropertyName` and `writer.WriteXxxValue` statements
  * for a property at the specified indentation level.
  *
@@ -863,9 +941,8 @@ function renderCollectionProperty(
   serializedName: string,
   csharpName: string,
 ) {
-  if (needsOptionalGuard(property)) {
-    const guardMethod = getOptionalGuardMethodName(property);
-    const reqNullable = isRequiredNullable(property);
+  if (needsSerializationGuard(property)) {
+    const condition = buildGuardCondition(property, csharpName);
     const collectionContent = renderArraySerialization(
       arrayType,
       csharpName,
@@ -875,19 +952,12 @@ function renderCollectionProperty(
 
     return (
       <>
-        {`\n    if (Optional.${guardMethod}(${csharpName}))`}
+        {`\n    if (${condition})`}
         {"\n    {"}
         {`\n        writer.WritePropertyName("${serializedName}"u8);`}
         {collectionContent}
         {"\n    }"}
-        {reqNullable && (
-          <>
-            {"\n    else"}
-            {"\n    {"}
-            {`\n        writer.WriteNull("${serializedName}"u8);`}
-            {"\n    }"}
-          </>
-        )}
+        {renderElseNull(property, serializedName)}
       </>
     );
   }
@@ -932,9 +1002,8 @@ function renderDictionaryProperty(
   serializedName: string,
   csharpName: string,
 ) {
-  if (needsOptionalGuard(property)) {
-    const guardMethod = getOptionalGuardMethodName(property);
-    const reqNullable = isRequiredNullable(property);
+  if (needsSerializationGuard(property)) {
+    const condition = buildGuardCondition(property, csharpName);
     const dictContent = renderDictionarySerialization(
       dictType,
       csharpName,
@@ -944,19 +1013,12 @@ function renderDictionaryProperty(
 
     return (
       <>
-        {`\n    if (Optional.${guardMethod}(${csharpName}))`}
+        {`\n    if (${condition})`}
         {"\n    {"}
         {`\n        writer.WritePropertyName("${serializedName}"u8);`}
         {dictContent}
         {"\n    }"}
-        {reqNullable && (
-          <>
-            {"\n    else"}
-            {"\n    {"}
-            {`\n        writer.WriteNull("${serializedName}"u8);`}
-            {"\n    }"}
-          </>
-        )}
+        {renderElseNull(property, serializedName)}
       </>
     );
   }
@@ -998,24 +1060,16 @@ function renderModelProperty(
   serializedName: string,
   csharpName: string,
 ) {
-  if (needsOptionalGuard(property)) {
-    const guardMethod = getOptionalGuardMethodName(property);
-    const reqNullable = isRequiredNullable(property);
+  if (needsSerializationGuard(property)) {
+    const condition = buildGuardCondition(property, csharpName);
     return (
       <>
-        {`\n    if (Optional.${guardMethod}(${csharpName}))`}
+        {`\n    if (${condition})`}
         {"\n    {"}
         {`\n        writer.WritePropertyName("${serializedName}"u8);`}
         {`\n        writer.WriteObjectValue(${csharpName}, options);`}
         {"\n    }"}
-        {reqNullable && (
-          <>
-            {"\n    else"}
-            {"\n    {"}
-            {`\n        writer.WriteNull("${serializedName}"u8);`}
-            {"\n    }"}
-          </>
-        )}
+        {renderElseNull(property, serializedName)}
       </>
     );
   }
@@ -1133,13 +1187,12 @@ export function WritePropertySerialization(
   const writeInfo = getWriteMethodInfo(property.type);
   if (!writeInfo) return null;
 
-  if (needsOptionalGuard(property)) {
-    const guardMethod = getOptionalGuardMethodName(property);
-    const reqNullable = isRequiredNullable(property);
+  if (needsSerializationGuard(property)) {
+    const condition = buildGuardCondition(property, csharpName);
     const valueAccessor = needsNullableValueAccess(property) ? ".Value" : "";
     return (
       <>
-        {`\n    if (Optional.${guardMethod}(${csharpName}))`}
+        {`\n    if (${condition})`}
         {"\n    {"}
         {renderWriteStatements(
           serializedName,
@@ -1148,14 +1201,7 @@ export function WritePropertySerialization(
           "        ",
         )}
         {"\n    }"}
-        {reqNullable && (
-          <>
-            {"\n    else"}
-            {"\n    {"}
-            {`\n        writer.WriteNull("${serializedName}"u8);`}
-            {"\n    }"}
-          </>
-        )}
+        {renderElseNull(property, serializedName)}
       </>
     );
   }

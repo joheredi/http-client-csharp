@@ -2435,8 +2435,291 @@ describe("RequiredNullableWritePattern", () => {
 });
 
 /**
- * Tests for the JsonDeserialize component.
+ * Tests for read-only property serialization guards (task 2.2.13).
  *
+ * Read-only properties (decorated with `@visibility(Lifecycle.Read)`) represent
+ * output-only values populated by the server. They should only be serialized in
+ * non-wire format (`options.Format != "W"`). The wire format ("W") is used when
+ * sending data to the server, where read-only properties must be omitted.
+ *
+ * Guard patterns:
+ * - **Required read-only**: `if (options.Format != "W") { ... }`
+ * - **Optional read-only**: `if (options.Format != "W" && Optional.IsDefined(Prop)) { ... }`
+ * - **Optional read-only collection**: `if (options.Format != "W" && Optional.IsCollectionDefined(Prop)) { ... }`
+ * - **Required nullable read-only**: combined format + optional guard with `else if` null branch
+ *
+ * Why these tests matter:
+ * - Without the format guard, read-only properties would be sent to the server,
+ *   which violates the API contract for output-only fields.
+ * - The legacy emitter wraps read-only properties in `options.Format != "W"` checks.
+ * - The guard interacts with optional and required-nullable guards, requiring
+ *   correct condition combination.
+ */
+describe("ReadOnlyPropertyGuards", () => {
+  /**
+   * Validates that a required read-only string property is wrapped in
+   * `if (options.Format != "W")`. Without this guard, the property
+   * would be incorrectly serialized when sending data to the server.
+   */
+  it("wraps required read-only string property in format guard", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        @visibility(Lifecycle.Read)
+        id: string;
+
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Read-only 'id' property must be guarded by format check
+    expect(content).toContain('if (options.Format != "W")');
+    expect(content).toContain('writer.WritePropertyName("id"u8)');
+    expect(content).toContain("writer.WriteStringValue(Id)");
+
+    // Non-read-only 'name' property must NOT be in a format guard
+    // It should be serialized unconditionally
+    expect(content).toContain('writer.WritePropertyName("name"u8)');
+    expect(content).toContain("writer.WriteStringValue(Name)");
+  });
+
+  /**
+   * Validates that an optional read-only property combines both the format
+   * guard and the Optional.IsDefined guard in a single condition:
+   * `if (options.Format != "W" && Optional.IsDefined(Prop))`.
+   */
+  it("combines format guard with Optional.IsDefined for optional read-only", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        @visibility(Lifecycle.Read)
+        description?: string;
+
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Optional read-only: combined condition
+    expect(content).toContain(
+      'if (options.Format != "W" && Optional.IsDefined(Description))',
+    );
+  });
+
+  /**
+   * Validates that a required read-only int32 property is wrapped in the
+   * format guard. Numeric value types behave the same as strings for this guard.
+   */
+  it("wraps required read-only int32 in format guard", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        @visibility(Lifecycle.Read)
+        count: int32;
+
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Read-only int32 property guarded by format check
+    expect(content).toContain('if (options.Format != "W")');
+    expect(content).toContain('writer.WritePropertyName("count"u8)');
+    expect(content).toContain("writer.WriteNumberValue(Count)");
+  });
+
+  /**
+   * Validates that a required read-only boolean property is wrapped in the
+   * format guard, confirming all primitive types use the same guard pattern.
+   */
+  it("wraps required read-only boolean in format guard", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        @visibility(Lifecycle.Read)
+        isActive: boolean;
+
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain('if (options.Format != "W")');
+    expect(content).toContain('writer.WritePropertyName("isActive"u8)');
+    expect(content).toContain("writer.WriteBooleanValue(IsActive)");
+  });
+
+  /**
+   * Validates that non-read-only properties are NOT affected by the format guard.
+   * A model with only writable properties should have no `options.Format != "W"` check
+   * in its property serialization.
+   */
+  it("does not add format guard for writable properties", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        count: int32;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // No format guard for writable properties
+    expect(content).not.toContain('options.Format != "W"');
+    // Properties serialized unconditionally
+    expect(content).toContain('writer.WritePropertyName("name"u8)');
+    expect(content).toContain('writer.WritePropertyName("count"u8)');
+  });
+
+  /**
+   * Validates that read-only property write statements are indented inside
+   * the format guard block, matching the legacy emitter's output format.
+   */
+  it("indents write statements inside format guard block", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        @visibility(Lifecycle.Read)
+        id: string;
+
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // The write statements for read-only properties should be indented
+    // inside the if block (8 spaces = 2 levels of indentation)
+    expect(content).toContain('        writer.WritePropertyName("id"u8);');
+    expect(content).toContain("        writer.WriteStringValue(Id);");
+  });
+
+  /**
+   * Validates that a model with mixed read-only and writable properties
+   * generates the correct output: format guards only around read-only
+   * properties while writable properties serialize unconditionally.
+   */
+  it("handles mixed read-only and writable properties", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        @visibility(Lifecycle.Read)
+        id: string;
+
+        name: string;
+
+        @visibility(Lifecycle.Read)
+        createdAt: utcDateTime;
+
+        weight: int32;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Read-only properties are inside format guard blocks
+    expect(content).toContain('if (options.Format != "W")');
+
+    // Writable properties are NOT inside any guard
+    // They appear directly at 4-space indentation
+    expect(content).toContain('    writer.WritePropertyName("name"u8);');
+    expect(content).toContain("    writer.WriteStringValue(Name);");
+    expect(content).toContain('    writer.WritePropertyName("weight"u8);');
+    expect(content).toContain("    writer.WriteNumberValue(Weight);");
+  });
+});
+
+/**
  * These tests verify that the emitter generates the `DeserializeXxx` static
  * deserialization method inside model `.Serialization.cs` files. The
  * JsonDeserialize component produces the core deserialization method skeleton:
