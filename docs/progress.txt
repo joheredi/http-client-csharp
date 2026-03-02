@@ -2246,3 +2246,36 @@ Created a dedicated `AdditionalBinaryDataRead` component (mirroring the existing
 
 ### Pattern learned
 - The `code` tagged template from `@alloy-js/core` does NOT properly render `\n` escape sequences inside the template literal. Always separate newlines into plain strings (`{"\n    "}`) and keep `code` templates for refkey interpolation only.
+
+## 2026-03-02 — Task 5.1.5: Split into 4 sub-tasks
+
+### What was done
+Split task 5.1.5 "Generate remaining infrastructure files" (10 files) into 4 manageable sub-tasks:
+
+- **5.1.5a** - Small infrastructure files: CancellationTokenExtensions (17 lines), ErrorResult (27 lines), SerializationFormat (49 lines), ClientPipelineExtensions (70 lines). ~163 lines total.
+- **5.1.5b** - URI builder and type formatters: ClientUriBuilder (184 lines), TypeFormatters (181 lines). ~365 lines total.
+- **5.1.5c** - ModelSerializationExtensions: Single large file (428 lines) with JSON serialization extension methods.
+- **5.1.5d** - Binary content and headers: Utf8JsonBinaryContent, BinaryContentHelper, PipelineRequestHeadersExtensions. These are NOT in the Sample-TypeSpec golden output — need to be reverse-engineered from legacy generator Definition classes.
+
+### Key findings during research
+- All existing infrastructure components (ArgumentFile.tsx, OptionalFile.tsx, etc.) use the same pattern: SourceFile with using array → Namespace → ClassDeclaration → code template literals
+- The 3 files in 5.1.5d don't exist in the golden test output directory, suggesting they may be conditionally generated or excluded from Sample-TypeSpec
+- The 4 smoke test failures need: CancellationTokenExtensions (5.1.5a), ClientPipelineExtensions (5.1.5a), ClientUriBuilder (5.1.5b), ModelSerializationExtensions (5.1.5c) — so all of a/b/c must be done to fix smoke tests
+- Updated downstream dependencies: 5.1.6 depends on all 4 sub-tasks, 9.1.1 depends on 5.1.5d specifically
+
+### Pattern for next iterations
+Follow the ArgumentFile.tsx pattern for all infrastructure files:
+```tsx
+export function XFile(props: { packageName: string; options: EmitterOptions }) {
+  return (
+    <SourceFile path="src/Generated/Internal/X.cs" using={[...]}>
+      {getLicenseHeader(props.options)}
+      <Namespace name={props.packageName}>
+        <ClassDeclaration internal static partial name="X">
+          {code`... method body ...`}
+        </ClassDeclaration>
+      </Namespace>
+    </SourceFile>
+  );
+}
+```
