@@ -132,7 +132,7 @@ function extractAuthFromScheme(scheme: HttpAuth): AuthInfo | undefined {
       // Bearer token auth maps to OAuth2-style token provider
       if (
         "scheme" in scheme &&
-        (scheme as Record<string, unknown>).scheme === "bearer"
+        (scheme as unknown as Record<string, unknown>).scheme === "bearer"
       ) {
         return {
           kind: "oauth2",

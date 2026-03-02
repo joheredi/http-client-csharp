@@ -1423,8 +1423,22 @@ The 4 smoke test failures (dotnet build) are NOT caused by model serialization b
 
 ### Test file search patterns must avoid infrastructure file name collisions
 
-When searching for model output files in tests (e.g., `Object.keys(outputs).find(k => k.includes("Result.cs"))`), be aware that infrastructure files like `ErrorResult.cs` will also match. Use `.endsWith("/Result.cs")` for more precise matching. This was discovered when adding ErrorResult.cs in task 5.1.5a.
+When searching for model output files in tests (e.g., `Object.keys(outputs).find(k => k.includes("Format"))`), be aware that infrastructure files will also match partial names:
+
+- `"Format"` matches `SerializationFormat.cs`
+- `"Mode"` matches any path containing `Model` (since `"Model".includes("Mode")` is true)
+- `"Result"` matches `ErrorResult.cs`
+
+Use `k.endsWith("/Format.cs")` (with leading slash) for precise matching. Note that `k.endsWith("Format.cs")` without a slash is NOT sufficient — `SerializationFormat.cs` also ends with `Format.cs`.
 
 ### SerializationFormat enum is pure static content — use raw code template
 
 The SerializationFormat enum has no dynamic content (no TypeSpec model data). Using `EnumDeclaration` + `EnumMember` from Alloy would work but is overkill. A raw `code` template inside `<Namespace>` is simpler and more readable for fully static enums.
+
+### ESLint allows underscore-prefixed unused vars
+
+The eslint config has a custom rule allowing variables prefixed with `_` to be unused (`argsIgnorePattern: "^_"`, `varsIgnorePattern: "^_"`, `destructuredArrayIgnorePattern: "^_"`). Use `_result`, `_index`, `_props` etc. for intentionally unused destructured values.
+
+### CI workflow and pnpm/action-setup require packageManager field
+
+`pnpm/action-setup@v3` requires a pnpm version. This is specified via the `"packageManager": "pnpm@10.30.1"` field in `package.json`. Without it, the CI build step fails with "No pnpm version is specified".
