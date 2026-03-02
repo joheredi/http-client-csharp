@@ -3142,7 +3142,7 @@
           "title": "Implement next-link paging strategy",
           "description": "For next-link pagination: extract URI from response body, call CreateNext{Op}Request, null-check for termination. See CollectionResultDefinition.BuildGetRawPagesForNextLink.",
           "phase": "phase-4",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "4.1.1"
           ],

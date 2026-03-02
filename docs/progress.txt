@@ -2189,3 +2189,33 @@ Created `src/components/collection-results/CollectionResultFile.tsx` — the cor
 - 7 passing tests in `test/collection-results.test.ts`
 
 **Unblocks:** 4.2.1 (next-link paging), 4.3.1 (continuation-token paging), 4.4.1 (paging client methods)
+
+## 2026-03-02 — Task 4.2.1: Implement next-link paging strategy (complete)
+
+**What was done:**
+- Modified `src/components/collection-results/CollectionResultFile.tsx` to support next-link paging strategy
+- When `pagingMetadata.nextLinkSegments` is present, the component now generates a while(true) loop in GetRawPages:
+  1. Sends initial request via Create{Op}Request
+  2. Yields each ClientResult page
+  3. Extracts next-link URI from response body via cast ((ResponseType)result).PropertyPath
+  4. Checks if URI is null (yield break to terminate)
+  5. Creates next request via CreateNext{Op}Request(nextPageUri, _options)
+- GetContinuationToken now extracts URI and returns ContinuationToken.FromBytes(BinaryData.FromString(uri))
+
+**Key implementation details:**
+- Extracted `responseTypeExpr` earlier in the component (needed for both next-link AND convenience methods)
+- `buildNextLinkPropertyPath()` handles nested segments with `?.` operator (e.g., "Nested?.NextLink")
+- `buildNextLinkGetRawPagesBody()` generates the while-loop with sync/async variants
+- `buildNextLinkGetContinuationTokenBody()` generates URI extraction + ContinuationToken creation
+- `buildSinglePageGetRawPagesBody()` extracted from the existing inline code for clarity
+
+**Gotcha discovered:**
+- The `code` template tag strips leading whitespace when the first template chunk is whitespace-only
+  (e.g., `code\`    ${ref}...\`` loses the 4-space indent). Fix: separate indent into a plain string
+  child: `"    ", code\`${ref}...\``
+
+**Test additions:**
+- 4 new tests in test/collection-results.test.ts for next-link paging
+- Tests verify: while loop, initial request, URI extraction, null check, next request, async variant, GetContinuationToken, convenience variant
+
+**Unblocks:** Tasks 4.3.1 (continuation-token paging), 4.4.1 (paging client methods)

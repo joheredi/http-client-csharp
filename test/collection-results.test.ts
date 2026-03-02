@@ -166,8 +166,7 @@ describe("CollectionResultFile", () => {
 
     // Find the sync convenience file (OfT, not Async)
     const fileName = Object.keys(outputs).find(
-      (k) =>
-        k.includes("CollectionResultOfT.cs") && !k.includes("Async"),
+      (k) => k.includes("CollectionResultOfT.cs") && !k.includes("Async"),
     );
     expect(fileName).toBeDefined();
     const content = outputs[fileName!];
@@ -212,8 +211,7 @@ describe("CollectionResultFile", () => {
 
     // Find the async protocol file
     const fileName = Object.keys(outputs).find(
-      (k) =>
-        k.includes("AsyncCollectionResult.cs") && !k.includes("OfT"),
+      (k) => k.includes("AsyncCollectionResult.cs") && !k.includes("OfT"),
     );
     expect(fileName).toBeDefined();
     const content = outputs[fileName!];
@@ -261,8 +259,8 @@ describe("CollectionResultFile", () => {
     expect(diagnostics).toHaveLength(0);
 
     // Find the async convenience file
-    const fileName = Object.keys(outputs).find(
-      (k) => k.includes("AsyncCollectionResultOfT.cs"),
+    const fileName = Object.keys(outputs).find((k) =>
+      k.includes("AsyncCollectionResultOfT.cs"),
     );
     expect(fileName).toBeDefined();
     const content = outputs[fileName!];
@@ -276,7 +274,9 @@ describe("CollectionResultFile", () => {
     );
 
     // Verify foreach + yield return + await Task.Yield() pattern
-    expect(content).toContain("foreach (Thing item in ((PageThing)page).Items)");
+    expect(content).toContain(
+      "foreach (Thing item in ((PageThing)page).Items)",
+    );
     expect(content).toContain("yield return item;");
     expect(content).toContain("await Task.Yield();");
 
@@ -344,9 +344,7 @@ describe("CollectionResultFile", () => {
     const content = outputs[fileName!];
 
     // Constructor doc
-    expect(content).toContain(
-      "/// <summary> Initializes a new instance of",
-    );
+    expect(content).toContain("/// <summary> Initializes a new instance of");
     expect(content).toContain(
       "which is used to iterate over the pages of a collection",
     );
@@ -363,5 +361,265 @@ describe("CollectionResultFile", () => {
     expect(content).toContain(
       "/// <summary> Gets the continuation token from the specified page. </summary>",
     );
+  });
+
+  /**
+   * Verifies that next-link paging generates a while(true) loop in GetRawPages.
+   *
+   * When a paging response model has a @nextLink property, the GetRawPages method
+   * must iterate pages by:
+   * 1. Sending the initial request
+   * 2. Yielding each ClientResult page
+   * 3. Extracting the next-link URI from the response model
+   * 4. Checking for null (yield break to terminate)
+   * 5. Creating a new request with CreateNext{Op}Request
+   *
+   * This validates the core next-link paging loop pattern for the sync protocol variant.
+   */
+  it("generates next-link paging loop in sync protocol GetRawPages", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Thing {
+        name: string;
+      }
+
+      model PageThing {
+        @pageItems
+        items: Thing[];
+
+        @nextLink
+        nextLink?: url;
+      }
+
+      @route("/things")
+      @list
+      @get
+      op listThings(): PageThing;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    // Find the sync protocol file
+    const fileName = Object.keys(outputs).find(
+      (k) =>
+        k.includes("CollectionResult.cs") &&
+        !k.includes("Async") &&
+        !k.includes("OfT"),
+    );
+    expect(fileName).toBeDefined();
+    const content = outputs[fileName!];
+
+    // Verify the while(true) loop structure
+    expect(content).toContain("while (true)");
+
+    // Verify initial request creation
+    expect(content).toContain(
+      "PipelineMessage message = _client.CreateGetThingsRequest(_options);",
+    );
+
+    // Verify nextPageUri variable declaration
+    expect(content).toContain("Uri nextPageUri = null;");
+
+    // Verify result assignment and yield return
+    expect(content).toContain(
+      "ClientResult result = ClientResult.FromResponse(_client.Pipeline.ProcessMessage(message, _options));",
+    );
+    expect(content).toContain("yield return result;");
+
+    // Verify next-link extraction from response model
+    expect(content).toContain("nextPageUri = ((PageThing)result).NextLink;");
+
+    // Verify null check termination
+    expect(content).toContain("if (nextPageUri == null)");
+    expect(content).toContain("yield break;");
+
+    // Verify next request creation
+    expect(content).toContain(
+      "message = _client.CreateNextGetThingsRequest(nextPageUri, _options);",
+    );
+
+    // Verify using System; for Uri type
+    expect(content).toContain("using System;");
+  });
+
+  /**
+   * Verifies that next-link paging generates the correct async while-loop pattern.
+   *
+   * The async variant must use ProcessMessageAsync with ConfigureAwait(false)
+   * and the method must be marked async with IAsyncEnumerable return type.
+   * All other loop logic (URI extraction, null check, next request) is identical.
+   */
+  it("generates next-link paging loop in async protocol GetRawPagesAsync", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Thing {
+        name: string;
+      }
+
+      model PageThing {
+        @pageItems
+        items: Thing[];
+
+        @nextLink
+        nextLink?: url;
+      }
+
+      @route("/things")
+      @list
+      @get
+      op listThings(): PageThing;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    // Find the async protocol file
+    const fileName = Object.keys(outputs).find(
+      (k) => k.includes("AsyncCollectionResult.cs") && !k.includes("OfT"),
+    );
+    expect(fileName).toBeDefined();
+    const content = outputs[fileName!];
+
+    // Verify async method signature
+    expect(content).toContain(
+      "public override async IAsyncEnumerable<ClientResult> GetRawPagesAsync()",
+    );
+
+    // Verify async pipeline call
+    expect(content).toContain(
+      "await _client.Pipeline.ProcessMessageAsync(message, _options).ConfigureAwait(false)",
+    );
+
+    // Verify the while-loop structure
+    expect(content).toContain("while (true)");
+    expect(content).toContain("nextPageUri = ((PageThing)result).NextLink;");
+    expect(content).toContain("if (nextPageUri == null)");
+    expect(content).toContain("yield break;");
+    expect(content).toContain(
+      "message = _client.CreateNextGetThingsRequest(nextPageUri, _options);",
+    );
+  });
+
+  /**
+   * Verifies that next-link paging generates a proper GetContinuationToken body.
+   *
+   * When next-link segments are present, GetContinuationToken must:
+   * 1. Cast the page to the response model and extract the next-link URI
+   * 2. If non-null, return ContinuationToken.FromBytes(BinaryData.FromString(...))
+   *    using IsAbsoluteUri/AbsoluteUri/OriginalString for URI serialization
+   * 3. If null, return null
+   *
+   * This validates the ContinuationToken creation pattern that enables pagination resumption.
+   */
+  it("generates next-link GetContinuationToken with URI extraction", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Thing {
+        name: string;
+      }
+
+      model PageThing {
+        @pageItems
+        items: Thing[];
+
+        @nextLink
+        nextLink?: url;
+      }
+
+      @route("/things")
+      @list
+      @get
+      op listThings(): PageThing;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    // Check the sync protocol file for GetContinuationToken
+    const fileName = Object.keys(outputs).find(
+      (k) =>
+        k.includes("CollectionResult.cs") &&
+        !k.includes("Async") &&
+        !k.includes("OfT"),
+    );
+    expect(fileName).toBeDefined();
+    const content = outputs[fileName!];
+
+    // Verify next-link extraction in GetContinuationToken
+    expect(content).toContain("Uri nextPage = ((PageThing)page).NextLink;");
+
+    // Verify null check and ContinuationToken creation
+    expect(content).toContain("if (nextPage != null)");
+    expect(content).toContain(
+      "ContinuationToken.FromBytes(BinaryData.FromString(",
+    );
+    expect(content).toContain(
+      "nextPage.IsAbsoluteUri ? nextPage.AbsoluteUri : nextPage.OriginalString",
+    );
+
+    // Verify fallback return null
+    expect(content).toContain("return null;");
+  });
+
+  /**
+   * Verifies that next-link convenience variant still generates GetValuesFromPage
+   * alongside the next-link GetRawPages loop.
+   *
+   * The convenience (OfT) variant must have both:
+   * - The while(true) next-link loop in GetRawPages
+   * - The GetValuesFromPage method that extracts typed items from the page
+   */
+  it("generates next-link convenience variant with both paging loop and GetValuesFromPage", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Thing {
+        name: string;
+      }
+
+      model PageThing {
+        @pageItems
+        items: Thing[];
+
+        @nextLink
+        nextLink?: url;
+      }
+
+      @route("/things")
+      @list
+      @get
+      op listThings(): PageThing;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    // Find the sync convenience file
+    const fileName = Object.keys(outputs).find(
+      (k) => k.includes("CollectionResultOfT.cs") && !k.includes("Async"),
+    );
+    expect(fileName).toBeDefined();
+    const content = outputs[fileName!];
+
+    // Verify base type is generic
+    expect(content).toContain(": CollectionResult<Thing>");
+
+    // Verify next-link while loop is present
+    expect(content).toContain("while (true)");
+    expect(content).toContain("nextPageUri = ((PageThing)result).NextLink;");
+
+    // Verify GetValuesFromPage is also present
+    expect(content).toContain(
+      "protected override IEnumerable<Thing> GetValuesFromPage(ClientResult page)",
+    );
+    expect(content).toContain("((PageThing)page).Items");
   });
 });
