@@ -1246,3 +1246,13 @@ In `DeserializeVariableDeclarations`, the `isStringDiscriminator` check uses `mo
 - Created builtins: `SystemIO` (System.IO.Stream), `SystemXmlLinq` (System.Xml.Linq.XElement, LoadOptions), added `System.StringComparison` to existing `System` builtin.
 - XML-only test cannot assert `not.toContain("JsonDocument")` on the whole file because other generated methods (JsonModelWriteCore, etc.) still reference JsonDocument for XML-only models — pre-existing issue.
 - TypeSpec pattern for XML content types: `@header("content-type") contentType: "application/xml"` — TCGC automatically sets `UsageFlags.Xml` on the model.
+
+## Operation Name Conventions (Task 3.6.1)
+
+### Design Decision: cleanOperationName utility
+- **Approach chosen**: Standalone `cleanOperationName()` function in `src/utils/operation-naming.ts`
+- **Rejected**: Modifying the naming policy (too generic, domain-specific logic doesn't belong there)
+- **Pattern**: Always apply `cleanOperationName(namePolicy.getName(method.name, "class"))` — the function expects PascalCase input
+- **Applied in**: ProtocolMethod.tsx, ConvenienceMethod.tsx, RestClientFile.tsx (all three places that resolve operation names)
+- **Rules**: "List" → "GetAll", "ListXxx" (uppercase after List) → "GetXxx", everything else unchanged
+- **Important**: "Listen", "Listed", "Listing" are NOT renamed (no uppercase letter at position 4)

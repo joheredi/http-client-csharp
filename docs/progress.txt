@@ -1993,3 +1993,28 @@ When types like `IDictionary`, `BinaryData`, etc. appear in raw string literals 
 ### Notes for next iteration
 - 6 pre-existing test failures remain (4 smoke tests with preprocessor directive issue in AdditionalBinaryDataWrite output, 2 model serialization tests)
 - The smoke test build errors are caused by `#else` preprocessor directive being on the same line as `using` statement in generated serialization code — this is a separate formatting bug
+
+## 2026-03-02 — Task 3.6.1: Implement operation name conventions (complete)
+
+**What was done:**
+- Created `src/utils/operation-naming.ts` with `cleanOperationName()` utility function
+- Implements .NET convention: "List" → "GetAll", "ListXxx" → "GetXxx" (matching legacy `GetCleanOperationName` in `ClientProvider.cs`)
+- Applied the transformation in all three files that resolve operation names:
+  - `ProtocolMethod.tsx` — sync/async protocol method names
+  - `ConvenienceMethod.tsx` — sync/async convenience method names  
+  - `RestClientFile.tsx` — `Create{Name}Request` method names
+- Created comprehensive test suite in `test/operation-naming.test.ts` (11 tests):
+  - Unit tests for the `cleanOperationName` function (edge cases: Listen, Listed, exact "List")
+  - Integration tests verifying the full emitter pipeline produces correct renamed output
+  - Tests for protocol methods, convenience methods, and REST client CreateRequest methods
+  - Negative tests ensuring non-List operations are not renamed
+
+**Design decision:**
+- Chose to create a standalone utility function rather than modifying the naming policy, because:
+  1. The naming policy is from `@alloy-js/csharp` (generic) — this is domain-specific logic
+  2. Matches the legacy emitter's architecture (standalone `GetCleanOperationName` function)
+  3. Explicitly visible where it's used, easy to grep/test
+- The function takes PascalCase input (after namePolicy.getName) and applies List→Get transformation
+- All three consumer files import and apply it at the same point in the pipeline
+
+**Pattern:** `cleanOperationName(namePolicy.getName(method.name, "class"))` — always apply cleanOperationName AFTER the naming policy.

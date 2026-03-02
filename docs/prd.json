@@ -3085,7 +3085,7 @@
           "title": "Implement operation name conventions",
           "description": "Apply C# naming conventions: List\u2192GetAll, ListXxx\u2192GetXxx, add Async suffix for async methods.",
           "phase": "phase-3",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "3.4.1"
           ],

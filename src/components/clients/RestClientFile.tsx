@@ -25,6 +25,7 @@ import {
 import { System } from "../../builtins/system.js";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
+import { cleanOperationName } from "../../utils/operation-naming.js";
 
 /**
  * A unique set of success status codes that needs a PipelineMessageClassifier.
@@ -222,7 +223,9 @@ function CreateRequestMethod(props: CreateRequestMethodProps) {
   const namePolicy = useCSharpNamePolicy();
 
   // Method name: Create{PascalCaseName}Request
-  const operationName = namePolicy.getName(method.name, "class");
+  const operationName = cleanOperationName(
+    namePolicy.getName(method.name, "class"),
+  );
   const methodName = `Create${operationName}Request`;
 
   // HTTP method (uppercase): "get" → "GET"

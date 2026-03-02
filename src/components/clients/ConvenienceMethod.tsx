@@ -18,6 +18,7 @@ import {
   SystemThreadingTasks,
 } from "../../builtins/system-threading.js";
 import { System } from "../../builtins/system.js";
+import { cleanOperationName } from "../../utils/operation-naming.js";
 
 /**
  * Metadata for a convenience method parameter, including the type expression,
@@ -106,7 +107,9 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
     <>
       {methods.map((method) => {
         const operation = method.operation;
-        const methodName = namePolicy.getName(method.name, "class");
+        const methodName = cleanOperationName(
+          namePolicy.getName(method.name, "class"),
+        );
         const access = method.access ?? "public";
         const description = method.doc ?? method.summary ?? "";
         const responseType = method.response.type;

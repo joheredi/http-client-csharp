@@ -17,6 +17,7 @@ import {
 } from "../../builtins/system-client-model.js";
 import { System } from "../../builtins/system.js";
 import { SystemThreadingTasks } from "../../builtins/system-threading.js";
+import { cleanOperationName } from "../../utils/operation-naming.js";
 
 /**
  * Metadata for a protocol method parameter, including optionality and type
@@ -104,7 +105,9 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
     <>
       {methods.map((method) => {
         const operation = method.operation;
-        const methodName = namePolicy.getName(method.name, "class");
+        const methodName = cleanOperationName(
+          namePolicy.getName(method.name, "class"),
+        );
         const access = method.access ?? "public";
         const description = method.doc ?? method.summary ?? "";
 
