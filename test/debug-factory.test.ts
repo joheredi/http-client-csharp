@@ -24,7 +24,7 @@ describe("debug", () => {
     // We need to call createSdkContext like the emitter does
     // Actually, we can't do that from here since we don't have the context
     // Let me instead add logging to the factory component
-    
+
     // For now, just check which keys exist
     console.log("Keys:", Object.keys(result.outputs));
     expect(true).toBe(true);

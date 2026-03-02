@@ -105,8 +105,12 @@ describe("AdditionalBinaryDataWrite", () => {
     const content = outputs[fileKey!];
 
     // Verify ordering: property writes come before additional binary data
-    const lastPropertyWrite = content.lastIndexOf("writer.WriteNumberValue(Count);");
-    const additionalDataStart = content.indexOf("_additionalBinaryDataProperties != null");
+    const lastPropertyWrite = content.lastIndexOf(
+      "writer.WriteNumberValue(Count);",
+    );
+    const additionalDataStart = content.indexOf(
+      "_additionalBinaryDataProperties != null",
+    );
     expect(lastPropertyWrite).toBeLessThan(additionalDataStart);
     expect(lastPropertyWrite).toBeGreaterThan(-1);
     expect(additionalDataStart).toBeGreaterThan(-1);
@@ -142,16 +146,14 @@ describe("AdditionalBinaryDataWrite", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const dogFileKey = Object.keys(outputs).find(
-      (k) => k.includes("Dog.Serialization.cs"),
+    const dogFileKey = Object.keys(outputs).find((k) =>
+      k.includes("Dog.Serialization.cs"),
     );
     expect(dogFileKey).toBeDefined();
     const dogContent = outputs[dogFileKey!];
 
     // Derived model should NOT have the additional binary data loop
-    expect(dogContent).not.toContain(
-      "_additionalBinaryDataProperties != null",
-    );
+    expect(dogContent).not.toContain("_additionalBinaryDataProperties != null");
     expect(dogContent).not.toContain(
       "foreach (var item in _additionalBinaryDataProperties)",
     );
@@ -189,16 +191,14 @@ describe("AdditionalBinaryDataWrite", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const petFileKey = Object.keys(outputs).find(
-      (k) => k.includes("Pet.Serialization.cs"),
+    const petFileKey = Object.keys(outputs).find((k) =>
+      k.includes("Pet.Serialization.cs"),
     );
     expect(petFileKey).toBeDefined();
     const petContent = outputs[petFileKey!];
 
     // Base model SHOULD have the additional binary data loop
-    expect(petContent).toContain(
-      "_additionalBinaryDataProperties != null",
-    );
+    expect(petContent).toContain("_additionalBinaryDataProperties != null");
     expect(petContent).toContain(
       "foreach (var item in _additionalBinaryDataProperties)",
     );

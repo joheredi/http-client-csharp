@@ -1,4 +1,7 @@
-import { createSdkContext, UsageFlags } from "@azure-tools/typespec-client-generator-core";
+import {
+  createSdkContext,
+  UsageFlags,
+} from "@azure-tools/typespec-client-generator-core";
 import { existsSync } from "fs";
 import { type EmitContext, resolvePath } from "@typespec/compiler";
 import { writeOutput } from "@typespec/emitter-framework";

@@ -140,7 +140,13 @@ describe("CSharpEmitterOptionsSchema", () => {
     expect(licenseSchema.type).toBe("object");
     expect(licenseSchema.required).toEqual(["name"]);
     expect(Object.keys(licenseSchema.properties)).toEqual(
-      expect.arrayContaining(["name", "company", "link", "header", "description"]),
+      expect.arrayContaining([
+        "name",
+        "company",
+        "link",
+        "header",
+        "description",
+      ]),
     );
   });
 
@@ -150,8 +156,13 @@ describe("CSharpEmitterOptionsSchema", () => {
    * configuration entries.
    */
   it("defines correct enum values for unreferenced-types-handling", () => {
-    const schema = CSharpEmitterOptionsSchema.properties["unreferenced-types-handling"];
-    expect(schema.enum).toEqual(["removeOrInternalize", "internalize", "keepAll"]);
+    const schema =
+      CSharpEmitterOptionsSchema.properties["unreferenced-types-handling"];
+    expect(schema.enum).toEqual([
+      "removeOrInternalize",
+      "internalize",
+      "keepAll",
+    ]);
   });
 });
 

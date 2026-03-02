@@ -1354,8 +1354,8 @@ When tests use broad filters like `k.includes("Serialization")` to find generate
 
 The `code` template tag from `@alloy-js/core` strips leading whitespace when the **first template chunk is whitespace-only** followed by an interpolation. This means:
 
-- ❌ `code\`    ${ref} result = ...\`` — loses the 4-space indent
-- ✅ `code\`    nextPageUri = ((${ref})result)...\`` — keeps indent (first chunk has non-whitespace chars)
+- ❌ `code\` ${ref} result = ...\`` — loses the 4-space indent
+- ✅ `code\` nextPageUri = ((${ref})result)...\`` — keeps indent (first chunk has non-whitespace chars)
 - ✅ `"    ", code\`${ref} result = ...\`` — keeps indent by separating indent into a plain string child
 
 **Fix**: When a `code` template needs to start with indentation followed by an interpolated reference, put the indentation in a separate string child before the `code` template.
@@ -1371,30 +1371,43 @@ The `code` template tag from `@alloy-js/core` strips leading whitespace when the
 ## Next-link property path with null-conditional access (2026-03-02)
 
 For nested next-link segments, intermediate properties use `?.` (null-conditional operator):
+
 - Single segment: `((ResponseType)result).NextLink`
 - Nested segments: `((ResponseType)result).Nested?.NextLink`
 
 The first segment uses direct `.` access on the cast expression (the response model itself is non-null), while subsequent segments use `?.` because intermediate navigation properties could be null.
 
 ## Code template newline gotcha (2026-03-02)
+
 The `code` tagged template from `@alloy-js/core` does NOT properly render `\n` escape sequences within the template literal. When using `code` templates with refkeys, always separate the newline+indentation into a plain string and keep the `code` template for refkey resolution only.
 
 **Bad (newline lost):**
+
 ```tsx
-{code`\n            using (${SystemTextJson.JsonDocument} document = ...)`}
+{
+  code`\n            using (${SystemTextJson.JsonDocument} document = ...)`;
+}
 ```
 
 **Good (newline preserved):**
+
 ```tsx
-{"\n            "}
-{code`using (${SystemTextJson.JsonDocument} document = ...)`}
+{
+  ("\n            ");
+}
+{
+  code`using (${SystemTextJson.JsonDocument} document = ...)`;
+}
 ```
 
 ## XML-only models: conditional JSON rendering (2026-03-02)
+
 In `emitter.tsx`, JSON-specific serialization components (JsonModelInterfaceWrite, JsonModelWriteCore, JsonModelInterfaceCreate, JsonModelCreateCore, JsonDeserialize, DeserializationConstructor) must be conditionally rendered only when the model supports JSON (`(m.usage & UsageFlags.Json) !== 0`). XML-only models should only get PersistableModel methods and cast operators.
 
 ## Smoke test root cause (2026-03-02)
+
 The 4 smoke test failures (dotnet build) are NOT caused by model serialization bugs. They are caused by missing infrastructure files from task 5.1.5:
+
 - `ClientUriBuilder` (used in RestClient)
 - `ModelSerializationExtensions` (used in cast operators)
 - `CancellationTokenExtensions.ToRequestOptions()` (used in client convenience methods)
@@ -1403,6 +1416,7 @@ The 4 smoke test failures (dotnet build) are NOT caused by model serialization b
 ## Design Decisions
 
 ### AdditionalBinaryDataRead component (task 2.3.12)
+
 **Chosen approach:** Separate `AdditionalBinaryDataRead` component passed as children to `PropertyMatchingLoop`.
 **Rejected approach:** Building the catch-all directly into `PropertyMatchingLoop.tsx`.
 **Reason:** The children slot was explicitly designed for this purpose (JSDoc comment at line 17), and a separate component mirrors the write-side architecture (`AdditionalBinaryDataWrite`). It keeps PropertyMatchingLoop focused on property matching and follows the single-responsibility principle.

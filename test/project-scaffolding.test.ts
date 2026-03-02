@@ -22,10 +22,14 @@ describe("ProjectFile", () => {
 
     const csproj = outputs[csprojKey!];
     expect(csproj).toContain('<Project Sdk="Microsoft.NET.Sdk">');
-    expect(csproj).toContain("<TargetFrameworks>netstandard2.0;net8.0</TargetFrameworks>");
+    expect(csproj).toContain(
+      "<TargetFrameworks>netstandard2.0;net8.0</TargetFrameworks>",
+    );
     expect(csproj).toContain("<LangVersion>latest</LangVersion>");
     expect(csproj).toContain("<Version>1.0.0-beta.1</Version>");
-    expect(csproj).toContain('<PackageReference Include="System.ClientModel" Version="1.9.0" />');
+    expect(csproj).toContain(
+      '<PackageReference Include="System.ClientModel" Version="1.9.0" />',
+    );
   });
 
   it("includes package metadata from package name", async () => {
@@ -51,7 +55,9 @@ describe("ProjectFile", () => {
 
     const csprojKey = Object.keys(outputs).find((k) => k.endsWith(".csproj"));
     const csproj = outputs[csprojKey!];
-    expect(csproj).toContain("<GenerateDocumentationFile>true</GenerateDocumentationFile>");
+    expect(csproj).toContain(
+      "<GenerateDocumentationFile>true</GenerateDocumentationFile>",
+    );
   });
 
   it("omits GenerateDocumentationFile when disable-xml-docs is true", async () => {
@@ -91,7 +97,9 @@ describe("SolutionFile", () => {
     expect(slnKey).toBe("TestService.sln");
 
     const sln = outputs[slnKey!];
-    expect(sln).toContain("Microsoft Visual Studio Solution File, Format Version 12.00");
+    expect(sln).toContain(
+      "Microsoft Visual Studio Solution File, Format Version 12.00",
+    );
     expect(sln).toContain("# Visual Studio Version 17");
   });
 

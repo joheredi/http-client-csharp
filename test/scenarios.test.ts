@@ -44,9 +44,8 @@ const require = createRequire(import.meta.url);
  */
 async function createLocalCSharpExtractorConfig(): Promise<LanguageConfiguration> {
   await Parser.init();
-  const wasmPath = require.resolve(
-    "tree-sitter-c-sharp/tree-sitter-c_sharp.wasm",
-  );
+  const wasmPath =
+    require.resolve("tree-sitter-c-sharp/tree-sitter-c_sharp.wasm");
   const language = await Language.load(wasmPath);
   return {
     codeBlockTypes: ["cs", "csharp"],

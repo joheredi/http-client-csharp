@@ -228,9 +228,7 @@ describe("ExtensibleEnumSerializationFile", () => {
       (k) => k.includes("Score") && k.includes("Serialization"),
     );
     expect(serFileKey).toBeDefined();
-    expect(serFileKey).toContain(
-      "src/Generated/Models/Score.Serialization.cs",
-    );
+    expect(serFileKey).toContain("src/Generated/Models/Score.Serialization.cs");
   });
 
   /**

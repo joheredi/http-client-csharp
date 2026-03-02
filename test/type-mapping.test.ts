@@ -129,7 +129,9 @@ describe("Type Mapping Audit", () => {
       expect(EMITTER_FRAMEWORK_SCALAR_MAP.get("int64")).toBe("long");
       expect(EMITTER_FRAMEWORK_SCALAR_MAP.get("float32")).toBe("float");
       expect(EMITTER_FRAMEWORK_SCALAR_MAP.get("float64")).toBe("double");
-      expect(EMITTER_FRAMEWORK_SCALAR_MAP.get("utcDateTime")).toBe("DateTimeOffset");
+      expect(EMITTER_FRAMEWORK_SCALAR_MAP.get("utcDateTime")).toBe(
+        "DateTimeOffset",
+      );
       expect(EMITTER_FRAMEWORK_SCALAR_MAP.get("duration")).toBe("TimeSpan");
       expect(EMITTER_FRAMEWORK_SCALAR_MAP.get("url")).toBe("Uri");
     });

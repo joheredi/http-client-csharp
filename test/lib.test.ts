@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { $lib, reportDiagnostic, createDiagnostic, getTracer } from "../src/lib.js";
+import {
+  $lib,
+  reportDiagnostic,
+  createDiagnostic,
+  getTracer,
+} from "../src/lib.js";
 
 /**
  * Tests for the TypeSpec library definition in src/lib.ts.
@@ -60,7 +65,9 @@ describe("$lib", () => {
 
     const registeredCodes = Object.keys($lib.diagnostics);
     for (const code of expectedCodes) {
-      expect(registeredCodes, `missing diagnostic code: ${code}`).toContain(code);
+      expect(registeredCodes, `missing diagnostic code: ${code}`).toContain(
+        code,
+      );
     }
   });
 

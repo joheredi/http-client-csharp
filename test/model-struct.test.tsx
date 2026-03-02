@@ -116,9 +116,7 @@ describe("StructDeclaration rendering", () => {
     );
 
     const content = (result.contents[0] as { contents: string }).contents;
-    expect(content).toMatch(
-      /internal\s+readonly\s+partial\s+struct\s+Config/,
-    );
+    expect(content).toMatch(/internal\s+readonly\s+partial\s+struct\s+Config/);
     expect(content).not.toContain("public");
   });
 

@@ -20,6 +20,7 @@
     "@alloy-js/cli": "0.22.0",
     "@alloy-js/rollup-plugin": "0.1.0",
     "@azure-tools/typespec-client-generator-core": ">=0.65.3 <0.66.0",
+    "@eslint/js": "^9.39.3",
     "@types/node": "latest",
     "@typescript-eslint/eslint-plugin": "^8.15.0",
     "@typescript-eslint/parser": "^8.15.0",
@@ -32,6 +33,7 @@
     "prettier": "^3.3.3",
     "tree-sitter-c-sharp": "^0.23.1",
     "typescript": "^5.8.3",
+    "typescript-eslint": "^8.56.1",
     "vitest": "^3.2.4",
     "web-tree-sitter": "^0.26.6"
   },

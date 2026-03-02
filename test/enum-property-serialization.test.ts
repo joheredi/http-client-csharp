@@ -59,7 +59,9 @@ describe("enum property serialization", () => {
     const content = outputs[fileKey!];
 
     expect(content).toContain('writer.WritePropertyName("status"u8);');
-    expect(content).toContain("writer.WriteStringValue(Status.ToSerialString());");
+    expect(content).toContain(
+      "writer.WriteStringValue(Status.ToSerialString());",
+    );
   });
 
   /**
@@ -141,7 +143,9 @@ describe("enum property serialization", () => {
     const content = outputs[fileKey!];
 
     expect(content).toContain('writer.WritePropertyName("rating"u8);');
-    expect(content).toContain("writer.WriteNumberValue(Rating.ToSerialSingle());");
+    expect(content).toContain(
+      "writer.WriteNumberValue(Rating.ToSerialSingle());",
+    );
   });
 
   /**
@@ -226,7 +230,9 @@ describe("enum property serialization", () => {
     const content = outputs[fileKey!];
 
     expect(content).toContain('writer.WritePropertyName("level"u8);');
-    expect(content).toContain("writer.WriteNumberValue(Level.ToSerialInt32());");
+    expect(content).toContain(
+      "writer.WriteNumberValue(Level.ToSerialInt32());",
+    );
   });
 
   /**
@@ -267,7 +273,9 @@ describe("enum property serialization", () => {
 
     expect(content).toContain("if (Optional.IsDefined(Status))");
     expect(content).toContain('writer.WritePropertyName("status"u8);');
-    expect(content).toContain("writer.WriteStringValue(Status.ToSerialString());");
+    expect(content).toContain(
+      "writer.WriteStringValue(Status.ToSerialString());",
+    );
   });
 
   /**
@@ -310,7 +318,9 @@ describe("enum property serialization", () => {
     // Collection should use WriteStartArray / WriteEndArray
     expect(content).toContain('writer.WritePropertyName("colors"u8);');
     expect(content).toContain("writer.WriteStartArray();");
-    expect(content).toContain("writer.WriteStringValue(item.ToSerialString());");
+    expect(content).toContain(
+      "writer.WriteStringValue(item.ToSerialString());",
+    );
     expect(content).toContain("writer.WriteEndArray();");
   });
 });

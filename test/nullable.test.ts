@@ -327,9 +327,9 @@ describe("isCollectionType", () => {
    * the collection in SdkNullableType.
    */
   it("returns true for nullable-wrapped array", () => {
-    expect(isCollectionType(makeNullable(makeArray(makeBuiltIn("int32"))))).toBe(
-      true,
-    );
+    expect(
+      isCollectionType(makeNullable(makeArray(makeBuiltIn("int32")))),
+    ).toBe(true);
   });
 
   /**

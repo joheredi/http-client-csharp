@@ -16,14 +16,8 @@
     "jsx": "preserve",
     "jsxImportSource": "@alloy-js/core",
     "emitDeclarationOnly": true,
-    "useDefineForClassFields": true,
+    "useDefineForClassFields": true
   },
-  "include": [
-    "src/**/*.ts",
-    "test/**/*.ts",
-    "src/**/*.tsx",
-    "test/**/*.tsx",
-
-  ],
+  "include": ["src/**/*.ts", "test/**/*.ts", "src/**/*.tsx", "test/**/*.tsx"],
   "exclude": ["node_modules", "dist"]
 }

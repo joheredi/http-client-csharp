@@ -78,8 +78,9 @@ describe(
       async () => {
         const testDir = join(SMOKE_DIR, "minimal-service");
 
-        const [{ outputs }, diagnostics] =
-          await HttpTester.compileAndDiagnose(readFixture("minimal-service.tsp"));
+        const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(
+          readFixture("minimal-service.tsp"),
+        );
 
         expect(diagnostics).toHaveLength(0);
         writeOutputsToDisk(outputs, testDir);
@@ -94,8 +95,9 @@ describe(
       async () => {
         const testDir = join(SMOKE_DIR, "enums");
 
-        const [{ outputs }, diagnostics] =
-          await HttpTester.compileAndDiagnose(readFixture("enums.tsp"));
+        const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(
+          readFixture("enums.tsp"),
+        );
 
         expect(diagnostics).toHaveLength(0);
         writeOutputsToDisk(outputs, testDir);
@@ -110,8 +112,9 @@ describe(
       async () => {
         const testDir = join(SMOKE_DIR, "complex-models");
 
-        const [{ outputs }, diagnostics] =
-          await HttpTester.compileAndDiagnose(readFixture("complex-models.tsp"));
+        const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(
+          readFixture("complex-models.tsp"),
+        );
 
         expect(diagnostics).toHaveLength(0);
         writeOutputsToDisk(outputs, testDir);
@@ -121,20 +124,18 @@ describe(
       },
     );
 
-    it.skipIf(!hasDotnet())(
-      "builds the Widget service example",
-      async () => {
-        const testDir = join(SMOKE_DIR, "widget");
+    it.skipIf(!hasDotnet())("builds the Widget service example", async () => {
+      const testDir = join(SMOKE_DIR, "widget");
 
-        const [{ outputs }, diagnostics] =
-          await HttpTester.compileAndDiagnose(readFixture("widget.tsp"));
+      const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(
+        readFixture("widget.tsp"),
+      );
 
-        expect(diagnostics).toHaveLength(0);
-        writeOutputsToDisk(outputs, testDir);
+      expect(diagnostics).toHaveLength(0);
+      writeOutputsToDisk(outputs, testDir);
 
-        const result = dotnetBuild(join(testDir, "src"));
-        expect(result).toContain("Build succeeded");
-      },
-    );
+      const result = dotnetBuild(join(testDir, "src"));
+      expect(result).toContain("Build succeeded");
+    });
   },
 );

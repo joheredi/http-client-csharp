@@ -117,9 +117,7 @@ describe("PersistableModelWriteCore", () => {
     const content = outputs[fileKey!];
 
     expect(content).toContain('case "J":');
-    expect(content).toContain(
-      "return ModelReaderWriter.Write(this, options);",
-    );
+    expect(content).toContain("return ModelReaderWriter.Write(this, options);");
   });
 
   /**
@@ -150,7 +148,7 @@ describe("PersistableModelWriteCore", () => {
     const content = outputs[fileKey!];
 
     expect(content).toContain(
-      'throw new FormatException($"The model {nameof(Widget)} does not support writing \'{options.Format}\' format.");',
+      "throw new FormatException($\"The model {nameof(Widget)} does not support writing '{options.Format}' format.\");",
     );
   });
 
@@ -327,7 +325,9 @@ describe("PersistableModelCreateCore", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain("using (JsonDocument document = JsonDocument.Parse(data))");
+    expect(content).toContain(
+      "using (JsonDocument document = JsonDocument.Parse(data))",
+    );
     expect(content).toContain(
       "return DeserializeWidget(document.RootElement, options);",
     );
@@ -360,7 +360,7 @@ describe("PersistableModelCreateCore", () => {
     const content = outputs[fileKey!];
 
     expect(content).toContain(
-      'throw new FormatException($"The model {nameof(Widget)} does not support reading \'{options.Format}\' format.");',
+      "throw new FormatException($\"The model {nameof(Widget)} does not support reading '{options.Format}' format.\");",
     );
   });
 
