@@ -9,5 +9,10 @@ export default defineConfig({
   plugins: [alloyPlugin()],
   test: {
     include: ["test/**/*.test.{ts,tsx}"],
+    poolOptions: {
+      forks: {
+        maxForks: 4,
+      },
+    },
   },
 });
