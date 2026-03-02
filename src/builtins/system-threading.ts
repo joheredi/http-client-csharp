@@ -35,3 +35,26 @@ export const SystemThreading = createLibrary("System.Threading", {
     members: {},
   },
 });
+
+/**
+ * Alloy library declaration for types in the System.Threading.Tasks namespace.
+ *
+ * Provides the Task type used as the return type wrapper for async protocol
+ * and convenience methods. Referencing these symbols in Alloy JSX components
+ * automatically generates the correct `using System.Threading.Tasks;` directive.
+ *
+ * @see https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks
+ */
+export const SystemThreadingTasks = createLibrary("System.Threading.Tasks", {
+  /**
+   * Represents an asynchronous operation that returns a value.
+   * Used as the return type for async protocol methods (Task{ClientResult})
+   * and async convenience methods (Task{T}).
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.task-1
+   */
+  Task: {
+    kind: "class",
+    members: {},
+  },
+});

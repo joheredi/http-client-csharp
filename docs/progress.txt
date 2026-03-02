@@ -1753,3 +1753,44 @@ Each CreateRequest method follows the System.ClientModel pattern:
 ### What's next
 - Task 3.3.2: Implement request building (next-link pagination methods, complex path expressions)
 - Task 3.3.3: Implement parameter serialization variants (collection formats, encoding-specific formatting)
+
+## 2026-03-02 — Task 3.4.1: Create ProtocolMethod component (complete)
+
+### What was done
+Created `src/components/clients/ProtocolMethod.tsx` — generates sync/async protocol method pairs in the ClientFile class for each HTTP operation.
+
+### Generated pattern
+Each HTTP operation produces two methods:
+1. **Sync**: `public virtual ClientResult {Name}(...params, RequestOptions options)`
+2. **Async**: `public virtual async Task<ClientResult> {Name}Async(...params, RequestOptions options)`
+
+Method body follows the `using PipelineMessage` pattern:
+```csharp
+Argument.AssertNotNullOrEmpty(id, nameof(id));  // string params
+Argument.AssertNotNull(content, nameof(content)); // reference type params
+
+using PipelineMessage message = Create{Name}Request(params, options);
+return ClientResult.FromResponse(Pipeline.ProcessMessage(message, options));
+// async: await Pipeline.ProcessMessageAsync(message, options).ConfigureAwait(false)
+```
+
+### Key patterns and decisions
+- **XML docs**: `[Protocol Method]` prefix + `<see href="https://aka.ms/azsdk/net/protocol-methods">` link + exception docs for ArgumentNullException, ArgumentException, ClientResultException
+- **Parameter ordering**: Same as CreateRequest (path → required → body → optional → options). Reuses same priority-based sorting logic from RestClientFile.
+- **Parameter defaults**: Optional params get `= default`, RequestOptions gets `= null` when optional params exist
+- **Validation**: String params → `Argument.AssertNotNullOrEmpty`, BinaryContent/other → `Argument.AssertNotNull`. Only required params validated.
+- **Task<> return type**: Added `SystemThreadingTasks` library to builtins for auto-generating `using System.Threading.Tasks;`
+- **Access modifier**: Supports `public` (default) and `internal` from `SdkServiceMethod.access`
+- **Integration**: ProtocolMethods rendered inside ClientFile's ClassDeclaration, before SubClientFactoryMethods
+
+### Files changed
+- **Created**: `src/components/clients/ProtocolMethod.tsx` (main component)
+- **Created**: `test/protocol-method.test.ts` (9 tests)
+- **Modified**: `src/builtins/system-threading.ts` (added SystemThreadingTasks for Task<>)
+- **Modified**: `src/builtins/index.ts` (exported SystemThreadingTasks)
+- **Modified**: `src/components/clients/ClientFile.tsx` (render ProtocolMethods)
+
+### What's next
+- Task 3.4.2: Write protocol method tests (already done as part of this task)
+- Task 3.5.1: Create ConvenienceMethod component (depends on 3.4.1)
+- Task 3.3.2: Implement request building enhancements (next-link pagination, complex paths)

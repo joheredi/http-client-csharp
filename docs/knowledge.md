@@ -1133,19 +1133,42 @@ Alloy to auto-generate `using` directives. Constructor args are joined with `fla
 **Builtin pattern:** `SystemThreading` in `src/builtins/system-threading.ts` uses `createLibrary("System.Threading", { Volatile: ..., Interlocked: ... })` — same pattern as other builtins.
 
 ---
+
 ### TypeExpression expects TypeSpec Type, not SdkType
+
 `TypeExpression` from `@typespec/emitter-framework/csharp` expects a TypeSpec compiler `Type` (accessed via `sdkType.__raw!`), NOT an `SdkType` directly. For protocol-level type mapping (CreateRequest params), use a direct switch on `SdkType.kind` returning strings for C# keywords (string, int, bool) and refkeys for types needing `using` directives (System.DateTimeOffset, System.Uri, System.BinaryData).
 
 ### RestClientFile partial class pattern
-RestClientFile uses `namekey(className, { ignoreNameConflict: true })` for its ClassDeclaration — identical to ModelSerializationFile. This prevents Alloy from renaming the second partial declaration with a "_2" suffix since ClientFile already declares the canonical class. Do NOT use `refkey(client)` on both files.
+
+RestClientFile uses `namekey(className, { ignoreNameConflict: true })` for its ClassDeclaration — identical to ModelSerializationFile. This prevents Alloy from renaming the second partial declaration with a "\_2" suffix since ClientFile already declares the canonical class. Do NOT use `refkey(client)` on both files.
 
 ### ClientUriBuilder and TypeFormatters are raw strings
+
 `ClientUriBuilder` and `TypeFormatters` are internal infrastructure types generated into the same namespace (tasks 5.1.x). They don't need builtin declarations or using directives. Reference them as raw strings in `code` templates.
 
 ### Design Decision: RestClientFile (Task 3.3.1)
+
 **Chosen approach:** Single-file component with inline helpers (ClassifierDeclarations, CreateRequestMethod).
 **Why:** Cohesive — all REST client concerns in one file. Matches ClientFile.tsx pattern where SubClientFactoryMethods is inline.
 **Rejected:** Separate component files for classifiers/methods — too much indirection.
 
 ### System builtins: DateTimeOffset and TimeSpan
+
 Added `System.DateTimeOffset` (struct) and `System.TimeSpan` (struct) to the System builtin library for use as protocol parameter types. These generate `using System;` when referenced.
+
+## Design Decisions — Task 3.4.1: ProtocolMethod component
+
+### Approach chosen: Single ProtocolMethods component with inline sync/async rendering
+- Both sync and async methods share computed values (params, xmlDoc, validation) in the same loop iteration
+- Avoids duplicating computation or JSX trees
+- Rejected: Separate SingleProtocolMethod sub-component — would recompute buildProtocolParams twice per operation
+
+### Parameter utility duplication
+- `getProtocolTypeExpression`, `unwrapType`, `isConstantType`, `isImplicitContentTypeHeader` are duplicated from RestClientFile
+- Chosen over extraction to shared utility to minimize changes to RestClientFile (not in task scope)
+- Both copies must stay in sync — documented in JSDoc comments
+
+### Task<> return type via SystemThreadingTasks library
+- Added `SystemThreadingTasks` to `src/builtins/system-threading.ts` with `Task` class
+- `code\`${SystemThreadingTasks.Task}<${SystemClientModel.ClientResult}>\`` renders as `Task<ClientResult>` with both `using System.Threading.Tasks;` and `using System.ClientModel;`
+- This pattern works because code templates concatenate rendered library refs with literal strings

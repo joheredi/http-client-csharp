@@ -30,6 +30,7 @@ import {
 } from "../../utils/client-params.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { OverloadConstructor } from "../models/ModelConstructors.js";
+import { ProtocolMethods } from "./ProtocolMethod.js";
 
 /**
  * Props for the {@link ClientFile} component.
@@ -261,6 +262,7 @@ export function ClientFile(props: ClientFileProps) {
             get
           />
           {props.children}
+          <ProtocolMethods client={client} />
           <SubClientFactoryMethods children={children} />
         </ClassDeclaration>
       </Namespace>
