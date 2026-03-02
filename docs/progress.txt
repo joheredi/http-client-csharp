@@ -1930,3 +1930,23 @@ Key findings:
 - discriminatedSubtypes map is NOT flat across different discriminator properties — each level only contains entries for its own discriminator.
 - Nested discriminators: all string discriminator variables get initialized to model.discriminatorValue regardless of which discriminator property they belong to (bug-compatible with legacy emitter).
 - TypeSpec requires different discriminator property names at each level (reusing same @discriminator on child causes diagnostics).
+
+## 2026-03-02 — Task 2.5.2: Implement explicit ClientResult operator
+
+Added `ExplicitClientResultOperator` component to `CastOperators.tsx` that generates
+`public static explicit operator T(ClientResult result)` on output model serialization classes.
+
+### What was done
+- Added `ExplicitClientResultOperator` to `src/components/serialization/CastOperators.tsx`
+- Updated `index.ts` exports and `emitter.tsx` to compose the operator after the implicit operator
+- Added 4 tests to `test/cast-operators.test.ts` covering output-only, input-only, round-trip, and multi-word model names
+
+### Patterns used
+- Same raw-string + `code` template pattern as `ImplicitBinaryContentOperator`
+- Newlines MUST be separate string literals (`{"\n    "}`) not inside `code` templates (gotcha from knowledge.md)
+- Used builtins `SystemClientModel.ClientResult`, `SystemClientModelPrimitives.PipelineResponse`, `SystemTextJson.JsonDocument` for auto-using
+- `ModelSerializationExtensions.WireOptions` and `.JsonDocumentOptions` remain raw strings (task 5.1.5)
+
+### For next iteration
+- Task 2.5.3 (dual-format operators) can now proceed — adds Content-Type sniffing for JSON+XML models
+- Pre-existing failures: 4 smoke tests (dotnet build) and 2 model-serialization tests were failing before this change

@@ -1231,3 +1231,9 @@ TypeSpec requires different `@discriminator(...)` property names at each level o
 ### Nested discriminator variable initialization bug-compatible behavior (task 2.4.5)
 
 In `DeserializeVariableDeclarations`, the `isStringDiscriminator` check uses `model.discriminatorValue` for ALL string discriminator properties, regardless of which discriminator hierarchy level they belong to. For SawShark (discriminatorValue="saw"), both `kind` and `sharktype` variables get initialized to `"saw"`, even though `kind` should ideally be `"shark"`. This matches the legacy emitter's single-discriminatorValue-per-model behavior. The property matching loop corrects the value from actual JSON.
+
+### Explicit ClientResult operator (2.5.2)
+
+- For JSON-only output models, the operator extracts `PipelineResponse` (NOT `using` — consistent with legacy JSON-only), parses `JsonDocument` (IS `using`), and calls `Deserialize{ModelName}`.
+- `response.Content` (BinaryData) is passed directly to `JsonDocument.Parse()` — no intermediate `data` variable needed for non-dynamic models.
+- Dual-format (JSON+XML) is handled in task 2.5.3, not here.

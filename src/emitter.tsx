@@ -21,7 +21,10 @@ import {
 import { ModelFile } from "./components/models/ModelFile.js";
 import { UnknownDiscriminatorModelFile } from "./components/models/UnknownDiscriminatorModel.js";
 import { AdditionalBinaryDataWrite } from "./components/serialization/AdditionalBinaryDataWrite.js";
-import { ImplicitBinaryContentOperator } from "./components/serialization/CastOperators.js";
+import {
+  ExplicitClientResultOperator,
+  ImplicitBinaryContentOperator,
+} from "./components/serialization/CastOperators.js";
 import { ModelSerializationFile } from "./components/serialization/ModelSerializationFile.js";
 import { DeserializationConstructor } from "./components/serialization/DeserializationConstructor.js";
 import { DeserializeReturnStatement } from "./components/serialization/DeserializeReturnStatement.js";
@@ -161,6 +164,8 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
             </JsonDeserialize>
             {"\n\n"}
             <ImplicitBinaryContentOperator type={m} />
+            {"\n\n"}
+            <ExplicitClientResultOperator type={m} />
           </ModelSerializationFile>
         ))}
         <ModelFactoryFile

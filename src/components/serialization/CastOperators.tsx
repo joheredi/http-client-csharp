@@ -8,10 +8,10 @@
  * - **Implicit BinaryContent operator** (task 2.5.1): Converts input model → BinaryContent
  *   for request body serialization.
  * - **Explicit ClientResult operator** (task 2.5.2): Converts ClientResult → output model
- *   for response deserialization. (Future task)
+ *   for response deserialization.
  *
  * The legacy emitter generates these in `MrwSerializationTypeDefinition.BuildImplicitToBinaryContent()`
- * and `MrwSerializationTypeDefinition.BuildExplicitCastFromClientResult()`.
+ * and `MrwSerializationTypeDefinition.BuildExplicitFromClientResult()`.
  *
  * @module
  */
@@ -22,7 +22,11 @@ import {
   type SdkModelType,
   UsageFlags,
 } from "@azure-tools/typespec-client-generator-core";
-import { SystemClientModel } from "../../builtins/system-client-model.js";
+import {
+  SystemClientModel,
+  SystemClientModelPrimitives,
+} from "../../builtins/system-client-model.js";
+import { SystemTextJson } from "../../builtins/system-text-json.js";
 
 /**
  * Props for the {@link ImplicitBinaryContentOperator} component.
@@ -106,6 +110,97 @@ export function ImplicitBinaryContentOperator(
       {"\n    }"}
       {"\n"}
       {code`    return ${SystemClientModel.BinaryContent}.Create(${paramName}, ModelSerializationExtensions.WireOptions);`}
+      {"\n}"}
+    </>
+  );
+}
+
+/**
+ * Props for the {@link ExplicitClientResultOperator} component.
+ */
+export interface ExplicitClientResultOperatorProps {
+  /** The TCGC SDK model type for which to generate the cast operator. */
+  type: SdkModelType;
+}
+
+/**
+ * Generates a `public static explicit operator T(ClientResult result)` method
+ * on output model serialization classes.
+ *
+ * This operator enables explicit conversion of `ClientResult` responses to
+ * typed model instances for response deserialization, making API consumption
+ * ergonomic:
+ * ```csharp
+ * // Without operator: manual deserialization
+ * PipelineResponse response = result.GetRawResponse();
+ * Widget widget = JsonSerializer.Deserialize<Widget>(response.Content);
+ * // With operator: explicit cast
+ * Widget widget = (Widget)result;
+ * ```
+ *
+ * Only generated for models that have the `UsageFlags.Output` flag set (i.e.,
+ * models returned from operations). Input-only models do not need this operator
+ * since they are never deserialized from responses.
+ *
+ * The method body (JSON-only, non-dynamic models):
+ * 1. Extracts the `PipelineResponse` from the `ClientResult` via `GetRawResponse()`.
+ * 2. Parses the response content as a `JsonDocument` using `ModelSerializationExtensions.JsonDocumentOptions`.
+ * 3. Calls the model's `Deserialize{ModelName}` static method with the root element
+ *    and `ModelSerializationExtensions.WireOptions`.
+ *
+ * @remarks
+ * The legacy emitter generates this in `MrwSerializationTypeDefinition.BuildExplicitFromClientResult()`.
+ * It is generated for models in `RootOutputModels`. In TCGC terms, `UsageFlags.Output` maps
+ * to the legacy `RootOutputModels` concept.
+ *
+ * `ModelSerializationExtensions.WireOptions` and `ModelSerializationExtensions.JsonDocumentOptions`
+ * are generated infrastructure types (task 5.1.5). Until that task is complete, the `using`
+ * directive for their namespace will not be auto-generated. This is a known gap.
+ *
+ * The `response` variable is NOT declared with `using` for JSON-only models (consistent with
+ * the legacy emitter). The `document` variable IS declared with `using` because `JsonDocument`
+ * is `IDisposable`.
+ *
+ * Dual-format models (JSON + XML) are handled by task 2.5.3 which adds content-type sniffing.
+ *
+ * @example Generated output for an output model:
+ * ```csharp
+ * public static explicit operator Widget(ClientResult result)
+ * {
+ *     PipelineResponse response = result.GetRawResponse();
+ *     using JsonDocument document = JsonDocument.Parse(response.Content, ModelSerializationExtensions.JsonDocumentOptions);
+ *     return DeserializeWidget(document.RootElement, ModelSerializationExtensions.WireOptions);
+ * }
+ * ```
+ *
+ * @param props - The component props containing the model type.
+ * @returns JSX element rendering the operator, or null for non-output models.
+ */
+export function ExplicitClientResultOperator(
+  props: ExplicitClientResultOperatorProps,
+) {
+  const { type } = props;
+
+  // Only generate for output models — models returned from operations.
+  // Input-only models (UsageFlags.Input without Output) don't need this
+  // operator because they are never deserialized from responses.
+  const isOutput = (type.usage & UsageFlags.Output) !== 0;
+  if (!isOutput) {
+    return null;
+  }
+
+  const namePolicy = useCSharpNamePolicy();
+  const modelName = namePolicy.getName(type.name, "class");
+
+  return (
+    <>
+      {code`public static explicit operator ${modelName}(${SystemClientModel.ClientResult} result)`}
+      {"\n{"}
+      {"\n    "}
+      {code`${SystemClientModelPrimitives.PipelineResponse} response = result.GetRawResponse();`}
+      {"\n    "}
+      {code`using ${SystemTextJson.JsonDocument} document = ${SystemTextJson.JsonDocument}.Parse(response.Content, ModelSerializationExtensions.JsonDocumentOptions);`}
+      {`\n    return ${modelName}.Deserialize${modelName}(document.RootElement, ModelSerializationExtensions.WireOptions);`}
       {"\n}"}
     </>
   );
