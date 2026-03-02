@@ -1101,3 +1101,16 @@ The options class is always in the same namespace as the client, so string refer
 **Gotcha: API version params vs constructor params**
 Method parameters with `isApiVersionParam: true` are NOT constructor parameters — they're assigned from
 `options.Version` in the primary constructor body. Non-API-version method params ARE constructor parameters.
+
+### Discriminator exclusion in factory methods (task 1.8.4)
+
+Factory methods for derived discriminated models must exclude the discriminator from parameters
+and inject the literal value in the constructor call. The key helper is `getDiscriminatorLiteral()`
+in `ModelFactoryMethod.tsx` which walks up the model hierarchy matching `baseModel.discriminatorProperty.name`
+to find the correct value at each level.
+
+Detection: check `property.discriminator === true` then call `getDiscriminatorLiteral()`. If it returns
+non-undefined, push the literal to ctorArgs and skip the property from factoryParams.
+
+The `ctorArgs` array is `Children[]` (not `string[]`) to support enum discriminator refkeys that need
+Alloy to auto-generate `using` directives. Constructor args are joined with `flatMap()` instead of `.join()`.
