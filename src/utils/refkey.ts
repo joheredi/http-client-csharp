@@ -41,6 +41,32 @@ export function efCsharpRefkey(rawType: Type): Refkey {
 }
 
 /**
+ * Well-known symbol prefix for Unknown discriminator model refkeys.
+ *
+ * Used to create deterministic refkeys for emitter-synthesized `Unknown{BaseName}`
+ * classes. Both the class declaration (in UnknownDiscriminatorModel.tsx) and the
+ * factory method (in ModelFactoryMethod.tsx) use this to produce matching refkeys
+ * so Alloy can resolve cross-file references and auto-generate `using` directives.
+ */
+const UNKNOWN_MODEL_PREFIX = Symbol.for("http-client-csharp:unknown-model");
+
+/**
+ * Creates a refkey for the Unknown discriminator variant of an abstract base model.
+ *
+ * Given the raw TypeSpec type of the abstract base model, produces a deterministic
+ * refkey that matches between the Unknown class declaration and any references to it
+ * (e.g., in factory methods). This enables Alloy's automatic `using` directive
+ * generation when the factory method is in a different namespace.
+ *
+ * @param baseModelRawType - The raw TypeSpec type of the abstract base model
+ *   (from `sdkModelType.__raw`).
+ * @returns A refkey for the `Unknown{BaseName}` class.
+ */
+export function unknownModelRefkey(baseModelRawType: Type): Refkey {
+  return refkey(UNKNOWN_MODEL_PREFIX, baseModelRawType);
+}
+
+/**
  * Creates an array of refkeys for a type declaration that is resolvable by
  * both plain alloy `refkey()` calls and `TypeExpression` references.
  *

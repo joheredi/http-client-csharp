@@ -1188,14 +1188,24 @@ Added `System.DateTimeOffset` (struct) and `System.TimeSpan` (struct) to the Sys
 
 ## Gotchas
 
-### Convenience + Protocol methods cause Alloy name deduplication (_2 suffix)
+### Convenience + Protocol methods cause Alloy name deduplication (\_2 suffix)
+
 When both convenience and protocol methods exist with the same name (C# method overloading), Alloy's name resolution adds a `_2` suffix to the second declaration. Fix: use `namekey(methodName, { ignoreNameConflict: true })` on BOTH convenience AND protocol Method components. This was applied to ProtocolMethod.tsx and ConvenienceMethod.tsx.
 
 ### CancellationToken builtin must be in SystemThreading namespace
+
 The `CancellationToken` type was added to `src/builtins/system-threading.ts` (not system-threading-tasks) to ensure `using System.Threading;` is auto-generated. It lives in `System.Threading`, not `System.Threading.Tasks`.
 
 ### Convenience method signatures may wrap across lines
+
 When method signatures are long (many params or long return types like `Task<ClientResult<Item>>`), Alloy wraps parameters across multiple lines. Tests should use partial string matching (e.g., `toContain("Task<ClientResult<Item>> CreateItemAsync(")`) rather than full single-line assertions.
 
 ### Value types skip Argument.Assert in convenience methods
+
 In C#, value types (int, bool, enum, DateTime, TimeSpan, etc.) cannot be null, so convenience methods should NOT generate `Argument.AssertNotNull` for them. Only reference types (string, models, Uri, BinaryData, arrays, dicts) need validation. The `getConvenienceTypeInfo` function returns `needsAssertion: false` for value types.
+
+### Unknown model refkey pattern (task 1.8.3)
+
+Unknown discriminator variant classes (`Unknown{BaseName}`) now have a refkey via `unknownModelRefkey(baseModelRawType)` from `src/utils/refkey.ts`. This uses a dedicated `Symbol.for("http-client-csharp:unknown-model")` prefix, separate from the emitter-framework prefix. Both the class declaration in `UnknownDiscriminatorModel.tsx` and the factory method in `ModelFactoryMethod.tsx` use the same refkey, enabling Alloy's automatic cross-file reference resolution and `using` directive generation.
+
+To reference an Unknown variant from any component: `import { unknownModelRefkey } from "../../utils/refkey.js"` then use `unknownModelRefkey(sdkModelType.__raw!)`.

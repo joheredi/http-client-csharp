@@ -65,11 +65,12 @@ import {
   isPropertyNullable,
   unwrapNullableType,
 } from "../../utils/nullable.js";
-import { efCsharpRefkey } from "../../utils/refkey.js";
+import { efCsharpRefkey, unknownModelRefkey } from "../../utils/refkey.js";
 import {
   ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME,
   isBaseDiscriminatorOverride,
   isDerivedDiscriminatedModel,
+  isModelAbstract,
 } from "../models/ModelConstructors.js";
 
 /**
@@ -286,9 +287,15 @@ export function ModelFactoryMethod(props: ModelFactoryMethodProps) {
   // Always pass null for additionalBinaryDataProperties as a named argument
   ctorArgs.push(`${ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME}: null`);
 
-  // Use refkey for the model type in the `new` expression so Alloy
-  // auto-generates `using` directives when the model is in a sub-namespace.
-  const modelRefkey = efCsharpRefkey(props.type.__raw!);
+  // For abstract models, the factory method instantiates the Unknown variant
+  // instead of the abstract class itself. The method name and return type still
+  // use the abstract model's identity, but `new UnknownBird(...)` replaces
+  // `new Bird(...)`. This matches the legacy emitter's ModelFactoryProvider
+  // behavior where abstract models delegate to their Unknown derived model.
+  const isAbstract = isModelAbstract(props.type);
+  const instantiationRefkey = isAbstract
+    ? unknownModelRefkey(props.type.__raw!)
+    : efCsharpRefkey(props.type.__raw!);
   const returnType = <TypeExpression type={props.type.__raw!} />;
 
   // Join ctorArgs with ", " separator. Uses flatMap instead of .join() because
@@ -311,7 +318,7 @@ export function ModelFactoryMethod(props: ModelFactoryMethodProps) {
           : code`${init.paramName} ??= new ChangeTrackingDictionary<string, ${init.valueTypeExpr}>();\n`,
       )}
       {collectionInits.length > 0 && "\n"}
-      {code`return new ${modelRefkey}(${ctorArgsExpr});`}
+      {code`return new ${instantiationRefkey}(${ctorArgsExpr});`}
     </Method>
   );
 }

@@ -41,7 +41,7 @@ import type { Children } from "@alloy-js/core";
 import type { SdkModelType } from "@azure-tools/typespec-client-generator-core";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
-import { efCsharpRefkey } from "../../utils/refkey.js";
+import { efCsharpRefkey, unknownModelRefkey } from "../../utils/refkey.js";
 import {
   ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME,
   computeSerializationCtorParams,
@@ -97,6 +97,7 @@ export function UnknownDiscriminatorModelFile(
           internal
           partial
           name={unknownName}
+          refkey={unknownModelRefkey(props.type.__raw!)}
           baseType={efCsharpRefkey(props.type.__raw!)}
         >
           <OverloadConstructor

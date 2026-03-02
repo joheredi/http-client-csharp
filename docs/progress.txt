@@ -1825,3 +1825,12 @@ For void return operations, returns `ClientResult` (no generic type parameter).
 - Modified: `src/components/clients/ProtocolMethod.tsx` (added namekey with ignoreNameConflict)
 
 **What's next:** Task 3.5.2 (spread parameter handling), Task 3.6.1 (operation name conventions)
+
+2026-03-02 — Task 1.8.3: Handle abstract models in factory (complete)
+- Abstract models (discriminated base types) now instantiate the Unknown variant in factory methods
+- Added `unknownModelRefkey()` in `src/utils/refkey.ts` — creates deterministic refkeys for Unknown{BaseName} classes
+- Added refkey prop to ClassDeclaration in `UnknownDiscriminatorModel.tsx` so factory can reference it
+- Modified `ModelFactoryMethod.tsx` to detect `isModelAbstract()` and use `unknownModelRefkey()` for the `new` expression
+- Pattern: `public static Pet Pet(string kind = default, ...) => return new UnknownPet(kind, ..., null);`
+- Added test "instantiates Unknown variant for abstract models" in model-factory.test.ts
+- All 13 model-factory tests pass; 6 pre-existing failures in other tests unchanged

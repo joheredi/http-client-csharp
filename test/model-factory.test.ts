@@ -438,4 +438,71 @@ describe("ModelFactoryFile", () => {
     expect(factoryFile).toContain('"cat"');
     expect(factoryFile).toContain("additionalBinaryDataProperties: null");
   });
+
+  /**
+   * Validates that abstract models (discriminated base types) instantiate the
+   * Unknown variant in the factory method instead of the abstract class itself.
+   *
+   * In the legacy emitter (ModelFactoryProvider.GetModelToInstantiateForFactoryMethod),
+   * when a model has the Abstract modifier, the factory method instantiates
+   * `DerivedModels.FirstOrDefault(m => m.IsUnknownDiscriminatorModel)` instead
+   * of the abstract model directly.
+   *
+   * This is critical because:
+   * - Abstract classes cannot be instantiated in C# (`new Pet(...)` is illegal)
+   * - The Unknown variant (`UnknownPet`) is the correct fallback instantiation target
+   * - The factory method return type is still the abstract base type (polymorphism)
+   * - The discriminator parameter is kept (no fixed value on abstract base)
+   *
+   * Tests verify:
+   * - Factory method return type is the abstract base model name (Pet)
+   * - Constructor call uses `new UnknownPet(...)` not `new Pet(...)`
+   * - Discriminator parameter (kind) is included in factory method signature
+   * - Non-discriminator properties are also included
+   */
+  it("instantiates Unknown variant for abstract models", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Cat extends Pet {
+        kind: "cat";
+        lives: int32;
+      }
+
+      model Dog extends Pet {
+        kind: "dog";
+        bark: boolean;
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    const factoryFile =
+      outputs[Object.keys(outputs).find((k) => k.includes("ModelFactory"))!];
+
+    // Pet's factory method signature: return type is Pet (abstract base)
+    expect(factoryFile).toContain("public static Pet Pet(");
+
+    // Parameters include the discriminator (kind) since abstract base has no fixed value
+    expect(factoryFile).toContain(
+      "public static Pet Pet(string kind = default, string name = default)",
+    );
+
+    // Constructor call should use UnknownPet, NOT Pet
+    expect(factoryFile).toContain("new UnknownPet(");
+    expect(factoryFile).not.toMatch(/new Pet\(/);
+
+    // UnknownPet gets all params plus additionalBinaryDataProperties: null
+    expect(factoryFile).toContain("additionalBinaryDataProperties: null");
+  });
 });
