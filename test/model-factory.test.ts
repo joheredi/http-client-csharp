@@ -219,12 +219,12 @@ describe("ModelFactoryFile", () => {
   /**
    * Validates that array collection properties are converted to IEnumerable<T>
    * in the factory method parameter, null-coalesced with ChangeTrackingList<T>,
-   * and passed as .ToList() to the constructor.
+   * and passed as .ToArray() to the constructor.
    *
    * This is critical because the legacy emitter uses IEnumerable<T> (the
    * broadest input interface) for factory parameters so test code can pass
    * any enumerable type. The ChangeTrackingList initialization prevents null
-   * when no value is provided, and .ToList() converts back to the concrete
+   * when no value is provided, and .ToArray() converts back to the concrete
    * List<T> expected by the serialization constructor.
    */
   it("converts array properties to IEnumerable with ChangeTrackingList init", async () => {
@@ -252,14 +252,14 @@ describe("ModelFactoryFile", () => {
     // Null-coalescing with ChangeTrackingList
     expect(factoryFile).toContain("tags ??= new ChangeTrackingList<string>();");
 
-    // Constructor arg should use .ToList()
-    expect(factoryFile).toContain("tags.ToList()");
+    // Constructor arg should use .ToArray()
+    expect(factoryFile).toContain("tags.ToArray()");
   });
 
   /**
    * Validates that dictionary collection properties use IDictionary<string, T>
    * in factory parameters, are null-coalesced with ChangeTrackingDictionary,
-   * and passed as-is to the constructor (no .ToList() needed for dicts).
+   * and passed as-is to the constructor (no .ToArray() needed for dicts).
    *
    * Dictionaries keep the same IDictionary interface in factory methods
    * because both the factory parameter and the serialization constructor
@@ -290,8 +290,8 @@ describe("ModelFactoryFile", () => {
       "metadata ??= new ChangeTrackingDictionary<string, string>();",
     );
 
-    // Dictionary param should not have .ToList()
-    expect(factoryFile).not.toContain("metadata.ToList()");
+    // Dictionary param should not have .ToArray()
+    expect(factoryFile).not.toContain("metadata.ToArray()");
   });
 
   /**
@@ -336,9 +336,9 @@ describe("ModelFactoryFile", () => {
       "metadata ??= new ChangeTrackingDictionary<string, int>();",
     );
 
-    // Array uses .ToList(), dict does not
-    expect(factoryFile).toContain("tags.ToList()");
-    expect(factoryFile).not.toContain("metadata.ToList()");
+    // Array uses .ToArray(), dict does not
+    expect(factoryFile).toContain("tags.ToArray()");
+    expect(factoryFile).not.toContain("metadata.ToArray()");
 
     // Constructor call ends with additionalBinaryDataProperties: null
     expect(factoryFile).toContain("additionalBinaryDataProperties: null");
@@ -369,10 +369,10 @@ describe("ModelFactoryFile", () => {
     const factoryFile =
       outputs[Object.keys(outputs).find((k) => k.includes("ModelFactory"))!];
 
-    // No ChangeTracking or .ToList() for scalar-only models
+    // No ChangeTracking or .ToArray() for scalar-only models
     expect(factoryFile).not.toContain("ChangeTrackingList");
     expect(factoryFile).not.toContain("ChangeTrackingDictionary");
-    expect(factoryFile).not.toContain(".ToList()");
+    expect(factoryFile).not.toContain(".ToArray()");
 
     // Still has the basic structure
     expect(factoryFile).toContain("return new Widget(");

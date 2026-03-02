@@ -20,13 +20,16 @@ import { CancellationTokenExtensionsFile } from "./components/infrastructure/Can
 import { ChangeTrackingDictionaryFile } from "./components/infrastructure/ChangeTrackingDictionaryFile.js";
 import { ChangeTrackingListFile } from "./components/infrastructure/ChangeTrackingListFile.js";
 import { ClientPipelineExtensionsFile } from "./components/infrastructure/ClientPipelineExtensionsFile.js";
+import { ClientUriBuilderFile } from "./components/infrastructure/ClientUriBuilderFile.js";
 import { CodeGenAttributeFiles } from "./components/infrastructure/CodeGenAttributeFiles.js";
 import { ErrorResultFile } from "./components/infrastructure/ErrorResultFile.js";
 import { ModelReaderWriterContextFile } from "./components/infrastructure/ModelReaderWriterContextFile.js";
+import { ModelSerializationExtensionsFile } from "./components/infrastructure/ModelSerializationExtensionsFile.js";
 import { OptionalFile } from "./components/infrastructure/OptionalFile.js";
 import { ProjectFile } from "./components/infrastructure/ProjectFile.js";
 import { SerializationFormatFile } from "./components/infrastructure/SerializationFormatFile.js";
 import { SolutionFile } from "./components/infrastructure/SolutionFile.js";
+import { TypeFormattersFile } from "./components/infrastructure/TypeFormattersFile.js";
 import { ModelFactoryFile } from "./components/model-factory/ModelFactoryFile.js";
 import {
   hasDiscriminatedSubtypes,
@@ -133,6 +136,12 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
       />
       <ErrorResultFile packageName={packageName} options={options} />
       <SerializationFormatFile packageName={packageName} options={options} />
+      <TypeFormattersFile packageName={packageName} options={options} />
+      <ClientUriBuilderFile packageName={packageName} options={options} />
+      <ModelSerializationExtensionsFile
+        packageName={packageName}
+        options={options}
+      />
       <ClientPipelineExtensionsFile
         packageName={packageName}
         options={options}

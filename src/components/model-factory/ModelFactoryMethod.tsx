@@ -252,7 +252,7 @@ export function ModelFactoryMethod(props: ModelFactoryMethodProps) {
       });
 
       collectionInits.push({ paramName, isArray: true, valueTypeExpr });
-      ctorArgs.push(`${paramName}.ToList()`);
+      ctorArgs.push(`${paramName}.ToArray()`);
     } else if (isDictCollection(p.type)) {
       // Dict → keep IDictionary type, ChangeTrackingDictionary init, pass as-is
       const valueType = getCollectionValueType(p.type);

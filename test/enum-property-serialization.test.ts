@@ -274,7 +274,7 @@ describe("enum property serialization", () => {
     expect(content).toContain("if (Optional.IsDefined(Status))");
     expect(content).toContain('writer.WritePropertyName("status"u8);');
     expect(content).toContain(
-      "writer.WriteStringValue(Status.ToSerialString());",
+      "writer.WriteStringValue(Status.Value.ToSerialString());",
     );
   });
 

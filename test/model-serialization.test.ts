@@ -2093,7 +2093,7 @@ describe("OptionalPropertyGuards", () => {
 
     expect(content).toContain("if (Optional.IsDefined(Count))");
     expect(content).toContain('writer.WritePropertyName("count"u8);');
-    expect(content).toContain("writer.WriteNumberValue(Count);");
+    expect(content).toContain("writer.WriteNumberValue(Count.Value);");
   });
 
   /**
@@ -2208,7 +2208,7 @@ describe("OptionalPropertyGuards", () => {
 
     expect(content).toContain("if (Optional.IsDefined(IsActive))");
     expect(content).toContain('writer.WritePropertyName("isActive"u8);');
-    expect(content).toContain("writer.WriteBooleanValue(IsActive);");
+    expect(content).toContain("writer.WriteBooleanValue(IsActive.Value);");
   });
 
   /**
@@ -2279,14 +2279,13 @@ describe("OptionalPropertyGuards", () => {
 
     expect(content).toContain("if (Optional.IsDefined(CreatedAt))");
     expect(content).toContain('writer.WritePropertyName("createdAt"u8);');
-    expect(content).toContain('writer.WriteStringValue(CreatedAt, "O");');
+    expect(content).toContain('writer.WriteStringValue(CreatedAt.Value, "O");');
   });
 });
 
 /**
  * Tests for the required-nullable write pattern (task 2.2.12).
  *
- * When a property is required AND explicitly nullable (e.g., `prop: string | null`),
  * the serialization code generates an if/else pattern:
  * - If the value is defined: write the property name and value
  * - Else: write null via `writer.WriteNull("name"u8)`

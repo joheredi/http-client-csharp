@@ -48,14 +48,20 @@ function readFixture(name: string): string {
 
 /**
  * Run `dotnet build` in the given directory and return stdout.
- * Throws on non-zero exit code.
+ * Throws on non-zero exit code, including build output in the error message.
  */
 function dotnetBuild(cwd: string): string {
-  return execSync("dotnet build", {
-    cwd,
-    encoding: "utf-8",
-    stdio: ["pipe", "pipe", "pipe"],
-  });
+  try {
+    return execSync("dotnet build", {
+      cwd,
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+  } catch (e: any) {
+    const stdout = e.stdout ?? "";
+    const stderr = e.stderr ?? "";
+    throw new Error(`dotnet build failed:\n${stdout}\n${stderr}`);
+  }
 }
 
 describe(

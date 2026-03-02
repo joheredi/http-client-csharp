@@ -511,17 +511,26 @@ export function isRequiredNullable(property: SdkModelPropertyType): boolean {
  * Reference types (e.g., `string?`) don't need `.Value` — the nullable annotation
  * is just a hint to the compiler.
  *
- * This is needed inside `Optional.IsDefined` guard blocks for required-nullable
- * properties, where we know the value is non-null and can safely unwrap.
+ * This is needed inside `Optional.IsDefined` guard blocks for both
+ * required-nullable and optional nullable properties, where we know the
+ * value is non-null and can safely unwrap.
  *
  * @param property - An SDK model property from TCGC.
- * @returns `true` if the property is required-nullable and maps to a C# value type.
+ * @returns `true` if the property is a guarded nullable value type.
  */
 export function needsNullableValueAccess(
   property: SdkModelPropertyType,
 ): boolean {
-  if (!isRequiredNullable(property)) return false;
-  return !isCSharpReferenceType(property.type);
+  // Only relevant for properties inside a guard block
+  if (!needsSerializationGuard(property)) return false;
+  // Collections don't need .Value
+  if (isCollectionType(property.type)) return false;
+  // Reference types don't need .Value
+  if (isCSharpReferenceType(property.type)) return false;
+  // Optional properties with value types need .Value inside the guard
+  if (property.optional) return true;
+  // Required-nullable value types need .Value
+  return property.type.kind === "nullable";
 }
 
 /**

@@ -72,7 +72,10 @@ export function ModelFactoryFile(props: ModelFactoryFileProps) {
   const factoryClassName = `${props.packageName}ModelFactory`;
 
   return (
-    <SourceFile path={`src/Generated/${factoryClassName}.cs`}>
+    <SourceFile
+      path={`src/Generated/${factoryClassName}.cs`}
+      using={["System.Collections.Generic", "System.Linq"]}
+    >
       {header}
       {"\n\n"}
       <Namespace name={props.packageName}>

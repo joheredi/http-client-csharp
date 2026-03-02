@@ -143,10 +143,15 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
             ? ({ internal: true } as const)
             : ({ public: true } as const);
 
-        // Build response type expression (used for return type and cast)
-        const responseTypeExpr = responseType ? (
-          <TypeExpression type={responseType.__raw!} />
-        ) : null;
+        // Build response type expression (used for return type and cast).
+        // Only model types have the explicit operator from ClientResult needed
+        // for the cast pattern. Arrays, scalars, and other non-model response
+        // types fall back to untyped ClientResult.
+        const isModelResponse = responseType?.kind === "model";
+        const responseTypeExpr =
+          responseType && isModelResponse ? (
+            <TypeExpression type={responseType.__raw!} />
+          ) : null;
 
         // Build return types
         const syncReturn = responseTypeExpr
