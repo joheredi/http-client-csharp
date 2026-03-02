@@ -180,7 +180,7 @@
           "title": "Add SCM paging builtins",
           "description": "Add paging-related types to the System.ClientModel builtins: CollectionResult, AsyncCollectionResult, CollectionResult<T>, AsyncCollectionResult<T>, ContinuationToken. These are the base classes that generated paging collection classes extend. See golden file at TestProjects/Local/Sample-TypeSpec/src/Generated/CollectionResults/ for usage.",
           "phase": "phase-0",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "0.2.1"
           ],

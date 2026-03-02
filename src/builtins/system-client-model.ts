@@ -67,6 +67,62 @@ export const SystemClientModel = createLibrary("System.ClientModel", {
     kind: "class",
     members: {},
   },
+
+  /**
+   * Abstract base class for synchronous paginated collection results.
+   * Generated collection result classes extend this type (non-generic variant)
+   * or the generic CollectionResult{T} to implement pagination over service responses.
+   *
+   * Used as both `CollectionResult` (non-generic, protocol-level) and
+   * `CollectionResult<T>` (generic, convenience-level) via code template syntax:
+   * `code\`${SystemClientModel.CollectionResult}<${itemType}>\``
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.collectionresult
+   */
+  CollectionResult: {
+    kind: "class",
+    members: {
+      /** Returns the continuation token for the given page, or null if no more pages. */
+      GetContinuationToken: { kind: "method", methodKind: "ordinary" },
+    },
+  },
+
+  /**
+   * Abstract base class for asynchronous paginated collection results.
+   * Generated collection result classes extend this type (non-generic variant)
+   * or the generic AsyncCollectionResult{T} to implement async pagination.
+   *
+   * Used as both `AsyncCollectionResult` (non-generic, protocol-level) and
+   * `AsyncCollectionResult<T>` (generic, convenience-level) via code template syntax:
+   * `code\`${SystemClientModel.AsyncCollectionResult}<${itemType}>\``
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.asynccollectionresult
+   */
+  AsyncCollectionResult: {
+    kind: "class",
+    members: {
+      /** Returns the continuation token for the given page, or null if no more pages. */
+      GetContinuationToken: { kind: "method", methodKind: "ordinary" },
+    },
+  },
+
+  /**
+   * Represents an opaque pagination token used to resume collection enumeration.
+   * Created via the static FromBytes factory method in generated GetContinuationToken
+   * implementations. The token is typically constructed from a next-link URL or
+   * a continuation token value extracted from a service response.
+   *
+   * @example `ContinuationToken.FromBytes(BinaryData.FromString(nextPage))`
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.continuationtoken
+   */
+  ContinuationToken: {
+    kind: "class",
+    members: {
+      /** Creates a ContinuationToken from a BinaryData payload (typically a serialized URL or token string). */
+      FromBytes: { kind: "method", methodKind: "ordinary", isStatic: true },
+    },
+  },
 });
 
 /**

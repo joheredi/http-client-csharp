@@ -2137,3 +2137,23 @@ Implemented collection parameter serialization in RestClientFile.tsx for all par
 - ClassDeclaration prop for base class is `baseType` (not `extends`)
 - ClassDeclaration prop for attribute annotations is `attributes` (not `decorators`)
 - When adding new Internal/ files, check existing tests that filter by partial path/name — e.g., `k.includes("Serialization")` will match infrastructure files. Add `!k.includes("Internal/")` to exclude them.
+
+2026-03-02 — Task 0.2.3: Add SCM paging builtins (complete)
+
+Added paging-related types to the System.ClientModel builtins in `src/builtins/system-client-model.ts`:
+- `CollectionResult` (class) — abstract base for sync pagination, with `GetContinuationToken` method
+- `AsyncCollectionResult` (class) — abstract base for async pagination, with `GetContinuationToken` method
+- `ContinuationToken` (class) — opaque pagination token, with `FromBytes` static factory method
+
+All three types are in the `System.ClientModel` namespace (not Primitives). They're declared as classes
+following the same pattern as existing SCM builtins (ClientResult, BinaryContent, etc.).
+
+Generic variants (CollectionResult<T>, AsyncCollectionResult<T>) don't need separate declarations —
+Alloy handles generics syntactically via code templates: `code\`${SystemClientModel.CollectionResult}<${T}>\``.
+This matches how IJsonModel and IPersistableModel handle their generic parameter.
+
+Added tests in `test/builtins.test.tsx`:
+- Type declaration tests: verify all three types and their members are defined
+- Using statement test: verify referencing paging types produces `using System.ClientModel;`
+
+This task unblocks 4.1.1 (CollectionResultFile component) and the full paging chain (4.2.1, 4.3.1, 4.4.1, 4.4.2).

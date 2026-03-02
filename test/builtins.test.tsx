@@ -53,6 +53,42 @@ describe("System.ClientModel builtins", () => {
     it("declares ApiKeyCredential", () => {
       expect(SystemClientModel.ApiKeyCredential).toBeDefined();
     });
+
+    /**
+     * Verifies that CollectionResult is declared with its GetContinuationToken method.
+     * Generated paging collection classes extend CollectionResult (sync, non-generic)
+     * or CollectionResult<T> (sync, generic) and override GetContinuationToken to
+     * extract pagination tokens from service responses.
+     */
+    it("declares CollectionResult with expected members", () => {
+      expect(SystemClientModel.CollectionResult).toBeDefined();
+      expect(
+        SystemClientModel.CollectionResult.GetContinuationToken,
+      ).toBeDefined();
+    });
+
+    /**
+     * Verifies that AsyncCollectionResult is declared with its GetContinuationToken method.
+     * Generated paging collection classes extend AsyncCollectionResult (async, non-generic)
+     * or AsyncCollectionResult<T> (async, generic) and override GetContinuationToken to
+     * extract pagination tokens from service responses.
+     */
+    it("declares AsyncCollectionResult with expected members", () => {
+      expect(SystemClientModel.AsyncCollectionResult).toBeDefined();
+      expect(
+        SystemClientModel.AsyncCollectionResult.GetContinuationToken,
+      ).toBeDefined();
+    });
+
+    /**
+     * Verifies that ContinuationToken is declared with its static FromBytes factory.
+     * Generated GetContinuationToken methods call ContinuationToken.FromBytes(BinaryData)
+     * to create tokens from next-link URLs or token strings extracted from responses.
+     */
+    it("declares ContinuationToken with expected members", () => {
+      expect(SystemClientModel.ContinuationToken).toBeDefined();
+      expect(SystemClientModel.ContinuationToken.FromBytes).toBeDefined();
+    });
   });
 
   /**
@@ -131,9 +167,7 @@ describe("System.ClientModel builtins", () => {
      * inherit from this type to provide service-specific configuration.
      */
     it("declares ClientPipelineOptions", () => {
-      expect(
-        SystemClientModelPrimitives.ClientPipelineOptions,
-      ).toBeDefined();
+      expect(SystemClientModelPrimitives.ClientPipelineOptions).toBeDefined();
     });
 
     /**
@@ -173,9 +207,7 @@ describe("System.ClientModel builtins", () => {
      * suppress automatic exception throwing on non-success responses.
      */
     it("declares ClientErrorBehaviors with expected members", () => {
-      expect(
-        SystemClientModelPrimitives.ClientErrorBehaviors,
-      ).toBeDefined();
+      expect(SystemClientModelPrimitives.ClientErrorBehaviors).toBeDefined();
       expect(
         SystemClientModelPrimitives.ClientErrorBehaviors.NoThrow,
       ).toBeDefined();
@@ -213,9 +245,7 @@ describe("System.ClientModel builtins", () => {
      */
     it("declares ModelReaderWriter with expected members", () => {
       expect(SystemClientModelPrimitives.ModelReaderWriter).toBeDefined();
-      expect(
-        SystemClientModelPrimitives.ModelReaderWriter.Write,
-      ).toBeDefined();
+      expect(SystemClientModelPrimitives.ModelReaderWriter.Write).toBeDefined();
     });
 
     /**
@@ -236,9 +266,7 @@ describe("System.ClientModel builtins", () => {
      */
     it("declares IPersistableModel with expected members", () => {
       expect(SystemClientModelPrimitives.IPersistableModel).toBeDefined();
-      expect(
-        SystemClientModelPrimitives.IPersistableModel.Write,
-      ).toBeDefined();
+      expect(SystemClientModelPrimitives.IPersistableModel.Write).toBeDefined();
       expect(
         SystemClientModelPrimitives.IPersistableModel.Create,
       ).toBeDefined();
@@ -413,6 +441,47 @@ describe("System.ClientModel builtins", () => {
       expect(content).toContain("using System.ClientModel.Primitives;");
       expect(content).toContain("ModelReaderWriterOptions");
       expect(content).toContain("ModelReaderWriterContext");
+    });
+
+    /**
+     * Verifies that referencing paging types (CollectionResult, AsyncCollectionResult,
+     * ContinuationToken) produces the correct `using System.ClientModel;` directive.
+     * These types are used in generated collection result classes as base types
+     * and in GetContinuationToken method return types.
+     */
+    it("produces 'using System.ClientModel;' when referencing paging types", () => {
+      const result = render(
+        <Output>
+          <SourceFile path="TestCollectionResult.cs">
+            <ClassDeclaration name="TestCollectionResult">
+              <Property
+                name="SyncResult"
+                type={SystemClientModel.CollectionResult}
+                get
+                set
+              />
+              <Property
+                name="AsyncResult"
+                type={SystemClientModel.AsyncCollectionResult}
+                get
+                set
+              />
+              <Property
+                name="Token"
+                type={SystemClientModel.ContinuationToken}
+                get
+                set
+              />
+            </ClassDeclaration>
+          </SourceFile>
+        </Output>,
+      );
+
+      const content = (result.contents[0] as { contents: string }).contents;
+      expect(content).toContain("using System.ClientModel;");
+      expect(content).toContain("CollectionResult");
+      expect(content).toContain("AsyncCollectionResult");
+      expect(content).toContain("ContinuationToken");
     });
   });
 });
