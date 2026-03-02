@@ -30,8 +30,10 @@
     "concurrently": "^9.2.0",
     "eslint": "^9.15.0",
     "prettier": "^3.3.3",
+    "tree-sitter-c-sharp": "^0.23.1",
     "typescript": "^5.8.3",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "web-tree-sitter": "^0.26.6"
   },
   "scripts": {
     "build": "alloy build",

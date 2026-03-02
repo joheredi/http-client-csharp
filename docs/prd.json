@@ -2579,7 +2579,7 @@
           "title": "Write cast operator tests",
           "description": "Test cast operators for input, output, and dual-format models.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.5.3"
           ],
@@ -3042,7 +3042,7 @@
           "title": "Implement spread parameter handling",
           "description": "Spread parameters flatten model properties into individual method parameters. The convenience method reconstructs the model from individual params before passing to protocol method.",
           "phase": "phase-3",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "3.5.1"
           ],
@@ -3441,7 +3441,7 @@
           "title": "Generate ModelReaderWriterContext",
           "description": "Generate {Namespace}Context : ModelReaderWriterContext with [ModelReaderWriterBuildable(typeof(T))] attributes for each serializable model. See golden file _TypeModelUsageContext.cs from Spector.",
           "phase": "phase-5",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.1.1"
           ],
@@ -3745,7 +3745,7 @@
           "title": "Implement project file generation",
           "description": "Generate .csproj using Alloy CsprojFile component. Include netstandard2.0;net8.0 targets, System.ClientModel dependency, package metadata. See NewProjectScaffolding in the legacy generator.",
           "phase": "phase-8",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "0.3.1"
           ],
@@ -3768,7 +3768,7 @@
           "title": "Implement .sln generation",
           "description": "Generate Visual Studio .sln file referencing the project.",
           "phase": "phase-8",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "8.1.1"
           ],
