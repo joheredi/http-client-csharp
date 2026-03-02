@@ -25,5 +25,17 @@ export const SystemCollectionsGeneric = createLibrary(
       kind: "interface",
       members: {},
     },
+
+    /**
+     * Generic interface for iterating over a collection of elements.
+     * Used as the parameter type for collection parameters in protocol
+     * method signatures (e.g., `IEnumerable<string>` for array query/path/header params).
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ienumerable-1
+     */
+    IEnumerable: {
+      kind: "interface",
+      members: {},
+    },
   },
 );

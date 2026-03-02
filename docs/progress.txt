@@ -2018,3 +2018,34 @@ When types like `IDictionary`, `BinaryData`, etc. appear in raw string literals 
 - All three consumer files import and apply it at the same point in the pipeline
 
 **Pattern:** `cleanOperationName(namePolicy.getName(method.name, "class"))` — always apply cleanOperationName AFTER the naming policy.
+
+## 2026-03-02 — Task 3.3.3: Implement parameter serialization variants (complete)
+
+### What was done
+Implemented collection parameter serialization in RestClientFile.tsx for all parameter placement variants:
+
+1. **Collection query parameters**: CSV (AppendQueryDelimited with ","), SSV (" "), Pipes ("|"), Multi/explode (foreach loop with AppendQuery per element)
+2. **Collection path parameters**: AppendPathDelimited with comma delimiter for array path params
+3. **Collection header parameters**: string.Join for combining collection values into single header
+4. **Path URL encoding control**: allowReserved flag (from RFC 6570 `+` operator) controls the `escape` parameter (false when allowReserved=true)
+
+### Files changed
+- `src/builtins/system-collections-generic.ts` — Added IEnumerable interface for collection parameter types
+- `src/components/clients/RestClientFile.tsx` — Added helpers: isCollectionType, getCollectionDelimiter, isExplodedQueryParam, buildQueryParamStatement, buildPathParamStatement, buildHeaderParamStatement. Updated getProtocolTypeExpression for array types (→ IEnumerable<T>). Refactored buildRequestBody to use new helpers.
+- `test/rest-client.test.ts` — Added 6 new tests covering: CSV delimited query, exploded query, optional collection query, optional exploded query, path allowReserved, collection header
+
+### Patterns used
+- `IEnumerable<T>` for collection parameter types in method signatures (via SystemCollectionsGeneric.IEnumerable refkey for auto-using)
+- `code` template with refkeys for generating C# type expressions with automatic using directives
+- `@query(#{explode: true})` for multi format in TypeSpec
+- `@route("/files/{+path}")` for allowReserved via RFC 6570 + operator
+
+### Key learnings
+- TypeSpec HTTP decorators only support `explode: boolean` — pipes/SSV/TSV formats come from OpenAPI3 import scenarios, not native TypeSpec
+- Path allowReserved must be expressed via URI template syntax ({+var}), not @path decorator options
+- The `code` tag with `\n` separators in Children arrays produces correct semantic output (Alloy handles indentation) even though raw output may look compressed
+- TCGC sets collectionFormat based on TypeSpec's explode flag: explode=false → "csv", explode=true → "multi"
+
+### Next person should know
+- Pipes/SSV/TSV collection formats are implemented but can't be tested directly with TypeSpec syntax (only via OpenAPI3 imports)
+- The formatting of multi-line statements (foreach, if blocks) in the generated code has some compression issues (closing brace on same line as next statement) — this is a pre-existing Alloy rendering behavior, not introduced by this change

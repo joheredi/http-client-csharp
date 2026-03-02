@@ -2924,7 +2924,7 @@
           "title": "Implement parameter serialization variants",
           "description": "Handle all parameter placement variants: required/optional query, path (with URL encoding), headers (with collection format), collection parameters (CSV/SSV/pipes/multi).",
           "phase": "phase-3",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "3.3.2"
           ],

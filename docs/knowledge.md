@@ -1250,9 +1250,23 @@ In `DeserializeVariableDeclarations`, the `isStringDiscriminator` check uses `mo
 ## Operation Name Conventions (Task 3.6.1)
 
 ### Design Decision: cleanOperationName utility
+
 - **Approach chosen**: Standalone `cleanOperationName()` function in `src/utils/operation-naming.ts`
 - **Rejected**: Modifying the naming policy (too generic, domain-specific logic doesn't belong there)
 - **Pattern**: Always apply `cleanOperationName(namePolicy.getName(method.name, "class"))` — the function expects PascalCase input
 - **Applied in**: ProtocolMethod.tsx, ConvenienceMethod.tsx, RestClientFile.tsx (all three places that resolve operation names)
 - **Rules**: "List" → "GetAll", "ListXxx" (uppercase after List) → "GetXxx", everything else unchanged
 - **Important**: "Listen", "Listed", "Listing" are NOT renamed (no uppercase letter at position 4)
+
+### TypeSpec collection format syntax
+- TypeSpec HTTP decorators only support `explode: boolean` on @query/@header/@path — no `format` option
+- `@query(#{explode: true})` → multi format (TCGC: collectionFormat="multi", explode=true)
+- `@query tags: string[]` → CSV format (TCGC: collectionFormat="csv", explode=false)
+- Pipes/SSV/TSV come only from OpenAPI3 import scenarios
+- Path `allowReserved` uses RFC 6570 `+` operator in URI template: `@route("/files/{+path}")`
+- `@path(#{allowReserved: true})` gives a diagnostic when path is already in the URI template
+
+### IEnumerable for collection protocol method params
+- Collection parameters in protocol method signatures use `IEnumerable<T>` from System.Collections.Generic
+- Use `SystemCollectionsGeneric.IEnumerable` refkey from `system-collections-generic.ts` to auto-generate using directive
+- Pattern: `code\`${SystemCollectionsGeneric.IEnumerable}<${elementTypeExpr}>\`` for the type expression

@@ -8,6 +8,8 @@ import {
 import { code, namekey } from "@alloy-js/core";
 import type { Children } from "@alloy-js/core";
 import type {
+  CollectionFormat,
+  SdkArrayType,
   SdkBodyParameter,
   SdkClientType,
   SdkHeaderParameter,
@@ -18,6 +20,7 @@ import type {
   SdkServiceMethod,
   SdkType,
 } from "@azure-tools/typespec-client-generator-core";
+import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
 import {
   SystemClientModel,
   SystemClientModelPrimitives,
@@ -419,6 +422,14 @@ function getProtocolTypeExpression(type: SdkType): Children {
     case "enumvalue":
       return getProtocolTypeExpression(unwrapped.enumType.valueType);
 
+    // Array → IEnumerable<elementType>
+    case "array": {
+      const elementTypeExpr = getProtocolTypeExpression(
+        (unwrapped as SdkArrayType).valueType,
+      );
+      return code`${SystemCollectionsGeneric.IEnumerable}<${elementTypeExpr}>`;
+    }
+
     // Default fallback for complex types
     default:
       return "string";
@@ -670,6 +681,180 @@ function isNumericKind(kind: string): boolean {
 }
 
 /**
+ * Checks if an SdkType represents a collection (array) type after unwrapping
+ * nullable/constant wrappers.
+ */
+function isCollectionType(type: SdkType): boolean {
+  return unwrapType(type).kind === "array";
+}
+
+/**
+ * Maps a TCGC CollectionFormat to the delimiter string used in
+ * AppendQueryDelimited / AppendPathDelimited / SetHeaderDelimited calls.
+ *
+ * Returns null for "multi" format, which requires exploded serialization
+ * (foreach loop) instead of delimited serialization.
+ *
+ * @see CollectionFormat in @azure-tools/typespec-client-generator-core
+ */
+function getCollectionDelimiter(
+  format: CollectionFormat | undefined,
+): string | null {
+  switch (format) {
+    case "csv":
+    case "simple":
+    case "form":
+      return ",";
+    case "ssv":
+      return " ";
+    case "tsv":
+      return "\t";
+    case "pipes":
+      return "|";
+    case "multi":
+      return null; // Exploded: use foreach loop
+    default:
+      return ","; // Default to CSV
+  }
+}
+
+/**
+ * Determines whether a query parameter should use exploded serialization
+ * (one query param per collection element) vs. delimited serialization
+ * (all elements joined into a single value).
+ *
+ * Exploded serialization is used when:
+ * - The `explode` flag is true, OR
+ * - The `collectionFormat` is "multi"
+ */
+function isExplodedQueryParam(param: SdkQueryParameter): boolean {
+  return param.explode || param.collectionFormat === "multi";
+}
+
+/**
+ * Builds the C# statement(s) for appending a single query parameter
+ * to the URI builder. Handles both scalar and collection types.
+ *
+ * For scalar parameters:
+ *   `uri.AppendQuery("name", value, true);`
+ *
+ * For collection parameters with explode/multi:
+ *   ```csharp
+ *   foreach (var param0 in values)
+ *   {
+ *       uri.AppendQuery("name", param0, true);
+ *   }
+ *   ```
+ *
+ * For collection parameters with delimiter (CSV/SSV/pipes):
+ *   `uri.AppendQueryDelimited("name", values, ",", true);`
+ */
+function buildQueryParamStatement(param: SdkQueryParameter): string {
+  const serializedName = param.serializedName;
+  const name = param.name;
+
+  if (isConstantType(param.type)) {
+    const valueExpr = getConstantValueExpression(param.type);
+    return `uri.AppendQuery("${serializedName}", ${valueExpr}, true);`;
+  }
+
+  if (param.onClient) {
+    const fieldName = `_${name}`;
+    return `if (${fieldName} != null)\n{\n    uri.AppendQuery("${serializedName}", ${fieldName}, true);\n}`;
+  }
+
+  // Collection parameter handling
+  if (isCollectionType(param.type)) {
+    if (isExplodedQueryParam(param)) {
+      // Exploded: foreach loop, one query param per element
+      const inner = `foreach (var param0 in ${name})\n    {\n        uri.AppendQuery("${serializedName}", param0, true);\n    }`;
+      if (param.optional) {
+        return `if (${name} != null)\n{\n    ${inner}\n}`;
+      }
+      return inner;
+    } else {
+      // Delimited: join all elements with delimiter
+      const delimiter = getCollectionDelimiter(param.collectionFormat) ?? ",";
+      const stmt = `uri.AppendQueryDelimited("${serializedName}", ${name}, "${delimiter}", true);`;
+      if (param.optional) {
+        return `if (${name} != null)\n{\n    ${stmt}\n}`;
+      }
+      return stmt;
+    }
+  }
+
+  // Scalar parameter
+  const valueExpr = getParamValueExpression(param);
+  if (param.optional) {
+    return `if (${name} != null)\n{\n    uri.AppendQuery("${serializedName}", ${valueExpr}, true);\n}`;
+  }
+  return `uri.AppendQuery("${serializedName}", ${valueExpr}, true);`;
+}
+
+/**
+ * Builds the C# statement for appending a path parameter segment
+ * to the URI builder. Handles both scalar and collection path params.
+ *
+ * For scalar parameters:
+ *   `uri.AppendPath(value, escape);`
+ *   where escape is `!allowReserved` (default true)
+ *
+ * For collection parameters:
+ *   `uri.AppendPathDelimited(values, ",", escape);`
+ */
+function buildPathParamStatement(param: SdkPathParameter): string {
+  // allowReserved means reserved characters should NOT be escaped
+  const escape = !param.allowReserved;
+
+  if (isCollectionType(param.type)) {
+    // Collection path parameter: use delimited serialization
+    // Path params use "simple" style by default → comma-delimited
+    return `uri.AppendPathDelimited(${param.name}, ",", ${escape});`;
+  }
+
+  // Scalar path parameter
+  const valueExpr = getParamValueExpression(param);
+  return `uri.AppendPath(${valueExpr}, ${escape});`;
+}
+
+/**
+ * Builds the C# statement for setting a header parameter on the request.
+ * Handles both scalar and collection header params.
+ *
+ * For scalar parameters:
+ *   `request.Headers.Set("name", value);`
+ *
+ * For collection parameters:
+ *   `request.Headers.Set("name", string.Join(",", values));`
+ */
+function buildHeaderParamStatement(param: SdkHeaderParameter): string {
+  const serializedName = param.serializedName;
+  const name = param.name;
+
+  if (isConstantType(param.type)) {
+    const valueExpr = getConstantValueExpression(param.type);
+    return `request.Headers.Set("${serializedName}", ${valueExpr});`;
+  }
+
+  if (isCollectionType(param.type)) {
+    // Collection header: join values with delimiter
+    const delimiter = getCollectionDelimiter(param.collectionFormat) ?? ",";
+    const stmt = `request.Headers.Set("${serializedName}", string.Join("${delimiter}", ${name}));`;
+    if (param.optional) {
+      return `if (${name} != null)\n{\n    ${stmt}\n}`;
+    }
+    return stmt;
+  }
+
+  // Scalar header
+  const valueExpr = getParamValueExpression(param);
+  if (param.optional) {
+    return `if (${name} != null)\n{\n    request.Headers.Set("${serializedName}", ${valueExpr});\n}`;
+  }
+  return `request.Headers.Set("${serializedName}", ${valueExpr});`;
+}
+
+/**
  * Builds the complete method body for a CreateRequest method.
  *
  * The body follows the System.ClientModel request building pattern:
@@ -703,40 +888,13 @@ function buildRequestBody(
     if (segment.kind === "literal") {
       parts.push(`\nuri.AppendPath("${segment.value}", false);`);
     } else {
-      const valueExpr = getParamValueExpression(segment.param);
-      parts.push(`\nuri.AppendPath(${valueExpr}, true);`);
+      parts.push(`\n${buildPathParamStatement(segment.param)}`);
     }
   }
 
   // 3. Query parameters
   for (const param of queryParams) {
-    if (param.onClient) {
-      // Client-level params (e.g., apiVersion) are class fields
-      const fieldName = `_${param.name}`;
-      parts.push(
-        `\nif (${fieldName} != null)\n{\n    uri.AppendQuery("${param.serializedName}", ${fieldName}, true);\n}`,
-      );
-      continue;
-    }
-
-    const valueExpr = getParamValueExpression(param);
-
-    if (isConstantType(param.type)) {
-      // Constant: always append
-      parts.push(
-        `\nuri.AppendQuery("${param.serializedName}", ${valueExpr}, true);`,
-      );
-    } else if (param.optional) {
-      // Optional: null check
-      parts.push(
-        `\nif (${param.name} != null)\n{\n    uri.AppendQuery("${param.serializedName}", ${valueExpr}, true);\n}`,
-      );
-    } else {
-      // Required: always append
-      parts.push(
-        `\nuri.AppendQuery("${param.serializedName}", ${valueExpr}, true);`,
-      );
-    }
+    parts.push(`\n${buildQueryParamStatement(param)}`);
   }
 
   // 4. Create PipelineMessage
@@ -754,25 +912,7 @@ function buildRequestBody(
 
   for (const param of headerParams) {
     if (isImplicitContentTypeHeader(param)) continue;
-
-    const valueExpr = getParamValueExpression(param);
-
-    if (isConstantType(param.type)) {
-      // Constant header: always set with literal value
-      parts.push(
-        `\nrequest.Headers.Set("${param.serializedName}", ${valueExpr});`,
-      );
-    } else if (param.optional) {
-      // Optional header: null check
-      parts.push(
-        `\nif (${param.name} != null)\n{\n    request.Headers.Set("${param.serializedName}", ${valueExpr});\n}`,
-      );
-    } else {
-      // Required header: always set
-      parts.push(
-        `\nrequest.Headers.Set("${param.serializedName}", ${valueExpr});`,
-      );
-    }
+    parts.push(`\n${buildHeaderParamStatement(param)}`);
   }
 
   // Content-Type header (derived from body's defaultContentType)

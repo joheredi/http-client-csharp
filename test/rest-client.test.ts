@@ -461,4 +461,197 @@ describe("RestClientFile", () => {
     expect(optQueryPos).toBeGreaterThan(contentPos);
     expect(optionsPos).toBeGreaterThan(optQueryPos);
   });
+
+  // ===========================================================================
+  // Collection parameter serialization (task 3.3.3)
+  // ===========================================================================
+
+  /**
+   * Verifies that a collection query parameter with default format (CSV)
+   * generates a call to AppendQueryDelimited with a comma delimiter.
+   *
+   * When a query parameter is `string[]` with default (non-explode) format,
+   * the generated code should use AppendQueryDelimited to combine all values
+   * into a single comma-separated query parameter: `?tags=a,b,c`
+   */
+  it("generates delimited query param for array type", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/search")
+      @get op search(@query tags: string[]): Widget;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const restClient = outputs["src/Generated/TestServiceClient.RestClient.cs"];
+    expect(restClient).toBeDefined();
+
+    // Verify the method signature uses IEnumerable<string> for the collection param
+    expect(restClient).toContain("IEnumerable<string> tags");
+
+    // Verify using directive for System.Collections.Generic
+    expect(restClient).toContain("using System.Collections.Generic;");
+
+    // Verify CSV delimited query serialization
+    expect(restClient).toContain(
+      'uri.AppendQueryDelimited("tags", tags, ",", true);',
+    );
+  });
+
+  /**
+   * Verifies that a collection query parameter with explode/multi format
+   * generates a foreach loop that appends each element as a separate
+   * query parameter.
+   *
+   * The multi format repeats the parameter name for each value:
+   * `?colors=red&colors=blue` instead of `?colors=red,blue`
+   */
+  it("generates exploded query param for multi format", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/search")
+      @get op search(@query(#{explode: true}) colors: string[]): Widget;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const restClient = outputs["src/Generated/TestServiceClient.RestClient.cs"];
+    expect(restClient).toBeDefined();
+
+    // Verify IEnumerable<string> in method signature
+    expect(restClient).toContain("IEnumerable<string> colors");
+
+    // Verify foreach loop for exploded serialization
+    expect(restClient).toContain("foreach (var param0 in colors)");
+    expect(restClient).toContain(
+      'uri.AppendQuery("colors", param0, true);',
+    );
+  });
+
+  /**
+   * Verifies that an optional collection query parameter wraps the
+   * serialization statement in a null check.
+   *
+   * Optional collection params must not be serialized when null to avoid
+   * sending empty or invalid query parameters.
+   */
+  it("generates null check for optional collection query param", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/search")
+      @get op search(@query tags?: string[]): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const restClient = outputs["src/Generated/TestServiceClient.RestClient.cs"];
+    expect(restClient).toBeDefined();
+
+    // Verify null check wraps the delimited call
+    expect(restClient).toContain("if (tags != null)");
+    expect(restClient).toContain("AppendQueryDelimited");
+  });
+
+  /**
+   * Verifies that an optional exploded collection query parameter wraps
+   * the foreach loop in a null check.
+   */
+  it("generates null check for optional exploded collection query param", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/search")
+      @get op search(@query(#{explode: true}) colors?: string[]): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const restClient = outputs["src/Generated/TestServiceClient.RestClient.cs"];
+    expect(restClient).toBeDefined();
+
+    // Verify null check wraps the foreach loop
+    expect(restClient).toContain("if (colors != null)");
+    expect(restClient).toContain("foreach (var param0 in colors)");
+    expect(restClient).toContain(
+      'uri.AppendQuery("colors", param0, true);',
+    );
+  });
+
+  /**
+   * Verifies that path parameters respect the allowReserved flag via
+   * the RFC 6570 '+' operator in the URI template.
+   *
+   * When allowReserved is true (via `{+path}` in the template),
+   * the escape parameter should be false so reserved characters like
+   * slashes are not URL-encoded. This is important for path parameters
+   * that contain pre-encoded segments.
+   */
+  it("generates path param with allowReserved controlling escape", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/files/{+path}")
+      @get op getFile(@path path: string): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const restClient = outputs["src/Generated/TestServiceClient.RestClient.cs"];
+    expect(restClient).toBeDefined();
+
+    // Verify path param with escape=false (allowReserved=true → no escaping)
+    expect(restClient).toContain("uri.AppendPath(path, false);");
+  });
+
+  /**
+   * Verifies that a collection header parameter generates a join
+   * expression to combine values into a single header value.
+   *
+   * HTTP headers with multiple values are typically combined into
+   * a single comma-delimited value per the HTTP specification.
+   */
+  it("generates collection header param with string.Join", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/data")
+      @get op getData(@header tags: string[]): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const restClient = outputs["src/Generated/TestServiceClient.RestClient.cs"];
+    expect(restClient).toBeDefined();
+
+    // Verify IEnumerable<string> in method signature
+    expect(restClient).toContain("IEnumerable<string> tags");
+
+    // Verify collection header uses string.Join with comma delimiter
+    expect(restClient).toContain(
+      'request.Headers.Set("tags", string.Join(",", tags));',
+    );
+  });
 });
