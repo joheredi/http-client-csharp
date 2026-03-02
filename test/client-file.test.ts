@@ -471,4 +471,344 @@ describe("ClientFile", () => {
     expect(headerIdx).toBeLessThan(versionIdx);
     expect(versionIdx).toBeLessThan(cacheIdx);
   });
+
+  /**
+   * Verifies that a root client with no auth generates a secondary
+   * (convenience) constructor that delegates to the primary constructor
+   * with a default options instance.
+   *
+   * The secondary constructor pattern `(Uri endpoint) : this(endpoint, new
+   * ClientPipelineOptions())` allows consumers to create a client without
+   * manually specifying options.
+   *
+   * When the client has no API versions, the options type falls back to
+   * `ClientPipelineOptions` from System.ClientModel.Primitives.
+   */
+  it("generates secondary constructor for root client without auth", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op testOp(): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Secondary constructor delegates to primary via : this(...)
+    expect(clientFile).toContain(
+      ": this(endpoint, new ClientPipelineOptions())",
+    );
+
+    // Secondary constructor has only endpoint parameter
+    expect(clientFile).toContain("public TestServiceClient(Uri endpoint)");
+  });
+
+  /**
+   * Verifies that a root client with no auth generates a primary constructor
+   * that creates the HTTP pipeline via ClientPipeline.Create.
+   *
+   * The primary constructor must:
+   * - Validate the endpoint parameter with Argument.AssertNotNull
+   * - Null-coalesce the options parameter to a default instance
+   * - Assign the endpoint to the _endpoint field
+   * - Create the pipeline with UserAgentPolicy in the per-retry policies
+   *
+   * This matches the legacy emitter's ClientProvider.BuildPrimaryConstructorBody.
+   */
+  it("generates primary constructor with pipeline creation for root client", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op testOp(): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Primary constructor with endpoint + options parameters
+    expect(clientFile).toContain(
+      "public TestServiceClient(Uri endpoint, ClientPipelineOptions options)",
+    );
+
+    // Argument validation
+    expect(clientFile).toContain(
+      "Argument.AssertNotNull(endpoint, nameof(endpoint));",
+    );
+
+    // Options null-coalescing
+    expect(clientFile).toContain("options ??= new ClientPipelineOptions();");
+
+    // Endpoint field assignment
+    expect(clientFile).toContain("_endpoint = endpoint;");
+
+    // Pipeline creation with UserAgentPolicy
+    expect(clientFile).toContain("ClientPipeline.Create(options,");
+    expect(clientFile).toContain(
+      "new UserAgentPolicy(typeof(TestServiceClient).Assembly)",
+    );
+
+    // Pipeline assignment
+    expect(clientFile).toContain("Pipeline = ClientPipeline.Create(");
+  });
+
+  /**
+   * Verifies that a root client with API key authentication generates
+   * constructors that include the credential parameter and API key
+   * auth policy injection.
+   *
+   * The constructor must:
+   * - Include ApiKeyCredential as a parameter named "credential"
+   * - Validate the credential parameter
+   * - Assign the credential to _keyCredential field
+   * - Add ApiKeyAuthenticationPolicy.CreateHeaderApiKeyPolicy to the
+   *   pipeline's per-retry policies alongside UserAgentPolicy
+   *
+   * This is critical for API key auth services to function correctly.
+   */
+  it("generates constructors with API key auth policy injection", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @useAuth(ApiKeyAuth<ApiKeyLocation.header, "x-api-key">)
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op testOp(): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Secondary constructor with credential parameter
+    expect(clientFile).toContain(
+      ": this(endpoint, credential, new ClientPipelineOptions())",
+    );
+
+    // Primary constructor with credential + options
+    expect(clientFile).toContain(
+      "ApiKeyCredential credential, ClientPipelineOptions options)",
+    );
+
+    // Credential validation
+    expect(clientFile).toContain(
+      "Argument.AssertNotNull(credential, nameof(credential));",
+    );
+
+    // Credential field assignment
+    expect(clientFile).toContain("_keyCredential = credential;");
+
+    // API key auth policy in pipeline creation
+    expect(clientFile).toContain(
+      "ApiKeyAuthenticationPolicy.CreateHeaderApiKeyPolicy(_keyCredential, AuthorizationHeader)",
+    );
+  });
+
+  /**
+   * Verifies that a root client with OAuth2 authentication generates
+   * constructors that include the token provider parameter and bearer
+   * token auth policy injection.
+   *
+   * The constructor must:
+   * - Include AuthenticationTokenProvider as a parameter named "tokenProvider"
+   * - Validate the tokenProvider parameter
+   * - Assign the token provider to _tokenProvider field
+   * - Add BearerTokenAuthenticationPolicy to the pipeline's per-retry policies
+   *
+   * This ensures OAuth2 services can authenticate requests correctly.
+   */
+  it("generates constructors with OAuth2 auth policy injection", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @useAuth(OAuth2Auth<[{
+        type: OAuth2FlowType.implicit,
+        authorizationUrl: "https://login.example.com/authorize",
+        refreshUrl: "https://login.example.com/refresh",
+        tokenUrl: "https://login.example.com/token"
+      }]>)
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op testOp(): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Secondary constructor with token provider parameter
+    expect(clientFile).toContain(
+      ": this(endpoint, tokenProvider, new ClientPipelineOptions())",
+    );
+
+    // Primary constructor with token provider + options
+    expect(clientFile).toContain(
+      "AuthenticationTokenProvider tokenProvider, ClientPipelineOptions options)",
+    );
+
+    // Token provider validation
+    expect(clientFile).toContain(
+      "Argument.AssertNotNull(tokenProvider, nameof(tokenProvider));",
+    );
+
+    // Token provider field assignment
+    expect(clientFile).toContain("_tokenProvider = tokenProvider;");
+
+    // Bearer token auth policy in pipeline creation
+    expect(clientFile).toContain(
+      "new BearerTokenAuthenticationPolicy(_tokenProvider, AuthorizationScopes)",
+    );
+  });
+
+  /**
+   * Verifies that a versioned service generates constructors that use
+   * the generated options class (e.g., TestServiceClientOptions) instead
+   * of the base ClientPipelineOptions.
+   *
+   * The constructor must:
+   * - Reference the generated options type in the parameter list
+   * - Use the generated options type in the null-coalescing expression
+   * - Assign the API version from options.Version to the _apiVersion field
+   *
+   * This is essential for versioned services where the options class
+   * contains the ServiceVersion enum and version string mapping.
+   */
+  it("generates constructors with versioned options class", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+      using TypeSpec.Versioning;
+
+      @versioned(Versions)
+      @useAuth(ApiKeyAuth<ApiKeyLocation.header, "x-api-key">)
+      @service
+      namespace TestService;
+
+      enum Versions {
+        v2024_01_01: "2024-01-01",
+      }
+
+      @route("/test")
+      @get op testOp(@query apiVersion: string): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Secondary constructor references the generated options class
+    expect(clientFile).toContain(
+      ": this(endpoint, credential, new TestServiceClientOptions())",
+    );
+
+    // Primary constructor uses the generated options type
+    expect(clientFile).toContain(
+      "ApiKeyCredential credential, TestServiceClientOptions options)",
+    );
+
+    // Options null-coalescing with generated type
+    expect(clientFile).toContain("options ??= new TestServiceClientOptions();");
+
+    // API version assignment from options
+    expect(clientFile).toContain("_apiVersion = options.Version;");
+  });
+
+  /**
+   * Verifies that sub-clients do NOT get public constructors —
+   * they only get the protected mocking constructor and the internal
+   * constructor for parent-initiated creation.
+   *
+   * Root constructors with pipeline creation are only for top-level
+   * clients. Sub-clients receive their pipeline from the parent.
+   */
+  it("does not generate public constructors on sub-clients", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @useAuth(ApiKeyAuth<ApiKeyLocation.header, "x-api-key">)
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op testOp(): void;
+
+      @route("/pets")
+      interface PetOperations {
+        @route("/get")
+        @get op getPet(): void;
+      }
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const subFile = outputs["src/Generated/PetOperations.cs"];
+    expect(subFile).toBeDefined();
+
+    // Sub-client should NOT have public constructors
+    expect(subFile).not.toContain("public PetOperations(");
+
+    // Sub-client should have the protected mocking constructor
+    expect(subFile).toContain("protected PetOperations()");
+
+    // Sub-client should have the internal constructor
+    expect(subFile).toContain(
+      "internal PetOperations(ClientPipeline pipeline, Uri endpoint)",
+    );
+
+    // Sub-client should NOT reference ClientPipeline.Create
+    expect(subFile).not.toContain("ClientPipeline.Create");
+
+    // Sub-client should NOT reference Argument.AssertNotNull
+    expect(subFile).not.toContain("Argument.AssertNotNull");
+  });
+
+  /**
+   * Verifies the constructor ordering for a root client matches the
+   * legacy emitter pattern: mocking → secondary → primary.
+   *
+   * This ordering is a convention followed by all generated SDK clients
+   * and must be consistent for API surface predictability.
+   */
+  it("generates constructors in correct order: mocking, secondary, primary", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op testOp(): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    const mockingIdx = clientFile.indexOf("protected TestServiceClient()");
+    const secondaryIdx = clientFile.indexOf(
+      "public TestServiceClient(Uri endpoint)",
+    );
+    const primaryIdx = clientFile.indexOf(
+      "public TestServiceClient(Uri endpoint, ClientPipelineOptions options)",
+    );
+
+    expect(mockingIdx).toBeGreaterThan(-1);
+    expect(secondaryIdx).toBeGreaterThan(-1);
+    expect(primaryIdx).toBeGreaterThan(-1);
+
+    // Mocking before secondary before primary
+    expect(mockingIdx).toBeLessThan(secondaryIdx);
+    expect(secondaryIdx).toBeLessThan(primaryIdx);
+  });
 });

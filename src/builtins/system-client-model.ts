@@ -251,6 +251,30 @@ export const SystemClientModelPrimitives = createLibrary(
     },
 
     /**
+     * Pipeline policy that sets the User-Agent header on outgoing requests.
+     * Created in the primary client constructor and passed as a per-retry
+     * policy to ClientPipeline.Create.
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.primitives.useragentpolicy
+     */
+    UserAgentPolicy: {
+      kind: "class",
+      members: {},
+    },
+
+    /**
+     * Pipeline policy that authenticates requests using a bearer token
+     * obtained from an AuthenticationTokenProvider.
+     * Used in OAuth2-authenticated client constructors.
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.primitives.bearertokenauthenticationpolicy
+     */
+    BearerTokenAuthenticationPolicy: {
+      kind: "class",
+      members: {},
+    },
+
+    /**
      * Flags enum that controls how the pipeline handles error responses.
      * Used with RequestOptions.ErrorOptions to suppress automatic exception
      * throwing on non-success status codes.

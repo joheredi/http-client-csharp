@@ -1037,17 +1037,20 @@ Alloy's standard `<Constructor>` component creates a MethodSymbol that triggers 
 ## Client Fields (Task 3.2.2)
 
 ### Auth field patterns
+
 - API key auth: `_keyCredential` (ApiKeyCredential), `AuthorizationHeader` (const string), optional `AuthorizationApiKeyPrefix` (const string)
 - OAuth2 auth: `_tokenProvider` (AuthenticationTokenProvider), `AuthorizationScopes` (static readonly string[])
 - Auth fields are ONLY generated on root clients. Sub-clients inherit auth through the pipeline.
 - The `AuthenticationTokenProvider` builtin was added to `SystemClientModelPrimitives` in `system-client-model.ts`.
 
 ### Alloy Field component limitations
+
 - `<Field>` does NOT support `const` modifier. Use raw strings for const fields: `{`private const string AuthorizationHeader = "x-api-key";`}`
 - `<Field>` supports: `static`, `readonly`, `volatile`, `new` modifiers
 - Naming policy for fields: private fields get `_` prefix + camelCase. So `name="keyCredential"` → `_keyCredential`.
 
 ### TCGC type system gotchas
+
 - `Oauth2Auth` in `@typespec/http` uses lowercase 'a' (not `OAuth2Auth`)
 - `Oauth2Auth` takes 1 type argument (flows only), not 2
 - `SdkBuiltInKinds` = TypeSpec `IntrinsicScalarName` minus utcDateTime/offsetDateTime/duration, plus "unknown"
@@ -1055,16 +1058,46 @@ Alloy's standard `<Constructor>` component creates a MethodSymbol that triggers 
 - SdkBuiltInKinds does NOT include: uuid, password, eTag, ipAddress, ipV4Address, ipV6Address
 
 ### Client initialization parameters
+
 - `client.clientInitialization.parameters` contains: endpoint (kind: "endpoint"), credential (kind: "credential"), method params (kind: "method")
 - API version appears as method param with `isApiVersionParam: true` when TypeSpec has explicit `@query apiVersion: string`
 - For versioned services without explicit param, TCGC may handle version through options, not init params
 
 ### Cross-file type references for clients
+
 - Use `refkey(client)` on ClassDeclaration to create a stable key for client classes
 - Sub-client caching fields reference child types via `refkey(childClient)` — Alloy resolves across files
 - Since the same TCGC SdkClientType object is passed to both parent and child ClientFile, `refkey(obj)` produces matching keys
 
 ### Design Decision: Client fields approach
+
 - **Chosen**: Utility functions in `client-params.ts` + inline Field rendering in ClientFile
 - **Rejected**: Separate ClientFields component (too much indirection for field declarations)
 - **Reason**: Follows existing patterns (ClientOptionsFile), utility functions are reusable by constructor generation (task 3.2.3)
+
+## Task 3.2.3: Client Constructor Design Decision
+
+**Approach chosen**: Inline JSX with `code` template tags for constructor body generation.
+The `RootClientConstructors` component builds both secondary and primary constructors
+using `OverloadConstructor` with `thisInitializer` for chaining.
+
+**Why**: The `code` template tag with SystemClientModelPrimitives references correctly generates
+`using` directives while keeping the constructor body readable. Nesting `code` template results
+(e.g., `userAgent` variable inside the pipeline creation line) works as expected.
+
+**Rejected**: String-only approach — would not trigger automatic `using` directive generation for types
+like `ClientPipeline`, `PipelinePolicy`, `UserAgentPolicy`.
+
+**Gotcha: OverloadConstructor only had baseInitializer**
+The original `OverloadConstructor` component only supported `: base(...)` chaining via the
+`baseInitializer` prop. Secondary constructors need `: this(...)` chaining. Added `thisInitializer`
+prop to support this. Both props are mutually exclusive (C# doesn't allow both).
+
+**Gotcha: Options type varies by API version presence**
+When a client has API versions, constructors reference the generated options class (e.g., `TestServiceClientOptions`).
+When there are no API versions, constructors fall back to `ClientPipelineOptions` from the builtins.
+The options class is always in the same namespace as the client, so string references work without `using` directives.
+
+**Gotcha: API version params vs constructor params**
+Method parameters with `isApiVersionParam: true` are NOT constructor parameters — they're assigned from
+`options.Version` in the primary constructor body. Non-API-version method params ARE constructor parameters.

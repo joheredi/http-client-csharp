@@ -540,6 +540,8 @@ export function computeSerializationCtorParams(
 export interface ModelConstructorProps extends ConstructorProps {
   /** Content rendered inside `: base(...)`. When provided, the constructor chains to the base class. */
   baseInitializer?: Children;
+  /** Content rendered inside `: this(...)`. When provided, the constructor chains to another constructor on the same class. */
+  thisInitializer?: Children;
 }
 
 /**
@@ -574,6 +576,9 @@ export function OverloadConstructor(props: ModelConstructorProps) {
         <Parameters parameters={props.parameters} />
         {props.baseInitializer !== undefined && (
           <> : base({props.baseInitializer})</>
+        )}
+        {props.thisInitializer !== undefined && (
+          <> : this({props.thisInitializer})</>
         )}
         <Block newline>{props.children}</Block>
       </MethodScope>

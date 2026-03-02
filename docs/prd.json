@@ -2802,7 +2802,7 @@
           "title": "Implement client constructors",
           "description": "Generate 3 constructors: mocking (protected parameterless), primary (endpoint+credential+options with pipeline creation), secondary (convenience with defaults). See ClientProvider.BuildConstructors.",
           "phase": "phase-3",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "3.2.2"
           ],

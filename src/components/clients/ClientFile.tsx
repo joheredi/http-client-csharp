@@ -6,11 +6,12 @@ import {
   SourceFile,
   useCSharpNamePolicy,
 } from "@alloy-js/csharp";
-import { refkey } from "@alloy-js/core";
+import { code, refkey } from "@alloy-js/core";
 import type { Children } from "@alloy-js/core";
 import type {
   SdkClientType,
   SdkHttpOperation,
+  SdkMethodParameter,
 } from "@azure-tools/typespec-client-generator-core";
 import {
   SystemClientModel,
@@ -132,6 +133,13 @@ export function ClientFile(props: ClientFileProps) {
       ? `/// <summary> ${client.doc ?? client.summary} </summary>`
       : `/// <summary> The ${className}. </summary>`;
 
+  // Constructor setup for root clients.
+  // API version params are assigned from options.Version, not passed as constructor params.
+  const hasApiVersions = !isSubClient && client.apiVersions.length > 0;
+  const optionsClassName = `${className}Options`;
+  const apiVersionParams = methodParams.filter((p) => p.isApiVersionParam);
+  const nonApiVersionParams = methodParams.filter((p) => !p.isApiVersionParam);
+
   return (
     <SourceFile path={`src/Generated/${className}.cs`}>
       {header}
@@ -206,6 +214,18 @@ export function ClientFile(props: ClientFileProps) {
           {`/// <summary> Initializes a new instance of ${className} for mocking. </summary>`}
           {"\n"}
           <OverloadConstructor protected />
+          {!isSubClient && (
+            <RootClientConstructors
+              client={client}
+              className={className}
+              apiKeyAuth={apiKeyAuth}
+              oauth2Auth={oauth2Auth}
+              nonApiVersionParams={nonApiVersionParams}
+              apiVersionParams={apiVersionParams}
+              hasApiVersions={hasApiVersions}
+              optionsClassName={optionsClassName}
+            />
+          )}
           {isSubClient && (
             <>
               {"\n\n"}
@@ -243,4 +263,220 @@ export function ClientFile(props: ClientFileProps) {
       </Namespace>
     </SourceFile>
   );
+}
+
+/**
+ * Props for the {@link RootClientConstructors} component.
+ */
+interface RootClientConstructorsProps {
+  /** The TCGC SDK client type. */
+  client: SdkClientType<SdkHttpOperation>;
+  /** The resolved C# class name for the client. */
+  className: string;
+  /** API key auth info, if present. */
+  apiKeyAuth?: ApiKeyAuthInfo;
+  /** OAuth2 auth info, if present. */
+  oauth2Auth?: OAuth2AuthInfo;
+  /** Non-API-version method parameters that become constructor params. */
+  nonApiVersionParams: SdkMethodParameter[];
+  /** API version parameters assigned from options.Version. */
+  apiVersionParams: SdkMethodParameter[];
+  /** Whether the client has API versions (determines options class). */
+  hasApiVersions: boolean;
+  /** The generated options class name (e.g., "TestServiceClientOptions"). */
+  optionsClassName: string;
+}
+
+/**
+ * Generates the secondary (convenience) and primary constructors for a root client.
+ *
+ * The secondary constructor accepts endpoint and auth credential parameters,
+ * then delegates to the primary constructor with a default options instance.
+ *
+ * The primary constructor performs:
+ * - Argument validation via Argument.AssertNotNull
+ * - Options null-coalescing to default instance
+ * - Field assignments for endpoint, auth credentials, and method params
+ * - Pipeline creation via ClientPipeline.Create with auth policies
+ * - API version assignment from options.Version (if applicable)
+ *
+ * This matches the legacy emitter's ClientProvider.BuildConstructors pattern.
+ */
+function RootClientConstructors(props: RootClientConstructorsProps) {
+  const {
+    client,
+    className,
+    apiKeyAuth,
+    oauth2Auth,
+    nonApiVersionParams,
+    apiVersionParams,
+    hasApiVersions,
+    optionsClassName,
+  } = props;
+
+  // Build auth constructor parameters.
+  // API key auth uses "credential" param name; OAuth2 uses "tokenProvider".
+  const authParams: Array<{ name: string; type: Children }> = [];
+  if (apiKeyAuth) {
+    authParams.push({
+      name: "credential",
+      type: SystemClientModel.ApiKeyCredential,
+    });
+  }
+  if (oauth2Auth) {
+    authParams.push({
+      name: "tokenProvider",
+      type: SystemClientModelPrimitives.AuthenticationTokenProvider,
+    });
+  }
+
+  // Non-API-version method params become constructor parameters
+  const methodCtorParams = nonApiVersionParams.map((p) => ({
+    name: p.name,
+    type: getFieldTypeForParam(p),
+  }));
+
+  const endpointParam = { name: "endpoint", type: System.Uri };
+  const optionsParam = hasApiVersions
+    ? { name: "options", type: optionsClassName }
+    : {
+        name: "options",
+        type: SystemClientModelPrimitives.ClientPipelineOptions,
+      };
+
+  // Secondary constructor: endpoint, [auth], [method params] — no options
+  const secondaryParams = [endpointParam, ...authParams, ...methodCtorParams];
+  // Primary constructor: endpoint, [auth], [method params], options
+  const primaryParams = [...secondaryParams, optionsParam];
+
+  // Build `: this(...)` initializer for the secondary constructor.
+  // Passes all secondary params plus a default options instance.
+  const secondaryArgList = secondaryParams.map((p) => p.name).join(", ");
+  const optionsDefault = hasApiVersions
+    ? `new ${optionsClassName}()`
+    : "new ClientPipelineOptions()";
+  const thisInitializer = `${secondaryArgList}, ${optionsDefault}`;
+
+  // Build the ClientPipeline.Create(...) expression for the primary body
+  const pipelineLine = buildPipelineCreateLine(client, apiKeyAuth, oauth2Auth);
+
+  // Build doc comment param lines for the auth parameters
+  const authDocParams = [
+    ...(apiKeyAuth
+      ? [
+          `/// <param name="credential"> A credential used to authenticate to the service. </param>`,
+        ]
+      : []),
+    ...(oauth2Auth
+      ? [
+          `/// <param name="tokenProvider"> A token provider used to authenticate to the service. </param>`,
+        ]
+      : []),
+  ];
+  const methodDocParams = nonApiVersionParams.map(
+    (p) =>
+      `/// <param name="${p.name}"> ${p.doc ?? p.summary ?? `The ${p.name}.`} </param>`,
+  );
+
+  return (
+    <>
+      {"\n\n"}
+      {`/// <summary> Initializes a new instance of ${className}. </summary>`}
+      {"\n"}
+      {`/// <param name="endpoint"> Service endpoint. </param>`}
+      {authDocParams.map((doc) => (
+        <>
+          {"\n"}
+          {doc}
+        </>
+      ))}
+      {methodDocParams.map((doc) => (
+        <>
+          {"\n"}
+          {doc}
+        </>
+      ))}
+      {"\n"}
+      <OverloadConstructor
+        public
+        parameters={secondaryParams}
+        thisInitializer={thisInitializer}
+      />
+      {"\n\n"}
+      {`/// <summary> Initializes a new instance of ${className}. </summary>`}
+      {"\n"}
+      {`/// <param name="endpoint"> Service endpoint. </param>`}
+      {authDocParams.map((doc) => (
+        <>
+          {"\n"}
+          {doc}
+        </>
+      ))}
+      {methodDocParams.map((doc) => (
+        <>
+          {"\n"}
+          {doc}
+        </>
+      ))}
+      {"\n"}
+      {`/// <param name="options"> The options for configuring the client. </param>`}
+      {"\n"}
+      <OverloadConstructor public parameters={primaryParams}>
+        {`Argument.AssertNotNull(endpoint, nameof(endpoint));`}
+        {authParams.map(
+          (p) => `\nArgument.AssertNotNull(${p.name}, nameof(${p.name}));`,
+        )}
+        {nonApiVersionParams.map(
+          (p) => `\nArgument.AssertNotNull(${p.name}, nameof(${p.name}));`,
+        )}
+        {"\n\n"}
+        {hasApiVersions
+          ? `options ??= new ${optionsClassName}();`
+          : code`options ??= new ${SystemClientModelPrimitives.ClientPipelineOptions}();`}
+        {"\n\n"}
+        {`_endpoint = endpoint;`}
+        {apiKeyAuth && `\n_keyCredential = credential;`}
+        {oauth2Auth && `\n_tokenProvider = tokenProvider;`}
+        {nonApiVersionParams.map((p) => `\n_${p.name} = ${p.name};`)}
+        {"\n"}
+        {pipelineLine}
+        {apiVersionParams.map((p) => `\n_${p.name} = options.Version;`)}
+      </OverloadConstructor>
+    </>
+  );
+}
+
+/**
+ * Builds the ClientPipeline.Create(...) expression for the primary constructor body.
+ *
+ * The pipeline is created with:
+ * - The client options (for pipeline configuration)
+ * - Empty per-call policies
+ * - Per-retry policies containing UserAgentPolicy and an optional auth policy
+ * - Empty before-transport policies
+ *
+ * @param client - The TCGC client type (used for typeof reference in UserAgentPolicy)
+ * @param apiKeyAuth - API key auth info, if present
+ * @param oauth2Auth - OAuth2 auth info, if present
+ * @returns A code template rendering the complete Pipeline assignment statement
+ */
+function buildPipelineCreateLine(
+  client: SdkClientType<SdkHttpOperation>,
+  apiKeyAuth?: ApiKeyAuthInfo,
+  oauth2Auth?: OAuth2AuthInfo,
+): Children {
+  const SCP = SystemClientModelPrimitives;
+  const clientRef = refkey(client);
+
+  const userAgent = code`new ${SCP.UserAgentPolicy}(typeof(${clientRef}).Assembly)`;
+
+  if (apiKeyAuth) {
+    return code`Pipeline = ${SCP.ClientPipeline}.Create(options, Array.Empty<${SCP.PipelinePolicy}>(), new ${SCP.PipelinePolicy}[] { ${userAgent}, ${SCP.ApiKeyAuthenticationPolicy}.CreateHeaderApiKeyPolicy(_keyCredential, AuthorizationHeader) }, Array.Empty<${SCP.PipelinePolicy}>());`;
+  }
+
+  if (oauth2Auth) {
+    return code`Pipeline = ${SCP.ClientPipeline}.Create(options, Array.Empty<${SCP.PipelinePolicy}>(), new ${SCP.PipelinePolicy}[] { ${userAgent}, new ${SCP.BearerTokenAuthenticationPolicy}(_tokenProvider, AuthorizationScopes) }, Array.Empty<${SCP.PipelinePolicy}>());`;
+  }
+
+  return code`Pipeline = ${SCP.ClientPipeline}.Create(options, Array.Empty<${SCP.PipelinePolicy}>(), new ${SCP.PipelinePolicy}[] { ${userAgent} }, Array.Empty<${SCP.PipelinePolicy}>());`;
 }
