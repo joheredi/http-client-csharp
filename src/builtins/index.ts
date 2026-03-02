@@ -14,8 +14,10 @@
  * ```
  */
 export { System } from "./system.js";
+export { SystemIO } from "./system-io.js";
 export { SystemThreading, SystemThreadingTasks } from "./system-threading.js";
 export { SystemTextJson } from "./system-text-json.js";
+export { SystemXmlLinq } from "./system-xml-linq.js";
 export {
   SystemClientModel,
   SystemClientModelPrimitives,

@@ -1237,3 +1237,12 @@ In `DeserializeVariableDeclarations`, the `isStringDiscriminator` check uses `mo
 - For JSON-only output models, the operator extracts `PipelineResponse` (NOT `using` — consistent with legacy JSON-only), parses `JsonDocument` (IS `using`), and calls `Deserialize{ModelName}`.
 - `response.Content` (BinaryData) is passed directly to `JsonDocument.Parse()` — no intermediate `data` variable needed for non-dynamic models.
 - Dual-format (JSON+XML) is handled in task 2.5.3, not here.
+
+### Dual-format cast operators (2.5.3)
+
+- Models with both `UsageFlags.Json` and `UsageFlags.Xml` get Content-Type sniffing in the explicit operator: checks `response.Headers.TryGetValue("Content-Type", ...)` and `value.StartsWith("application/json", StringComparison.OrdinalIgnoreCase)`.
+- JSON-only: `response` WITHOUT `using`. XML-only and dual-format: `response` WITH `using`.
+- XML deserialization reads from `response.ContentStream` (not `response.Content`), uses `XElement.Load(stream, LoadOptions.PreserveWhitespace)`.
+- Created builtins: `SystemIO` (System.IO.Stream), `SystemXmlLinq` (System.Xml.Linq.XElement, LoadOptions), added `System.StringComparison` to existing `System` builtin.
+- XML-only test cannot assert `not.toContain("JsonDocument")` on the whole file because other generated methods (JsonModelWriteCore, etc.) still reference JsonDocument for XML-only models — pre-existing issue.
+- TypeSpec pattern for XML content types: `@header("content-type") contentType: "application/xml"` — TCGC automatically sets `UsageFlags.Xml` on the model.

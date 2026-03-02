@@ -78,4 +78,19 @@ export const System = createLibrary("System", {
     kind: "struct",
     members: {},
   },
+
+  /**
+   * Specifies the culture, case, and sort rules for string comparisons.
+   * Used in Content-Type sniffing for dual-format (JSON+XML) models to
+   * perform case-insensitive header value comparison.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/system.stringcomparison
+   */
+  StringComparison: {
+    kind: "enum",
+    members: {
+      /** Compares strings using ordinal sort rules, ignoring case. */
+      OrdinalIgnoreCase: { kind: "field" },
+    },
+  },
 });

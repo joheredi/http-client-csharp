@@ -9,6 +9,8 @@
  *   for request body serialization.
  * - **Explicit ClientResult operator** (task 2.5.2): Converts ClientResult → output model
  *   for response deserialization.
+ * - **Dual-format operator** (task 2.5.3): Adds Content-Type sniffing for models that
+ *   support both JSON and XML serialization formats.
  *
  * The legacy emitter generates these in `MrwSerializationTypeDefinition.BuildImplicitToBinaryContent()`
  * and `MrwSerializationTypeDefinition.BuildExplicitFromClientResult()`.
@@ -22,11 +24,14 @@ import {
   type SdkModelType,
   UsageFlags,
 } from "@azure-tools/typespec-client-generator-core";
+import { System } from "../../builtins/system.js";
+import { SystemIO } from "../../builtins/system-io.js";
 import {
   SystemClientModel,
   SystemClientModelPrimitives,
 } from "../../builtins/system-client-model.js";
 import { SystemTextJson } from "../../builtins/system-text-json.js";
+import { SystemXmlLinq } from "../../builtins/system-xml-linq.js";
 
 /**
  * Props for the {@link ImplicitBinaryContentOperator} component.
@@ -142,34 +147,76 @@ export interface ExplicitClientResultOperatorProps {
  * models returned from operations). Input-only models do not need this operator
  * since they are never deserialized from responses.
  *
- * The method body (JSON-only, non-dynamic models):
- * 1. Extracts the `PipelineResponse` from the `ClientResult` via `GetRawResponse()`.
- * 2. Parses the response content as a `JsonDocument` using `ModelSerializationExtensions.JsonDocumentOptions`.
- * 3. Calls the model's `Deserialize{ModelName}` static method with the root element
- *    and `ModelSerializationExtensions.WireOptions`.
+ * The operator body varies based on which serialization formats the model supports:
+ *
+ * - **JSON-only** (default): Parses `response.Content` as `JsonDocument` and calls
+ *   `Deserialize{Model}(document.RootElement, WireOptions)`.
+ * - **XML-only**: Reads `response.ContentStream` into an `XElement` via
+ *   `XElement.Load(stream, LoadOptions.PreserveWhitespace)` and calls
+ *   `Deserialize{Model}(element, WireOptions)`.
+ * - **Dual-format (JSON + XML)**: Sniffs the `Content-Type` response header. If it
+ *   starts with `"application/json"`, uses the JSON path; otherwise falls through
+ *   to the XML path.
  *
  * @remarks
- * The legacy emitter generates this in `MrwSerializationTypeDefinition.BuildExplicitFromClientResult()`.
- * It is generated for models in `RootOutputModels`. In TCGC terms, `UsageFlags.Output` maps
- * to the legacy `RootOutputModels` concept.
+ * The legacy emitter generates this in `MrwSerializationTypeDefinition.BuildExplicitFromClientResult()`,
+ * dispatching to `BuildJsonAndXmlExplicitFromClientResult()` for dual-format and
+ * `BuildXmlExplicitFromClientResult()` for XML-only models.
+ *
+ * Key differences from JSON-only:
+ * - XML-only and dual-format declare `response` with `using` (JSON-only does not).
+ * - XML-only and dual-format read from `ContentStream` (not `Content`).
+ * - Dual-format checks `response.Headers.TryGetValue("Content-Type", ...)` to
+ *   select the deserialization path.
  *
  * `ModelSerializationExtensions.WireOptions` and `ModelSerializationExtensions.JsonDocumentOptions`
  * are generated infrastructure types (task 5.1.5). Until that task is complete, the `using`
  * directive for their namespace will not be auto-generated. This is a known gap.
  *
- * The `response` variable is NOT declared with `using` for JSON-only models (consistent with
- * the legacy emitter). The `document` variable IS declared with `using` because `JsonDocument`
- * is `IDisposable`.
- *
- * Dual-format models (JSON + XML) are handled by task 2.5.3 which adds content-type sniffing.
- *
- * @example Generated output for an output model:
+ * @example Generated output for a JSON-only output model:
  * ```csharp
  * public static explicit operator Widget(ClientResult result)
  * {
  *     PipelineResponse response = result.GetRawResponse();
  *     using JsonDocument document = JsonDocument.Parse(response.Content, ModelSerializationExtensions.JsonDocumentOptions);
  *     return DeserializeWidget(document.RootElement, ModelSerializationExtensions.WireOptions);
+ * }
+ * ```
+ *
+ * @example Generated output for an XML-only model:
+ * ```csharp
+ * public static explicit operator XmlWidget(ClientResult result)
+ * {
+ *     using PipelineResponse response = result.GetRawResponse();
+ *     using Stream stream = response.ContentStream;
+ *     if ((stream == null))
+ *     {
+ *         return default;
+ *     }
+ *
+ *     return XmlWidget.DeserializeXmlWidget(XElement.Load(stream, LoadOptions.PreserveWhitespace), ModelSerializationExtensions.WireOptions);
+ * }
+ * ```
+ *
+ * @example Generated output for a dual-format (JSON + XML) model:
+ * ```csharp
+ * public static explicit operator DualWidget(ClientResult result)
+ * {
+ *     using PipelineResponse response = result.GetRawResponse();
+ *
+ *     if ((response.Headers.TryGetValue("Content-Type", out string value) && value.StartsWith("application/json", StringComparison.OrdinalIgnoreCase)))
+ *     {
+ *         using JsonDocument document = JsonDocument.Parse(response.Content, ModelSerializationExtensions.JsonDocumentOptions);
+ *         return DualWidget.DeserializeDualWidget(document.RootElement, ModelSerializationExtensions.WireOptions);
+ *     }
+ *
+ *     using Stream stream = response.ContentStream;
+ *     if ((stream == null))
+ *     {
+ *         return default;
+ *     }
+ *
+ *     return DualWidget.DeserializeDualWidget(XElement.Load(stream, LoadOptions.PreserveWhitespace), ModelSerializationExtensions.WireOptions);
  * }
  * ```
  *
@@ -189,9 +236,31 @@ export function ExplicitClientResultOperator(
     return null;
   }
 
+  const supportsJson = (type.usage & UsageFlags.Json) !== 0;
+  const supportsXml = (type.usage & UsageFlags.Xml) !== 0;
+
   const namePolicy = useCSharpNamePolicy();
   const modelName = namePolicy.getName(type.name, "class");
 
+  // Select the appropriate operator body based on the model's serialization formats.
+  // The dispatch mirrors the legacy emitter's GetExplicitFromClientResultMethod().
+  if (supportsJson && supportsXml) {
+    return renderDualFormatOperator(modelName);
+  } else if (supportsXml) {
+    return renderXmlOnlyOperator(modelName);
+  } else {
+    return renderJsonOnlyOperator(modelName);
+  }
+}
+
+/**
+ * Renders the explicit operator body for JSON-only models.
+ *
+ * Extracts `PipelineResponse` from `ClientResult`, parses the response content
+ * as a `JsonDocument`, and calls the model's `Deserialize` method with the root element.
+ * The `response` variable is NOT declared with `using` (consistent with the legacy emitter).
+ */
+function renderJsonOnlyOperator(modelName: string) {
   return (
     <>
       {code`public static explicit operator ${modelName}(${SystemClientModel.ClientResult} result)`}
@@ -201,6 +270,78 @@ export function ExplicitClientResultOperator(
       {"\n    "}
       {code`using ${SystemTextJson.JsonDocument} document = ${SystemTextJson.JsonDocument}.Parse(response.Content, ModelSerializationExtensions.JsonDocumentOptions);`}
       {`\n    return ${modelName}.Deserialize${modelName}(document.RootElement, ModelSerializationExtensions.WireOptions);`}
+      {"\n}"}
+    </>
+  );
+}
+
+/**
+ * Renders the explicit operator body for XML-only models.
+ *
+ * Extracts `PipelineResponse` (with `using`) from `ClientResult`, reads the
+ * `ContentStream` into a `Stream`, checks for null, and parses via
+ * `XElement.Load(stream, LoadOptions.PreserveWhitespace)`.
+ *
+ * The legacy emitter generates this in `BuildXmlExplicitFromClientResult()`.
+ */
+function renderXmlOnlyOperator(modelName: string) {
+  return (
+    <>
+      {code`public static explicit operator ${modelName}(${SystemClientModel.ClientResult} result)`}
+      {"\n{"}
+      {"\n    "}
+      {code`using ${SystemClientModelPrimitives.PipelineResponse} response = result.GetRawResponse();`}
+      {"\n    "}
+      {code`using ${SystemIO.Stream} stream = response.ContentStream;`}
+      {"\n    if ((stream == null))"}
+      {"\n    {"}
+      {"\n        return default;"}
+      {"\n    }"}
+      {"\n"}
+      {"\n    "}
+      {code`return ${modelName}.Deserialize${modelName}(${SystemXmlLinq.XElement}.Load(stream, ${SystemXmlLinq.LoadOptions}.PreserveWhitespace), ModelSerializationExtensions.WireOptions);`}
+      {"\n}"}
+    </>
+  );
+}
+
+/**
+ * Renders the explicit operator body for dual-format (JSON + XML) models.
+ *
+ * Sniffs the `Content-Type` response header to determine the deserialization path:
+ * - If `Content-Type` starts with `"application/json"` (case-insensitive), uses
+ *   the JSON deserialization path (`JsonDocument.Parse`).
+ * - Otherwise, falls through to the XML deserialization path (`XElement.Load`).
+ *
+ * The `response` variable IS declared with `using` for dual-format models.
+ *
+ * The legacy emitter generates this in `BuildJsonAndXmlExplicitFromClientResult()`.
+ */
+function renderDualFormatOperator(modelName: string) {
+  return (
+    <>
+      {code`public static explicit operator ${modelName}(${SystemClientModel.ClientResult} result)`}
+      {"\n{"}
+      {"\n    "}
+      {code`using ${SystemClientModelPrimitives.PipelineResponse} response = result.GetRawResponse();`}
+      {"\n"}
+      {"\n    "}
+      {code`if ((response.Headers.TryGetValue("Content-Type", out string value) && value.StartsWith("application/json", ${System.StringComparison}.OrdinalIgnoreCase)))`}
+      {"\n    {"}
+      {"\n        "}
+      {code`using ${SystemTextJson.JsonDocument} document = ${SystemTextJson.JsonDocument}.Parse(response.Content, ModelSerializationExtensions.JsonDocumentOptions);`}
+      {`\n        return ${modelName}.Deserialize${modelName}(document.RootElement, ModelSerializationExtensions.WireOptions);`}
+      {"\n    }"}
+      {"\n"}
+      {"\n    "}
+      {code`using ${SystemIO.Stream} stream = response.ContentStream;`}
+      {"\n    if ((stream == null))"}
+      {"\n    {"}
+      {"\n        return default;"}
+      {"\n    }"}
+      {"\n"}
+      {"\n    "}
+      {code`return ${modelName}.Deserialize${modelName}(${SystemXmlLinq.XElement}.Load(stream, ${SystemXmlLinq.LoadOptions}.PreserveWhitespace), ModelSerializationExtensions.WireOptions);`}
       {"\n}"}
     </>
   );

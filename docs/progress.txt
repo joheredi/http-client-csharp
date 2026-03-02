@@ -1950,3 +1950,26 @@ Added `ExplicitClientResultOperator` component to `CastOperators.tsx` that gener
 ### For next iteration
 - Task 2.5.3 (dual-format operators) can now proceed — adds Content-Type sniffing for JSON+XML models
 - Pre-existing failures: 4 smoke tests (dotnet build) and 2 model-serialization tests were failing before this change
+
+## 2026-03-02 — Task 2.5.3: Handle dual-format operators
+
+Added Content-Type sniffing to `ExplicitClientResultOperator` for models supporting both JSON and XML.
+
+### What was done
+- Modified `ExplicitClientResultOperator` in `CastOperators.tsx` to branch on `UsageFlags.Json` and `UsageFlags.Xml`:
+  - JSON-only (default): unchanged from 2.5.2
+  - XML-only: reads `response.ContentStream`, parses via `XElement.Load(stream, LoadOptions.PreserveWhitespace)`
+  - Dual-format (JSON+XML): sniffs `Content-Type` header for `"application/json"` (case-insensitive), uses JSON path if match, XML path as fallback
+- Created `src/builtins/system-io.ts` (System.IO.Stream)
+- Created `src/builtins/system-xml-linq.ts` (System.Xml.Linq.XElement, LoadOptions)
+- Added `StringComparison` enum to `src/builtins/system.ts`
+- Updated `src/builtins/index.ts` to export new builtins
+- Added 3 new tests: XML-only operator, dual-format Content-Type sniffing, dual-format round-trip model
+
+### Patterns used
+- Internal helper functions (`renderJsonOnlyOperator`, `renderXmlOnlyOperator`, `renderDualFormatOperator`) keep the main component clean
+- Used `System.StringComparison` builtin for OrdinalIgnoreCase auto-using
+- XML-only and dual-format use `using` on `response` variable; JSON-only does not
+
+### For next iteration
+- Task 2.5.4 (write cast operator tests) can now proceed — most tests already exist, may need additional edge cases

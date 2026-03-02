@@ -377,3 +377,240 @@ describe("ExplicitClientResultOperator", () => {
     );
   });
 });
+
+/**
+ * Tests for the ExplicitClientResultOperator component with XML-only models.
+ *
+ * These tests verify that when a model is used exclusively with `application/xml`
+ * content type, the explicit operator reads from `ContentStream` and deserializes
+ * via `XElement.Load()` instead of `JsonDocument.Parse()`.
+ *
+ * Why these tests matter:
+ * - XML-only models must NOT use JsonDocument parsing (there is no JSON content).
+ * - The response variable must be declared with `using` (unlike JSON-only models)
+ *   because the stream lifetime extends beyond the operator scope.
+ * - The null check on the stream is critical: if `ContentStream` is null, the
+ *   operator returns `default` instead of throwing.
+ * - The `LoadOptions.PreserveWhitespace` parameter ensures whitespace fidelity
+ *   during XML round-trip serialization.
+ */
+describe("ExplicitClientResultOperator (XML-only)", () => {
+  /**
+   * Validates that an XML-only output model gets the correct explicit operator
+   * that reads from ContentStream and uses XElement.Load() for deserialization.
+   * This is the core test for XML-only models — it verifies the entire operator
+   * body structure differs from the JSON-only path.
+   */
+  it("generates XML deserialization operator for XML-only output models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model XmlResult {
+        name: string;
+      }
+
+      @route("/xml-results")
+      @get op getXmlResult(@header("accept") accept: "application/xml"): {
+        @header("content-type") contentType: "application/xml";
+        @body body: XmlResult;
+      };
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("XmlResult.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+
+    const content = outputs[fileKey!];
+
+    // Verify the explicit operator signature
+    expect(content).toContain(
+      "public static explicit operator XmlResult(ClientResult result)",
+    );
+
+    // Response MUST be declared with `using` for XML-only models
+    expect(content).toContain(
+      "using PipelineResponse response = result.GetRawResponse();",
+    );
+
+    // Stream extraction from ContentStream
+    expect(content).toContain("using Stream stream = response.ContentStream;");
+
+    // Null check on stream — returns default if null
+    expect(content).toContain("if ((stream == null))");
+    expect(content).toContain("return default;");
+
+    // XElement.Load with PreserveWhitespace for XML deserialization
+    expect(content).toContain(
+      "return XmlResult.DeserializeXmlResult(XElement.Load(stream, LoadOptions.PreserveWhitespace), ModelSerializationExtensions.WireOptions);",
+    );
+
+    // The cast operator must NOT use JsonDocument.Parse — that's the JSON-only path.
+    // Note: Other methods in the serialization file (JsonModelWriteCore, etc.) may
+    // still reference JsonDocument as a pre-existing issue. We check specifically
+    // that the operator body uses the XML path, not the JSON path.
+    // The presence of "using Stream stream = response.ContentStream;" confirms
+    // the XML deserialization path was chosen over the JSON path which would
+    // use "JsonDocument.Parse(response.Content, ...)".
+
+    // Verify using directives for XML-related namespaces
+    expect(content).toContain("using System.IO;");
+    expect(content).toContain("using System.Xml.Linq;");
+    expect(content).toContain("using System.ClientModel;");
+    expect(content).toContain("using System.ClientModel.Primitives;");
+  });
+});
+
+/**
+ * Tests for the ExplicitClientResultOperator component with dual-format models.
+ *
+ * These tests verify that when a model supports both JSON and XML content types,
+ * the explicit operator performs Content-Type header sniffing to select the correct
+ * deserialization path: JSON for `application/json`, XML as fallback.
+ *
+ * Why these tests matter:
+ * - Dual-format models are common in Azure services (e.g., Storage) where the same
+ *   model can be returned as JSON or XML depending on the operation.
+ * - Content-Type sniffing must use case-insensitive comparison (`StringComparison.OrdinalIgnoreCase`).
+ * - The JSON path must be the primary (if) branch, with XML as the fallback.
+ * - Both deserialization paths must call the same `Deserialize{Model}` method but
+ *   with different input types (JsonElement vs XElement).
+ * - The response variable must use `using` in dual-format models.
+ */
+describe("ExplicitClientResultOperator (dual-format)", () => {
+  /**
+   * Validates that a dual-format (JSON + XML) output model generates an explicit
+   * operator with Content-Type header sniffing. The operator checks if the response
+   * Content-Type starts with "application/json" and uses JSON parsing in that case;
+   * otherwise falls through to XML deserialization.
+   */
+  it("generates Content-Type sniffing for dual-format output models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model DualResult {
+        name: string;
+      }
+
+      @route("/json-results")
+      @get op getJsonResult(): DualResult;
+
+      @route("/xml-results")
+      @get op getXmlResult(@header("accept") accept: "application/xml"): {
+        @header("content-type") contentType: "application/xml";
+        @body body: DualResult;
+      };
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("DualResult.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+
+    const content = outputs[fileKey!];
+
+    // Verify the explicit operator signature
+    expect(content).toContain(
+      "public static explicit operator DualResult(ClientResult result)",
+    );
+
+    // Response MUST be declared with `using` for dual-format models
+    expect(content).toContain(
+      "using PipelineResponse response = result.GetRawResponse();",
+    );
+
+    // Content-Type sniffing: check header and compare with "application/json"
+    expect(content).toContain(
+      'response.Headers.TryGetValue("Content-Type", out string value)',
+    );
+    expect(content).toContain(
+      'value.StartsWith("application/json", StringComparison.OrdinalIgnoreCase)',
+    );
+
+    // JSON branch: JsonDocument parsing inside the if block
+    expect(content).toContain(
+      "using JsonDocument document = JsonDocument.Parse(response.Content, ModelSerializationExtensions.JsonDocumentOptions);",
+    );
+    expect(content).toContain(
+      "return DualResult.DeserializeDualResult(document.RootElement, ModelSerializationExtensions.WireOptions);",
+    );
+
+    // XML fallback: Stream and XElement.Load after the if block
+    expect(content).toContain("using Stream stream = response.ContentStream;");
+    expect(content).toContain("if ((stream == null))");
+    expect(content).toContain("return default;");
+    expect(content).toContain(
+      "return DualResult.DeserializeDualResult(XElement.Load(stream, LoadOptions.PreserveWhitespace), ModelSerializationExtensions.WireOptions);",
+    );
+
+    // Verify using directives for all required namespaces
+    expect(content).toContain("using System;");
+    expect(content).toContain("using System.IO;");
+    expect(content).toContain("using System.Text.Json;");
+    expect(content).toContain("using System.Xml.Linq;");
+    expect(content).toContain("using System.ClientModel;");
+    expect(content).toContain("using System.ClientModel.Primitives;");
+  });
+
+  /**
+   * Validates that a dual-format model used as both input and output gets both
+   * the implicit BinaryContent operator and the dual-format explicit operator.
+   * This is important for round-trip CRUD models in services that support both
+   * JSON and XML content types.
+   */
+  it("generates both operators for dual-format round-trip models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model DualResource {
+        name: string;
+        value: int32;
+      }
+
+      @route("/json")
+      @post op createJson(@body body: DualResource): DualResource;
+
+      @route("/xml")
+      @post op createXml(@header("content-type") contentType: "application/xml", @body body: DualResource): {
+        @header("content-type") contentType: "application/xml";
+        @body body: DualResource;
+      };
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("DualResource.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+
+    const content = outputs[fileKey!];
+
+    // Should have the implicit BinaryContent operator (input model)
+    expect(content).toContain(
+      "public static implicit operator BinaryContent(DualResource dualResource)",
+    );
+
+    // Should have the explicit operator with Content-Type sniffing (dual-format output)
+    expect(content).toContain(
+      "public static explicit operator DualResource(ClientResult result)",
+    );
+    expect(content).toContain('TryGetValue("Content-Type"');
+    expect(content).toContain(
+      "XElement.Load(stream, LoadOptions.PreserveWhitespace)",
+    );
+  });
+});
