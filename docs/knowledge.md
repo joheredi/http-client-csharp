@@ -1420,3 +1420,11 @@ The 4 smoke test failures (dotnet build) are NOT caused by model serialization b
 **Chosen approach:** Separate `AdditionalBinaryDataRead` component passed as children to `PropertyMatchingLoop`.
 **Rejected approach:** Building the catch-all directly into `PropertyMatchingLoop.tsx`.
 **Reason:** The children slot was explicitly designed for this purpose (JSDoc comment at line 17), and a separate component mirrors the write-side architecture (`AdditionalBinaryDataWrite`). It keeps PropertyMatchingLoop focused on property matching and follows the single-responsibility principle.
+
+### Test file search patterns must avoid infrastructure file name collisions
+
+When searching for model output files in tests (e.g., `Object.keys(outputs).find(k => k.includes("Result.cs"))`), be aware that infrastructure files like `ErrorResult.cs` will also match. Use `.endsWith("/Result.cs")` for more precise matching. This was discovered when adding ErrorResult.cs in task 5.1.5a.
+
+### SerializationFormat enum is pure static content — use raw code template
+
+The SerializationFormat enum has no dynamic content (no TypeSpec model data). Using `EnumDeclaration` + `EnumMember` from Alloy would work but is overkill. A raw `code` template inside `<Namespace>` is simpler and more readable for fully static enums.

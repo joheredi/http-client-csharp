@@ -433,13 +433,370 @@ describe("ChangeTrackingDictionaryFile", () => {
   });
 });
 
+describe("CancellationTokenExtensionsFile", () => {
+  /**
+   * Verifies CancellationTokenExtensions.cs is generated at the correct
+   * Internal path, matching the legacy emitter's output structure.
+   */
+  it("generates CancellationTokenExtensions.cs at the correct path", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    expect(
+      outputs["src/Generated/Internal/CancellationTokenExtensions.cs"],
+    ).toBeDefined();
+  });
+
+  /**
+   * Verifies the class is internal, static, partial — matching legacy output.
+   * These modifiers ensure the class is not part of the public API, contains
+   * no instance state, and can be extended by custom code.
+   */
+  it("declares internal static partial class", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content =
+      outputs["src/Generated/Internal/CancellationTokenExtensions.cs"];
+    expect(content).toContain(
+      "internal static partial class CancellationTokenExtensions",
+    );
+  });
+
+  /**
+   * Verifies the ToRequestOptions extension method is present.
+   * This method bridges CancellationToken to SCM's RequestOptions.
+   */
+  it("contains ToRequestOptions extension method", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content =
+      outputs["src/Generated/Internal/CancellationTokenExtensions.cs"];
+    expect(content).toContain(
+      "public static RequestOptions ToRequestOptions(this CancellationToken cancellationToken)",
+    );
+    expect(content).toContain("cancellationToken.CanBeCanceled");
+  });
+
+  /**
+   * Verifies the required using directives for System.ClientModel.Primitives
+   * (for RequestOptions) and System.Threading (for CancellationToken).
+   */
+  it("includes required using directives", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content =
+      outputs["src/Generated/Internal/CancellationTokenExtensions.cs"];
+    expect(content).toContain("using System.ClientModel.Primitives;");
+    expect(content).toContain("using System.Threading;");
+  });
+
+  /**
+   * Verifies the correct namespace is used, derived from the service name.
+   */
+  it("uses the correct namespace from package name", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace MyLibrary;
+    `);
+    const content =
+      outputs["src/Generated/Internal/CancellationTokenExtensions.cs"];
+    expect(content).toContain("namespace MyLibrary");
+  });
+});
+
+describe("ErrorResultFile", () => {
+  /**
+   * Verifies ErrorResult.cs is generated at the correct Internal path.
+   */
+  it("generates ErrorResult.cs at the correct path", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    expect(outputs["src/Generated/Internal/ErrorResult.cs"]).toBeDefined();
+  });
+
+  /**
+   * Verifies the class is a generic internal partial class extending
+   * ClientResult<T>. This is the error-result pattern used by the
+   * HEAD-as-bool pipeline methods.
+   */
+  it("declares internal partial class with generic type and base type", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content = outputs["src/Generated/Internal/ErrorResult.cs"];
+    expect(content).toContain("internal partial class ErrorResult<T>");
+    expect(content).toContain("ClientResult<T>");
+  });
+
+  /**
+   * Verifies the constructor accepts PipelineResponse and ClientResultException
+   * and chains to the base constructor with default value.
+   */
+  it("contains constructor with base call", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content = outputs["src/Generated/Internal/ErrorResult.cs"];
+    expect(content).toContain(
+      "public ErrorResult(PipelineResponse response, ClientResultException exception) : base(default, response)",
+    );
+  });
+
+  /**
+   * Verifies the Value property override throws the stored exception.
+   * This is the core error semantics: accessing Value on a failed result
+   * throws the original exception.
+   */
+  it("contains Value property that throws exception", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content = outputs["src/Generated/Internal/ErrorResult.cs"];
+    expect(content).toContain("public override T Value => throw _exception;");
+  });
+
+  /**
+   * Verifies the required using directives for SCM types.
+   */
+  it("includes required using directives", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content = outputs["src/Generated/Internal/ErrorResult.cs"];
+    expect(content).toContain("using System.ClientModel;");
+    expect(content).toContain("using System.ClientModel.Primitives;");
+  });
+});
+
+describe("SerializationFormatFile", () => {
+  /**
+   * Verifies SerializationFormat.cs is generated at the correct Internal path.
+   */
+  it("generates SerializationFormat.cs at the correct path", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    expect(
+      outputs["src/Generated/Internal/SerializationFormat.cs"],
+    ).toBeDefined();
+  });
+
+  /**
+   * Verifies it declares an internal enum (not a class), matching
+   * the legacy emitter output exactly.
+   */
+  it("declares internal enum SerializationFormat", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content = outputs["src/Generated/Internal/SerializationFormat.cs"];
+    expect(content).toContain("internal enum SerializationFormat");
+  });
+
+  /**
+   * Verifies all DateTime format values are present with correct ordinals.
+   * These formats are used by TypeFormatters for date-time serialization.
+   */
+  it("contains DateTime format values", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content = outputs["src/Generated/Internal/SerializationFormat.cs"];
+    expect(content).toContain("Default = 0");
+    expect(content).toContain("DateTime_RFC1123 = 1");
+    expect(content).toContain("DateTime_RFC3339 = 2");
+    expect(content).toContain("DateTime_RFC7231 = 3");
+    expect(content).toContain("DateTime_ISO8601 = 4");
+    expect(content).toContain("DateTime_Unix = 5");
+  });
+
+  /**
+   * Verifies Duration format values are present.
+   */
+  it("contains Duration format values", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content = outputs["src/Generated/Internal/SerializationFormat.cs"];
+    expect(content).toContain("Duration_ISO8601 = 7");
+    expect(content).toContain("Duration_Constant = 8");
+    expect(content).toContain("Duration_Seconds = 9");
+    expect(content).toContain("Duration_Seconds_Float = 10");
+    expect(content).toContain("Duration_Seconds_Double = 11");
+    expect(content).toContain("Duration_Milliseconds = 12");
+  });
+
+  /**
+   * Verifies Bytes and Time format values are present.
+   */
+  it("contains Bytes and Time format values", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content = outputs["src/Generated/Internal/SerializationFormat.cs"];
+    expect(content).toContain("Time_ISO8601 = 15");
+    expect(content).toContain("Bytes_Base64Url = 16");
+    expect(content).toContain("Bytes_Base64 = 17");
+  });
+
+  /**
+   * Verifies the correct namespace is used, derived from the service name.
+   */
+  it("uses the correct namespace from package name", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace MyLibrary;
+    `);
+    const content = outputs["src/Generated/Internal/SerializationFormat.cs"];
+    expect(content).toContain("namespace MyLibrary");
+  });
+});
+
+describe("ClientPipelineExtensionsFile", () => {
+  /**
+   * Verifies ClientPipelineExtensions.cs is generated at the correct path.
+   */
+  it("generates ClientPipelineExtensions.cs at the correct path", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    expect(
+      outputs["src/Generated/Internal/ClientPipelineExtensions.cs"],
+    ).toBeDefined();
+  });
+
+  /**
+   * Verifies the class is internal, static, partial — matching legacy output.
+   */
+  it("declares internal static partial class", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content =
+      outputs["src/Generated/Internal/ClientPipelineExtensions.cs"];
+    expect(content).toContain(
+      "internal static partial class ClientPipelineExtensions",
+    );
+  });
+
+  /**
+   * Verifies the async ProcessMessageAsync extension method is present
+   * with the expected signature and error handling logic.
+   */
+  it("contains ProcessMessageAsync method", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content =
+      outputs["src/Generated/Internal/ClientPipelineExtensions.cs"];
+    expect(content).toContain(
+      "public static async ValueTask<PipelineResponse> ProcessMessageAsync(this ClientPipeline pipeline, PipelineMessage message, RequestOptions options)",
+    );
+    expect(content).toContain(
+      "await pipeline.SendAsync(message).ConfigureAwait(false);",
+    );
+    expect(content).toContain("ClientErrorBehaviors.NoThrow");
+  });
+
+  /**
+   * Verifies the synchronous ProcessMessage extension method is present.
+   */
+  it("contains ProcessMessage method", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content =
+      outputs["src/Generated/Internal/ClientPipelineExtensions.cs"];
+    expect(content).toContain(
+      "public static PipelineResponse ProcessMessage(this ClientPipeline pipeline, PipelineMessage message, RequestOptions options)",
+    );
+    expect(content).toContain("pipeline.Send(message);");
+    expect(content).toContain(
+      "throw new ClientResultException(message.Response);",
+    );
+  });
+
+  /**
+   * Verifies the async HEAD-as-bool method is present with the correct
+   * switch pattern for status code classification.
+   */
+  it("contains ProcessHeadAsBoolMessageAsync method", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content =
+      outputs["src/Generated/Internal/ClientPipelineExtensions.cs"];
+    expect(content).toContain(
+      "public static async ValueTask<ClientResult<bool>> ProcessHeadAsBoolMessageAsync(this ClientPipeline pipeline, PipelineMessage message, RequestOptions options)",
+    );
+    expect(content).toContain("case >= 200 and < 300:");
+    expect(content).toContain("ClientResult.FromValue(true, response)");
+    expect(content).toContain("case >= 400 and < 500:");
+    expect(content).toContain("ClientResult.FromValue(false, response)");
+    expect(content).toContain("new ErrorResult<bool>");
+  });
+
+  /**
+   * Verifies the synchronous HEAD-as-bool method is present.
+   */
+  it("contains ProcessHeadAsBoolMessage method", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content =
+      outputs["src/Generated/Internal/ClientPipelineExtensions.cs"];
+    expect(content).toContain(
+      "public static ClientResult<bool> ProcessHeadAsBoolMessage(this ClientPipeline pipeline, PipelineMessage message, RequestOptions options)",
+    );
+  });
+
+  /**
+   * Verifies the required using directives for SCM pipeline types.
+   */
+  it("includes required using directives", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content =
+      outputs["src/Generated/Internal/ClientPipelineExtensions.cs"];
+    expect(content).toContain("using System.ClientModel;");
+    expect(content).toContain("using System.ClientModel.Primitives;");
+    expect(content).toContain("using System.Threading.Tasks;");
+  });
+});
+
 describe("Infrastructure files — always generated", () => {
   /**
-   * Verifies that all four infrastructure helper files are generated even
+   * Verifies that all infrastructure helper files are generated even
    * for a minimal service with no models, enums, or clients. This matches
    * the legacy emitter behavior where these files are part of every project.
    */
-  it("generates all four helper files for a minimal service", async () => {
+  it("generates all helper files for a minimal service", async () => {
     const [{ outputs }] = await Tester.compileAndDiagnose(`op test(): void;`);
     expect(outputs["src/Generated/Internal/Argument.cs"]).toBeDefined();
     expect(outputs["src/Generated/Internal/Optional.cs"]).toBeDefined();
@@ -448,6 +805,16 @@ describe("Infrastructure files — always generated", () => {
     ).toBeDefined();
     expect(
       outputs["src/Generated/Internal/ChangeTrackingDictionary.cs"],
+    ).toBeDefined();
+    expect(
+      outputs["src/Generated/Internal/CancellationTokenExtensions.cs"],
+    ).toBeDefined();
+    expect(outputs["src/Generated/Internal/ErrorResult.cs"]).toBeDefined();
+    expect(
+      outputs["src/Generated/Internal/SerializationFormat.cs"],
+    ).toBeDefined();
+    expect(
+      outputs["src/Generated/Internal/ClientPipelineExtensions.cs"],
     ).toBeDefined();
   });
 

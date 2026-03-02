@@ -16,12 +16,16 @@ import { FixedEnumFile } from "./components/enums/FixedEnumFile.js";
 import { FixedEnumSerializationFile } from "./components/enums/FixedEnumSerializationFile.js";
 import { HttpClientCSharpOutput } from "./components/HttpClientCSharpOutput.js";
 import { ArgumentFile } from "./components/infrastructure/ArgumentFile.js";
+import { CancellationTokenExtensionsFile } from "./components/infrastructure/CancellationTokenExtensionsFile.js";
 import { ChangeTrackingDictionaryFile } from "./components/infrastructure/ChangeTrackingDictionaryFile.js";
 import { ChangeTrackingListFile } from "./components/infrastructure/ChangeTrackingListFile.js";
+import { ClientPipelineExtensionsFile } from "./components/infrastructure/ClientPipelineExtensionsFile.js";
 import { CodeGenAttributeFiles } from "./components/infrastructure/CodeGenAttributeFiles.js";
+import { ErrorResultFile } from "./components/infrastructure/ErrorResultFile.js";
 import { ModelReaderWriterContextFile } from "./components/infrastructure/ModelReaderWriterContextFile.js";
 import { OptionalFile } from "./components/infrastructure/OptionalFile.js";
 import { ProjectFile } from "./components/infrastructure/ProjectFile.js";
+import { SerializationFormatFile } from "./components/infrastructure/SerializationFormatFile.js";
 import { SolutionFile } from "./components/infrastructure/SolutionFile.js";
 import { ModelFactoryFile } from "./components/model-factory/ModelFactoryFile.js";
 import {
@@ -120,6 +124,16 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
       <OptionalFile packageName={packageName} options={options} />
       <ChangeTrackingListFile packageName={packageName} options={options} />
       <ChangeTrackingDictionaryFile
+        packageName={packageName}
+        options={options}
+      />
+      <CancellationTokenExtensionsFile
+        packageName={packageName}
+        options={options}
+      />
+      <ErrorResultFile packageName={packageName} options={options} />
+      <SerializationFormatFile packageName={packageName} options={options} />
+      <ClientPipelineExtensionsFile
         packageName={packageName}
         options={options}
       />

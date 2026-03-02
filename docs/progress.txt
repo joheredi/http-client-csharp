@@ -2279,3 +2279,29 @@ export function XFile(props: { packageName: string; options: EmitterOptions }) {
   );
 }
 ```
+
+## 2026-03-02 — Task 5.1.5a: Generate small infrastructure files
+
+### What was done
+Implemented 4 infrastructure file components:
+- **CancellationTokenExtensionsFile.tsx** — Extension method converting CancellationToken → RequestOptions
+- **ErrorResultFile.tsx** — Generic ErrorResult<T> : ClientResult<T> for HEAD-as-bool error semantics
+- **SerializationFormatFile.tsx** — Internal enum with 18 serialization format values (DateTime, Duration, Time, Bytes)
+- **ClientPipelineExtensionsFile.tsx** — 4 extension methods for ClientPipeline (ProcessMessage sync/async, ProcessHeadAsBoolMessage sync/async)
+
+### Pattern used
+Followed ArgumentFile.tsx pattern exactly:
+- Props: `{ packageName, options }` with `ResolvedCSharpEmitterOptions`
+- Structure: `<SourceFile>` → `{header}` → `<Namespace>` → `<ClassDeclaration>` or raw `code` (for enum)
+- License header via `getLicenseHeader(options)`
+- Using directives via `<SourceFile using={[...]}>`
+- For SerializationFormat enum: used raw `code` template inside `<Namespace>` since there's no dynamic content
+- For ErrorResult<T>: used `<ClassDeclaration>` with `typeParameters={["T"]}` and `baseType="ClientResult<T>"`
+
+### Tests added
+- 4 new describe blocks in test/infrastructure-helpers.test.ts with 20+ assertions
+- Updated "always generated" test to verify all 8 infrastructure files
+- Fixed 3 pre-existing test fragilities: model.test.ts used `.includes("Result.cs")` which now matches ErrorResult.cs — changed to `.endsWith("/Result.cs")`
+
+### Gotcha discovered
+Adding a file named `ErrorResult.cs` broke 3 model tests that searched for `Result.cs` using `.includes()`. Any future infrastructure file names must be checked against existing test search patterns. The fix was to use `.endsWith("/Result.cs")` for more precise matching.

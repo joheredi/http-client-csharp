@@ -3396,7 +3396,7 @@
           "title": "Generate small infrastructure files",
           "description": "Generate CancellationTokenExtensions.cs (17 lines), ErrorResult.cs (27 lines), SerializationFormat.cs (49 lines), ClientPipelineExtensions.cs (70 lines). Use golden files from submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/Internal/ as reference. Follow the pattern from ArgumentFile.tsx: SourceFile with using array, Namespace, ClassDeclaration, code template literals.",
           "phase": "phase-5",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "0.3.1"
           ],
