@@ -1911,3 +1911,22 @@ Task 3.3.2 was already fully implemented in `src/components/clients/RestClientFi
 **Files modified:**
 - `src/components/serialization/ModelSerializationFile.tsx` — added Attribute import, unknownModelRefkey import, attributes computation
 - `test/model-serialization.test.ts` — added 3 PersistableModelProxy test cases
+
+## 2026-03-02 — Task 2.4.5: Write discriminated deserialization tests
+
+Created `test/discriminator-deserialization.test.ts` with 5 test cases covering:
+
+1. **Enum discriminator dispatch on base model** — verifies TryGetProperty + switch + Unknown fallback pattern works identically for enum discriminators as for string discriminators. Case values are strings (JSON serialized form).
+
+2. **Enum discriminator variable initialization in derived model** — verifies enum discriminator variables use `default` (not enum literal), matching legacy emitter behavior where only string-typed discriminators get literal init.
+
+3. **Multi-level hierarchy root dispatch** — verifies Fish (root base) dispatches to Shark (kind="shark") and Salmon (kind="salmon") but NOT to SawShark (which uses a different discriminator property "sharktype").
+
+4. **Intermediate model dispatch** — verifies Shark (intermediate: has both discriminatorValue AND own subtypes) uses discriminator dispatch on its own "sharktype" property, with UnknownShark fallback.
+
+5. **Leaf model standard deserialization** — verifies SawShark (leaf) uses standard property matching loop. Documents known behavior where nested discriminator variables all get initialized to model.discriminatorValue.
+
+Key findings:
+- discriminatedSubtypes map is NOT flat across different discriminator properties — each level only contains entries for its own discriminator.
+- Nested discriminators: all string discriminator variables get initialized to model.discriminatorValue regardless of which discriminator property they belong to (bug-compatible with legacy emitter).
+- TypeSpec requires different discriminator property names at each level (reusing same @discriminator on child causes diagnostics).

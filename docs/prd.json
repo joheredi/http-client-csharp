@@ -2494,7 +2494,7 @@
           "title": "Write discriminated deserialization tests",
           "description": "Test discriminator dispatch for string and enum discriminators.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.4.4"
           ],

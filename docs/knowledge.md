@@ -1221,3 +1221,13 @@ The `_additionalBinaryDataProperties` field is declared on root models only. The
 ### Test assertions must account for additional binary data guard
 
 After implementing `AdditionalBinaryDataWrite`, the string `options.Format != "W"` now appears in ALL model serialization files (not just those with read-only properties). Tests that previously asserted `not.toContain('options.Format != "W"')` on the entire file content need to be updated to be more specific — e.g., checking that property writes appear BEFORE the format guard rather than checking the string doesn't exist at all.
+
+### Nested discriminator dispatch scope (task 2.4.5)
+
+When a hierarchy uses different discriminator properties at each level (e.g., Fish with `kind`, Shark with `sharktype`), each model's `discriminatedSubtypes` map only contains entries for its OWN discriminator property values. The root model (Fish) dispatches only to `kind`-based subtypes — it does NOT include transitive descendants that use a different discriminator name. SawShark is reachable only via Shark's dispatch.
+
+TypeSpec requires different `@discriminator(...)` property names at each level of a nested hierarchy. Applying `@discriminator("kind")` on both a parent and child model (reusing the same property name) produces compiler diagnostics.
+
+### Nested discriminator variable initialization bug-compatible behavior (task 2.4.5)
+
+In `DeserializeVariableDeclarations`, the `isStringDiscriminator` check uses `model.discriminatorValue` for ALL string discriminator properties, regardless of which discriminator hierarchy level they belong to. For SawShark (discriminatorValue="saw"), both `kind` and `sharktype` variables get initialized to `"saw"`, even though `kind` should ideally be `"shark"`. This matches the legacy emitter's single-discriminatorValue-per-model behavior. The property matching loop corrects the value from actual JSON.
