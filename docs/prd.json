@@ -2871,7 +2871,7 @@
           "title": "Create RestClientFile component",
           "description": "Generate {Name}.RestClient.cs partial class with PipelineMessageClassifier fields and Create{Op}Request methods. See golden file SampleTypeSpecClient.RestClient.cs.",
           "phase": "phase-3",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "3.2.1",
             "0.2.1"

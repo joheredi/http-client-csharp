@@ -1118,6 +1118,7 @@ Alloy to auto-generate `using` directives. Constructor args are joined with `fla
 ## Design Decision: Sub-Client Factory Methods (Task 3.2.4)
 
 **Chosen approach:** `SubClientFactoryMethods` helper component within `ClientFile.tsx`.
+
 - Uses `<Method public virtual>` from `@alloy-js/csharp` for the method declaration
 - Uses `code` template with `SystemThreading.Volatile` and `SystemThreading.Interlocked` refkeys for the body
 - This auto-generates `using System.Threading;` in the file
@@ -1125,7 +1126,26 @@ Alloy to auto-generate `using` directives. Constructor args are joined with `fla
 **Rejected approach:** Separate `SubClientFactoryMethods.tsx` component file — too much indirection for a single-use component that only makes sense within a client class.
 
 **Key pattern:** The method name follows the legacy convention:
+
 - If child class name ends with "Client" (case-insensitive): `Get{Name}` (avoids double "Client")
 - Otherwise: `Get{Name}Client`
 
 **Builtin pattern:** `SystemThreading` in `src/builtins/system-threading.ts` uses `createLibrary("System.Threading", { Volatile: ..., Interlocked: ... })` — same pattern as other builtins.
+
+---
+### TypeExpression expects TypeSpec Type, not SdkType
+`TypeExpression` from `@typespec/emitter-framework/csharp` expects a TypeSpec compiler `Type` (accessed via `sdkType.__raw!`), NOT an `SdkType` directly. For protocol-level type mapping (CreateRequest params), use a direct switch on `SdkType.kind` returning strings for C# keywords (string, int, bool) and refkeys for types needing `using` directives (System.DateTimeOffset, System.Uri, System.BinaryData).
+
+### RestClientFile partial class pattern
+RestClientFile uses `namekey(className, { ignoreNameConflict: true })` for its ClassDeclaration — identical to ModelSerializationFile. This prevents Alloy from renaming the second partial declaration with a "_2" suffix since ClientFile already declares the canonical class. Do NOT use `refkey(client)` on both files.
+
+### ClientUriBuilder and TypeFormatters are raw strings
+`ClientUriBuilder` and `TypeFormatters` are internal infrastructure types generated into the same namespace (tasks 5.1.x). They don't need builtin declarations or using directives. Reference them as raw strings in `code` templates.
+
+### Design Decision: RestClientFile (Task 3.3.1)
+**Chosen approach:** Single-file component with inline helpers (ClassifierDeclarations, CreateRequestMethod).
+**Why:** Cohesive — all REST client concerns in one file. Matches ClientFile.tsx pattern where SubClientFactoryMethods is inline.
+**Rejected:** Separate component files for classifiers/methods — too much indirection.
+
+### System builtins: DateTimeOffset and TimeSpan
+Added `System.DateTimeOffset` (struct) and `System.TimeSpan` (struct) to the System builtin library for use as protocol parameter types. These generate `using System;` when referenced.

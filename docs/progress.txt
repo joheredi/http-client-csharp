@@ -1710,3 +1710,46 @@ Pre-existing failures: 4 smoke tests (dotnet build config), 2 model-serializatio
 - Alloy's `createLibrary()` auto-generates `using` directives when library types are referenced via `code` templates
 - `<Method>` component from `@alloy-js/csharp` supports `public virtual` modifiers and `returns` prop for refkey return types
 - Field names with private naming policy auto-prefix `_`, so `cached${childName}` in `<Field>` becomes `_cached${childName}` in generated C#
+
+---
+## 2026-03-02 — Task 3.3.1: Create RestClientFile component (complete)
+
+### What was done
+Created `src/components/clients/RestClientFile.tsx` — generates `{ClassName}.RestClient.cs` partial class files with:
+- Static `PipelineMessageClassifier` fields with lazy `??=` initialization per unique set of success status codes
+- `Create{Op}Request` methods for each HTTP operation on the client
+
+### Method body pattern
+Each CreateRequest method follows the System.ClientModel pattern:
+1. `ClientUriBuilder uri = new ClientUriBuilder();` + `uri.Reset(_endpoint);`
+2. Path segments via `uri.AppendPath(literal, false)` and `uri.AppendPath(param, true)`
+3. Query params via `uri.AppendQuery(serializedName, value, true)` with null checks for optional
+4. `PipelineMessage message = Pipeline.CreateMessage(uri.ToUri(), "VERB", classifier);`
+5. `PipelineRequest request = message.Request;`
+6. Custom headers → Content-Type (from body) → Accept (from responses)
+7. `request.Content = content;` (if body)
+8. `message.Apply(options);` + `return message;`
+
+### Key patterns and decisions
+- **Partial class**: Uses `namekey(className, { ignoreNameConflict: true })` — same pattern as ModelSerializationFile — to avoid Alloy's symbol deduplication renaming
+- **Type mapping**: Direct switch-based mapping from SdkType.kind to C# types (not TypeExpression, which expects TypeSpec `Type` not SdkType). Returns strings for keywords (string, int), refkeys for types needing `using` (DateTimeOffset, Uri, BinaryData)
+- **Parameter ordering**: path (0) → required header/query (100) → body (200/300) → optional header/query (400) → RequestOptions (always last)
+- **ClientUriBuilder/TypeFormatters**: Raw strings, not builtins — they're internal types in the same namespace
+- **Constants**: Params with `type.kind === "constant"` are hardcoded in method body, not method params
+- **Client fields**: Params with `onClient: true` (apiVersion, etc.) use class field references like `_apiVersion`
+- **Content-Type**: Derived from `bodyParam.defaultContentType`, not a method parameter
+- **Accept**: Derived from response `defaultContentType`/`contentTypes`
+
+### Files created/modified
+- CREATE: `src/components/clients/RestClientFile.tsx`
+- CREATE: `test/rest-client.test.ts` (11 tests)
+- MODIFY: `src/emitter.tsx` (add RestClientFile to component tree)
+- MODIFY: `src/builtins/system.ts` (add DateTimeOffset and TimeSpan to System builtin)
+
+### Builtins added
+- `System.DateTimeOffset` (struct) — for utcDateTime/offsetDateTime parameter types
+- `System.TimeSpan` (struct) — for duration parameter types
+
+### What's next
+- Task 3.3.2: Implement request building (next-link pagination methods, complex path expressions)
+- Task 3.3.3: Implement parameter serialization variants (collection formats, encoding-specific formatting)

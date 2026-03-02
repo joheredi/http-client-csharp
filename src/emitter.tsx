@@ -4,6 +4,7 @@ import { type EmitContext, resolvePath } from "@typespec/compiler";
 import { writeOutput } from "@typespec/emitter-framework";
 import { ClientOptionsFile } from "./components/client-options/ClientOptionsFile.js";
 import { ClientFile } from "./components/clients/ClientFile.js";
+import { RestClientFile } from "./components/clients/RestClientFile.js";
 import { CSharpScalarOverrides } from "./components/CSharpTypeExpression.js";
 import { ExtensibleEnumFile } from "./components/enums/ExtensibleEnumFile.js";
 import { ExtensibleEnumSerializationFile } from "./components/enums/ExtensibleEnumSerializationFile.js";
@@ -106,6 +107,9 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
         ))}
         {allClients.map((c) => (
           <ClientFile client={c} options={options} />
+        ))}
+        {allClients.map((c) => (
+          <RestClientFile client={c} options={options} />
         ))}
         {fixedEnums.map((e) => (
           <FixedEnumFile type={e} options={options} />

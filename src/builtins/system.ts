@@ -56,4 +56,26 @@ export const System = createLibrary("System", {
     kind: "class",
     members: {},
   },
+
+  /**
+   * Represents a point in time relative to UTC, used for date-time
+   * parameters in generated REST client request methods.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/system.datetimeoffset
+   */
+  DateTimeOffset: {
+    kind: "struct",
+    members: {},
+  },
+
+  /**
+   * Represents a time interval, used for duration parameters in
+   * generated REST client request methods.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/system.timespan
+   */
+  TimeSpan: {
+    kind: "struct",
+    members: {},
+  },
 });
