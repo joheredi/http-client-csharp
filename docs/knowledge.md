@@ -1209,3 +1209,15 @@ In C#, value types (int, bool, enum, DateTime, TimeSpan, etc.) cannot be null, s
 Unknown discriminator variant classes (`Unknown{BaseName}`) now have a refkey via `unknownModelRefkey(baseModelRawType)` from `src/utils/refkey.ts`. This uses a dedicated `Symbol.for("http-client-csharp:unknown-model")` prefix, separate from the emitter-framework prefix. Both the class declaration in `UnknownDiscriminatorModel.tsx` and the factory method in `ModelFactoryMethod.tsx` use the same refkey, enabling Alloy's automatic cross-file reference resolution and `using` directive generation.
 
 To reference an Unknown variant from any component: `import { unknownModelRefkey } from "../../utils/refkey.js"` then use `unknownModelRefkey(sdkModelType.__raw!)`.
+
+### Preprocessor directives render at Alloy base indentation, not column 0
+
+When using raw strings like `"\n#if NET6_0_OR_GREATER"` inside Alloy components, the `#if` will be indented by the parent context's base indentation (typically 8 spaces for namespace+class). This is valid C# (the compiler allows whitespace before `#` on preprocessor lines), but doesn't match the legacy emitter which puts them at column 0. Alloy doesn't provide a mechanism to break out of its indentation context.
+
+### Additional binary data write is only for root models
+
+The `_additionalBinaryDataProperties` field is declared on root models only. The serialization write loop (`AdditionalBinaryDataWrite` component) should only be rendered for root models (`!m.baseModel`). Derived models inherit the field and the base class's `JsonModelWriteCore` writes it via the `base.JsonModelWriteCore()` call. Including it in derived models would cause double-writing.
+
+### Test assertions must account for additional binary data guard
+
+After implementing `AdditionalBinaryDataWrite`, the string `options.Format != "W"` now appears in ALL model serialization files (not just those with read-only properties). Tests that previously asserted `not.toContain('options.Format != "W"')` on the entire file content need to be updated to be more specific — e.g., checking that property writes appear BEFORE the format guard rather than checking the string doesn't exist at all.

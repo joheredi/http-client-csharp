@@ -1834,3 +1834,39 @@ For void return operations, returns `ClientResult` (no generic type parameter).
 - Pattern: `public static Pet Pet(string kind = default, ...) => return new UnknownPet(kind, ..., null);`
 - Added test "instantiates Unknown variant for abstract models" in model-factory.test.ts
 - All 13 model-factory tests pass; 6 pre-existing failures in other tests unchanged
+
+---
+Date: 2026-03-02
+Task: 2.2.14 — Implement additional binary data serialization
+
+What was done:
+- Created AdditionalBinaryDataWrite.tsx component that generates the _additionalBinaryDataProperties
+  write loop at the end of JsonModelWriteCore.
+- The block guards with `options.Format != "W"` and null check, iterates the dictionary,
+  and uses #if NET6_0_OR_GREATER for WriteRawValue vs JsonDocument.Parse fallback.
+- Updated emitter.tsx to pass <AdditionalBinaryDataWrite /> as children to <JsonModelWriteCore>
+  for root models only (derived models inherit the field and the base class handles writing it).
+- Fixed a pre-existing test (ReadOnlyPropertyGuards > does not add format guard for writable
+  properties) that was too broadly asserting no `options.Format != "W"` in the file — now it
+  correctly checks that property writes appear before the format guard.
+- Exported component from serialization/index.ts.
+
+Files changed:
+- Created: src/components/serialization/AdditionalBinaryDataWrite.tsx
+- Created: test/additional-binary-data-write.test.ts (7 tests)
+- Modified: src/components/serialization/index.ts (added export)
+- Modified: src/emitter.tsx (import + pass as children to JsonModelWriteCore)
+- Modified: test/model-serialization.test.ts (refined ReadOnlyPropertyGuards assertion)
+
+Key decisions:
+- Preprocessor directives (#if/#else/#endif) render at the Alloy base indentation level (8 spaces)
+  rather than column 0. This is valid C# and unavoidable with Alloy's indentation model.
+- Used code`` template tags with SystemTextJson.JsonDocument and SystemTextJson.JsonSerializer
+  refkeys to ensure using directives are generated correctly.
+- Only root models (no baseModel) render the additional binary data block — derived models
+  rely on base.JsonModelWriteCore() to handle it.
+
+Notes for next:
+- Task 2.2.15 (Write JSON write path tests) depends on this and is now unblocked.
+- Task 2.3.12 (Implement additional binary data capture in deserialization) is the read-side
+  counterpart — it adds the catch-all in PropertyMatchingLoop's foreach loop.

@@ -20,6 +20,7 @@ import {
 } from "./components/models/ModelConstructors.js";
 import { ModelFile } from "./components/models/ModelFile.js";
 import { UnknownDiscriminatorModelFile } from "./components/models/UnknownDiscriminatorModel.js";
+import { AdditionalBinaryDataWrite } from "./components/serialization/AdditionalBinaryDataWrite.js";
 import { ImplicitBinaryContentOperator } from "./components/serialization/CastOperators.js";
 import { ModelSerializationFile } from "./components/serialization/ModelSerializationFile.js";
 import { DeserializationConstructor } from "./components/serialization/DeserializationConstructor.js";
@@ -137,7 +138,9 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
           <ModelSerializationFile type={m} options={options}>
             <JsonModelInterfaceWrite type={m} />
             {"\n\n"}
-            <JsonModelWriteCore type={m} />
+            <JsonModelWriteCore type={m}>
+              {!m.baseModel && <AdditionalBinaryDataWrite />}
+            </JsonModelWriteCore>
             {"\n\n"}
             <PersistableModelWriteCore type={m} />
             {"\n\n"}

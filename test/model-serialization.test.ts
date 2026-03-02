@@ -2630,8 +2630,16 @@ describe("ReadOnlyPropertyGuards", () => {
     );
     const content = outputs[fileKey!];
 
-    // No format guard for writable properties
-    expect(content).not.toContain('options.Format != "W"');
+    // No format guard wrapping the property write statements themselves.
+    // The file DOES contain `options.Format != "W"` for the additional binary
+    // data block, but writable property writes appear before it (unconditional).
+    const nameWriteIndex = content.indexOf(
+      'writer.WritePropertyName("name"u8)',
+    );
+    const formatGuardIndex = content.indexOf('options.Format != "W"');
+    expect(nameWriteIndex).toBeGreaterThan(-1);
+    expect(formatGuardIndex).toBeGreaterThan(-1);
+    expect(nameWriteIndex).toBeLessThan(formatGuardIndex);
     // Properties serialized unconditionally
     expect(content).toContain('writer.WritePropertyName("name"u8)');
     expect(content).toContain('writer.WritePropertyName("count"u8)');
