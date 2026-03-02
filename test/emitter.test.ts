@@ -55,7 +55,8 @@ describe("$onEmit", () => {
 
   /**
    * Verifies that an empty service produces project scaffolding files
-   * (.csproj and .sln) but no C# source files.
+   * (.csproj and .sln) and internal infrastructure files, but no model,
+   * enum, or client C# source files.
    */
   it("produces only project scaffolding for an empty service", async () => {
     const [{ outputs }, diagnostics] = await Tester.compileAndDiagnose(`
@@ -64,7 +65,10 @@ describe("$onEmit", () => {
     `);
     expect(diagnostics).toHaveLength(0);
     const csFiles = Object.keys(outputs).filter((k) => k.endsWith(".cs"));
-    expect(csFiles).toHaveLength(0);
+    // Infrastructure helper files (Argument, Optional, ChangeTrackingList,
+    // ChangeTrackingDictionary) are always generated as standard scaffolding.
+    const nonInfraFiles = csFiles.filter((k) => !k.includes("/Internal/"));
+    expect(nonInfraFiles).toHaveLength(0);
     expect(Object.keys(outputs).some((k) => k.endsWith(".csproj"))).toBe(true);
     expect(Object.keys(outputs).some((k) => k.endsWith(".sln"))).toBe(true);
   });

@@ -20,19 +20,27 @@ describe("HttpClientCSharpOutput", () => {
    * 3. The C# name policy and format options are accepted without issues
    */
   it("compiles without diagnostics", async () => {
-    const [_, diagnostics] = await Tester.compileAndDiagnose(`op test(): void;`);
+    const [_, diagnostics] =
+      await Tester.compileAndDiagnose(`op test(): void;`);
     expect(diagnostics).toHaveLength(0);
   });
 
   /**
    * Verifies that an empty service still produces project scaffolding files
-   * (.csproj and .sln) but no C# source files.
+   * (.csproj and .sln) and internal infrastructure files, but no model,
+   * enum, or client C# source files.
    */
   it("produces only project scaffolding when empty", async () => {
-    const [{ outputs }, diagnostics] = await Tester.compileAndDiagnose(`op test(): void;`);
+    const [{ outputs }, diagnostics] =
+      await Tester.compileAndDiagnose(`op test(): void;`);
     expect(diagnostics).toHaveLength(0);
     const csFiles = Object.keys(outputs).filter((k) => k.endsWith(".cs"));
-    expect(csFiles).toHaveLength(0);
+    // Infrastructure helper files (Argument, Optional, ChangeTrackingList,
+    // ChangeTrackingDictionary) are always generated as standard scaffolding.
+    const infraFiles = csFiles.filter((k) => k.includes("/Internal/"));
+    expect(infraFiles.length).toBeGreaterThan(0);
+    const nonInfraFiles = csFiles.filter((k) => !k.includes("/Internal/"));
+    expect(nonInfraFiles).toHaveLength(0);
     expect(Object.keys(outputs).some((k) => k.endsWith(".csproj"))).toBe(true);
     expect(Object.keys(outputs).some((k) => k.endsWith(".sln"))).toBe(true);
   });

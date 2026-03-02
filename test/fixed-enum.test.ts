@@ -78,9 +78,7 @@ describe("FixedEnumFile", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const enumFileKey = Object.keys(outputs).find((k) =>
-      k.includes("Color"),
-    );
+    const enumFileKey = Object.keys(outputs).find((k) => k.includes("Color"));
     expect(enumFileKey).toBeDefined();
     const enumFile = outputs[enumFileKey!];
 
@@ -113,9 +111,7 @@ describe("FixedEnumFile", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const enumFileKey = Object.keys(outputs).find((k) =>
-      k.includes("Season"),
-    );
+    const enumFileKey = Object.keys(outputs).find((k) => k.includes("Season"));
     expect(enumFileKey).toBeDefined();
     const enumFile = outputs[enumFileKey!];
 
@@ -182,9 +178,7 @@ describe("FixedEnumFile", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const enumFileKey = Object.keys(outputs).find((k) =>
-      k.includes("Fruit"),
-    );
+    const enumFileKey = Object.keys(outputs).find((k) => k.includes("Fruit"));
     expect(enumFileKey).toBeDefined();
     const enumFile = outputs[enumFileKey!];
 
@@ -197,7 +191,8 @@ describe("FixedEnumFile", () => {
   /**
    * Validates that no enum files are generated when the TypeSpec input has
    * no enum definitions. This ensures the emitter doesn't produce empty
-   * or spurious output files.
+   * or spurious output files. Infrastructure files (Internal/) are excluded
+   * from this check since they are always generated as standard scaffolding.
    */
   it("produces no enum files when no enums exist", async () => {
     const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
@@ -205,7 +200,9 @@ describe("FixedEnumFile", () => {
     `);
 
     expect(diagnostics).toHaveLength(0);
-    const csFiles = Object.keys(outputs).filter((k) => k.endsWith(".cs"));
+    const csFiles = Object.keys(outputs).filter(
+      (k) => k.endsWith(".cs") && !k.includes("/Internal/"),
+    );
     expect(csFiles).toHaveLength(0);
   });
 
@@ -354,9 +351,7 @@ describe("FixedEnumFile", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const enumFileKey = Object.keys(outputs).find((k) =>
-      k.includes("Status"),
-    );
+    const enumFileKey = Object.keys(outputs).find((k) => k.includes("Status"));
     expect(enumFileKey).toBeDefined();
     const enumFile = outputs[enumFileKey!];
 

@@ -11,6 +11,10 @@ import { ExtensibleEnumSerializationFile } from "./components/enums/ExtensibleEn
 import { FixedEnumFile } from "./components/enums/FixedEnumFile.js";
 import { FixedEnumSerializationFile } from "./components/enums/FixedEnumSerializationFile.js";
 import { HttpClientCSharpOutput } from "./components/HttpClientCSharpOutput.js";
+import { ArgumentFile } from "./components/infrastructure/ArgumentFile.js";
+import { ChangeTrackingDictionaryFile } from "./components/infrastructure/ChangeTrackingDictionaryFile.js";
+import { ChangeTrackingListFile } from "./components/infrastructure/ChangeTrackingListFile.js";
+import { OptionalFile } from "./components/infrastructure/OptionalFile.js";
 import { ProjectFile } from "./components/infrastructure/ProjectFile.js";
 import { SolutionFile } from "./components/infrastructure/SolutionFile.js";
 import { ModelFactoryFile } from "./components/model-factory/ModelFactoryFile.js";
@@ -105,6 +109,13 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
         <ProjectFile packageName={packageName} options={options} />
       )}
       {shouldGenerateProject && <SolutionFile packageName={packageName} />}
+      <ArgumentFile packageName={packageName} options={options} />
+      <OptionalFile packageName={packageName} options={options} />
+      <ChangeTrackingListFile packageName={packageName} options={options} />
+      <ChangeTrackingDictionaryFile
+        packageName={packageName}
+        options={options}
+      />
       <CSharpScalarOverrides>
         {clients.map((c) => (
           <ClientOptionsFile client={c} options={options} />

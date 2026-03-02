@@ -1285,6 +1285,18 @@ In `DeserializeVariableDeclarations`, the `isStringDiscriminator` check uses `mo
 - 6 tests fail on the base commit (not introduced by any recent change):
   1. model-serialization.test.ts: IJsonModel on XML-only model (line ~348)
   2. model-serialization.test.ts: nested dictionary WriteStartObject count (line ~4158)
-  3-6. smoke.test.ts: dotnet build fails on generated C# (4 tests)
+     3-6. smoke.test.ts: dotnet build fails on generated C# (4 tests)
 - These are likely related to model serialization code, not REST client generation
 - The smoke test dotnet build failures may be caused by the model serialization bugs
+
+### Alloy TypeParameterConstraints bug with mixed constrained/unconstrained type params
+When using `ClassDeclaration` with `typeParameters` where only SOME params have constraints (e.g., `[{name: "TKey", constraints: "notnull"}, "TValue"]`), Alloy generates invalid `where TValue :` (empty constraint) for unconstrained params. **Workaround**: Use raw `code` template for the full class declaration instead of `ClassDeclaration` + `typeParameters`. (Discovered in task 11.1.3)
+
+### SourceFile `using` prop for explicit using directives
+The `<SourceFile>` from `@alloy-js/csharp` has a `using` prop that accepts `string[]` of namespace names. Use this for infrastructure files that need manual usings (e.g., `using={["System", "System.Collections.Generic"]}`). These are rendered at the top of the file before the namespace declaration.
+
+### `code` template handles multi-line C# with proper indentation
+The `code` template tag from `@alloy-js/core` processes multi-line strings by detecting relative indentation from leading whitespace, splitting on `\n`, and creating `<indent>` and `<hbr>` nodes. This makes it suitable for embedding multi-line C# code blocks (method bodies, class declarations) within JSX components. The indentation is RELATIVE — the context indentation from parent components (Namespace, ClassDeclaration) is added on top.
+
+### Infrastructure helper files are always generated
+Argument.cs, Optional.cs, ChangeTrackingList.cs, and ChangeTrackingDictionary.cs are rendered for EVERY project (matching legacy emitter). They're placed OUTSIDE `<CSharpScalarOverrides>` in emitter.tsx since they don't reference TypeSpec types. Tests checking for "no .cs files" should exclude `/Internal/` paths.

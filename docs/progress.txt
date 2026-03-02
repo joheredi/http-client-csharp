@@ -2081,3 +2081,33 @@ Implemented collection parameter serialization in RestClientFile.tsx for all par
 - 3.5.2: Implement spread parameter handling (deps met)
 - 0.3.3: Implement namespace resolution (no deps)
 - 2.5.4: Write cast operator tests (deps met)
+
+## 2026-03-02 — Task 11.1.3: Generate SCM helper types (Argument, Optional, ChangeTrackingList, ChangeTrackingDictionary)
+
+### What was done
+- Created four infrastructure file components in `src/components/infrastructure/`:
+  - `ArgumentFile.tsx` — Generates `Argument.cs` with 7 validation methods (AssertNotNull, AssertNotNullOrEmpty, AssertNotNullOrWhiteSpace, AssertInRange, CheckNotNullOrEmpty)
+  - `OptionalFile.tsx` — Generates `Optional.cs` with 7 overloads of IsDefined/IsCollectionDefined
+  - `ChangeTrackingListFile.tsx` — Generates `ChangeTrackingList<T>.cs` implementing IList<T>, IReadOnlyList<T>
+  - `ChangeTrackingDictionaryFile.tsx` — Generates `ChangeTrackingDictionary<TKey, TValue>.cs` implementing IDictionary/IReadOnlyDictionary
+- Updated `src/emitter.tsx` to render all four files in every generated project
+- Updated 3 existing tests (hello, emitter, fixed-enum) that expected no .cs files for empty services — now they exclude Internal/ infrastructure files
+- Created `test/infrastructure-helpers.test.ts` with 27 comprehensive tests
+
+### Patterns used
+- `<SourceFile>` from `@alloy-js/csharp` with `using` prop for explicit using directives
+- `<Namespace>` for dynamic namespace from packageName
+- `<ClassDeclaration>` for simple classes (Argument, Optional, ChangeTrackingList)
+- Raw `code` template for ChangeTrackingDictionary's full class body (workaround for Alloy TypeParameterConstraints bug that generates empty `where TValue :` constraint when only TKey has constraints)
+- `code` template tag from `@alloy-js/core` for method bodies within ClassDeclaration — handles indentation automatically
+
+### Key learnings
+- Alloy's `code` template tag handles multi-line C# code with proper indentation — it detects relative indentation from leading whitespace and creates `<indent>` nodes
+- `<ClassDeclaration>` `typeParameters` with constraints triggers rendering for ALL type params, even those without constraints — causes invalid `where TValue :` output when mixing constrained/unconstrained params. Workaround: use raw `code` template for the full class declaration
+- Infrastructure files are always generated (not conditional on models/clients) matching legacy emitter behavior
+- `<SourceFile>` `using` prop accepts array of namespace strings for explicit using directives
+
+### Next person should know
+- The infrastructure files are rendered OUTSIDE of `<CSharpScalarOverrides>` in the emitter tree since they don't reference TypeSpec types
+- The ChangeTrackingDictionary uses a different rendering approach (raw code template) than the other three (ClassDeclaration) — this is intentional due to the Alloy TypeParameterConstraints limitation
+- Tasks 5.1.1-5.1.4 in the PRD overlap with parts of this task — they may need to be marked as done or their scope reviewed
