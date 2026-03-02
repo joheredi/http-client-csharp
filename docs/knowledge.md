@@ -1259,6 +1259,7 @@ In `DeserializeVariableDeclarations`, the `isStringDiscriminator` check uses `mo
 - **Important**: "Listen", "Listed", "Listing" are NOT renamed (no uppercase letter at position 4)
 
 ### TypeSpec collection format syntax
+
 - TypeSpec HTTP decorators only support `explode: boolean` on @query/@header/@path — no `format` option
 - `@query(#{explode: true})` → multi format (TCGC: collectionFormat="multi", explode=true)
 - `@query tags: string[]` → CSV format (TCGC: collectionFormat="csv", explode=false)
@@ -1267,6 +1268,23 @@ In `DeserializeVariableDeclarations`, the `isStringDiscriminator` check uses `mo
 - `@path(#{allowReserved: true})` gives a diagnostic when path is already in the URI template
 
 ### IEnumerable for collection protocol method params
+
 - Collection parameters in protocol method signatures use `IEnumerable<T>` from System.Collections.Generic
 - Use `SystemCollectionsGeneric.IEnumerable` refkey from `system-collections-generic.ts` to auto-generate using directive
 - Pattern: `code\`${SystemCollectionsGeneric.IEnumerable}<${elementTypeExpr}>\`` for the type expression
+
+### TypeSpec @patch produces implicit optionality warnings
+
+- `@patch` in TypeSpec >=1.0 emits `patch-implicit-optional` warnings for non-merge-patch operations
+- When testing PATCH operations, filter diagnostics: `diagnostics.filter(d => d.severity === "error")`
+- For tests that need zero diagnostics (e.g., optional body), use `@put` instead of `@patch`
+- The generated REST client code is identical regardless — only the HTTP verb string changes
+
+### Pre-existing test failures (as of task 3.3.4)
+
+- 6 tests fail on the base commit (not introduced by any recent change):
+  1. model-serialization.test.ts: IJsonModel on XML-only model (line ~348)
+  2. model-serialization.test.ts: nested dictionary WriteStartObject count (line ~4158)
+  3-6. smoke.test.ts: dotnet build fails on generated C# (4 tests)
+- These are likely related to model serialization code, not REST client generation
+- The smoke test dotnet build failures may be caused by the model serialization bugs

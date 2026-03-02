@@ -2049,3 +2049,35 @@ Implemented collection parameter serialization in RestClientFile.tsx for all par
 ### Next person should know
 - Pipes/SSV/TSV collection formats are implemented but can't be tested directly with TypeSpec syntax (only via OpenAPI3 imports)
 - The formatting of multi-line statements (foreach, if blocks) in the generated code has some compression issues (closing brace on same line as next statement) — this is a pre-existing Alloy rendering behavior, not introduced by this change
+
+## Task 3.3.4: Write REST client tests (2026-03-02)
+
+### What was done
+- Added 11 new tests to test/rest-client.test.ts (total: 28 tests, all passing)
+- New tests cover parameter combinations not previously tested:
+  1. Multiple path parameters (`/groups/{group}/widgets/{id}`)
+  2. DELETE verb
+  3. PATCH verb (with error-only diagnostic filtering for @patch warnings)
+  4. Optional header parameter with null check
+  5. int32 query parameter → `.ToString()` conversion
+  6. utcDateTime query parameter → `DateTimeOffset` + `.ToString("O")`
+  7. boolean query parameter → `TypeFormatters.ConvertToString()`
+  8. Optional body parameter with null checks (Content-Type + content)
+  9. float64 query parameter → `double` + `.ToString()`
+  10. HEAD verb
+  11. Mixed-type query parameters (string + int32 + optional boolean)
+
+### Key patterns
+- Used `@put` instead of `@patch` for optional body test to avoid TypeSpec >=1.0 @patch implicit optionality warnings
+- For PATCH verb test, filtered diagnostics to errors only: `diagnostics.filter(d => d.severity === "error")`
+- Each test has detailed JSDoc explaining what it validates and why
+
+### Pre-existing failures (not related to this task)
+- 6 tests fail on base commit (before any changes): 2 model-serialization, 4 smoke tests
+- Model serialization: IJsonModel on XML-only model, nested dictionary WriteStartObject count
+- Smoke tests: dotnet build fails on generated C# (likely caused by model serialization bugs)
+
+### Next tasks
+- 3.5.2: Implement spread parameter handling (deps met)
+- 0.3.3: Implement namespace resolution (no deps)
+- 2.5.4: Write cast operator tests (deps met)
