@@ -2,6 +2,7 @@
   "name": "http-client-csharp",
   "version": "0.1.0",
   "type": "module",
+  "packageManager": "pnpm@10.30.1",
   "dependencies": {
     "@alloy-js/core": "0.22.0",
     "@alloy-js/csharp": "0.22.0",
