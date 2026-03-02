@@ -5,6 +5,7 @@ import { writeOutput } from "@typespec/emitter-framework";
 import { ClientOptionsFile } from "./components/client-options/ClientOptionsFile.js";
 import { ClientFile } from "./components/clients/ClientFile.js";
 import { RestClientFile } from "./components/clients/RestClientFile.js";
+import { CollectionResultFiles } from "./components/collection-results/CollectionResultFile.js";
 import { CSharpScalarOverrides } from "./components/CSharpTypeExpression.js";
 import { ExtensibleEnumFile } from "./components/enums/ExtensibleEnumFile.js";
 import { ExtensibleEnumSerializationFile } from "./components/enums/ExtensibleEnumSerializationFile.js";
@@ -15,6 +16,7 @@ import { ArgumentFile } from "./components/infrastructure/ArgumentFile.js";
 import { ChangeTrackingDictionaryFile } from "./components/infrastructure/ChangeTrackingDictionaryFile.js";
 import { ChangeTrackingListFile } from "./components/infrastructure/ChangeTrackingListFile.js";
 import { CodeGenAttributeFiles } from "./components/infrastructure/CodeGenAttributeFiles.js";
+import { ModelReaderWriterContextFile } from "./components/infrastructure/ModelReaderWriterContextFile.js";
 import { OptionalFile } from "./components/infrastructure/OptionalFile.js";
 import { ProjectFile } from "./components/infrastructure/ProjectFile.js";
 import { SolutionFile } from "./components/infrastructure/SolutionFile.js";
@@ -128,6 +130,9 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
         {allClients.map((c) => (
           <RestClientFile client={c} options={options} />
         ))}
+        {allClients.map((c) => (
+          <CollectionResultFiles client={c} options={options} />
+        ))}
         {fixedEnums.map((e) => (
           <FixedEnumFile type={e} options={options} />
         ))}
@@ -182,6 +187,11 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
           </ModelSerializationFile>
         ))}
         <ModelFactoryFile
+          models={models}
+          packageName={packageName}
+          options={options}
+        />
+        <ModelReaderWriterContextFile
           models={models}
           packageName={packageName}
           options={options}

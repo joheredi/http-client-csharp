@@ -3115,7 +3115,7 @@
           "title": "Create CollectionResultFile component",
           "description": "Generate per-operation paging collection classes (4 per operation: sync/async \u00d7 protocol/convenience). Each extends CollectionResult/AsyncCollectionResult. Stores client, options, and paging parameters. Implements GetRawPages with yield-return loop. See golden files in TestProjects/Local/Sample-TypeSpec/src/Generated/CollectionResults/.",
           "phase": "phase-4",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "3.4.1",
             "0.2.3"

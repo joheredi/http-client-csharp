@@ -2157,3 +2157,35 @@ Added tests in `test/builtins.test.tsx`:
 - Using statement test: verify referencing paging types produces `using System.ClientModel;`
 
 This task unblocks 4.1.1 (CollectionResultFile component) and the full paging chain (4.2.1, 4.3.1, 4.4.1, 4.4.2).
+
+## 2026-03-02 — Task 4.1.1: Create CollectionResultFile component (complete)
+
+Created `src/components/collection-results/CollectionResultFile.tsx` — the core paging collection result component.
+
+**What it does:**
+- `CollectionResultFiles` component iterates over paging methods (kind === "paging") on a client
+- For each paging operation, generates 4 source files (sync/async × protocol/convenience):
+  - `{Client}{Op}CollectionResult` — extends `CollectionResult`, sync protocol
+  - `{Client}{Op}CollectionResultOfT` — extends `CollectionResult<T>`, sync convenience with `GetValuesFromPage`
+  - `{Client}{Op}AsyncCollectionResult` — extends `AsyncCollectionResult`, async protocol
+  - `{Client}{Op}AsyncCollectionResultOfT` — extends `AsyncCollectionResult<T>`, async convenience with `GetValuesFromPageAsync`
+
+**Implementation details:**
+- Uses `useCSharpNamePolicy()` and `cleanOperationName()` for consistent naming
+- Base type is `SystemClientModel.CollectionResult` / `SystemClientModel.AsyncCollectionResult`
+- Convenience variants use `<TypeExpression type={sdkType.__raw!} />` for item type and response model type references
+- Item type and property path extracted from `method.pagingMetadata.pageItemsSegments`
+- Response model type from `method.operation.responses`
+- Async convenience uses foreach/yield return/await Task.Yield() pattern
+- XML doc comments on all members
+
+**Paging strategy:**
+- Currently implements single-page strategy (simple yield return, GetContinuationToken returns null)
+- Tasks 4.2.1 and 4.3.1 will extend GetRawPages with while loops for next-link and continuation-token
+
+**Infrastructure changes:**
+- Added `IAsyncEnumerable` to `SystemCollectionsGeneric` builtins
+- Integrated into `emitter.tsx` via `<CollectionResultFiles client={c} options={options} />`
+- 7 passing tests in `test/collection-results.test.ts`
+
+**Unblocks:** 4.2.1 (next-link paging), 4.3.1 (continuation-token paging), 4.4.1 (paging client methods)

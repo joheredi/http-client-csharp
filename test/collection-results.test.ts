@@ -1,0 +1,367 @@
+import { describe, expect, it } from "vitest";
+import { HttpTester } from "./test-host.js";
+
+/**
+ * Tests for the CollectionResultFile component
+ * (src/components/collection-results/CollectionResultFile.tsx).
+ *
+ * These tests verify that the emitter generates correct C# collection result
+ * classes for paging operations. Each paging operation produces 4 files:
+ * sync/async × protocol/convenience.
+ *
+ * Why these tests matter:
+ * - Collection result classes are the core paging abstraction for SDK consumers.
+ * - Incorrect class structure would break pagination iteration patterns.
+ * - The generated classes must extend the correct SCM base types and implement
+ *   the required methods (GetRawPages, GetContinuationToken, GetValuesFromPage).
+ */
+describe("CollectionResultFile", () => {
+  /**
+   * Verifies that a simple paging operation (single page, no next-link or
+   * continuation token) generates all 4 collection result file variants.
+   * This validates the core component structure, class naming, and file paths.
+   */
+  it("generates 4 collection result files for a simple paging operation", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Thing {
+        name: string;
+      }
+
+      model PageThing {
+        @pageItems
+        items: Thing[];
+      }
+
+      @route("/things")
+      @list
+      @get
+      op listThings(): PageThing;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    // List all output files for debugging
+    const collectionResultFiles = Object.keys(outputs).filter((k) =>
+      k.includes("CollectionResults"),
+    );
+
+    // Should generate exactly 4 collection result files
+    expect(collectionResultFiles).toHaveLength(4);
+  });
+
+  /**
+   * Verifies the sync protocol collection result class structure.
+   * This is the simplest variant: extends CollectionResult (non-generic),
+   * has GetRawPages with single yield return, and GetContinuationToken returning null.
+   */
+  it("generates correct sync protocol collection result", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Thing {
+        name: string;
+      }
+
+      model PageThing {
+        @pageItems
+        items: Thing[];
+      }
+
+      @route("/things")
+      @list
+      @get
+      op listThings(): PageThing;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    // Find the sync protocol file
+    const fileName = Object.keys(outputs).find(
+      (k) =>
+        k.includes("CollectionResult.cs") &&
+        !k.includes("Async") &&
+        !k.includes("OfT"),
+    );
+    expect(fileName).toBeDefined();
+    const content = outputs[fileName!];
+
+    // Verify class declaration extends CollectionResult
+    expect(content).toContain(": CollectionResult");
+    expect(content).not.toContain(": CollectionResult<");
+
+    // Verify internal partial class
+    expect(content).toContain("internal partial class");
+
+    // Verify fields
+    expect(content).toContain("private readonly TestServiceClient _client;");
+    expect(content).toContain("private readonly RequestOptions _options;");
+
+    // Verify constructor
+    expect(content).toContain(
+      "TestServiceClient client, RequestOptions options",
+    );
+    expect(content).toContain("_client = client;");
+    expect(content).toContain("_options = options;");
+
+    // Verify GetRawPages method signature
+    expect(content).toContain(
+      "public override IEnumerable<ClientResult> GetRawPages()",
+    );
+
+    // Verify single-page yield return pattern
+    expect(content).toContain("PipelineMessage message = _client.Create");
+    expect(content).toContain("Request(_options);");
+    expect(content).toContain(
+      "yield return ClientResult.FromResponse(_client.Pipeline.ProcessMessage(message, _options));",
+    );
+
+    // Verify GetContinuationToken returns null (single page)
+    expect(content).toContain(
+      "public override ContinuationToken GetContinuationToken(ClientResult page)",
+    );
+    expect(content).toContain("return null;");
+
+    // Verify using directives
+    expect(content).toContain("using System.ClientModel;");
+    expect(content).toContain("using System.ClientModel.Primitives;");
+    expect(content).toContain("using System.Collections.Generic;");
+
+    // Verify namespace
+    expect(content).toContain("namespace TestService");
+  });
+
+  /**
+   * Verifies the sync convenience (OfT) collection result class.
+   * This variant extends CollectionResult<T> and adds GetValuesFromPage
+   * to extract typed items from the page response via a cast.
+   */
+  it("generates correct sync convenience collection result with GetValuesFromPage", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Thing {
+        name: string;
+      }
+
+      model PageThing {
+        @pageItems
+        items: Thing[];
+      }
+
+      @route("/things")
+      @list
+      @get
+      op listThings(): PageThing;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    // Find the sync convenience file (OfT, not Async)
+    const fileName = Object.keys(outputs).find(
+      (k) =>
+        k.includes("CollectionResultOfT.cs") && !k.includes("Async"),
+    );
+    expect(fileName).toBeDefined();
+    const content = outputs[fileName!];
+
+    // Verify generic base type
+    expect(content).toContain(": CollectionResult<Thing>");
+
+    // Verify GetValuesFromPage method
+    expect(content).toContain(
+      "protected override IEnumerable<Thing> GetValuesFromPage(ClientResult page)",
+    );
+    expect(content).toContain("((PageThing)page).Items");
+  });
+
+  /**
+   * Verifies the async protocol collection result class.
+   * This variant extends AsyncCollectionResult and uses GetRawPagesAsync
+   * with async/await and ProcessMessageAsync.
+   */
+  it("generates correct async protocol collection result", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Thing {
+        name: string;
+      }
+
+      model PageThing {
+        @pageItems
+        items: Thing[];
+      }
+
+      @route("/things")
+      @list
+      @get
+      op listThings(): PageThing;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    // Find the async protocol file
+    const fileName = Object.keys(outputs).find(
+      (k) =>
+        k.includes("AsyncCollectionResult.cs") && !k.includes("OfT"),
+    );
+    expect(fileName).toBeDefined();
+    const content = outputs[fileName!];
+
+    // Verify class extends AsyncCollectionResult
+    expect(content).toContain(": AsyncCollectionResult");
+    expect(content).not.toContain(": AsyncCollectionResult<");
+
+    // Verify async GetRawPagesAsync
+    expect(content).toContain(
+      "public override async IAsyncEnumerable<ClientResult> GetRawPagesAsync()",
+    );
+
+    // Verify async pipeline call
+    expect(content).toContain("await _client.Pipeline.ProcessMessageAsync");
+    expect(content).toContain(".ConfigureAwait(false)");
+  });
+
+  /**
+   * Verifies the async convenience (OfT) collection result class.
+   * This variant extends AsyncCollectionResult<T> and adds GetValuesFromPageAsync
+   * with foreach/yield return/await Task.Yield() pattern.
+   */
+  it("generates correct async convenience collection result with GetValuesFromPageAsync", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Thing {
+        name: string;
+      }
+
+      model PageThing {
+        @pageItems
+        items: Thing[];
+      }
+
+      @route("/things")
+      @list
+      @get
+      op listThings(): PageThing;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    // Find the async convenience file
+    const fileName = Object.keys(outputs).find(
+      (k) => k.includes("AsyncCollectionResultOfT.cs"),
+    );
+    expect(fileName).toBeDefined();
+    const content = outputs[fileName!];
+
+    // Verify generic async base type
+    expect(content).toContain(": AsyncCollectionResult<Thing>");
+
+    // Verify async GetValuesFromPageAsync
+    expect(content).toContain(
+      "protected override async IAsyncEnumerable<Thing> GetValuesFromPageAsync(ClientResult page)",
+    );
+
+    // Verify foreach + yield return + await Task.Yield() pattern
+    expect(content).toContain("foreach (Thing item in ((PageThing)page).Items)");
+    expect(content).toContain("yield return item;");
+    expect(content).toContain("await Task.Yield();");
+
+    // Verify using System.Threading.Tasks
+    expect(content).toContain("using System.Threading.Tasks;");
+  });
+
+  /**
+   * Verifies that non-paging operations do NOT generate collection result files.
+   * This ensures the component correctly filters for paging methods only.
+   */
+  it("does not generate collection result files for non-paging operations", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op testOp(): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const collectionResultFiles = Object.keys(outputs).filter((k) =>
+      k.includes("CollectionResults"),
+    );
+    expect(collectionResultFiles).toHaveLength(0);
+  });
+
+  /**
+   * Verifies XML doc comments are generated on the constructor, GetRawPages,
+   * GetContinuationToken, and GetValuesFromPage methods.
+   */
+  it("generates XML doc comments on all members", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Thing {
+        name: string;
+      }
+
+      model PageThing {
+        @pageItems
+        items: Thing[];
+      }
+
+      @route("/things")
+      @list
+      @get
+      op listThings(): PageThing;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    // Check sync protocol file for doc comments
+    const fileName = Object.keys(outputs).find(
+      (k) =>
+        k.includes("CollectionResult.cs") &&
+        !k.includes("Async") &&
+        !k.includes("OfT"),
+    );
+    expect(fileName).toBeDefined();
+    const content = outputs[fileName!];
+
+    // Constructor doc
+    expect(content).toContain(
+      "/// <summary> Initializes a new instance of",
+    );
+    expect(content).toContain(
+      "which is used to iterate over the pages of a collection",
+    );
+
+    // GetRawPages doc
+    expect(content).toContain(
+      "/// <summary> Gets the raw pages of the collection. </summary>",
+    );
+    expect(content).toContain(
+      "/// <returns> The raw pages of the collection. </returns>",
+    );
+
+    // GetContinuationToken doc
+    expect(content).toContain(
+      "/// <summary> Gets the continuation token from the specified page. </summary>",
+    );
+  });
+});

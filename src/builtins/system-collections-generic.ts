@@ -37,5 +37,17 @@ export const SystemCollectionsGeneric = createLibrary(
       kind: "interface",
       members: {},
     },
+
+    /**
+     * Generic interface for asynchronous iteration over a collection of elements.
+     * Used as the return type for async paging methods (GetRawPagesAsync,
+     * GetValuesFromPageAsync) in generated collection result classes.
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.iasyncenumerable-1
+     */
+    IAsyncEnumerable: {
+      kind: "interface",
+      members: {},
+    },
   },
 );
