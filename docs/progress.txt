@@ -1890,3 +1890,24 @@ Task 3.3.2 was already fully implemented in `src/components/clients/RestClientFi
 **Note:** 6 pre-existing test failures exist (2 in model-serialization.test.ts, 4 in smoke.test.ts) — unrelated to this task.
 
 **What's next:** Task 3.3.3 (parameter serialization variants — collection formats), Task 3.5.2 (spread parameters), Task 3.6.1 (operation name conventions)
+
+## 2026-03-02 — Task 2.4.4: Add PersistableModelProxy attribute
+**What was done:**
+- Added `[PersistableModelProxy(typeof(UnknownXxx))]` attribute to abstract base model serialization class declarations in `ModelSerializationFile.tsx`
+- The attribute is conditionally added only when `isAbstract` is true (discriminated base models with subtypes and no own discriminator value)
+- Uses `unknownModelRefkey()` for the typeof argument, which Alloy resolves to the correct `Unknown{ModelName}` class
+- Uses `SystemClientModelPrimitives.PersistableModelProxyAttribute` from builtins for the attribute name, which auto-generates the `using System.ClientModel.Primitives;` directive
+- Added 3 tests to `model-serialization.test.ts`:
+  1. Verifies attribute present on abstract base model with correct typeof(UnknownXxx) argument
+  2. Verifies attribute NOT present on derived (concrete) discriminated models
+  3. Verifies attribute NOT present on non-discriminated models
+- Also batch-marked 8 test tasks as already done (1.1.5, 1.8.5, 2.1.6, 2.2.15, 2.3.14, 2.6.3, 3.1.4, 3.2.5, 3.4.2) since they had passing tests already
+
+**Patterns used:**
+- `<Attribute name={refkey} args={[code`typeof(${refkey})`]} />` for C# attribute with typeof argument
+- `ClassDeclaration` `attributes` prop accepts array of `<Attribute>` elements
+- Conditional attributes: compute array or undefined, pass to `attributes` prop
+
+**Files modified:**
+- `src/components/serialization/ModelSerializationFile.tsx` — added Attribute import, unknownModelRefkey import, attributes computation
+- `test/model-serialization.test.ts` — added 3 PersistableModelProxy test cases

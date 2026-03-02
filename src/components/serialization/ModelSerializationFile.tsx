@@ -1,4 +1,5 @@
 import {
+  Attribute,
   ClassDeclaration,
   Namespace,
   SourceFile,
@@ -12,7 +13,7 @@ import {
 import { SystemClientModelPrimitives } from "../../builtins/system-client-model.js";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
-import { efCsharpRefkey } from "../../utils/refkey.js";
+import { efCsharpRefkey, unknownModelRefkey } from "../../utils/refkey.js";
 import { isModelAbstract } from "../models/ModelConstructors.js";
 
 /**
@@ -126,6 +127,18 @@ export function ModelSerializationFile(props: ModelSerializationFileProps) {
   // the second declaration with a "_2" suffix.
   const partialName = namekey(modelName, { ignoreNameConflict: true });
 
+  // Abstract base models with discriminated subtypes need the PersistableModelProxy
+  // attribute to tell the framework which concrete type to instantiate when the
+  // discriminator value is unrecognized during deserialization.
+  const attributes = isAbstract
+    ? [
+        <Attribute
+          name={SystemClientModelPrimitives.PersistableModelProxyAttribute}
+          args={[code`typeof(${unknownModelRefkey(props.type.__raw!)})`]}
+        />,
+      ]
+    : undefined;
+
   return (
     <SourceFile path={`src/Generated/Models/${modelName}.Serialization.cs`}>
       {header}
@@ -143,6 +156,7 @@ export function ModelSerializationFile(props: ModelSerializationFileProps) {
               : undefined
           }
           interfaceTypes={getSerializationInterfaces(props.type, modelName)}
+          attributes={attributes}
         >
           {props.children}
         </ClassDeclaration>

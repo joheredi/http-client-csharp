@@ -387,6 +387,138 @@ describe("ModelSerializationFile", () => {
       /public\s+partial\s+class\s+DualPayload\s*:\s*IJsonModel<DualPayload>/,
     );
   });
+
+  /**
+   * Validates that abstract discriminated base models get the
+   * `[PersistableModelProxy(typeof(UnknownXxx))]` attribute on the
+   * serialization class declaration.
+   *
+   * This attribute tells the System.ClientModel framework which concrete type
+   * to instantiate when deserializing a discriminated model whose discriminator
+   * value doesn't match any known derived type. Without it, the framework
+   * cannot perform polymorphic deserialization fallback.
+   *
+   * Tests verify:
+   * - The attribute is present on the abstract base model serialization class
+   * - The typeof argument references the correct Unknown variant class
+   */
+  it("adds PersistableModelProxy attribute on abstract base model", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Cat extends Pet {
+        kind: "cat";
+        lives: int32;
+      }
+
+      model Dog extends Pet {
+        kind: "dog";
+        bark: boolean;
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const petFileKey = Object.keys(outputs).find((k) =>
+      k.includes("Pet.Serialization.cs"),
+    );
+    expect(petFileKey).toBeDefined();
+    const petContent = outputs[petFileKey!];
+
+    // Abstract base model must have [PersistableModelProxy(typeof(UnknownPet))]
+    expect(petContent).toContain("[PersistableModelProxy(typeof(UnknownPet))]");
+
+    // The attribute must appear before the class declaration
+    const attrIndex = petContent.indexOf("[PersistableModelProxy(");
+    const classIndex = petContent.indexOf("public abstract partial class Pet");
+    expect(attrIndex).toBeLessThan(classIndex);
+  });
+
+  /**
+   * Validates that derived (concrete) discriminated models do NOT get the
+   * PersistableModelProxy attribute. Only the abstract base model needs it.
+   *
+   * Derived models have a fixed discriminator value (e.g., "cat") and cannot
+   * serve as deserialization proxies. Adding the attribute to them would be
+   * incorrect and confuse the serialization framework.
+   */
+  it("does not add PersistableModelProxy on derived models", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Cat extends Pet {
+        kind: "cat";
+        lives: int32;
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    const catFileKey = Object.keys(outputs).find((k) =>
+      k.includes("Cat.Serialization.cs"),
+    );
+    expect(catFileKey).toBeDefined();
+    const catContent = outputs[catFileKey!];
+
+    // Derived models must NOT have the PersistableModelProxy attribute
+    expect(catContent).not.toContain("PersistableModelProxy");
+  });
+
+  /**
+   * Validates that non-discriminated (simple) models do NOT get the
+   * PersistableModelProxy attribute.
+   *
+   * The attribute is exclusively for abstract discriminated base models.
+   * Non-discriminated models are concrete and directly instantiable,
+   * so no proxy type is needed for deserialization.
+   */
+  it("does not add PersistableModelProxy on non-discriminated models", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        count: int32;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    const widgetFileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    expect(widgetFileKey).toBeDefined();
+    const widgetContent = outputs[widgetFileKey!];
+
+    // Non-discriminated models must NOT have the PersistableModelProxy attribute
+    expect(widgetContent).not.toContain("PersistableModelProxy");
+  });
 });
 
 /**

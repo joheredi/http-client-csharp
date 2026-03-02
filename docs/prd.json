@@ -592,7 +592,7 @@
           "title": "Write type mapping tests",
           "description": "Write comprehensive tests for all type mapping utilities. Test every TypeSpec scalar \u2192 C# type mapping, collection type selection based on usage direction, and nullable type determination. Include edge cases: nested collections, nullable enums, literal types.",
           "phase": "phase-1",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "1.1.2",
             "1.1.3",
@@ -1641,7 +1641,7 @@
           "title": "Write model factory tests",
           "description": "Test model factory generation for various model types.",
           "phase": "phase-1",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "1.8.4"
           ],
@@ -1782,7 +1782,7 @@
           "title": "Write serialization structure tests",
           "description": "Test the serialization file structure (interfaces, constructors, method signatures) without testing method bodies.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.1.5"
           ],
@@ -2102,7 +2102,7 @@
           "title": "Write JSON write path tests",
           "description": "Test JSON serialization for various property type combinations.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.2.14"
           ],
@@ -2393,7 +2393,7 @@
           "title": "Write JSON read path tests",
           "description": "Test JSON deserialization for various property types.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.3.13"
           ],
@@ -2474,7 +2474,7 @@
           "title": "Add PersistableModelProxy attribute",
           "description": "Add [PersistableModelProxy(typeof(UnknownXxx))] attribute on abstract base model serialization class.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.4.1"
           ],
@@ -2639,7 +2639,7 @@
           "title": "Write IJsonModel wrapper tests",
           "description": "Test the IJsonModel Write and Create wrapper methods.",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.6.2"
           ],
@@ -2735,7 +2735,7 @@
           "title": "Write client options tests",
           "description": "Test client options generation for single and multi-version services.",
           "phase": "phase-3",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "3.1.3"
           ],
@@ -2849,7 +2849,7 @@
           "title": "Write client class tests",
           "description": "Test client generation for simple and multi-client scenarios.",
           "phase": "phase-3",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "3.2.4"
           ],
