@@ -1621,7 +1621,7 @@
           "title": "Handle discriminator exclusion in factory",
           "description": "Exclude discriminator parameters from factory methods when the model has a fixed discriminator value. The discriminator is hardcoded in the derived constructor, so it shouldn't be a factory parameter.",
           "phase": "phase-1",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "1.8.2"
           ],

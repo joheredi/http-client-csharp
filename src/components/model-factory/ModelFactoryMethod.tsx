@@ -6,8 +6,14 @@
  * passing `null` for the `additionalBinaryDataProperties` parameter.
  *
  * Factory method parameters match the serialization constructor minus the
- * `additionalBinaryDataProperties` parameter. All parameters default to
- * `= default` so callers only specify the values they care about.
+ * `additionalBinaryDataProperties` parameter and any discriminator properties
+ * with fixed values. All parameters default to `= default` so callers only
+ * specify the values they care about.
+ *
+ * Discriminator properties are excluded from the factory method signature when
+ * the model has a fixed discriminator value (i.e., it is a derived model in a
+ * discriminated hierarchy). The discriminator literal is hardcoded in the
+ * constructor call instead of being exposed as a parameter.
  *
  * Collection parameters receive special treatment to match the legacy emitter:
  * - **Arrays**: Parameter type is `IEnumerable<T>` (broadest input interface).
@@ -16,6 +22,14 @@
  * - **Dictionaries**: Parameter type stays `IDictionary<string, T>`.
  *   Null-coalesced with `new ChangeTrackingDictionary<string, T>()`,
  *   then passed as-is to the constructor.
+ *
+ * @example Generated output for a derived discriminated model:
+ * ```csharp
+ * public static Cat Cat(string name = default, int lives = default)
+ * {
+ *     return new Cat("cat", name, lives, additionalBinaryDataProperties: null);
+ * }
+ * ```
  *
  * @example Generated output for a model with collections:
  * ```csharp
@@ -99,6 +113,64 @@ function computeSerializationProperties(
 }
 
 /**
+ * Resolves the C# literal expression for a discriminator property on a derived model.
+ *
+ * Walks up the model hierarchy to find which ancestor declares the given property
+ * as its `discriminatorProperty`. The derived model at that level provides the
+ * fixed discriminator value (via `discriminatorValue` and its own property override).
+ *
+ * Handles both string discriminators (`"cat"`) and enum discriminators
+ * (`PetKind.Cat`) by inspecting the override property's type.
+ *
+ * For multi-level hierarchies (e.g., Pet → Fish → Shark where both Pet and Fish
+ * have discriminators), this correctly maps each discriminator property to the
+ * value from the appropriate level: Fish provides Pet's discriminator value,
+ * and Shark provides Fish's discriminator value.
+ *
+ * @param property - A discriminator property from the serialization constructor params.
+ * @param model - The derived model being processed by the factory method.
+ * @param namePolicy - The C# naming policy for enum member name conversion.
+ * @returns The C# literal expression as Children, or undefined if no fixed value exists.
+ */
+function getDiscriminatorLiteral(
+  property: SdkModelPropertyType,
+  model: SdkModelType,
+  namePolicy: ReturnType<typeof useCSharpNamePolicy>,
+): Children | undefined {
+  let current: SdkModelType | undefined = model;
+  while (current) {
+    if (
+      current.baseModel?.discriminatorProperty?.name === property.name &&
+      current.discriminatorValue !== undefined
+    ) {
+      // This model provides a fixed value for the base's discriminator property.
+      // Find the override property on this model to determine the literal type.
+      const override = current.properties.find(
+        (p) => p.discriminator && p.name === property.name,
+      );
+      if (override?.type.kind === "enumvalue") {
+        // Enum discriminator: compose EnumType.MemberName using refkey
+        // so Alloy auto-generates the correct `using` directive.
+        const enumTypeRefkey = efCsharpRefkey(override.type.enumType.__raw!);
+        const memberName = namePolicy.getName(
+          override.type.name,
+          "enum-member",
+        );
+        return (
+          <>
+            {enumTypeRefkey}.{memberName}
+          </>
+        );
+      }
+      // String discriminator: use the model's discriminatorValue as a C# string literal.
+      return `"${current.discriminatorValue}"`;
+    }
+    current = current.baseModel;
+  }
+  return undefined;
+}
+
+/**
  * Metadata collected for each collection parameter in the factory method.
  *
  * Used to generate the null-coalescing initialization statements that appear
@@ -141,13 +213,26 @@ export function ModelFactoryMethod(props: ModelFactoryMethodProps) {
   // Three parallel data structures built from the property list:
   // 1. factoryParams — the method signature parameters
   // 2. collectionInits — metadata for null-coalescing lines
-  // 3. ctorArgs — the arguments passed to `new ModelType(...)`
+  // 3. ctorArgs — the arguments passed to `new ModelType(...)`.
+  //    Uses Children[] (not string[]) to support enum discriminator refkeys.
   const factoryParams: ParameterProps[] = [];
   const collectionInits: CollectionInitInfo[] = [];
-  const ctorArgs: string[] = [];
+  const ctorArgs: Children[] = [];
 
   for (const p of allProperties) {
     const paramName = namePolicy.getName(p.name, "parameter");
+
+    // Discriminator properties with fixed values are excluded from factory
+    // method parameters. Instead, the discriminator literal is injected
+    // directly into the constructor call.
+    if (p.discriminator) {
+      const literal = getDiscriminatorLiteral(p, props.type, namePolicy);
+      if (literal !== undefined) {
+        ctorArgs.push(literal);
+        continue;
+      }
+    }
+
     const nullable = isPropertyNullable(p);
     const unwrapped = unwrapNullableType(p.type);
 
@@ -206,6 +291,12 @@ export function ModelFactoryMethod(props: ModelFactoryMethodProps) {
   const modelRefkey = efCsharpRefkey(props.type.__raw!);
   const returnType = <TypeExpression type={props.type.__raw!} />;
 
+  // Join ctorArgs with ", " separator. Uses flatMap instead of .join() because
+  // ctorArgs may contain JSX Children (e.g., enum discriminator refkeys).
+  const ctorArgsExpr = ctorArgs.flatMap((arg, i) =>
+    i === 0 ? [arg] : [", ", arg],
+  );
+
   return (
     <Method
       public
@@ -220,7 +311,7 @@ export function ModelFactoryMethod(props: ModelFactoryMethodProps) {
           : code`${init.paramName} ??= new ChangeTrackingDictionary<string, ${init.valueTypeExpr}>();\n`,
       )}
       {collectionInits.length > 0 && "\n"}
-      {code`return new ${modelRefkey}(${ctorArgs.join(", ")});`}
+      {code`return new ${modelRefkey}(${ctorArgsExpr});`}
     </Method>
   );
 }
