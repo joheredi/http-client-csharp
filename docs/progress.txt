@@ -1870,3 +1870,23 @@ Notes for next:
 - Task 2.2.15 (Write JSON write path tests) depends on this and is now unblocked.
 - Task 2.3.12 (Implement additional binary data capture in deserialization) is the read-side
   counterpart — it adds the catch-all in PropertyMatchingLoop's foreach loop.
+
+## 2026-03-02 — Task 3.3.2: Implement request building (already done)
+
+**What was done:**
+Task 3.3.2 was already fully implemented in `src/components/clients/RestClientFile.tsx`. The `buildRequestBody()` function (lines 681-813) generates complete Create{Op}Request method bodies with:
+- ClientUriBuilder initialization and endpoint reset
+- Path segment appending (literals + parameterized segments with URL encoding)
+- Query parameter appending (required always, optional with null checks, client-level from fields)
+- PipelineMessage creation with HTTP method and PipelineMessageClassifier
+- Header setting (custom headers, Content-Type from body, Accept from response content types)
+- Body content assignment (with optional null check)
+- Options application and return
+
+**Tests:** 11 passing tests in `test/rest-client.test.ts` covering all acceptance criteria.
+
+**Marked as done** — no code changes needed.
+
+**Note:** 6 pre-existing test failures exist (2 in model-serialization.test.ts, 4 in smoke.test.ts) — unrelated to this task.
+
+**What's next:** Task 3.3.3 (parameter serialization variants — collection formats), Task 3.5.2 (spread parameters), Task 3.6.1 (operation name conventions)

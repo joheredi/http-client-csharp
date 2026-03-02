@@ -2897,7 +2897,7 @@
           "title": "Implement request building",
           "description": "Generate Create{Op}Request method body: ClientUriBuilder construction, path/query parameters, Pipeline.CreateMessage, header setting, content setting, message.Apply. See RestClientProvider.BuildMessage.",
           "phase": "phase-3",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "3.3.1"
           ],
