@@ -9,6 +9,9 @@ A TypeSpec emitter that generates C# HTTP client code using the **Alloy framewor
 ```bash
 pnpm run build          # Build with alloy build
 pnpm test               # Run all tests (vitest)
+pnpm test:unit          # Run unit tests only (excludes scenarios and smoke)
+pnpm test:scenario      # Run scenario tests only
+pnpm test:smoke         # Run smoke tests only (requires dotnet)
 pnpm test -- test/hello.test.ts   # Run a single test file
 pnpm test -- -t "emit output.txt" # Run tests matching a name pattern
 pnpm run lint           # ESLint (src/ and test/)
@@ -16,7 +19,9 @@ pnpm run format:check   # Prettier check
 pnpm run format         # Prettier auto-fix (run before every commit)
 ```
 
-**Always run `pnpm format` before committing** to ensure consistent formatting.
+**Before committing**, run `pnpm format` and `pnpm lint` to ensure consistent formatting and catch lint errors.
+
+**Before marking any task as done**, verify that `pnpm build` and `pnpm test` both succeed. Do not consider work complete until both pass.
 
 Tests use **vitest** with the `@alloy-js/rollup-plugin` for JSX transform. The vitest config scopes test discovery to `test/` only (submodules contain their own tests that must not run here).
 

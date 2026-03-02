@@ -7,3 +7,6 @@ dist/
 
 # Dependency directories
 node_modules/
+
+# Smoke test output (kept after runs for investigation)
+temp/

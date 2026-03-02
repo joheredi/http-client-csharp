@@ -2,32 +2,49 @@
   "name": "http-client-csharp",
   "version": "0.1.0",
   "type": "module",
+  "packageManager": "pnpm@10.30.1",
   "dependencies": {
     "@alloy-js/core": "0.22.0",
+    "@alloy-js/csharp": "0.22.0",
+    "@alloy-js/msbuild": "0.22.0",
     "@alloy-js/typescript": "0.22.0",
     "@typespec/emitter-framework": "^0.16.0"
   },
   "main": "dist/src/index.js",
   "peerDependencies": {
-    "@typespec/compiler": "1.9.0"
+    "@azure-tools/typespec-client-generator-core": ">=0.65.3 <0.66.0 || ~0.66.0-0",
+    "@typespec/compiler": "^1.9.0",
+    "@typespec/http": "^1.9.0",
+    "@typespec/rest": ">=0.79.0 <0.80.0 || ~0.80.0-0"
   },
   "devDependencies": {
     "@alloy-js/cli": "0.22.0",
     "@alloy-js/rollup-plugin": "0.1.0",
+    "@azure-tools/typespec-client-generator-core": ">=0.65.3 <0.66.0",
+    "@eslint/js": "^9.39.3",
     "@types/node": "latest",
     "@typescript-eslint/eslint-plugin": "^8.15.0",
     "@typescript-eslint/parser": "^8.15.0",
     "@typespec/compiler": "1.9.0",
+    "@typespec/http": "^1.9.0",
+    "@typespec/rest": ">=0.79.0 <0.80.0",
+    "@typespec/versioning": ">=0.79.0 <0.80.0",
     "concurrently": "^9.2.0",
     "eslint": "^9.15.0",
     "prettier": "^3.3.3",
+    "tree-sitter-c-sharp": "^0.23.1",
     "typescript": "^5.8.3",
-    "vitest": "^3.2.4"
+    "typescript-eslint": "^8.56.1",
+    "vitest": "^3.2.4",
+    "web-tree-sitter": "^0.26.6"
   },
   "scripts": {
     "build": "alloy build",
     "clean": "rimraf dist/ .temp/",
     "test": "vitest run",
+    "test:unit": "vitest run --exclude test/scenarios.test.ts --exclude test/smoke.test.ts",
+    "test:scenario": "vitest run test/scenarios.test.ts",
+    "test:smoke": "vitest run test/smoke.test.ts",
     "test:watch": "vitest -w",
     "watch": "alloy build --watch",
     "lint": "eslint src/ test/ --report-unused-disable-directives --max-warnings=0",
@@ -41,10 +58,6 @@
       "import": "./dist/src/index.js",
       "types": "./dist/src/index.d.ts",
       "default": "./dist/src/index.js"
-    },
-    "./stc": {
-      "import": "./dist/src/stc.js",
-      "types": "./dist/src/stc.d.ts"
     },
     "./testing": {
       "types": "./dist/src/testing/index.d.ts",
