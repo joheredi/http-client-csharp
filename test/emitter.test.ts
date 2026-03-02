@@ -28,7 +28,7 @@ describe("$onEmit", () => {
    * through TCGC to produce an SdkPackage — if this fails, no C# code can be generated.
    */
   it("compiles a service definition through TCGC without errors", async () => {
-    const [_, diagnostics] = await Tester.compileAndDiagnose(`
+    const [_result, diagnostics] = await Tester.compileAndDiagnose(`
       @service
       namespace TestService;
     `);
@@ -41,7 +41,7 @@ describe("$onEmit", () => {
    * which downstream components (task 1.2.x) will use to generate C# classes.
    */
   it("compiles a service with models through TCGC", async () => {
-    const [_, diagnostics] = await Tester.compileAndDiagnose(`
+    const [_result, diagnostics] = await Tester.compileAndDiagnose(`
       @service
       namespace TestService;
 
@@ -79,7 +79,7 @@ describe("$onEmit", () => {
    * resolveOptions() path in $onEmit with user-specified values.
    */
   it("compiles with custom emitter options", async () => {
-    const [_, diagnostics] = await TesterWithOptions.compileAndDiagnose(`
+    const [_result, diagnostics] = await TesterWithOptions.compileAndDiagnose(`
       @service
       namespace TestService;
     `);

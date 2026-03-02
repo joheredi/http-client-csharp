@@ -61,7 +61,6 @@ import {
   isDictCollection,
 } from "../../utils/collections.js";
 import {
-  isCollectionType,
   isPropertyNullable,
   unwrapNullableType,
 } from "../../utils/nullable.js";

@@ -31,10 +31,7 @@ import { SerializationFormatFile } from "./components/infrastructure/Serializati
 import { SolutionFile } from "./components/infrastructure/SolutionFile.js";
 import { TypeFormattersFile } from "./components/infrastructure/TypeFormattersFile.js";
 import { ModelFactoryFile } from "./components/model-factory/ModelFactoryFile.js";
-import {
-  hasDiscriminatedSubtypes,
-  isModelAbstract,
-} from "./components/models/ModelConstructors.js";
+import { hasDiscriminatedSubtypes } from "./components/models/ModelConstructors.js";
 import { ModelFile } from "./components/models/ModelFile.js";
 import { UnknownDiscriminatorModelFile } from "./components/models/UnknownDiscriminatorModel.js";
 import { AdditionalBinaryDataRead } from "./components/serialization/AdditionalBinaryDataRead.js";

@@ -4,10 +4,7 @@ import {
   StructDeclaration,
   useCSharpNamePolicy,
 } from "@alloy-js/csharp";
-import type {
-  SdkEnumType,
-  SdkEnumValueType,
-} from "@azure-tools/typespec-client-generator-core";
+import type { SdkEnumType } from "@azure-tools/typespec-client-generator-core";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { efCsharpRefkey } from "../../utils/refkey.js";
@@ -85,10 +82,6 @@ function formatValueLiteral(value: string | number, kind: string): string {
  * @param member - The TCGC enum value type to extract documentation from.
  * @returns A description string suitable for use in documentation.
  */
-function getMemberDescription(member: SdkEnumValueType): string {
-  return member.summary ?? member.doc ?? `${member.name}.`;
-}
-
 /**
  * Props for the {@link ExtensibleEnumFile} component.
  */
@@ -186,11 +179,7 @@ export function ExtensibleEnumFile(props: ExtensibleEnumFileProps) {
           {"\n\n"}
           <EqualsObjectMethod enumName={enumName} />
           {"\n\n"}
-          <EqualsTypeMethod
-            enumName={enumName}
-            typeInfo={typeInfo}
-            isString={isString}
-          />
+          <EqualsTypeMethod enumName={enumName} isString={isString} />
           {"\n\n"}
           <GetHashCodeMethod isString={isString} />
           {"\n\n"}
@@ -341,12 +330,8 @@ function EqualsObjectMethod(props: { enumName: string }) {
  * for case-insensitive comparison. Numeric-backed enums use `Equals` with
  * direct value comparison.
  */
-function EqualsTypeMethod(props: {
-  enumName: string;
-  typeInfo: CSharpTypeInfo;
-  isString: boolean;
-}) {
-  const { enumName, typeInfo, isString } = props;
+function EqualsTypeMethod(props: { enumName: string; isString: boolean }) {
+  const { enumName, isString } = props;
 
   const body = isString
     ? `string.Equals(_value, other._value, StringComparison.InvariantCultureIgnoreCase)`

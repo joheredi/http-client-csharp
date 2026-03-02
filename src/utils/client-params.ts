@@ -8,7 +8,12 @@ import type {
   SdkType,
   SdkUnionType,
 } from "@azure-tools/typespec-client-generator-core";
-import type { ApiKeyAuth, HttpAuth, Oauth2Auth } from "@typespec/http";
+import type {
+  ApiKeyAuth,
+  HttpAuth,
+  OAuth2Flow,
+  Oauth2Auth,
+} from "@typespec/http";
 
 /**
  * Information about API key authentication extracted from TCGC credential parameters.
@@ -95,7 +100,10 @@ export function getAuthInfo(
 function extractAuthFromScheme(scheme: HttpAuth): AuthInfo | undefined {
   switch (scheme.type) {
     case "apiKey": {
-      const apiKeyScheme = scheme as ApiKeyAuth<any, any>;
+      const apiKeyScheme = scheme as ApiKeyAuth<
+        "header" | "query" | "cookie",
+        string
+      >;
       return {
         kind: "apiKey",
         headerName: apiKeyScheme.name,
@@ -103,7 +111,7 @@ function extractAuthFromScheme(scheme: HttpAuth): AuthInfo | undefined {
       };
     }
     case "oauth2": {
-      const oauth2Scheme = scheme as Oauth2Auth<any>;
+      const oauth2Scheme = scheme as Oauth2Auth<OAuth2Flow[]>;
       const scopes: string[] = [];
       // Collect scopes from all flows
       for (const flow of oauth2Scheme.flows) {
@@ -122,7 +130,10 @@ function extractAuthFromScheme(scheme: HttpAuth): AuthInfo | undefined {
     }
     case "http": {
       // Bearer token auth maps to OAuth2-style token provider
-      if ("scheme" in scheme && (scheme as any).scheme === "bearer") {
+      if (
+        "scheme" in scheme &&
+        (scheme as Record<string, unknown>).scheme === "bearer"
+      ) {
         return {
           kind: "oauth2",
           scopes: [],

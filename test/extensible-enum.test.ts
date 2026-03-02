@@ -264,7 +264,9 @@ describe("ExtensibleEnumFile", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const enumFileKey = Object.keys(outputs).find((k) => k.includes("Format"));
+    const enumFileKey = Object.keys(outputs).find((k) =>
+      k.endsWith("/Format.cs"),
+    );
     expect(enumFileKey).toBeDefined();
     const enumFile = outputs[enumFileKey!];
 
@@ -303,7 +305,9 @@ describe("ExtensibleEnumFile", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const enumFileKey = Object.keys(outputs).find((k) => k.includes("Mode"));
+    const enumFileKey = Object.keys(outputs).find((k) =>
+      k.endsWith("/Mode.cs"),
+    );
     expect(enumFileKey).toBeDefined();
     const enumFile = outputs[enumFileKey!];
 

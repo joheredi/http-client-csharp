@@ -190,6 +190,7 @@ describe("resolveOptions", () => {
   it("applies defaults when no user options are provided", () => {
     const mockContext = {
       options: {} as CSharpEmitterOptions,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any;
 
     const resolved = resolveOptions(mockContext);
@@ -211,6 +212,7 @@ describe("resolveOptions", () => {
         "generate-protocol-methods": false,
         "package-name": "MyCustomPackage",
       } as CSharpEmitterOptions,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any;
 
     const resolved = resolveOptions(mockContext);
@@ -231,6 +233,7 @@ describe("resolveOptions", () => {
       options: {
         license: { name: "MIT", company: "TestCo" },
       } as CSharpEmitterOptions,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any;
 
     const resolved = resolveOptions(mockContext);

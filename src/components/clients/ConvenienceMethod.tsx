@@ -344,7 +344,7 @@ function buildConvenienceParams(
   // Sort by priority, then by original order for stability
   params.sort((a, b) => a.priority - b.priority || a.index - b.index);
 
-  return params.map(({ priority, index: _index, ...rest }) => rest);
+  return params.map(({ priority: _priority, index: _index, ...rest }) => rest);
 }
 
 /**

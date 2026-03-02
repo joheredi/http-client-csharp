@@ -43,7 +43,6 @@ import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { efCsharpRefkey, unknownModelRefkey } from "../../utils/refkey.js";
 import {
-  ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME,
   computeSerializationCtorParams,
   isBaseDiscriminatorOverride,
   OverloadConstructor,

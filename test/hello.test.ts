@@ -20,7 +20,7 @@ describe("HttpClientCSharpOutput", () => {
    * 3. The C# name policy and format options are accepted without issues
    */
   it("compiles without diagnostics", async () => {
-    const [_, diagnostics] =
+    const [_result, diagnostics] =
       await Tester.compileAndDiagnose(`op test(): void;`);
     expect(diagnostics).toHaveLength(0);
   });

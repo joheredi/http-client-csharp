@@ -209,24 +209,6 @@ function buildDiscriminatorLiteral(
 }
 
 /**
- * Collects the non-discriminator public constructor parameters from a base model.
- *
- * These are the required, non-readonly, non-literal, non-discriminator
- * properties from the base model that should appear in the derived model's
- * public constructor (and be passed through to the base constructor call).
- *
- * @param baseModel - The base model in a discriminated hierarchy.
- * @returns Array of base model properties that are public constructor parameters.
- */
-function getBasePublicCtorParams(
-  baseModel: SdkModelType,
-): SdkModelPropertyType[] {
-  return baseModel.properties.filter(
-    (p) => isConstructorParameter(p) && !p.discriminator,
-  );
-}
-
-/**
  * Computes the ordered public constructor parameter list for a model.
  *
  * For abstract/base models: all `isConstructorParameter` properties in definition order.

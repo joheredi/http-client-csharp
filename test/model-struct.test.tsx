@@ -36,6 +36,7 @@ describe("isModelStruct", () => {
    * This is the default behavior — all current TCGC models return false.
    */
   it("returns false for a model without modelAsStruct", () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const model = { name: "Widget" } as any;
     expect(isModelStruct(model)).toBe(false);
   });
@@ -45,6 +46,7 @@ describe("isModelStruct", () => {
    * This is forward-compatible with when TCGC adds the property.
    */
   it("returns true for a model with modelAsStruct=true", () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const model = { name: "Point", modelAsStruct: true } as any;
     expect(isModelStruct(model)).toBe(true);
   });
@@ -53,6 +55,7 @@ describe("isModelStruct", () => {
    * Explicit modelAsStruct=false should not trigger struct generation.
    */
   it("returns false for a model with modelAsStruct=false", () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const model = { name: "Widget", modelAsStruct: false } as any;
     expect(isModelStruct(model)).toBe(false);
   });
@@ -62,6 +65,7 @@ describe("isModelStruct", () => {
    * Only explicit `true` is accepted to avoid accidental struct generation.
    */
   it("returns false for a model with modelAsStruct as truthy non-boolean", () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const model = { name: "Widget", modelAsStruct: "yes" } as any;
     expect(isModelStruct(model)).toBe(false);
   });

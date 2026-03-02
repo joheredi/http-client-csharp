@@ -57,9 +57,10 @@ function dotnetBuild(cwd: string): string {
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
     });
-  } catch (e: any) {
-    const stdout = e.stdout ?? "";
-    const stderr = e.stderr ?? "";
+  } catch (e: unknown) {
+    const err = e as { stdout?: string; stderr?: string };
+    const stdout = err.stdout ?? "";
+    const stderr = err.stderr ?? "";
     throw new Error(`dotnet build failed:\n${stdout}\n${stderr}`);
   }
 }

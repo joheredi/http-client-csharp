@@ -2,7 +2,6 @@ import { Method, useCSharpNamePolicy } from "@alloy-js/csharp";
 import { code, namekey } from "@alloy-js/core";
 import type { Children } from "@alloy-js/core";
 import type {
-  SdkBodyParameter,
   SdkClientType,
   SdkHeaderParameter,
   SdkHttpOperation,
@@ -278,7 +277,7 @@ function buildProtocolParams(operation: SdkHttpOperation): ProtocolParam[] {
   // Sort by priority, then by original order for stability
   params.sort((a, b) => a.priority - b.priority || a.index - b.index);
 
-  return params.map(({ priority, index: _index, ...rest }) => rest);
+  return params.map(({ priority: _priority, index: _index, ...rest }) => rest);
 }
 
 /**

@@ -1,11 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { HttpTester } from "./test-host.js";
-import { createSdkContext } from "@azure-tools/typespec-client-generator-core";
-import { $lib } from "../src/lib.js";
 
 describe("debug", () => {
   it("prints model access", async () => {
-    const [result, diagnostics] = await HttpTester.compileAndDiagnose(`
+    const [result] = await HttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
       @service

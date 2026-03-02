@@ -335,11 +335,7 @@ describe("ConvenienceMethod", () => {
    * propagated to convenience methods.
    */
   it("respects access modifiers", async () => {
-    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
-      using TypeSpec.Http;
-
-      @service
-      namespace TestService;
+    const [{ outputs }, _diagnostics] = await HttpTester.compileAndDiagnose(`
 
       @access(Access.internal)
       @route("/test")

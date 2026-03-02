@@ -4938,7 +4938,7 @@ describe("PropertyMatchingLoop", () => {
       "    foreach (var prop in element.EnumerateObject())",
     );
     // 4 spaces: opening brace of foreach
-    expect(content).toMatch(/\n    \{[\s\S]*prop\.NameEquals/);
+    expect(content).toMatch(/\n {4}\{[\s\S]*prop\.NameEquals/);
     // 8 spaces: if block inside foreach
     expect(content).toContain('        if (prop.NameEquals("name"u8))');
     // 12 spaces: assignment inside if block
