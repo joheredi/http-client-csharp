@@ -2111,3 +2111,29 @@ Implemented collection parameter serialization in RestClientFile.tsx for all par
 - The infrastructure files are rendered OUTSIDE of `<CSharpScalarOverrides>` in the emitter tree since they don't reference TypeSpec types
 - The ChangeTrackingDictionary uses a different rendering approach (raw code template) than the other three (ClassDeclaration) — this is intentional due to the Alloy TypeParameterConstraints limitation
 - Tasks 5.1.1-5.1.4 in the PRD overlap with parts of this task — they may need to be marked as done or their scope reviewed
+
+## 2026-03-02 — Task 5.2.1: Generate CodeGen attribute files
+
+### What was done
+- Created `src/components/infrastructure/CodeGenAttributeFiles.tsx` with 4 internal file components:
+  - `CodeGenTypeAttribute.cs` — Base attribute marking types with original names (targets Class/Enum/Struct)
+  - `CodeGenMemberAttribute.cs` — Marks property/field members with original names (extends CodeGenTypeAttribute)
+  - `CodeGenSuppressAttribute.cs` — Suppresses specific generated members (AllowMultiple = true)
+  - `CodeGenSerializationAttribute.cs` — Configures custom serialization hooks (AllowMultiple + Inherited)
+- Updated `src/emitter.tsx` to render CodeGenAttributeFiles in every generated project
+- Fixed 2 existing test regressions in `test/fixed-enum-serialization.test.ts` where `k.includes("Serialization")` filter incorrectly matched `CodeGenSerializationAttribute.cs`
+- Created `test/codegen-attributes.test.ts` with 18 comprehensive tests
+- Also marked tasks 5.1.1-5.1.4 as done (already implemented in prior loop 11.1.3)
+
+### Patterns used
+- Single parent component (`CodeGenAttributeFiles`) rendering 4 child file components
+- `ClassDeclaration` with `baseType` prop for inheritance (not `extends`)
+- `attributes` prop for `[AttributeUsage(...)]` decorators (not `decorators`)
+- `code` template tag for static method bodies
+- Fixed namespace: `Microsoft.TypeSpec.Generator.Customizations` (NOT derived from packageName)
+
+### Key learnings & Next person should know
+- CodeGen attribute files use a HARDCODED namespace `Microsoft.TypeSpec.Generator.Customizations`, not the package namespace. This matches `CodeModelGenerator.CustomizationAttributeNamespace` in the legacy emitter.
+- ClassDeclaration prop for base class is `baseType` (not `extends`)
+- ClassDeclaration prop for attribute annotations is `attributes` (not `decorators`)
+- When adding new Internal/ files, check existing tests that filter by partial path/name — e.g., `k.includes("Serialization")` will match infrastructure files. Add `!k.includes("Internal/")` to exclude them.

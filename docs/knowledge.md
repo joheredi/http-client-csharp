@@ -1290,13 +1290,28 @@ In `DeserializeVariableDeclarations`, the `isStringDiscriminator` check uses `mo
 - The smoke test dotnet build failures may be caused by the model serialization bugs
 
 ### Alloy TypeParameterConstraints bug with mixed constrained/unconstrained type params
+
 When using `ClassDeclaration` with `typeParameters` where only SOME params have constraints (e.g., `[{name: "TKey", constraints: "notnull"}, "TValue"]`), Alloy generates invalid `where TValue :` (empty constraint) for unconstrained params. **Workaround**: Use raw `code` template for the full class declaration instead of `ClassDeclaration` + `typeParameters`. (Discovered in task 11.1.3)
 
 ### SourceFile `using` prop for explicit using directives
+
 The `<SourceFile>` from `@alloy-js/csharp` has a `using` prop that accepts `string[]` of namespace names. Use this for infrastructure files that need manual usings (e.g., `using={["System", "System.Collections.Generic"]}`). These are rendered at the top of the file before the namespace declaration.
 
 ### `code` template handles multi-line C# with proper indentation
+
 The `code` template tag from `@alloy-js/core` processes multi-line strings by detecting relative indentation from leading whitespace, splitting on `\n`, and creating `<indent>` and `<hbr>` nodes. This makes it suitable for embedding multi-line C# code blocks (method bodies, class declarations) within JSX components. The indentation is RELATIVE — the context indentation from parent components (Namespace, ClassDeclaration) is added on top.
 
 ### Infrastructure helper files are always generated
+
 Argument.cs, Optional.cs, ChangeTrackingList.cs, and ChangeTrackingDictionary.cs are rendered for EVERY project (matching legacy emitter). They're placed OUTSIDE `<CSharpScalarOverrides>` in emitter.tsx since they don't reference TypeSpec types. Tests checking for "no .cs files" should exclude `/Internal/` paths.
+
+## CodeGen attribute namespace is hardcoded
+The four CodeGen attribute files (`CodeGenTypeAttribute`, `CodeGenMemberAttribute`, `CodeGenSuppressAttribute`, `CodeGenSerializationAttribute`) use the **fixed namespace** `Microsoft.TypeSpec.Generator.Customizations`. This does NOT vary with the package name. It matches the legacy emitter's `CodeModelGenerator.CustomizationAttributeNamespace` constant. Do not use `packageName` for these files' namespace.
+
+## ClassDeclaration: `baseType` not `extends`, `attributes` not `decorators`
+When using `@alloy-js/csharp`'s `ClassDeclaration`:
+- Use `baseType="Attribute"` for inheritance (NOT `extends`)
+- Use `attributes={[...]}` for attribute annotations like `[AttributeUsage(...)]` (NOT `decorators`)
+
+## Test filters may match new Internal/ infrastructure files
+When tests use broad filters like `k.includes("Serialization")` to find generated files, adding new infrastructure files (e.g., `CodeGenSerializationAttribute.cs` in Internal/) can break them. Always add `&& !k.includes("Internal/")` to exclude infrastructure files from such filters.

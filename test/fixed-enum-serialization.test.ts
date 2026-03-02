@@ -243,8 +243,8 @@ describe("FixedEnumSerializationFile", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const serFiles = Object.keys(outputs).filter((k) =>
-      k.includes("Serialization"),
+    const serFiles = Object.keys(outputs).filter(
+      (k) => k.includes("Serialization") && !k.includes("Internal/"),
     );
     expect(serFiles).toHaveLength(0);
   });
@@ -272,8 +272,8 @@ describe("FixedEnumSerializationFile", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const serFileKey = Object.keys(outputs).find((k) =>
-      k.includes("Serialization"),
+    const serFileKey = Object.keys(outputs).find(
+      (k) => k.includes("Serialization") && !k.includes("Internal/"),
     );
     expect(serFileKey).toBeDefined();
     expect(serFileKey).toContain("src/Generated/Models/Fruit.Serialization.cs");

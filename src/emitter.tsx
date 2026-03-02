@@ -14,6 +14,7 @@ import { HttpClientCSharpOutput } from "./components/HttpClientCSharpOutput.js";
 import { ArgumentFile } from "./components/infrastructure/ArgumentFile.js";
 import { ChangeTrackingDictionaryFile } from "./components/infrastructure/ChangeTrackingDictionaryFile.js";
 import { ChangeTrackingListFile } from "./components/infrastructure/ChangeTrackingListFile.js";
+import { CodeGenAttributeFiles } from "./components/infrastructure/CodeGenAttributeFiles.js";
 import { OptionalFile } from "./components/infrastructure/OptionalFile.js";
 import { ProjectFile } from "./components/infrastructure/ProjectFile.js";
 import { SolutionFile } from "./components/infrastructure/SolutionFile.js";
@@ -116,6 +117,7 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
         packageName={packageName}
         options={options}
       />
+      <CodeGenAttributeFiles options={options} />
       <CSharpScalarOverrides>
         {clients.map((c) => (
           <ClientOptionsFile client={c} options={options} />

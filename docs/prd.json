@@ -3308,7 +3308,7 @@
           "title": "Generate Argument.cs",
           "description": "Generate the internal static Argument class with AssertNotNull, AssertNotNullOrEmpty, AssertNotNullOrWhiteSpace, AssertInRange, CheckNotNullOrEmpty methods. This is a nearly-static file. Use the golden file directly as the template. File path: src/Generated/Internal/Argument.cs.",
           "phase": "phase-5",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "0.3.1"
           ],
@@ -3330,7 +3330,7 @@
           "title": "Generate Optional.cs",
           "description": "Generate internal static Optional class with IsDefined and IsCollectionDefined methods. Includes JsonElement IsDefined variant.",
           "phase": "phase-5",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "0.3.1"
           ],
@@ -3352,7 +3352,7 @@
           "title": "Generate ChangeTrackingList.cs",
           "description": "Generate internal ChangeTrackingList<T> : IList<T>, IReadOnlyList<T> with lazy initialization and IsUndefined semantics.",
           "phase": "phase-5",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "0.3.1"
           ],
@@ -3374,7 +3374,7 @@
           "title": "Generate ChangeTrackingDictionary.cs",
           "description": "Generate internal ChangeTrackingDictionary<TKey,TValue> with lazy initialization and IsUndefined semantics.",
           "phase": "phase-5",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "0.3.1"
           ],
@@ -3419,7 +3419,7 @@
           "title": "Generate CodeGen attribute files",
           "description": "Generate CodeGenTypeAttribute.cs, CodeGenMemberAttribute.cs, CodeGenSuppressAttribute.cs, CodeGenSerializationAttribute.cs. These are small, fixed-content files.",
           "phase": "phase-5",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "0.3.1"
           ],
