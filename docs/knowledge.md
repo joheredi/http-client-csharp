@@ -1159,16 +1159,43 @@ Added `System.DateTimeOffset` (struct) and `System.TimeSpan` (struct) to the Sys
 ## Design Decisions — Task 3.4.1: ProtocolMethod component
 
 ### Approach chosen: Single ProtocolMethods component with inline sync/async rendering
+
 - Both sync and async methods share computed values (params, xmlDoc, validation) in the same loop iteration
 - Avoids duplicating computation or JSX trees
 - Rejected: Separate SingleProtocolMethod sub-component — would recompute buildProtocolParams twice per operation
 
 ### Parameter utility duplication
+
 - `getProtocolTypeExpression`, `unwrapType`, `isConstantType`, `isImplicitContentTypeHeader` are duplicated from RestClientFile
 - Chosen over extraction to shared utility to minimize changes to RestClientFile (not in task scope)
 - Both copies must stay in sync — documented in JSDoc comments
 
 ### Task<> return type via SystemThreadingTasks library
+
 - Added `SystemThreadingTasks` to `src/builtins/system-threading.ts` with `Task` class
-- `code\`${SystemThreadingTasks.Task}<${SystemClientModel.ClientResult}>\`` renders as `Task<ClientResult>` with both `using System.Threading.Tasks;` and `using System.ClientModel;`
+- `code\`${SystemThreadingTasks.Task}<${SystemClientModel.ClientResult}>\``renders as`Task<ClientResult>`with both`using System.Threading.Tasks;`and`using System.ClientModel;`
 - This pattern works because code templates concatenate rendered library refs with literal strings
+
+## Design Decisions
+
+### Task 3.5.1: ConvenienceMethod — Approach chosen: Operation-param delegation with TypeExpression types
+
+**Approach chosen:** Build convenience params from `method.operation.parameters` (same as protocol method) but use TypeExpression for types instead of unwrapping enums to wire types. Body params use the model type. The method delegates to the protocol method with type conversions (enum `.ToString()`, implicit BinaryContent for models, `.ToRequestOptions()` for CancellationToken).
+
+**Rejected approach:** Using `method.parameters` (TCGC method-level params) directly. This would be needed for spread parameter support but is more complex. Deferred to task 3.5.2.
+
+**Why:** The operation-param approach reuses the same parameter ordering and filtering logic as `ProtocolMethod.tsx`, ensuring parameter order consistency. TypeExpression handles model/enum type resolution and auto-using directives. The delegation pattern matches the legacy emitter's `ScmMethodProviderCollection.BuildConvenienceMethod`.
+
+## Gotchas
+
+### Convenience + Protocol methods cause Alloy name deduplication (_2 suffix)
+When both convenience and protocol methods exist with the same name (C# method overloading), Alloy's name resolution adds a `_2` suffix to the second declaration. Fix: use `namekey(methodName, { ignoreNameConflict: true })` on BOTH convenience AND protocol Method components. This was applied to ProtocolMethod.tsx and ConvenienceMethod.tsx.
+
+### CancellationToken builtin must be in SystemThreading namespace
+The `CancellationToken` type was added to `src/builtins/system-threading.ts` (not system-threading-tasks) to ensure `using System.Threading;` is auto-generated. It lives in `System.Threading`, not `System.Threading.Tasks`.
+
+### Convenience method signatures may wrap across lines
+When method signatures are long (many params or long return types like `Task<ClientResult<Item>>`), Alloy wraps parameters across multiple lines. Tests should use partial string matching (e.g., `toContain("Task<ClientResult<Item>> CreateItemAsync(")`) rather than full single-line assertions.
+
+### Value types skip Argument.Assert in convenience methods
+In C#, value types (int, bool, enum, DateTime, TimeSpan, etc.) cannot be null, so convenience methods should NOT generate `Argument.AssertNotNull` for them. Only reference types (string, models, Uri, BinaryData, arrays, dicts) need validation. The `getConvenienceTypeInfo` function returns `needsAssertion: false` for value types.

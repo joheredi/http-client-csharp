@@ -1,5 +1,5 @@
 import { Method, useCSharpNamePolicy } from "@alloy-js/csharp";
-import { code } from "@alloy-js/core";
+import { code, namekey } from "@alloy-js/core";
 import type { Children } from "@alloy-js/core";
 import type {
   SdkBodyParameter,
@@ -143,7 +143,7 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
             <Method
               {...accessProps}
               virtual
-              name={methodName}
+              name={namekey(methodName, { ignoreNameConflict: true })}
               returns={SystemClientModel.ClientResult}
               parameters={methodParams}
             >
@@ -160,7 +160,7 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
               {...accessProps}
               virtual
               async
-              name={`${methodName}Async`}
+              name={namekey(`${methodName}Async`, { ignoreNameConflict: true })}
               returns={code`${SystemThreadingTasks.Task}<${SystemClientModel.ClientResult}>`}
               parameters={methodParams}
             >

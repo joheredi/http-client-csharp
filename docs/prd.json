@@ -3015,7 +3015,7 @@
           "title": "Create ConvenienceMethod component",
           "description": "Generate convenience-level client methods: sync and async pairs with typed parameters and return types. Delegates to protocol method. Handles body serialization, response deserialization, CancellationToken\u2192RequestOptions conversion. See ScmMethodProviderCollection.BuildConvenienceMethod.",
           "phase": "phase-3",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "3.4.1"
           ],

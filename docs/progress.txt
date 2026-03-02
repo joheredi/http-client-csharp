@@ -1794,3 +1794,34 @@ return ClientResult.FromResponse(Pipeline.ProcessMessage(message, options));
 - Task 3.4.2: Write protocol method tests (already done as part of this task)
 - Task 3.5.1: Create ConvenienceMethod component (depends on 3.4.1)
 - Task 3.3.2: Implement request building enhancements (next-link pagination, complex paths)
+
+## 2026-03-02 — Task 3.5.1: Create ConvenienceMethod component (complete)
+
+**What was done:**
+Created `src/components/clients/ConvenienceMethod.tsx` — generates sync/async convenience method pairs that delegate to protocol methods with typed parameters and return types.
+
+**Generated pattern:**
+Each HTTP operation where `generateConvenient === true` produces two methods:
+1. **Sync**: `public virtual ClientResult<T> {Name}(...params, CancellationToken cancellationToken = default)`
+2. **Async**: `public virtual async Task<ClientResult<T>> {Name}Async(...params, CancellationToken cancellationToken = default)`
+
+For void return operations, returns `ClientResult` (no generic type parameter).
+
+**Key patterns and decisions:**
+- **Typed parameters**: Uses `TypeExpression` for model/enum types, keyword mapping for primitives (same as protocol but without enum unwrapping)
+- **Body params**: Passed directly to protocol method — C# implicit operator converts model → BinaryContent
+- **Enum params**: Converted via `.ToString()` for string-backed enums, cast for int-backed
+- **Response wrapping**: `ClientResult.FromValue((T)result, result.GetRawResponse())` — uses explicit cast operator on model
+- **CancellationToken**: Converted to `RequestOptions` via `.ToRequestOptions()` extension method
+- **Validation**: Only reference types get `Argument.Assert*` — value types (int, enum, DateTime, etc.) skip validation
+- **Name conflict fix**: Used `namekey(name, { ignoreNameConflict: true })` on both convenience AND protocol Method components to allow C# method overloading without Alloy's `_2` suffix
+- **XML docs**: Simple summary (no [Protocol Method] prefix), CancellationToken docs, exception docs
+
+**Files changed:**
+- Created: `src/components/clients/ConvenienceMethod.tsx` (main component, 9 tests)
+- Created: `test/convenience-method.test.ts` (9 tests)
+- Modified: `src/builtins/system-threading.ts` (added CancellationToken builtin)
+- Modified: `src/components/clients/ClientFile.tsx` (integrated ConvenienceMethods before ProtocolMethods)
+- Modified: `src/components/clients/ProtocolMethod.tsx` (added namekey with ignoreNameConflict)
+
+**What's next:** Task 3.5.2 (spread parameter handling), Task 3.6.1 (operation name conventions)

@@ -1,0 +1,632 @@
+import { Method, useCSharpNamePolicy } from "@alloy-js/csharp";
+import { code, namekey } from "@alloy-js/core";
+import type { Children } from "@alloy-js/core";
+import type {
+  SdkBodyParameter,
+  SdkClientType,
+  SdkHeaderParameter,
+  SdkHttpOperation,
+  SdkPathParameter,
+  SdkQueryParameter,
+  SdkServiceMethod,
+  SdkType,
+} from "@azure-tools/typespec-client-generator-core";
+import { TypeExpression } from "@typespec/emitter-framework/csharp";
+import { SystemClientModel } from "../../builtins/system-client-model.js";
+import {
+  SystemThreading,
+  SystemThreadingTasks,
+} from "../../builtins/system-threading.js";
+import { System } from "../../builtins/system.js";
+
+/**
+ * Metadata for a convenience method parameter, including the type expression,
+ * assertion requirements, and the expression to use when calling the protocol method.
+ */
+interface ConvenienceParam {
+  /** The camelCase parameter name as it appears in the C# method signature. */
+  name: string;
+  /** The C# type expression (keyword string, Alloy refkey, or JSX element). */
+  type: Children;
+  /** Whether the parameter is optional in the TypeSpec definition. */
+  optional: boolean;
+  /** Whether this is the body parameter. */
+  isBody: boolean;
+  /** Whether the parameter requires an Argument.Assert* call (reference types only). */
+  needsAssertion: boolean;
+  /** Whether the parameter is a string type (uses AssertNotNullOrEmpty). */
+  isStringType: boolean;
+  /** Documentation string from the TypeSpec @doc decorator, if available. */
+  doc?: string;
+  /** The expression to pass for this param when calling the protocol method. */
+  protocolCallArg: string;
+}
+
+/**
+ * Props for the {@link ConvenienceMethods} component.
+ */
+export interface ConvenienceMethodsProps {
+  /** The TCGC SDK client type whose HTTP operations produce convenience method pairs. */
+  client: SdkClientType<SdkHttpOperation>;
+}
+
+/**
+ * Generates convenience-level client methods for all HTTP operations on a client.
+ *
+ * For each HTTP operation where `generateConvenient` is true, this component
+ * produces a sync/async method pair that:
+ * 1. Validates required reference-type parameters via Argument.AssertNotNull[OrEmpty]
+ * 2. Delegates to the corresponding protocol method with type conversions
+ * 3. Wraps the protocol result in a typed ClientResult{T} (if response has a body)
+ *
+ * Convenience methods provide a higher-level API with typed parameters and
+ * return types. Body parameters use implicit conversion to BinaryContent.
+ * Enum parameters are converted to their wire type (e.g., `.ToString()` for
+ * string-backed enums). CancellationToken is converted to RequestOptions
+ * via the `.ToRequestOptions()` extension method.
+ *
+ * @example Generated output for a method with model body and response:
+ * ```csharp
+ * /// <summary> Update a pet. </summary>
+ * /// <param name="pet"></param>
+ * /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
+ * /// <exception cref="ArgumentNullException"> <paramref name="pet"/> is null. </exception>
+ * /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
+ * public virtual ClientResult<Pet> UpdatePet(Pet pet, CancellationToken cancellationToken = default)
+ * {
+ *     Argument.AssertNotNull(pet, nameof(pet));
+ *
+ *     ClientResult result = UpdatePet(pet, cancellationToken.ToRequestOptions());
+ *     return ClientResult.FromValue((Pet)result, result.GetRawResponse());
+ * }
+ *
+ * public virtual async Task<ClientResult<Pet>> UpdatePetAsync(Pet pet, CancellationToken cancellationToken = default)
+ * {
+ *     Argument.AssertNotNull(pet, nameof(pet));
+ *
+ *     ClientResult result = await UpdatePetAsync(pet, cancellationToken.ToRequestOptions()).ConfigureAwait(false);
+ *     return ClientResult.FromValue((Pet)result, result.GetRawResponse());
+ * }
+ * ```
+ */
+export function ConvenienceMethods(props: ConvenienceMethodsProps) {
+  const { client } = props;
+  const namePolicy = useCSharpNamePolicy();
+
+  const methods = client.methods.filter(
+    (m): m is SdkServiceMethod<SdkHttpOperation> =>
+      "operation" in m &&
+      m.generateConvenient === true &&
+      (m as SdkServiceMethod<SdkHttpOperation>).operation?.kind === "http",
+  );
+
+  if (methods.length === 0) return null;
+
+  return (
+    <>
+      {methods.map((method) => {
+        const operation = method.operation;
+        const methodName = namePolicy.getName(method.name, "class");
+        const access = method.access ?? "public";
+        const description = method.doc ?? method.summary ?? "";
+        const responseType = method.response.type;
+
+        const params = buildConvenienceParams(operation);
+        const requiredParams = params.filter((p) => !p.optional);
+        const assertableParams = requiredParams.filter((p) => p.needsAssertion);
+
+        // Build protocol method call argument list
+        const protocolArgList = [
+          ...params.map((p) => p.protocolCallArg),
+          "cancellationToken.ToRequestOptions()",
+        ].join(", ");
+
+        // Build <Method> parameter props
+        const methodParams = [
+          ...params.map((p) => ({
+            name: p.name,
+            type: p.type,
+            ...(p.optional ? { default: "default" } : {}),
+          })),
+          {
+            name: "cancellationToken",
+            type: SystemThreading.CancellationToken as Children,
+            default: "default",
+          },
+        ];
+
+        const accessProps =
+          access === "internal"
+            ? ({ internal: true } as const)
+            : ({ public: true } as const);
+
+        // Build response type expression (used for return type and cast)
+        const responseTypeExpr = responseType ? (
+          <TypeExpression type={responseType.__raw!} />
+        ) : null;
+
+        // Build return types
+        const syncReturn = responseTypeExpr
+          ? code`${SystemClientModel.ClientResult}<${responseTypeExpr}>`
+          : SystemClientModel.ClientResult;
+        const asyncReturn = responseTypeExpr
+          ? code`${SystemThreadingTasks.Task}<${SystemClientModel.ClientResult}<${responseTypeExpr}>>`
+          : code`${SystemThreadingTasks.Task}<${SystemClientModel.ClientResult}>`;
+
+        const xmlDoc = buildConvenienceXmlDoc(
+          description,
+          params,
+          assertableParams,
+        );
+        const validation = buildConvenienceValidation(assertableParams);
+
+        // Sync method body
+        const syncBody = responseTypeExpr
+          ? [
+              validation,
+              assertableParams.length > 0 ? "\n\n" : "",
+              code`${SystemClientModel.ClientResult} result = ${methodName}(${protocolArgList});`,
+              "\n",
+              code`return ${SystemClientModel.ClientResult}.FromValue((${responseTypeExpr})result, result.GetRawResponse());`,
+            ]
+          : [
+              validation,
+              assertableParams.length > 0 ? "\n\n" : "",
+              `return ${methodName}(${protocolArgList});`,
+            ];
+
+        // Async method body
+        const asyncBody = responseTypeExpr
+          ? [
+              validation,
+              assertableParams.length > 0 ? "\n\n" : "",
+              code`${SystemClientModel.ClientResult} result = await ${methodName}Async(${protocolArgList}).ConfigureAwait(false);`,
+              "\n",
+              code`return ${SystemClientModel.ClientResult}.FromValue((${responseTypeExpr})result, result.GetRawResponse());`,
+            ]
+          : [
+              validation,
+              assertableParams.length > 0 ? "\n\n" : "",
+              `return await ${methodName}Async(${protocolArgList}).ConfigureAwait(false);`,
+            ];
+
+        return (
+          <>
+            {"\n\n"}
+            {xmlDoc}
+            {"\n"}
+            <Method
+              {...accessProps}
+              virtual
+              name={namekey(methodName, { ignoreNameConflict: true })}
+              returns={syncReturn}
+              parameters={methodParams}
+            >
+              {syncBody}
+            </Method>
+            {"\n\n"}
+            {xmlDoc}
+            {"\n"}
+            <Method
+              {...accessProps}
+              virtual
+              async
+              name={namekey(`${methodName}Async`, { ignoreNameConflict: true })}
+              returns={asyncReturn}
+              parameters={methodParams}
+            >
+              {asyncBody}
+            </Method>
+          </>
+        );
+      })}
+    </>
+  );
+}
+
+/**
+ * Builds the convenience method parameter list from an HTTP operation.
+ *
+ * Parameters follow the same ordering as protocol methods:
+ * 1. Path parameters (priority 0)
+ * 2. Required header/query parameters (priority 100)
+ * 3. Body parameter as typed model (priority 200 required, 300 optional)
+ * 4. Optional header/query parameters (priority 400)
+ *
+ * Unlike protocol methods, convenience methods preserve the original types
+ * (e.g., enums are not unwrapped to their wire type). Body parameters use
+ * the model type instead of BinaryContent.
+ *
+ * @remarks This mirrors the parameter ordering in ProtocolMethod's
+ * buildProtocolParams function. Changes to parameter ordering must be
+ * kept in sync between both files.
+ */
+function buildConvenienceParams(
+  operation: SdkHttpOperation,
+): ConvenienceParam[] {
+  const pathParams = operation.parameters.filter(
+    (p): p is SdkPathParameter => p.kind === "path",
+  );
+  const queryParams = operation.parameters.filter(
+    (p): p is SdkQueryParameter => p.kind === "query",
+  );
+  const headerParams = operation.parameters.filter(
+    (p): p is SdkHeaderParameter => p.kind === "header",
+  );
+  const bodyParam = operation.bodyParam;
+
+  const params: Array<ConvenienceParam & { priority: number; index: number }> =
+    [];
+  let index = 0;
+
+  // Path parameters (priority 0)
+  for (const p of pathParams) {
+    if (isConstantType(p.type) || p.onClient) continue;
+    const convInfo = getConvenienceTypeInfo(p.type);
+    params.push({
+      name: p.name,
+      type: convInfo.expression,
+      optional: false,
+      isBody: false,
+      needsAssertion: convInfo.needsAssertion,
+      isStringType: convInfo.isString,
+      doc: p.doc ?? p.summary,
+      protocolCallArg: getProtocolCallArg(p.name, p.type),
+      priority: 0,
+      index: index++,
+    });
+  }
+
+  // Header parameters: required (priority 100), optional (priority 400)
+  for (const p of headerParams) {
+    if (isConstantType(p.type) || p.onClient) continue;
+    if (isImplicitContentTypeHeader(p)) continue;
+    const convInfo = getConvenienceTypeInfo(p.type);
+    params.push({
+      name: p.name,
+      type: convInfo.expression,
+      optional: p.optional,
+      isBody: false,
+      needsAssertion: convInfo.needsAssertion,
+      isStringType: convInfo.isString,
+      doc: p.doc ?? p.summary,
+      protocolCallArg: getProtocolCallArg(p.name, p.type),
+      priority: p.optional ? 400 : 100,
+      index: index++,
+    });
+  }
+
+  // Query parameters: required (priority 100), optional (priority 400)
+  for (const p of queryParams) {
+    if (isConstantType(p.type) || p.onClient) continue;
+    const convInfo = getConvenienceTypeInfo(p.type);
+    params.push({
+      name: p.name,
+      type: convInfo.expression,
+      optional: p.optional,
+      isBody: false,
+      needsAssertion: convInfo.needsAssertion,
+      isStringType: convInfo.isString,
+      doc: p.doc ?? p.summary,
+      protocolCallArg: getProtocolCallArg(p.name, p.type),
+      priority: p.optional ? 400 : 100,
+      index: index++,
+    });
+  }
+
+  // Body parameter as typed model (priority 200 required, 300 optional)
+  if (bodyParam && !isConstantType(bodyParam.type)) {
+    const priority = bodyParam.optional ? 300 : 200;
+    const bodyName = getBodyParamName(bodyParam);
+    const convInfo = getConvenienceTypeInfo(bodyParam.type);
+    params.push({
+      name: bodyName,
+      type: convInfo.expression,
+      optional: bodyParam.optional ?? false,
+      isBody: true,
+      needsAssertion: convInfo.needsAssertion,
+      isStringType: convInfo.isString,
+      doc: bodyParam.doc ?? bodyParam.summary,
+      protocolCallArg: bodyName, // implicit BinaryContent conversion
+      priority,
+      index: index++,
+    });
+  }
+
+  // Sort by priority, then by original order for stability
+  params.sort((a, b) => a.priority - b.priority || a.index - b.index);
+
+  return params.map(({ priority, index: _index, ...rest }) => rest);
+}
+
+/**
+ * Determines the convenience method parameter name for a body parameter.
+ *
+ * Uses the first corresponding method parameter name if available (from TCGC's
+ * correspondingMethodParams mapping), falling back to the body parameter's
+ * own name.
+ */
+function getBodyParamName(bodyParam: SdkBodyParameter): string {
+  const firstSegment = bodyParam.correspondingMethodParams?.[0];
+  if (firstSegment && "name" in firstSegment) {
+    return firstSegment.name;
+  }
+  return bodyParam.name;
+}
+
+/**
+ * Gets the C# type expression and metadata for a convenience method parameter.
+ *
+ * Unlike protocol methods which unwrap enums to wire types, convenience methods
+ * preserve the original types. Models and enums use TypeExpression for
+ * automatic using directive management. Primitive types use keyword mappings.
+ *
+ * @returns Object containing:
+ *   - expression: The C# type expression (keyword, refkey, or JSX element)
+ *   - needsAssertion: Whether the type requires Argument.Assert* validation
+ *   - isString: Whether the type is string-like (for AssertNotNullOrEmpty)
+ */
+function getConvenienceTypeInfo(type: SdkType): {
+  expression: Children;
+  needsAssertion: boolean;
+  isString: boolean;
+} {
+  const unwrapped = unwrapType(type);
+
+  switch (unwrapped.kind) {
+    // Primitive keywords — value types (no assertion needed)
+    case "int32":
+      return { expression: "int", needsAssertion: false, isString: false };
+    case "int64":
+      return { expression: "long", needsAssertion: false, isString: false };
+    case "float32":
+      return { expression: "float", needsAssertion: false, isString: false };
+    case "float64":
+      return { expression: "double", needsAssertion: false, isString: false };
+    case "boolean":
+      return { expression: "bool", needsAssertion: false, isString: false };
+    case "int8":
+      return { expression: "sbyte", needsAssertion: false, isString: false };
+    case "uint8":
+      return { expression: "byte", needsAssertion: false, isString: false };
+    case "int16":
+      return { expression: "short", needsAssertion: false, isString: false };
+    case "uint16":
+      return { expression: "ushort", needsAssertion: false, isString: false };
+    case "uint32":
+      return { expression: "uint", needsAssertion: false, isString: false };
+    case "uint64":
+      return { expression: "ulong", needsAssertion: false, isString: false };
+    case "decimal":
+      return { expression: "decimal", needsAssertion: false, isString: false };
+
+    // String — reference type
+    case "string":
+      return { expression: "string", needsAssertion: true, isString: true };
+
+    // BCL struct types — value types (no assertion)
+    case "utcDateTime":
+    case "offsetDateTime":
+      return {
+        expression: System.DateTimeOffset,
+        needsAssertion: false,
+        isString: false,
+      };
+    case "duration":
+      return {
+        expression: System.TimeSpan,
+        needsAssertion: false,
+        isString: false,
+      };
+
+    // BCL reference types — need assertion
+    case "url":
+      return { expression: System.Uri, needsAssertion: true, isString: false };
+    case "bytes":
+      return {
+        expression: System.BinaryData,
+        needsAssertion: true,
+        isString: false,
+      };
+
+    // Enum — value type (struct for extensible, enum for fixed)
+    case "enum":
+      return {
+        expression: <TypeExpression type={unwrapped.__raw!} />,
+        needsAssertion: false,
+        isString: false,
+      };
+    case "enumvalue":
+      return {
+        expression: <TypeExpression type={unwrapped.enumType.__raw!} />,
+        needsAssertion: false,
+        isString: false,
+      };
+
+    // Model — reference type (class)
+    case "model":
+      return {
+        expression: <TypeExpression type={unwrapped.__raw!} />,
+        needsAssertion: true,
+        isString: false,
+      };
+
+    // Collection types — reference types
+    case "array":
+    case "dict":
+      return {
+        expression: <TypeExpression type={unwrapped.__raw!} />,
+        needsAssertion: true,
+        isString: false,
+      };
+
+    default:
+      return { expression: "string", needsAssertion: true, isString: true };
+  }
+}
+
+/**
+ * Determines the expression to use for a parameter when calling the protocol method.
+ *
+ * For most types, the parameter is passed as-is. Enum types require conversion:
+ * - String-backed enums: `.ToString()` to get the wire string value
+ * - Int-backed enums: cast to the underlying integer type
+ *
+ * Model body parameters are passed directly — C# implicit operators handle
+ * the conversion from the model type to BinaryContent.
+ */
+function getProtocolCallArg(name: string, type: SdkType): string {
+  const unwrapped = unwrapType(type);
+
+  if (unwrapped.kind === "enum") {
+    const valueKind = unwrapType(unwrapped.valueType).kind;
+    if (valueKind === "string") {
+      return `${name}.ToString()`;
+    }
+    // For integer-backed enums, cast to the underlying type
+    return `(${getIntegerKeyword(valueKind)})${name}`;
+  }
+
+  if (unwrapped.kind === "enumvalue") {
+    return getProtocolCallArg(name, unwrapped.enumType);
+  }
+
+  return name;
+}
+
+/**
+ * Maps an SdkType kind to its C# integer keyword for enum cast expressions.
+ */
+function getIntegerKeyword(kind: string): string {
+  switch (kind) {
+    case "int32":
+      return "int";
+    case "int64":
+      return "long";
+    case "float32":
+      return "float";
+    case "float64":
+      return "double";
+    default:
+      return "int";
+  }
+}
+
+/**
+ * Builds the XML documentation comment block for a convenience method.
+ *
+ * Produces the standard convenience method XML doc format, including:
+ * - Summary description
+ * - Parameter descriptions (with standard CancellationToken text)
+ * - ArgumentNullException for required reference-type params
+ * - ArgumentException for required string params (empty string check)
+ * - ClientResultException for non-success status codes
+ *
+ * @returns An array of strings suitable for rendering as JSX children.
+ */
+function buildConvenienceXmlDoc(
+  description: string,
+  params: ConvenienceParam[],
+  assertableParams: ConvenienceParam[],
+): string[] {
+  const lines: string[] = [];
+
+  // Summary
+  lines.push(`/// <summary> ${description} </summary>`);
+
+  // Parameter docs
+  for (const p of params) {
+    const docContent = p.doc ? ` ${p.doc} ` : "";
+    lines.push(`/// <param name="${p.name}">${docContent}</param>`);
+  }
+  lines.push(
+    `/// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>`,
+  );
+
+  // Exception docs — ArgumentNullException for required reference-type params
+  if (assertableParams.length > 0) {
+    const refs = assertableParams.map((p) => `<paramref name="${p.name}"/>`);
+    lines.push(
+      `/// <exception cref="ArgumentNullException"> ${joinWithOr(refs)} is null. </exception>`,
+    );
+  }
+
+  // ArgumentException for required string params (empty string check)
+  const requiredStringParams = assertableParams.filter((p) => p.isStringType);
+  if (requiredStringParams.length > 0) {
+    const refs = requiredStringParams.map(
+      (p) => `<paramref name="${p.name}"/>`,
+    );
+    lines.push(
+      `/// <exception cref="ArgumentException"> ${joinWithOr(refs)} is an empty string, and was expected to be non-empty. </exception>`,
+    );
+  }
+
+  // ClientResultException — always present
+  lines.push(
+    `/// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>`,
+  );
+
+  // First line has no leading \n; subsequent lines are prefixed with \n
+  return lines.map((line, i) => (i === 0 ? line : `\n${line}`));
+}
+
+/**
+ * Builds parameter validation statements for required reference-type parameters.
+ *
+ * String parameters use Argument.AssertNotNullOrEmpty (checks both null and
+ * empty string), while other reference types use Argument.AssertNotNull.
+ * Value types (enums, integers, etc.) do not need validation.
+ *
+ * @returns An array of validation statement strings, or null if no validation
+ *   is needed.
+ */
+function buildConvenienceValidation(
+  assertableParams: ConvenienceParam[],
+): Children {
+  if (assertableParams.length === 0) return null;
+
+  return assertableParams.map((p, i) => {
+    const assertFn = p.isStringType ? "AssertNotNullOrEmpty" : "AssertNotNull";
+    const line = `Argument.${assertFn}(${p.name}, nameof(${p.name}));`;
+    return i === 0 ? line : `\n${line}`;
+  });
+}
+
+/**
+ * Joins an array of strings with commas and "or" for the last element.
+ *
+ * - 1 item: "A"
+ * - 2 items: "A or B"
+ * - 3+ items: "A, B or C"
+ *
+ * Used for XML doc exception messages listing multiple parameter names.
+ */
+function joinWithOr(items: string[]): string {
+  if (items.length === 1) return items[0];
+  if (items.length === 2) return `${items[0]} or ${items[1]}`;
+  return items.slice(0, -1).join(", ") + " or " + items[items.length - 1];
+}
+
+/**
+ * Strips nullable and constant wrappers from a type to get the underlying type.
+ */
+function unwrapType(type: SdkType): SdkType {
+  if (type.kind === "nullable") {
+    return unwrapType(type.type);
+  }
+  if (type.kind === "constant") {
+    return type.valueType;
+  }
+  return type;
+}
+
+/** Checks if a type is a constant literal value. */
+function isConstantType(type: SdkType): boolean {
+  return type.kind === "constant";
+}
+
+/** Checks if a header parameter is the implicit Content-Type header. */
+function isImplicitContentTypeHeader(param: SdkHeaderParameter): boolean {
+  return param.serializedName.toLowerCase() === "content-type";
+}

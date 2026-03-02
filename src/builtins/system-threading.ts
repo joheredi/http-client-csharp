@@ -34,6 +34,19 @@ export const SystemThreading = createLibrary("System.Threading", {
     kind: "class",
     members: {},
   },
+
+  /**
+   * Propagates notification that operations should be canceled.
+   * Used as the last parameter of convenience methods in generated client
+   * classes, and converted to RequestOptions via the ToRequestOptions()
+   * extension method when delegating to protocol methods.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/system.threading.cancellationtoken
+   */
+  CancellationToken: {
+    kind: "class",
+    members: {},
+  },
 });
 
 /**
