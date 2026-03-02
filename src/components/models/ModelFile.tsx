@@ -5,8 +5,10 @@ import {
   StructDeclaration,
   useCSharpNamePolicy,
 } from "@alloy-js/csharp";
-import { type Children, For } from "@alloy-js/core";
+import { code, type Children, For } from "@alloy-js/core";
 import type { SdkModelType } from "@azure-tools/typespec-client-generator-core";
+import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
+import { System } from "../../builtins/system.js";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { isModelStruct } from "../../utils/model.js";
@@ -90,7 +92,7 @@ export function ModelFile(props: ModelFileProps) {
     <>
       {isRoot && (
         <>
-          {`/// <summary> Keeps track of any properties unknown to the library. </summary>\n${fieldModifier} readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;`}
+          {code`/// <summary> Keeps track of any properties unknown to the library. </summary>\n${fieldModifier} readonly ${SystemCollectionsGeneric.IDictionary}<string, ${System.BinaryData}> _additionalBinaryDataProperties;`}
           {"\n\n"}
         </>
       )}

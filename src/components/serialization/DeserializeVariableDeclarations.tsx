@@ -45,6 +45,7 @@ import type {
   SdkModelType,
 } from "@azure-tools/typespec-client-generator-core";
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
+import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
 import { System } from "../../builtins/system.js";
 import {
   isPropertyNullable,
@@ -137,7 +138,7 @@ export function DeserializeVariableDeclarations(
           return (
             <>
               {"\n    "}
-              {code`IDictionary<string, ${System.BinaryData}> ${ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME} = new ChangeTrackingDictionary<string, ${System.BinaryData}>();`}
+              {code`${SystemCollectionsGeneric.IDictionary}<string, ${System.BinaryData}> ${ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME} = new ChangeTrackingDictionary<string, ${System.BinaryData}>();`}
             </>
           );
         }

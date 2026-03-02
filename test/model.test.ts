@@ -294,6 +294,9 @@ describe("AdditionalBinaryDataPropertiesField", () => {
     expect(content).toContain(
       "private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;",
     );
+    // Using directives auto-generated from refkeys for IDictionary and BinaryData
+    expect(content).toContain("using System;");
+    expect(content).toContain("using System.Collections.Generic;");
     // Doc comment for the field
     expect(content).toContain(
       "/// <summary> Keeps track of any properties unknown to the library. </summary>",

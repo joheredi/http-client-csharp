@@ -1973,3 +1973,23 @@ Added Content-Type sniffing to `ExplicitClientResultOperator` for models support
 
 ### For next iteration
 - Task 2.5.4 (write cast operator tests) can now proceed — most tests already exist, may need additional edge cases
+
+---
+## 2026-03-02 — Task 11.1.1: Add missing using directives in generated model files (complete)
+
+### What was done
+- Created `src/builtins/system-collections-generic.ts` with `IDictionary` library declaration using `createLibrary("System.Collections.Generic", {...})`
+- Updated `src/components/models/ModelFile.tsx` to use `code` template with `SystemCollectionsGeneric.IDictionary` and `System.BinaryData` refkeys instead of raw string for the `_additionalBinaryDataProperties` field declaration
+- Updated `src/components/models/ModelConstructors.tsx` to use refkey-based JSX expression instead of raw string `"IDictionary<string, BinaryData>"` for the serialization constructor parameter type
+- Updated `src/components/serialization/DeserializeVariableDeclarations.tsx` to use `SystemCollectionsGeneric.IDictionary` refkey instead of raw string in the deserialization variable declaration
+- Added test assertions in `test/model.test.ts` for `using System;` and `using System.Collections.Generic;` in model files
+
+### Key design decision
+Used refkeys in `code` templates (Option A) rather than explicit `using` prop on `SourceFile` (Option B). This follows the existing pattern (e.g., `System.BinaryData` refkey) and lets Alloy auto-manage using directives. New builtins follow the project convention: one `createLibrary()` call per namespace in a dedicated file under `src/builtins/`.
+
+### Pattern established
+When types like `IDictionary`, `BinaryData`, etc. appear in raw string literals or `code` templates, always use refkeys from the builtin libraries instead. This triggers Alloy's automatic `using` directive generation. The builtin file naming convention is `system-{namespace-suffix}.ts` (e.g., `system-collections-generic.ts`).
+
+### Notes for next iteration
+- 6 pre-existing test failures remain (4 smoke tests with preprocessor directive issue in AdditionalBinaryDataWrite output, 2 model serialization tests)
+- The smoke test build errors are caused by `#else` preprocessor directive being on the same line as `using` statement in generated serialization code — this is a separate formatting bug

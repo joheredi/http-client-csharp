@@ -53,6 +53,8 @@ import type {
 } from "@azure-tools/typespec-client-generator-core";
 import { UsageFlags } from "@azure-tools/typespec-client-generator-core";
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
+import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
+import { System } from "../../builtins/system.js";
 import {
   isPropertyNullable,
   unwrapNullableType,
@@ -449,7 +451,14 @@ export function buildSerializationParameters(
 
   propParams.push({
     name: ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME,
-    type: "IDictionary<string, BinaryData>",
+    type: (
+      <>
+        {SystemCollectionsGeneric.IDictionary}
+        {"<string, "}
+        {System.BinaryData}
+        {">"}
+      </>
+    ),
   });
 
   return propParams;
