@@ -2219,3 +2219,30 @@ Created `src/components/collection-results/CollectionResultFile.tsx` — the cor
 - Tests verify: while loop, initial request, URI extraction, null check, next request, async variant, GetContinuationToken, convenience variant
 
 **Unblocks:** Tasks 4.3.1 (continuation-token paging), 4.4.1 (paging client methods)
+
+## 2026-03-02 — Task 2.3.12: Implement additional binary data capture (complete)
+
+### What was done
+- Created `src/components/serialization/AdditionalBinaryDataRead.tsx` — a new component that generates the catch-all block in the deserialization foreach loop for unknown JSON properties.
+- Updated `src/emitter.tsx` to pass `<AdditionalBinaryDataRead />` as children to `<PropertyMatchingLoop>`, filling the children slot that was designed for this purpose.
+- Generated pattern: `if (options.Format != "W") { additionalBinaryDataProperties.Add(prop.Name, BinaryData.FromString(prop.Value.GetRawText())); }`
+
+### Bug fixes (pre-existing failures resolved)
+1. **XML-only models incorrectly implementing IJsonModel** — Added `UsageFlags.Json` check in `emitter.tsx` to conditionally render JSON-specific components (JsonModelInterfaceWrite, JsonModelWriteCore, JsonModelInterfaceCreate, JsonModelCreateCore, JsonDeserialize, DeserializationConstructor) only when the model supports JSON. XML-only models now correctly implement only `IPersistableModel<T>`.
+2. **Nested dictionary WriteStartObject count** — Corrected test expectation from 2 to 3 in `test/model-serialization.test.ts`. The correct count is 3: 1 from IJsonModel<T>.Write() + 2 from the nested Record<Record<string>> property.
+3. **Preprocessor directive newline issue in AdditionalBinaryDataWrite** — Fixed `src/components/serialization/AdditionalBinaryDataWrite.tsx` where `\n` inside `code` template literals was not rendering as newlines. Separated newlines into plain strings, keeping `code` templates only for refkey resolution.
+
+### Key design decision
+Created a dedicated `AdditionalBinaryDataRead` component (mirroring the existing `AdditionalBinaryDataWrite`) rather than building the catch-all directly into PropertyMatchingLoop. This follows the existing architecture pattern and uses the children slot that was explicitly designed for this purpose.
+
+### Tests added
+- 3 new tests in `test/model-serialization.test.ts` under `describe("AdditionalBinaryDataRead")`:
+  1. "captures unknown properties with format guard" — verifies `options.Format != "W"` guard and `additionalBinaryDataProperties.Add(...)` call
+  2. "appears after all known property matches" — verifies ordering (catch-all after all `prop.NameEquals` checks)
+  3. "uses BinaryData.FromString for raw text preservation" — verifies the `BinaryData.FromString(prop.Value.GetRawText())` pattern
+
+### Remaining failures
+- 4 smoke test failures remain — caused by missing infrastructure files (task 5.1.5: ClientUriBuilder, ModelSerializationExtensions, CancellationTokenExtensions, ClientPipelineExtensions). NOT related to model serialization.
+
+### Pattern learned
+- The `code` tagged template from `@alloy-js/core` does NOT properly render `\n` escape sequences inside the template literal. Always separate newlines into plain strings (`{"\n    "}`) and keep `code` templates for refkey interpolation only.

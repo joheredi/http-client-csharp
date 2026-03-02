@@ -1375,3 +1375,34 @@ For nested next-link segments, intermediate properties use `?.` (null-conditiona
 - Nested segments: `((ResponseType)result).Nested?.NextLink`
 
 The first segment uses direct `.` access on the cast expression (the response model itself is non-null), while subsequent segments use `?.` because intermediate navigation properties could be null.
+
+## Code template newline gotcha (2026-03-02)
+The `code` tagged template from `@alloy-js/core` does NOT properly render `\n` escape sequences within the template literal. When using `code` templates with refkeys, always separate the newline+indentation into a plain string and keep the `code` template for refkey resolution only.
+
+**Bad (newline lost):**
+```tsx
+{code`\n            using (${SystemTextJson.JsonDocument} document = ...)`}
+```
+
+**Good (newline preserved):**
+```tsx
+{"\n            "}
+{code`using (${SystemTextJson.JsonDocument} document = ...)`}
+```
+
+## XML-only models: conditional JSON rendering (2026-03-02)
+In `emitter.tsx`, JSON-specific serialization components (JsonModelInterfaceWrite, JsonModelWriteCore, JsonModelInterfaceCreate, JsonModelCreateCore, JsonDeserialize, DeserializationConstructor) must be conditionally rendered only when the model supports JSON (`(m.usage & UsageFlags.Json) !== 0`). XML-only models should only get PersistableModel methods and cast operators.
+
+## Smoke test root cause (2026-03-02)
+The 4 smoke test failures (dotnet build) are NOT caused by model serialization bugs. They are caused by missing infrastructure files from task 5.1.5:
+- `ClientUriBuilder` (used in RestClient)
+- `ModelSerializationExtensions` (used in cast operators)
+- `CancellationTokenExtensions.ToRequestOptions()` (used in client convenience methods)
+- `ClientPipelineExtensions.ProcessMessage()/ProcessMessageAsync()` (used in protocol methods)
+
+## Design Decisions
+
+### AdditionalBinaryDataRead component (task 2.3.12)
+**Chosen approach:** Separate `AdditionalBinaryDataRead` component passed as children to `PropertyMatchingLoop`.
+**Rejected approach:** Building the catch-all directly into `PropertyMatchingLoop.tsx`.
+**Reason:** The children slot was explicitly designed for this purpose (JSDoc comment at line 17), and a separate component mirrors the write-side architecture (`AdditionalBinaryDataWrite`). It keeps PropertyMatchingLoop focused on property matching and follows the single-responsibility principle.

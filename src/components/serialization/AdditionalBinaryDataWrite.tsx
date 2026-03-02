@@ -71,9 +71,11 @@ export function AdditionalBinaryDataWrite() {
       {"\n#if NET6_0_OR_GREATER"}
       {"\n            writer.WriteRawValue(item.Value);"}
       {"\n#else"}
-      {code`\n            using (${SystemTextJson.JsonDocument} document = ${SystemTextJson.JsonDocument}.Parse(item.Value))`}
+      {"\n            "}
+      {code`using (${SystemTextJson.JsonDocument} document = ${SystemTextJson.JsonDocument}.Parse(item.Value))`}
       {"\n            {"}
-      {code`\n                ${SystemTextJson.JsonSerializer}.Serialize(writer, document.RootElement);`}
+      {"\n                "}
+      {code`${SystemTextJson.JsonSerializer}.Serialize(writer, document.RootElement);`}
       {"\n            }"}
       {"\n#endif"}
       {"\n        }"}

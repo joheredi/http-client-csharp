@@ -4150,13 +4150,15 @@ describe("DictionarySerialization", () => {
     // Outer dictionary structure
     expect(content).toContain('writer.WritePropertyName("matrix"u8);');
 
-    // Should have two WriteStartObject (outer + inner) and two WriteEndObject
+    // Should have three WriteStartObject (model-level + outer dict + inner dict)
+    // and three WriteEndObject: the IJsonModel<T>.Write() wraps the entire object,
+    // then the outer and inner dictionaries each open/close their own object.
     const startObjCount = (content.match(/writer\.WriteStartObject\(\)/g) || [])
       .length;
     const endObjCount = (content.match(/writer\.WriteEndObject\(\)/g) || [])
       .length;
-    expect(startObjCount).toBe(2);
-    expect(endObjCount).toBe(2);
+    expect(startObjCount).toBe(3);
+    expect(endObjCount).toBe(3);
 
     // Outer loop uses `item`, inner loop uses `item0`
     expect(content).toContain("foreach (var item in Matrix)");
@@ -6355,5 +6357,147 @@ describe("PropertyMatchingLoop", () => {
     );
     expect(content).toContain("dictionary.Add(prop0.Name, dictionary0);");
     expect(content).toContain("nested = dictionary;");
+  });
+});
+
+/**
+ * Tests for the AdditionalBinaryDataRead component (task 2.3.12).
+ *
+ * Validates that the deserialization foreach loop includes a catch-all block after
+ * all known property matches that captures unknown JSON properties into the
+ * `additionalBinaryDataProperties` dictionary. This is the read-side counterpart
+ * to AdditionalBinaryDataWrite.
+ *
+ * These tests matter because:
+ * - Unknown property capture is essential for round-trip serialization fidelity.
+ *   Without it, properties not mapped to the model are silently dropped during
+ *   deserialization and lost when the model is re-serialized.
+ * - The `options.Format != "W"` guard ensures that additional binary data is only
+ *   captured during round-trip deserialization (not wire format), matching the
+ *   write-side guard in AdditionalBinaryDataWrite.
+ * - The catch-all must appear AFTER all property matches in the foreach loop to
+ *   avoid intercepting known properties.
+ */
+describe("AdditionalBinaryDataRead", () => {
+  /**
+   * Validates the basic catch-all pattern: unknown properties are captured via
+   * `BinaryData.FromString(prop.Value.GetRawText())` with a format guard.
+   *
+   * The expected generated code after all property matches:
+   * ```csharp
+   * if (options.Format != "W")
+   * {
+   *     additionalBinaryDataProperties.Add(prop.Name, BinaryData.FromString(prop.Value.GetRawText()));
+   * }
+   * ```
+   */
+  it("captures unknown properties with format guard", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+    const content = outputs[fileKey!];
+
+    // The format guard ensures additional binary data is only captured in round-trip mode
+    expect(content).toContain('if (options.Format != "W")');
+
+    // The catch-all adds unknown properties to the dictionary
+    expect(content).toContain(
+      "additionalBinaryDataProperties.Add(prop.Name, BinaryData.FromString(prop.Value.GetRawText()));",
+    );
+  });
+
+  /**
+   * Validates that the catch-all appears AFTER all known property matches.
+   * The order is critical: known properties must be matched first via
+   * `prop.NameEquals("serializedName"u8)` with `continue`, so the catch-all
+   * only captures truly unknown properties.
+   */
+  it("appears after all known property matches", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        count: int32;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Known property matches must come first
+    const nameMatch = content.indexOf('prop.NameEquals("name"u8)');
+    const countMatch = content.indexOf('prop.NameEquals("count"u8)');
+    const catchAll = content.indexOf(
+      "additionalBinaryDataProperties.Add(prop.Name",
+    );
+
+    expect(nameMatch).toBeGreaterThan(-1);
+    expect(countMatch).toBeGreaterThan(-1);
+    expect(catchAll).toBeGreaterThan(-1);
+
+    // Catch-all must be after all property matches
+    expect(catchAll).toBeGreaterThan(nameMatch);
+    expect(catchAll).toBeGreaterThan(countMatch);
+  });
+
+  /**
+   * Validates that the catch-all uses `BinaryData.FromString()` to preserve the
+   * raw JSON text of unknown properties. This ensures the JSON is stored exactly
+   * as received, enabling lossless round-trip through `AdditionalBinaryDataWrite`.
+   */
+  it("uses BinaryData.FromString for raw text preservation", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // BinaryData.FromString preserves raw JSON text for round-trip fidelity
+    expect(content).toMatch(
+      /additionalBinaryDataProperties\.Add\(prop\.Name,\s*BinaryData\.FromString\(prop\.Value\.GetRawText\(\)\)\)/,
+    );
   });
 });

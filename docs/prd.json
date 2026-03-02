@@ -2353,7 +2353,7 @@
           "title": "Implement additional binary data capture",
           "description": "Unknown properties in the foreach loop go to additionalBinaryDataProperties: `additionalBinaryDataProperties.Add(prop.Name, BinaryData.FromString(prop.Value.GetRawText()))`. Only when options.Format != \"W\".",
           "phase": "phase-2",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "2.3.4"
           ],

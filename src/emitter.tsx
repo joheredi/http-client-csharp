@@ -1,4 +1,4 @@
-import { createSdkContext } from "@azure-tools/typespec-client-generator-core";
+import { createSdkContext, UsageFlags } from "@azure-tools/typespec-client-generator-core";
 import { existsSync } from "fs";
 import { type EmitContext, resolvePath } from "@typespec/compiler";
 import { writeOutput } from "@typespec/emitter-framework";
@@ -27,6 +27,7 @@ import {
 } from "./components/models/ModelConstructors.js";
 import { ModelFile } from "./components/models/ModelFile.js";
 import { UnknownDiscriminatorModelFile } from "./components/models/UnknownDiscriminatorModel.js";
+import { AdditionalBinaryDataRead } from "./components/serialization/AdditionalBinaryDataRead.js";
 import { AdditionalBinaryDataWrite } from "./components/serialization/AdditionalBinaryDataWrite.js";
 import {
   ExplicitClientResultOperator,
@@ -155,37 +156,46 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
           .map((m) => (
             <UnknownDiscriminatorModelFile type={m} options={options} />
           ))}
-        {models.map((m) => (
-          <ModelSerializationFile type={m} options={options}>
-            <JsonModelInterfaceWrite type={m} />
-            {"\n\n"}
-            <JsonModelWriteCore type={m}>
-              {!m.baseModel && <AdditionalBinaryDataWrite />}
-            </JsonModelWriteCore>
-            {"\n\n"}
-            <PersistableModelWriteCore type={m} />
-            {"\n\n"}
-            <PersistableModelCreateCore type={m} />
-            {"\n\n"}
-            <PersistableModelInterfaceMethods type={m} />
-            {"\n\n"}
-            <JsonModelInterfaceCreate type={m} />
-            {"\n\n"}
-            <JsonModelCreateCore type={m} />
-            {"\n\n"}
-            <DeserializationConstructor type={m} />
-            {"\n\n"}
-            <JsonDeserialize type={m}>
-              <DeserializeVariableDeclarations type={m} />
-              <PropertyMatchingLoop type={m} />
-              <DeserializeReturnStatement type={m} />
-            </JsonDeserialize>
-            {"\n\n"}
-            <ImplicitBinaryContentOperator type={m} />
-            {"\n\n"}
-            <ExplicitClientResultOperator type={m} />
-          </ModelSerializationFile>
-        ))}
+        {models.map((m) => {
+          const supportsJson = (m.usage & UsageFlags.Json) !== 0;
+          return (
+            <ModelSerializationFile type={m} options={options}>
+              {supportsJson && <JsonModelInterfaceWrite type={m} />}
+              {supportsJson && "\n\n"}
+              {supportsJson && (
+                <JsonModelWriteCore type={m}>
+                  {!m.baseModel && <AdditionalBinaryDataWrite />}
+                </JsonModelWriteCore>
+              )}
+              {supportsJson && "\n\n"}
+              <PersistableModelWriteCore type={m} />
+              {"\n\n"}
+              <PersistableModelCreateCore type={m} />
+              {"\n\n"}
+              <PersistableModelInterfaceMethods type={m} />
+              {supportsJson && "\n\n"}
+              {supportsJson && <JsonModelInterfaceCreate type={m} />}
+              {supportsJson && "\n\n"}
+              {supportsJson && <JsonModelCreateCore type={m} />}
+              {supportsJson && "\n\n"}
+              {supportsJson && <DeserializationConstructor type={m} />}
+              {supportsJson && "\n\n"}
+              {supportsJson && (
+                <JsonDeserialize type={m}>
+                  <DeserializeVariableDeclarations type={m} />
+                  <PropertyMatchingLoop type={m}>
+                    <AdditionalBinaryDataRead />
+                  </PropertyMatchingLoop>
+                  <DeserializeReturnStatement type={m} />
+                </JsonDeserialize>
+              )}
+              {"\n\n"}
+              <ImplicitBinaryContentOperator type={m} />
+              {"\n\n"}
+              <ExplicitClientResultOperator type={m} />
+            </ModelSerializationFile>
+          );
+        })}
         <ModelFactoryFile
           models={models}
           packageName={packageName}
