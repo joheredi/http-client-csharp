@@ -1114,3 +1114,18 @@ non-undefined, push the literal to ctorArgs and skip the property from factoryPa
 
 The `ctorArgs` array is `Children[]` (not `string[]`) to support enum discriminator refkeys that need
 Alloy to auto-generate `using` directives. Constructor args are joined with `flatMap()` instead of `.join()`.
+
+## Design Decision: Sub-Client Factory Methods (Task 3.2.4)
+
+**Chosen approach:** `SubClientFactoryMethods` helper component within `ClientFile.tsx`.
+- Uses `<Method public virtual>` from `@alloy-js/csharp` for the method declaration
+- Uses `code` template with `SystemThreading.Volatile` and `SystemThreading.Interlocked` refkeys for the body
+- This auto-generates `using System.Threading;` in the file
+
+**Rejected approach:** Separate `SubClientFactoryMethods.tsx` component file — too much indirection for a single-use component that only makes sense within a client class.
+
+**Key pattern:** The method name follows the legacy convention:
+- If child class name ends with "Client" (case-insensitive): `Get{Name}` (avoids double "Client")
+- Otherwise: `Get{Name}Client`
+
+**Builtin pattern:** `SystemThreading` in `src/builtins/system-threading.ts` uses `createLibrary("System.Threading", { Volatile: ..., Interlocked: ... })` — same pattern as other builtins.

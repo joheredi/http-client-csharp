@@ -811,4 +811,217 @@ describe("ClientFile", () => {
     expect(mockingIdx).toBeLessThan(secondaryIdx);
     expect(secondaryIdx).toBeLessThan(primaryIdx);
   });
+
+  /**
+   * Verifies that a root client with sub-clients generates thread-safe lazy
+   * factory methods using the Volatile.Read + Interlocked.CompareExchange pattern.
+   *
+   * This pattern is the standard .NET approach for lock-free lazy initialization:
+   * 1. Volatile.Read checks if the cached field is already set (fast path)
+   * 2. CompareExchange atomically creates a new instance if the field is null
+   * 3. Fallback to the cached field handles the rare race condition
+   *
+   * The method must be `public virtual` to allow mocking and overriding in tests.
+   * The using System.Threading directive must be auto-generated for Volatile/Interlocked.
+   */
+  it("generates sub-client factory methods with thread-safe lazy init", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op testOp(): void;
+
+      @route("/pets")
+      interface PetOperations {
+        @route("/get")
+        @get op getPet(): void;
+      }
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Verify the factory method signature is public virtual with correct return type
+    expect(clientFile).toContain(
+      "public virtual PetOperations GetPetOperationsClient()",
+    );
+
+    // Verify Volatile.Read for fast-path check
+    expect(clientFile).toContain("Volatile.Read(ref _cachedPetOperations)");
+
+    // Verify Interlocked.CompareExchange for atomic lazy creation
+    expect(clientFile).toContain(
+      "Interlocked.CompareExchange(ref _cachedPetOperations, new PetOperations(Pipeline, _endpoint), null)",
+    );
+
+    // Verify fallback to cached field at the end of the null-coalescing chain
+    expect(clientFile).toContain("?? _cachedPetOperations;");
+
+    // Verify using System.Threading directive is auto-generated
+    expect(clientFile).toContain("using System.Threading;");
+
+    // Verify doc comment on the factory method
+    expect(clientFile).toContain(
+      "/// <summary> Initializes a new instance of PetOperations. </summary>",
+    );
+  });
+
+  /**
+   * Verifies that multiple sub-clients each get their own factory method.
+   * When a service has multiple operation groups, the root client must
+   * provide an accessor for each one with independent caching fields.
+   *
+   * This ensures the emitter handles the client.children array correctly
+   * and generates one factory method per child.
+   */
+  it("generates factory methods for multiple sub-clients", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op testOp(): void;
+
+      @route("/pets")
+      interface PetOperations {
+        @route("/get")
+        @get op getPet(): void;
+      }
+
+      @route("/users")
+      interface UserOperations {
+        @route("/get")
+        @get op getUser(): void;
+      }
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Both factory methods should be generated
+    expect(clientFile).toContain(
+      "public virtual PetOperations GetPetOperationsClient()",
+    );
+    expect(clientFile).toContain(
+      "public virtual UserOperations GetUserOperationsClient()",
+    );
+
+    // Each should have its own caching field and Volatile.Read
+    expect(clientFile).toContain("Volatile.Read(ref _cachedPetOperations)");
+    expect(clientFile).toContain("Volatile.Read(ref _cachedUserOperations)");
+  });
+
+  /**
+   * Verifies that sub-clients do NOT generate factory methods for the
+   * parent client. Factory methods are only generated for child clients,
+   * not for the parent-child reverse relationship.
+   *
+   * Sub-clients should not have any factory methods unless they themselves
+   * have nested children.
+   */
+  it("does not generate factory methods on sub-clients without children", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op testOp(): void;
+
+      @route("/pets")
+      interface PetOperations {
+        @route("/get")
+        @get op getPet(): void;
+      }
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const subFile = outputs["src/Generated/PetOperations.cs"];
+    expect(subFile).toBeDefined();
+
+    // Sub-client without children should NOT have factory methods
+    expect(subFile).not.toContain("GetPetOperationsClient");
+    expect(subFile).not.toContain("Volatile.Read");
+    expect(subFile).not.toContain("Interlocked.CompareExchange");
+  });
+
+  /**
+   * Verifies the factory method naming convention matches the legacy emitter:
+   * - If the sub-client class name does NOT end with "Client", append "Client"
+   *   to the method name (e.g., "PetOperations" → "GetPetOperationsClient")
+   * - This avoids confusion and makes the accessor discoverable via IntelliSense.
+   *
+   * The legacy emitter also handles the case where a name already ends with
+   * "Client" (e.g., "Get{Name}" without doubling), but that case is rare
+   * since TCGC typically names operation groups without the "Client" suffix.
+   */
+  it("factory method name appends Client suffix correctly", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op testOp(): void;
+
+      @route("/metrics")
+      interface Metrics {
+        @route("/get")
+        @get op getMetrics(): void;
+      }
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // "Metrics" doesn't end with "Client", so the method should be "GetMetricsClient"
+    expect(clientFile).toContain("public virtual Metrics GetMetricsClient()");
+  });
+
+  /**
+   * Verifies that factory methods appear after the Pipeline property
+   * in the generated client class. This ensures the class member ordering
+   * follows the legacy emitter's convention where accessors and methods
+   * come after properties and constructors.
+   */
+  it("factory methods appear after Pipeline property", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op testOp(): void;
+
+      @route("/pets")
+      interface PetOperations {
+        @route("/get")
+        @get op getPet(): void;
+      }
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    const pipelineIdx = clientFile.indexOf(
+      "public ClientPipeline Pipeline { get; }",
+    );
+    const factoryIdx = clientFile.indexOf("GetPetOperationsClient");
+
+    expect(pipelineIdx).toBeGreaterThan(-1);
+    expect(factoryIdx).toBeGreaterThan(-1);
+    expect(pipelineIdx).toBeLessThan(factoryIdx);
+  });
 });

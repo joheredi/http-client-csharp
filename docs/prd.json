@@ -2828,7 +2828,7 @@
           "title": "Implement sub-client factory methods",
           "description": "Generate thread-safe lazy sub-client accessors using Volatile.Read + Interlocked.CompareExchange pattern. See ClientProvider lines 844-927.",
           "phase": "phase-3",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "3.2.1"
           ],

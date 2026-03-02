@@ -1,6 +1,7 @@
 import {
   ClassDeclaration,
   Field,
+  Method,
   Namespace,
   Property,
   SourceFile,
@@ -17,6 +18,7 @@ import {
   SystemClientModel,
   SystemClientModelPrimitives,
 } from "../../builtins/system-client-model.js";
+import { SystemThreading } from "../../builtins/system-threading.js";
 import { System } from "../../builtins/system.js";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import {
@@ -259,6 +261,7 @@ export function ClientFile(props: ClientFileProps) {
             get
           />
           {props.children}
+          <SubClientFactoryMethods children={children} />
         </ClassDeclaration>
       </Namespace>
     </SourceFile>
@@ -479,4 +482,71 @@ function buildPipelineCreateLine(
   }
 
   return code`Pipeline = ${SCP.ClientPipeline}.Create(options, Array.Empty<${SCP.PipelinePolicy}>(), new ${SCP.PipelinePolicy}[] { ${userAgent} }, Array.Empty<${SCP.PipelinePolicy}>());`;
+}
+
+/**
+ * Props for the {@link SubClientFactoryMethods} component.
+ */
+interface SubClientFactoryMethodsProps {
+  /** The child clients for which to generate factory accessor methods. */
+  children: SdkClientType<SdkHttpOperation>[];
+}
+
+/**
+ * Generates thread-safe lazy sub-client factory methods.
+ *
+ * For each child client, produces a `public virtual` method following the pattern:
+ * ```csharp
+ * public virtual PetOperations GetPetOperationsClient()
+ * {
+ *     return Volatile.Read(ref _cachedPetOperations)
+ *         ?? Interlocked.CompareExchange(ref _cachedPetOperations,
+ *              new PetOperations(Pipeline, _endpoint), null)
+ *         ?? _cachedPetOperations;
+ * }
+ * ```
+ *
+ * The method name follows the legacy emitter's naming convention:
+ * - If the child class name ends with "Client": `Get{Name}` (avoids "GetXxxClientClient")
+ * - Otherwise: `Get{Name}Client`
+ *
+ * Thread safety is achieved via `Volatile.Read` + `Interlocked.CompareExchange`:
+ * 1. `Volatile.Read` checks if the cached field is already set (fast path)
+ * 2. `CompareExchange` atomically creates and caches a new instance if null
+ * 3. Fall through to the cached field handles the race condition where another
+ *    thread won the CompareExchange
+ *
+ * @see ClientProvider.BuildMethods in the legacy emitter (lines 844-927)
+ */
+function SubClientFactoryMethods(props: SubClientFactoryMethodsProps) {
+  const namePolicy = useCSharpNamePolicy();
+  const { children } = props;
+
+  if (children.length === 0) {
+    return null;
+  }
+
+  return (
+    <>
+      {children.map((child) => {
+        const childName = namePolicy.getName(child.name, "class");
+        const methodName = childName.toLowerCase().endsWith("client")
+          ? `Get${childName}`
+          : `Get${childName}Client`;
+        const cachedFieldName = `_cached${childName}`;
+        const childRef = refkey(child);
+
+        return (
+          <>
+            {"\n\n"}
+            {`/// <summary> Initializes a new instance of ${childName}. </summary>`}
+            {"\n"}
+            <Method public virtual name={methodName} returns={childRef}>
+              {code`return ${SystemThreading.Volatile}.Read(ref ${cachedFieldName}) ?? ${SystemThreading.Interlocked}.CompareExchange(ref ${cachedFieldName}, new ${childRef}(Pipeline, _endpoint), null) ?? ${cachedFieldName};`}
+            </Method>
+          </>
+        );
+      })}
+    </>
+  );
 }

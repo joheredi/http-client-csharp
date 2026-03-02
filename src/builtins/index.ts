@@ -14,6 +14,7 @@
  * ```
  */
 export { System } from "./system.js";
+export { SystemThreading } from "./system-threading.js";
 export { SystemTextJson } from "./system-text-json.js";
 export {
   SystemClientModel,

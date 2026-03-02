@@ -1687,3 +1687,26 @@ Key pattern: The discriminator detection check is `p.discriminator === true` fol
 Test added: `excludes discriminator from factory params for derived models` — verifies Cat's factory method signature excludes `kind`, injects `"cat"` literal, while Pet's method correctly keeps `kind`.
 
 Pre-existing failures: 4 smoke tests (dotnet build config), 2 model-serialization tests (unrelated).
+
+## 2026-03-02 — Task 3.2.4: Implement sub-client factory methods (complete)
+
+**What was done:** Generated thread-safe lazy sub-client factory methods on client classes using the `Volatile.Read` + `Interlocked.CompareExchange` pattern.
+
+**Files created:**
+- `src/builtins/system-threading.ts` — New Alloy library declaration for `System.Threading.Volatile` and `System.Threading.Interlocked`
+
+**Files modified:**
+- `src/builtins/index.ts` — Exported new `SystemThreading` builtin
+- `src/components/clients/ClientFile.tsx` — Added `SubClientFactoryMethods` component that generates `GetXxxClient()` methods for each child client
+- `test/client-file.test.ts` — Added 5 tests: thread-safe init, multiple sub-clients, no factory on leaf sub-clients, Client suffix naming, ordering
+
+**Pattern used:**
+- Created `SubClientFactoryMethods` helper component within `ClientFile.tsx` (same pattern as `RootClientConstructors`)
+- Used `code` template with `${SystemThreading.Volatile}` and `${SystemThreading.Interlocked}` refkeys to auto-generate `using System.Threading;`
+- Method naming: `Get{ChildName}Client` unless child already ends with "Client"
+- Factory methods placed after Pipeline property and `{props.children}` slot
+
+**Key learnings:**
+- Alloy's `createLibrary()` auto-generates `using` directives when library types are referenced via `code` templates
+- `<Method>` component from `@alloy-js/csharp` supports `public virtual` modifiers and `returns` prop for refkey return types
+- Field names with private naming policy auto-prefix `_`, so `cached${childName}` in `<Field>` becomes `_cached${childName}` in generated C#
