@@ -54,7 +54,7 @@ Before writing any code, do a design review using subagents:
 
 1. Identify at least **2 viable approaches** for implementing the task.
 2. For each approach, evaluate against these criteria (in priority order):
-   - **Output consistency with the legacy emitter** — the generated code must match the legacy emitter's public API surface. This is the top priority.
+   - **Output consistency with the legacy emitter** — the generated code must match the legacy emitter's public API surface. This is the top priority. The generated test projects in `submodules/typespec/packages/http-client-csharp/generator/TestProjects/` (Spector and Local) are the **ground truth**. Trust them over static analysis or reading legacy emitter source code. Always let the generated output in `src/Generated/` be the final arbiter.
    - **Idiomatic Alloy** — follows patterns from `submodules/flight-instructor/src/csharp` and `docs/alloy-csharp-guide.md` (refkeys, `code` templates, `<For>`, no string concatenation, no manual imports).
    - **Completeness** — covers all edge cases visible in the legacy implementation.
    - **Simplicity** — fewer moving parts, less indirection, easier for future loops to understand.
