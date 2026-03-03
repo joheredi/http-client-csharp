@@ -2973,3 +2973,15 @@ correctly for CreateRequest method signatures. The refkey `SystemCollectionsGene
 auto-generates the `using System.Collections.Generic;` directive.
 
 Result: 1006 tests pass (1004 baseline + 2 new). Build and lint clean.
+
+## 2026-03-03 — Pre-existing test failure detected: collection_format.md (task 10.1.4c created)
+
+**Found 2 pre-existing test failures in collection_format.md before starting task 10.1.4b.**
+
+The previous commit (da0bde3, task 10.1.4a) changed array parameters to use `IEnumerable<T>` in protocol and convenience methods but did not update the test scenario expectations in `test/scenarios/parameters/collection_format.md`. The scenario expects `string colors` but the emitter now correctly generates `IEnumerable<string> colors` for array parameters.
+
+**Failing tests:**
+- `parameters/collection_format.md > Query.cs class Query`
+- `parameters/collection_format.md > Header.cs class Header`
+
+**Action:** Created task 10.1.4c to fix the test expectations. Per project rules, did not proceed with task 10.1.4b.
