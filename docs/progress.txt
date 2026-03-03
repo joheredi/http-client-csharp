@@ -2985,3 +2985,19 @@ The previous commit (da0bde3, task 10.1.4a) changed array parameters to use `IEn
 - `parameters/collection_format.md > Header.cs class Header`
 
 **Action:** Created task 10.1.4c to fix the test expectations. Per project rules, did not proceed with task 10.1.4b.
+
+## Task 10.1.4c: Fix collection_format.md test expectations for IEnumerable<T> (2026-03-03)
+
+**What was done:**
+- Updated test/scenarios/parameters/collection_format.md to use `IEnumerable<string>` instead of `string[]` for convenience method parameters and instead of `string` for protocol method parameters
+- This aligns with the legacy emitter's ground truth (Spector TestProjects) which uses `IEnumerable<string>` for all collection format operations
+- Updated formatting for async methods that exceeded line length after the type change (SsvAsync, CsvAsync in Query.cs; CsvAsync in Header.cs) — these now use multi-line parameter formatting
+
+**Changes:**
+- `test/scenarios/parameters/collection_format.md` — Updated all 20 method signatures across Query.cs and Header.cs test expectations
+
+**Patterns:**
+- The IEnumerable<T> change was introduced by task 10.1.4a but the collection_format scenario expectations were not updated at that time
+- When IEnumerable<string> makes an async method signature exceed the line length threshold, Alloy wraps parameters to multi-line format
+
+**All 1059 tests pass.**

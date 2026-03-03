@@ -113,7 +113,7 @@ public partial class Query
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="colors"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult Multi(string[] colors, CancellationToken cancellationToken = default)
+        public virtual ClientResult Multi(IEnumerable<string> colors, CancellationToken cancellationToken = default)
         {
             Argument.AssertNotNull(colors, nameof(colors));
 
@@ -126,7 +126,7 @@ public partial class Query
         /// <exception cref="ArgumentNullException"> <paramref name="colors"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         public virtual async Task<ClientResult> MultiAsync(
-            string[] colors,
+            IEnumerable<string> colors,
             CancellationToken cancellationToken = default
         )
         {
@@ -140,7 +140,7 @@ public partial class Query
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="colors"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult Ssv(string[] colors, CancellationToken cancellationToken = default)
+        public virtual ClientResult Ssv(IEnumerable<string> colors, CancellationToken cancellationToken = default)
         {
             Argument.AssertNotNull(colors, nameof(colors));
 
@@ -152,7 +152,10 @@ public partial class Query
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="colors"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async Task<ClientResult> SsvAsync(string[] colors, CancellationToken cancellationToken = default)
+        public virtual async Task<ClientResult> SsvAsync(
+            IEnumerable<string> colors,
+            CancellationToken cancellationToken = default
+        )
         {
             Argument.AssertNotNull(colors, nameof(colors));
 
@@ -164,7 +167,7 @@ public partial class Query
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="colors"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult Pipes(string[] colors, CancellationToken cancellationToken = default)
+        public virtual ClientResult Pipes(IEnumerable<string> colors, CancellationToken cancellationToken = default)
         {
             Argument.AssertNotNull(colors, nameof(colors));
 
@@ -177,7 +180,7 @@ public partial class Query
         /// <exception cref="ArgumentNullException"> <paramref name="colors"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         public virtual async Task<ClientResult> PipesAsync(
-            string[] colors,
+            IEnumerable<string> colors,
             CancellationToken cancellationToken = default
         )
         {
@@ -191,7 +194,7 @@ public partial class Query
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="colors"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult Csv(string[] colors, CancellationToken cancellationToken = default)
+        public virtual ClientResult Csv(IEnumerable<string> colors, CancellationToken cancellationToken = default)
         {
             Argument.AssertNotNull(colors, nameof(colors));
 
@@ -203,7 +206,10 @@ public partial class Query
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="colors"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async Task<ClientResult> CsvAsync(string[] colors, CancellationToken cancellationToken = default)
+        public virtual async Task<ClientResult> CsvAsync(
+            IEnumerable<string> colors,
+            CancellationToken cancellationToken = default
+        )
         {
             Argument.AssertNotNull(colors, nameof(colors));
 
@@ -223,7 +229,7 @@ public partial class Query
         /// <exception cref="ArgumentNullException"> <paramref name="colors"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual ClientResult Multi(string colors, RequestOptions options)
+        public virtual ClientResult Multi(IEnumerable<string> colors, RequestOptions options)
         {
             Argument.AssertNotNull(colors, nameof(colors));
 
@@ -244,7 +250,7 @@ public partial class Query
         /// <exception cref="ArgumentNullException"> <paramref name="colors"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async Task<ClientResult> MultiAsync(string colors, RequestOptions options)
+        public virtual async Task<ClientResult> MultiAsync(IEnumerable<string> colors, RequestOptions options)
         {
             Argument.AssertNotNull(colors, nameof(colors));
 
@@ -265,7 +271,7 @@ public partial class Query
         /// <exception cref="ArgumentNullException"> <paramref name="colors"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual ClientResult Ssv(string colors, RequestOptions options)
+        public virtual ClientResult Ssv(IEnumerable<string> colors, RequestOptions options)
         {
             Argument.AssertNotNull(colors, nameof(colors));
 
@@ -286,7 +292,7 @@ public partial class Query
         /// <exception cref="ArgumentNullException"> <paramref name="colors"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async Task<ClientResult> SsvAsync(string colors, RequestOptions options)
+        public virtual async Task<ClientResult> SsvAsync(IEnumerable<string> colors, RequestOptions options)
         {
             Argument.AssertNotNull(colors, nameof(colors));
 
@@ -307,7 +313,7 @@ public partial class Query
         /// <exception cref="ArgumentNullException"> <paramref name="colors"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual ClientResult Pipes(string colors, RequestOptions options)
+        public virtual ClientResult Pipes(IEnumerable<string> colors, RequestOptions options)
         {
             Argument.AssertNotNull(colors, nameof(colors));
 
@@ -328,7 +334,7 @@ public partial class Query
         /// <exception cref="ArgumentNullException"> <paramref name="colors"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async Task<ClientResult> PipesAsync(string colors, RequestOptions options)
+        public virtual async Task<ClientResult> PipesAsync(IEnumerable<string> colors, RequestOptions options)
         {
             Argument.AssertNotNull(colors, nameof(colors));
 
@@ -349,7 +355,7 @@ public partial class Query
         /// <exception cref="ArgumentNullException"> <paramref name="colors"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual ClientResult Csv(string colors, RequestOptions options)
+        public virtual ClientResult Csv(IEnumerable<string> colors, RequestOptions options)
         {
             Argument.AssertNotNull(colors, nameof(colors));
 
@@ -370,7 +376,7 @@ public partial class Query
         /// <exception cref="ArgumentNullException"> <paramref name="colors"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async Task<ClientResult> CsvAsync(string colors, RequestOptions options)
+        public virtual async Task<ClientResult> CsvAsync(IEnumerable<string> colors, RequestOptions options)
         {
             Argument.AssertNotNull(colors, nameof(colors));
 
@@ -409,7 +415,7 @@ public partial class Header
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="colors"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult Csv(string[] colors, CancellationToken cancellationToken = default)
+        public virtual ClientResult Csv(IEnumerable<string> colors, CancellationToken cancellationToken = default)
         {
             Argument.AssertNotNull(colors, nameof(colors));
 
@@ -421,7 +427,10 @@ public partial class Header
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="colors"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async Task<ClientResult> CsvAsync(string[] colors, CancellationToken cancellationToken = default)
+        public virtual async Task<ClientResult> CsvAsync(
+            IEnumerable<string> colors,
+            CancellationToken cancellationToken = default
+        )
         {
             Argument.AssertNotNull(colors, nameof(colors));
 
@@ -441,7 +450,7 @@ public partial class Header
         /// <exception cref="ArgumentNullException"> <paramref name="colors"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual ClientResult Csv(string colors, RequestOptions options)
+        public virtual ClientResult Csv(IEnumerable<string> colors, RequestOptions options)
         {
             Argument.AssertNotNull(colors, nameof(colors));
 
@@ -462,7 +471,7 @@ public partial class Header
         /// <exception cref="ArgumentNullException"> <paramref name="colors"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async Task<ClientResult> CsvAsync(string colors, RequestOptions options)
+        public virtual async Task<ClientResult> CsvAsync(IEnumerable<string> colors, RequestOptions options)
         {
             Argument.AssertNotNull(colors, nameof(colors));
 

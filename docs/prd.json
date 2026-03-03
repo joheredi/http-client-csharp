@@ -4208,7 +4208,7 @@
           "id": "10.1.4c",
           "title": "Fix collection_format.md test expectations for IEnumerable<T>",
           "description": "The previous task (10.1.4a) changed array parameters to use IEnumerable<T> in protocol and convenience methods, but did not update the test/scenarios/parameters/collection_format.md scenario file. The scenario expects string for array params (e.g., string colors) but the emitter now correctly generates IEnumerable<string> colors. Update the test expectations to match. Two failing tests: Query.cs and Header.cs in collection_format.md.",
-          "status": "pending",
+          "status": "done",
           "phase": "phase-10",
           "dependencies": [
             "10.1.4"
