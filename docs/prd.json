@@ -3615,7 +3615,7 @@
           "title": "Implement unreferenced type handling",
           "description": "Implement the unreferenced-types-handling emitter option logic. When set to 'removeOrInternalize', types not referenced by any client operation should be removed or internalized. When set to 'internalize', unreferenced types get internal access. When set to 'keepAll', all types are emitted. This requires building a reference graph from client operations to types and walking it to determine reachability. The legacy generator uses Roslyn's SymbolFinder for BFS traversal from root types.",
           "phase": "phase-5",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "0.1.1",
             "1.2.1",

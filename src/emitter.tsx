@@ -61,6 +61,7 @@ import { $lib } from "./lib.js";
 import { type CSharpEmitterOptions, resolveOptions } from "./options.js";
 import { getAllClients } from "./utils/clients.js";
 import { resolvePackageName } from "./utils/package-name.js";
+import { applyUnreferencedTypeHandling } from "./utils/unreferenced-types.js";
 
 /**
  * TypeSpec emitter entry point for the C# HTTP client generator.
@@ -95,10 +96,18 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
   }
 
   // Render the JSX component tree and write generated C# files to disk
-  const fixedEnums = sdkContext.sdkPackage.enums.filter((e) => e.isFixed);
-  const extensibleEnums = sdkContext.sdkPackage.enums.filter((e) => !e.isFixed);
-  const models = sdkContext.sdkPackage.models;
   const clients = sdkContext.sdkPackage.clients;
+
+  // Apply unreferenced-types-handling option to filter or internalize
+  // types that are not reachable from any client operation signature
+  const { models, enums } = applyUnreferencedTypeHandling(
+    sdkContext.sdkPackage.models,
+    sdkContext.sdkPackage.enums,
+    clients,
+    options["unreferenced-types-handling"],
+  );
+  const fixedEnums = enums.filter((e) => e.isFixed);
+  const extensibleEnums = enums.filter((e) => !e.isFixed);
   const allClients = getAllClients(clients);
 
   // Resolve the package name for the generated library

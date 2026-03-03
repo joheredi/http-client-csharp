@@ -2748,3 +2748,25 @@ Total: 18 new scenario tests, all passing. DogKind struct excluded because tree-
 - Constructor access modifier order `protected private` vs `private protected`
 
 These differences are tracked for future resolution.
+
+## 2026-03-03 — Task 5.4.2: Implement unreferenced type handling (complete)
+
+Created `src/utils/unreferenced-types.ts` with type reachability analysis:
+- `extractModelOrEnumTypes(type)` — unwraps container types (arrays, dicts, nullables, unions) to extract leaf model/enum types
+- `getDirectReferences(model)` — collects immediate type references from a model (properties, base model, discriminated subtypes, additional properties)
+- `collectRootTypes(clients)` — extracts all model/enum types from operation signatures (method params, responses, exceptions) AND operation-level responses/exceptions
+- `findReachableTypes(roots)` — BFS from root types through the reference graph
+- `applyUnreferencedTypeHandling(models, enums, clients, option)` — main entry point that applies the option
+
+Updated `src/options.ts`:
+- Added `"unreferenced-types-handling": "removeOrInternalize"` to defaultOptions
+
+Updated `src/emitter.tsx`:
+- Calls `applyUnreferencedTypeHandling()` before passing types to components
+- Moved `clients` extraction before models/enums to pass to the handler
+
+Key learnings:
+- For paging methods, `method.response.type` is the ITEM type (e.g., `Thing`), not the page wrapper type (e.g., `PageThing`). Must also collect types from `method.operation.responses` to get page wrapper models.
+- `SdkMethod` in current TCGC version equals `SdkServiceMethod` — no `SdkClientAccessor` kind exists. All methods have `parameters`, `response`, and `operation`.
+- TCGC already filters sdkPackage.models to types reachable from operations, so in practice the unreferenced-types-handling mainly serves as a safety net. But the implementation correctly handles cases where types might be unreachable.
+- Tests use mock TCGC types (not full TypeSpec compilation) for unit testing the reference graph logic.

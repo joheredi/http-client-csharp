@@ -187,6 +187,7 @@ export const defaultOptions: Required<
     | "api-version"
     | "generate-protocol-methods"
     | "generate-convenience-methods"
+    | "unreferenced-types-handling"
     | "new-project"
     | "save-inputs"
   >
@@ -194,6 +195,7 @@ export const defaultOptions: Required<
   "api-version": "latest",
   "generate-protocol-methods": true,
   "generate-convenience-methods": true,
+  "unreferenced-types-handling": "removeOrInternalize",
   "new-project": false,
   "save-inputs": false,
 };
@@ -202,8 +204,9 @@ export const defaultOptions: Required<
  * Emitter options with defaults applied for fields that have default values.
  *
  * Fields covered by {@link defaultOptions} (`api-version`,
- * `generate-protocol-methods`, `generate-convenience-methods`, `new-project`,
- * `save-inputs`) are guaranteed to be present. All other fields remain optional.
+ * `generate-protocol-methods`, `generate-convenience-methods`,
+ * `unreferenced-types-handling`, `new-project`, `save-inputs`) are
+ * guaranteed to be present. All other fields remain optional.
  */
 export type ResolvedCSharpEmitterOptions = typeof defaultOptions &
   CSharpEmitterOptions;

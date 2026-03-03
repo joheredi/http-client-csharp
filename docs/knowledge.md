@@ -1629,3 +1629,19 @@ The scenario test framework's tree-sitter C# extractor only supports extracting 
 3. **Discriminator enum access modifiers**: Emitter produces `public` access for `DogKind` struct and `SnakeKind` enum, while golden files use `internal` access for discriminator enums.
 
 4. **Constructor access modifier order**: Emitter produces `protected private` while golden files use `private protected`. Both are semantically identical in C# but the order differs.
+
+### Paging method response type is the item type, not the page wrapper
+
+For `SdkPagingServiceMethod`, `method.response.type` returns the individual item type (e.g., `Thing`), NOT the page wrapper model (e.g., `PageThing`). To get the page wrapper, you must inspect `method.operation.responses[].type`. This is critical when doing type reachability analysis — missing the operation-level responses will cause page wrapper models to be classified as unreachable and removed/internalized.
+
+### SdkMethod has no clientaccessor kind in current TCGC version
+
+`SdkMethod<T> = SdkServiceMethod<T>` — there is no `SdkClientAccessor` variant. All methods in `client.methods` are service methods with `kind: "basic" | "paging" | "lro" | "lropaging"`. All have `parameters`, `response`, and `operation` properties. Do not check for `kind === "clientaccessor"`.
+
+### Operation-level types complement method-level types
+
+When collecting all types used by an operation, check BOTH:
+1. Method-level: `method.parameters[].type`, `method.response.type`, `method.exception.type`
+2. Operation-level: `method.operation.bodyParam.type`, `method.operation.responses[].type`, `method.operation.exceptions[].type`
+
+The method-level types represent the SDK API surface (what users see), while operation-level types include internal types like page wrappers that are still emitted as C# models.
