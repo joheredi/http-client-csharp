@@ -2638,3 +2638,30 @@ LRO methods share the same generation pipeline as basic methods. No separate LRO
   - Preprocessor directives, InvariantCulture usage
 - **Gotcha**: TypeSpec multipart tests need `using TypeSpec.Http;` even with HttpTester to resolve `@header`, `@multipartBody`, `HttpPart`
 - All 915 tests pass (9 new)
+
+2026-03-03 — Task 10.1.1: Validate authentication scenarios (complete)
+
+Created 5 scenario tests under test/scenarios/authentication/:
+- api_key_auth.md — API Key auth with ApiKeyCredential constructors
+- oauth2_auth.md — OAuth2 auth with AuthenticationTokenProvider constructors
+- custom_http_auth.md — Custom HTTP auth (SharedAccessKey scheme)
+- union_auth.md — Union auth (API Key | OAuth2)
+- noauth_union.md — NoAuth | OAuth2 union auth
+
+Each scenario validates the full client class output including fields, constructors,
+convenience methods, and protocol methods using tree-sitter snippet extraction.
+
+Key findings from comparison with Spector golden files:
+- No per-client ClientOptions class generated (uses ClientPipelineOptions directly)
+- No default endpoint convenience constructors (requires explicit Uri endpoint)
+- Union auth generates combined constructor instead of separate overloads
+- Custom HTTP auth scheme not recognized (no credential parameter generated)
+- No ModelReaderWriterContext class for auth-only scenarios
+- Union auth only applies first auth policy to pipeline
+
+These are documented in knowledge.md for future fix tasks. The scenario tests
+validate current emitter behavior as regression tests.
+
+Pattern: Used SCENARIOS_UPDATE=true to auto-populate expected output after
+writing TypeSpec input in markdown files. This is the fastest way to create
+new scenario tests.

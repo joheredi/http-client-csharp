@@ -1563,3 +1563,19 @@ The `MultiPartFormDataBinaryContentFile` component uses `useEmitterContext().has
 **Chosen approach:** Plain string body inside `<ClassDeclaration baseType="BinaryContent">`, matching the BinaryContentHelperFile.tsx pattern. The class content is static (no TypeSpec-dependent parts), and preprocessor directives require plain strings per the documented gotcha.
 
 **Rejected approach:** Full Alloy components (Method, Property, etc.) — too complex for static content, preprocessor directives problematic with Alloy component indentation, no benefit since content doesn't vary with TypeSpec input.
+
+## Validation: Authentication Scenarios (task 10.1.1)
+
+### Differences from Spector golden files
+
+1. **No per-client `ClientOptions` class**: Our emitter uses `ClientPipelineOptions` directly. The legacy emitter generates `ApiKeyClientOptions : ClientPipelineOptions` per client. Future task needed to add custom options class generation.
+
+2. **No default endpoint convenience constructors**: Our emitter requires explicit `Uri endpoint` parameter. The legacy emitter generates convenience constructors with hardcoded default endpoints (e.g., `http://localhost:3000`). Likely depends on `@server` decorator handling.
+
+3. **Union auth: combined constructor instead of separate overloads**: Our emitter generates one constructor taking both `ApiKeyCredential` AND `AuthenticationTokenProvider`. The legacy emitter generates SEPARATE constructors for each auth type so users can choose one. This is a public API surface difference.
+
+4. **Custom HTTP auth (`SharedAccessKey` scheme) not recognized**: TypeSpec `@useAuth({type: AuthType.http, scheme: "SharedAccessKey"})` produces no credential parameter. The legacy emitter maps non-bearer HTTP auth to `ApiKeyCredential`. Our `getAuthInfo()` in `client-params.ts` doesn't handle anonymous `HttpAuth` object patterns.
+
+5. **No `ModelReaderWriterContext` class for auth-only scenarios**: The legacy emitter generates empty context classes (e.g., `AuthenticationApiKeyContext.cs`). Our emitter skips context generation when there are no serializable models.
+
+6. **Union auth only applies first auth policy**: In the union (api-key + oauth2) scenario, our emitter only adds the ApiKeyAuthenticationPolicy to the pipeline, not the BearerTokenAuthenticationPolicy. The legacy emitter applies both policies or selects based on constructor used.

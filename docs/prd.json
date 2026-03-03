@@ -3965,7 +3965,7 @@
           "title": "Validate authentication scenarios",
           "description": "Compare output against Spector authentication golden files: api-key, oauth2, union, noauth, custom.",
           "phase": "phase-10",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "3.2.5"
           ],
