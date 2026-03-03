@@ -2726,3 +2726,25 @@ Fixed `detectMultipartOperations()` in `HttpClientCSharpOutput.tsx` — it only 
 ### Testing notes
 - Async method signatures wrap across multiple lines in generated C# — use fragment matching (e.g., `toContain("public virtual async Task<ClientResult> UploadAsync(")`) instead of full signature matching
 - All 938 tests pass (928 baseline + 10 new), build and lint clean
+
+## 2026-03-03 — Task 10.1.2: Validate model scenarios (complete)
+
+Created 4 scenario test files in `test/scenarios/models/` that validate model generation against Spector patterns:
+
+1. **model_usage.md** — Tests InputRecord (input-only → public ctor, read-only), OutputRecord (output-only → internal ctor, read-only), InputOutputRecord (both → public ctor, read-write). 3 tests.
+
+2. **not_discriminated_inheritance.md** — Tests Pet → Cat → Siamese 3-level inheritance hierarchy. 3 tests.
+
+3. **single_discriminator.md** — Tests Bird abstract base with string discriminator, SeaGull/Sparrow/Eagle derived classes, UnknownBird fallback. Tests recursive polymorphic references on Eagle (Bird[], IDictionary<string, Bird>, Bird?). 5 tests.
+
+4. **enum_discriminator.md** — Tests Dog/Golden with extensible enum DogKind, Snake/Cobra with fixed enum SnakeKind, UnknownDog/UnknownSnake fallbacks. 7 tests.
+
+Total: 18 new scenario tests, all passing. DogKind struct excluded because tree-sitter scenario extractor doesn't support struct_declaration node type.
+
+**Documented known differences from Spector golden files in knowledge.md:**
+- Derived constructors don't include ancestor properties (e.g., Cat constructor missing `name` parameter)
+- Eagle.Friends typed as `Bird[]` instead of `IList<Bird>`
+- Discriminator enums use `public` instead of `internal` access
+- Constructor access modifier order `protected private` vs `private protected`
+
+These differences are tracked for future resolution.

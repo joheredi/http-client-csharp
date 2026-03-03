@@ -1606,3 +1606,26 @@ In tests, use fragment matching (`toContain("UploadAsync(")`) rather than full s
 ## detectMultipartOperations must use getAllClients()
 
 The `detectMultipartOperations()` function in `HttpClientCSharpOutput.tsx` must scan ALL clients (root + sub-clients) using `getAllClients()`, not just `sdkPackage.clients` which only contains root-level clients. Sub-clients accessed via `client.children` may have multipart operations that require the `MultiPartFormDataBinaryContent.cs` infrastructure file.
+
+## Scenario Test Struct Limitation (2026-03-03)
+
+The scenario test framework's tree-sitter C# extractor only supports extracting `class_declaration`, `interface_declaration`, `enum_declaration`, and `local_function_statement` node types. **Struct declarations (`struct_declaration`) cannot be extracted** using the current `nodeKindMapping`. This means extensible enum structs (like `DogKind`) cannot be validated via scenario tests — use dedicated unit tests instead (e.g., `test/extensible-enum.test.ts`).
+
+## Design Decisions
+
+### Model Validation Approach (Task 10.1.2)
+**Chosen approach:** Create markdown scenario files that validate the emitter's **current actual output**, rather than using golden file expectations that would cause immediate test failures.
+
+**Rationale:** The emitter output has known differences from Spector golden files (see below). Creating tests with current output provides regression protection now, while differences are tracked as separate issues. This is preferable to creating failing tests that would mask real regressions.
+
+**Rejected approach:** Using Spector golden file expectations directly — this would cause immediate failures due to known gaps (inheritance constructor chains, collection types, access modifiers).
+
+### Known Differences: Emitter vs Spector Golden Files (2026-03-03)
+
+1. **Not-discriminated inheritance constructors**: Emitter produces derived class constructors with only own properties (e.g., `Cat(int age)`) while golden files include all ancestor required properties (e.g., `Cat(string name, int age) : base(name)`). This is a gap in constructor chain propagation.
+
+2. **Collection types for optional polymorphic properties**: Emitter produces `Bird[]` and `IDictionary<string, Bird>` while golden files use `IList<Bird>` and `IDictionary<string, Bird>`. The `Eagle.Friends` property should be `IList<Bird>` not `Bird[]`.
+
+3. **Discriminator enum access modifiers**: Emitter produces `public` access for `DogKind` struct and `SnakeKind` enum, while golden files use `internal` access for discriminator enums.
+
+4. **Constructor access modifier order**: Emitter produces `protected private` while golden files use `private protected`. Both are semantically identical in C# but the order differs.

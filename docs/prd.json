@@ -3987,7 +3987,7 @@
           "title": "Validate model scenarios",
           "description": "Compare output against Spector type/model golden files: usage, inheritance, enum-discriminator, single-discriminator.",
           "phase": "phase-10",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "1.3.7",
             "2.4.5"
