@@ -66,7 +66,7 @@ const snippetExtractor = createSnippetExtractor(csExtractorConfig);
 const scenarioPath = join(__dirname, "scenarios");
 
 await executeScenarios(
-  Tester.import("@typespec/http").using("TypeSpec.Http"),
+  Tester.importLibraries().using("TypeSpec.Http"),
   csExtractorConfig,
   scenarioPath,
   snippetExtractor,

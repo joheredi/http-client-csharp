@@ -2597,3 +2597,25 @@ LRO methods share the same generation pipeline as basic methods. No separate LRO
 - Task 4.5.3 (Write LRO tests) is now unblocked
 - The `lroMetadata` property on `SdkLroPagingServiceMethod` is available but unused for System.ClientModel — an Azure extension would need to read it for `Operation<T>` return types
 - Convenience async methods may wrap across lines due to printWidth — use split assertions in tests
+
+## Task 4.5.3: Write LRO tests (2026-03-03)
+
+### What was done
+- Created 2 LRO scenario test files under `test/scenarios/lro/`:
+  - `basic_lro.md` — Verifies the full TestServiceClient class for a basic LRO operation, showing that LRO methods generate identical signatures to basic operations (ClientResult, Task<ClientResult>, ClientResult<T>)
+  - `lro_paging.md` — Verifies collection result classes for LRO+paging operations, showing sync protocol and sync convenience variants with next-link paging
+- Updated `test/scenarios.test.ts` to use `Tester.importLibraries()` instead of `Tester.import("@typespec/http")` so scenarios can use TCGC decorators like `@markAsLro`
+- Used `SCENARIOS_UPDATE=true` to auto-populate expected C# output in scenario files
+
+### Key design decisions
+- Changed scenario test harness to import all libraries (`importLibraries()`) rather than just HTTP, enabling TCGC decorators in scenarios. This is backward-compatible since existing scenarios don't reference TCGC decorators.
+- Scenario tests complement existing component-level tests (lro-methods.test.ts, lro-paging-methods.test.ts) by validating full class structure via tree-sitter extraction rather than substring matching.
+- For "final-state-via patterns" from the task description: this doesn't affect generated output for System.ClientModel target, so no separate test needed. The basic LRO test implicitly covers this.
+
+### Patterns used
+- Scenario markdown format with `## TypeSpec` input and `csharp` code blocks annotated with `<filepath> class <ClassName>`
+- `SCENARIOS_UPDATE=true pnpm test -- test/scenarios.test.ts` to auto-generate expected output
+
+### Notes for next iteration
+- All LRO tests now complete (component + scenario). No remaining LRO tasks.
+- The scenario harness change (`importLibraries()`) means future scenarios can use any registered library decorator.

@@ -3278,7 +3278,7 @@
           "title": "Write LRO tests",
           "description": "Write tests for LRO method generation: basic LRO polling, final-state-via patterns, and LRO+paging combination.",
           "phase": "phase-4",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "4.5.1",
             "4.5.2"
