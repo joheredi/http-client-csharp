@@ -1849,3 +1849,23 @@ Dynamic model lists use `for` loops with index-based access (not `foreach`) to e
 - When spread: convenience methods expose individual properties as params
 - Protocol call uses `new BodyType(param1, param2, ...)` constructor with TypeExpression for using directives
 - `buildConvenienceParams` returns `{ params, spreadBodyType }` — `spreadBodyType` is non-null for spread bodies
+
+### BinaryData_2 naming conflict in bytes models
+
+When a model has a `bytes` property alongside `_additionalBinaryDataProperties` (which also uses `BinaryData`), the naming policy creates `BinaryData_2` for the bytes-mapped property type. This only affects model files — sub-client method parameters correctly use `BinaryData`. Root cause is likely two different refkeys resolving to the same `BinaryData` type name. Tracked as task 10.1.5a.
+
+### Array properties use T[] instead of IList<T> in models
+
+Model array properties render as `T[]` instead of `IList<T>` for properties and `IEnumerable<T>` for constructor parameters. The legacy emitter uses `IList<T>` / `IEnumerable<T>`. Sub-client parameters correctly use `IEnumerable<T>`. This affects all model collection properties, not just encoding scenarios. Tracked as task 10.1.5b.
+
+### ISO8601 acronym gets PascalCased to Iso8601
+
+The C# PascalCase naming policy converts `ISO8601DurationProperty` to `Iso8601DurationProperty`. The legacy emitter preserves `ISO8601` as an acronym. May need `ignoreNamePolicy: true` in namekey or an extended naming policy rule for known acronyms. Tracked as task 10.1.5c.
+
+## Design Decisions
+
+### Encoding validation approach (Task 10.1.5)
+
+**Chosen approach**: Write scenario test files with TypeSpec input and use `SCENARIOS_UPDATE=true` to auto-populate expected output, then compare with Spector golden files. This captures what the emitter currently generates and guards against regressions while identifying discrepancies with golden files.
+
+**Rejected approach**: Writing expected output manually from golden files. Rejected because the golden files show stub implementations (`=> throw null;`) while our emitter generates full code, making direct comparison infeasible for scenario tests.
