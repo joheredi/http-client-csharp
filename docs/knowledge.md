@@ -1583,6 +1583,7 @@ The `MultiPartFormDataBinaryContentFile` component uses `useEmitterContext().has
 ## Design Decisions
 
 ### Multipart contentType parameter (Task 9.1.2)
+
 **Chosen approach**: Add synthetic `contentType: string` parameter for multipart/form-data operations in both `buildProtocolParams()` and `buildMethodParams()`. Use the `contentType` variable in `buildRequestBody()` for the Content-Type header.
 
 **Rejected approach**: Letting the Content-Type header parameter through `isImplicitContentTypeHeader` for multipart operations. This was rejected because the legacy emitter adds a synthetic parameter (`ScmKnownParameters.ContentType`) rather than using the actual header parameter, and the naming/doc would differ.
@@ -1594,6 +1595,7 @@ The `MultiPartFormDataBinaryContentFile` component uses `useEmitterContext().has
 ## Async method signature line wrapping
 
 When Alloy generates async C# methods with 3+ parameters, the parameters wrap across multiple lines:
+
 ```csharp
 public virtual async Task<ClientResult> UploadAsync(
     BinaryContent content,
@@ -1601,6 +1603,7 @@ public virtual async Task<ClientResult> UploadAsync(
     RequestOptions options
 )
 ```
+
 In tests, use fragment matching (`toContain("UploadAsync(")`) rather than full single-line signature matching, which will fail due to line breaks.
 
 ## detectMultipartOperations must use getAllClients()
@@ -1614,6 +1617,7 @@ The scenario test framework's tree-sitter C# extractor only supports extracting 
 ## Design Decisions
 
 ### Model Validation Approach (Task 10.1.2)
+
 **Chosen approach:** Create markdown scenario files that validate the emitter's **current actual output**, rather than using golden file expectations that would cause immediate test failures.
 
 **Rationale:** The emitter output has known differences from Spector golden files (see below). Creating tests with current output provides regression protection now, while differences are tracked as separate issues. This is preferable to creating failing tests that would mask real regressions.
@@ -1641,7 +1645,63 @@ For `SdkPagingServiceMethod`, `method.response.type` returns the individual item
 ### Operation-level types complement method-level types
 
 When collecting all types used by an operation, check BOTH:
+
 1. Method-level: `method.parameters[].type`, `method.response.type`, `method.exception.type`
 2. Operation-level: `method.operation.bodyParam.type`, `method.operation.responses[].type`, `method.operation.exceptions[].type`
 
 The method-level types represent the SDK API surface (what users see), while operation-level types include internal types like page wrappers that are still emitted as C# models.
+
+## XML Write Path (Task 6.1.1)
+
+### Design Decision: Self-contained XML components
+
+**Chosen**: Separate `XmlWriteXml.tsx` and `XmlModelWriteCore.tsx` components (parallel to JSON components)
+**Rejected**: Reusing `PropertySerializer.tsx` directly — XML uses different write patterns (attributes vs elements, `WriteValue` vs type-specific methods)
+**Why**: XML write pattern is fundamentally different from JSON. XML has `WriteValue` for most scalars, attributes vs elements, wrapped/unwrapped arrays, and namespace handling. Creating dedicated components avoids overcomplicating the JSON path.
+
+### XML Value Write Mapping
+
+- Simple types (string, int, bool, float): `writer.WriteValue(value)` — XmlWriter handles overloads
+- DateTime: `writer.WriteStringValue(value, format)` — extension method, same formats as JSON (O, R)
+- Duration: `writer.WriteStringValue(value, "P")` for ISO8601, `writer.WriteValue(value.TotalSeconds)` for numeric
+- Bytes: `writer.WriteBase64StringValue(value.ToArray(), "D")` — extension method
+- Enums: `writer.WriteValue(transformedValue)` — same transforms as JSON but uses WriteValue
+- Models: `writer.WriteObjectValue(value, options)` — extension method
+- Unknown: `writer.WriteValue(value.ToString())`
+
+### XML Property Categorization
+
+Properties are written in fixed order: Attributes → Elements → Text Content
+
+- Attributes: `property.serializationOptions.xml?.attribute === true`
+- Text content: unwrapped scalar (non-array, non-dict, non-model) with `unwrapped === true`
+- Elements: everything else
+
+### XML Root Element Name
+
+`model.serializationOptions.xml?.name` gives the root element name for `WriteXml`.
+Falls back to `model.name` if no XML name is specified.
+
+### Guard Indentation Pattern
+
+Use callback-based rendering for correct indentation inside guard blocks:
+
+```tsx
+renderGuardedProperty(
+  prop,
+  name,
+  (indent) => renderXmlElement(prop, name, indent),
+  "    ",
+);
+```
+
+This ensures content inside `if (Optional.IsDefined(...))` blocks gets 8-space indentation (4-space base + 4-space inner).
+
+### PersistableModelWriteCore XML Case
+
+The `case "X":` branch creates `MemoryStream(256)` + `XmlWriter.Create(stream, ModelSerializationExtensions.XmlWriterSettings)`, calls `WriteXml(writer, options, rootElementName)`, then returns BinaryData from the stream.
+
+### GetFormatFromOptions for XML-only models
+
+XML-only models (UsageFlags.Xml without UsageFlags.Json) return `"X"` from `GetFormatFromOptions`.
+Dual-format models with JSON still return `"J"` (JSON takes precedence).

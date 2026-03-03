@@ -23,7 +23,10 @@
 
 import { useCSharpNamePolicy } from "@alloy-js/csharp";
 import { code } from "@alloy-js/core";
-import type { SdkModelType } from "@azure-tools/typespec-client-generator-core";
+import {
+  type SdkModelType,
+  UsageFlags,
+} from "@azure-tools/typespec-client-generator-core";
 import { System } from "../../builtins/system.js";
 import { SystemClientModelPrimitives } from "../../builtins/system-client-model.js";
 
@@ -62,13 +65,17 @@ export function PersistableModelInterfaceMethods(
     ? `(${modelName})PersistableModelCreateCore(data, options)`
     : "PersistableModelCreateCore(data, options)";
 
+  // XML-only models return "X" format; JSON models (including dual-format) return "J".
+  const supportsJson = (props.type.usage & UsageFlags.Json) !== 0;
+  const wireFormat = supportsJson ? "J" : "X";
+
   return (
     <>
       {code`${System.BinaryData} ${SystemClientModelPrimitives.IPersistableModel}<${modelName}>.Write(${SystemClientModelPrimitives.ModelReaderWriterOptions} options) => PersistableModelWriteCore(options);`}
       {"\n\n"}
       {code`${modelName} ${SystemClientModelPrimitives.IPersistableModel}<${modelName}>.Create(${System.BinaryData} data, ${SystemClientModelPrimitives.ModelReaderWriterOptions} options) => ${createExpression};`}
       {"\n\n"}
-      {code`string ${SystemClientModelPrimitives.IPersistableModel}<${modelName}>.GetFormatFromOptions(${SystemClientModelPrimitives.ModelReaderWriterOptions} options) => "J";`}
+      {code`string ${SystemClientModelPrimitives.IPersistableModel}<${modelName}>.GetFormatFromOptions(${SystemClientModelPrimitives.ModelReaderWriterOptions} options) => "${wireFormat}";`}
     </>
   );
 }

@@ -2770,3 +2770,21 @@ Key learnings:
 - `SdkMethod` in current TCGC version equals `SdkServiceMethod` — no `SdkClientAccessor` kind exists. All methods have `parameters`, `response`, and `operation`.
 - TCGC already filters sdkPackage.models to types reachable from operations, so in practice the unreferenced-types-handling mainly serves as a safety net. But the implementation correctly handles cases where types might be unreachable.
 - Tests use mock TCGC types (not full TypeSpec compilation) for unit testing the reference graph logic.
+
+2026-03-03 — Task 6.1.1: Implement XML write path (complete)
+- Created `src/builtins/system-xml.ts` (SystemXml with XmlWriter)
+- Added MemoryStream to `src/builtins/system-io.ts`
+- Exported SystemXml from `src/builtins/index.ts`
+- Created `src/components/serialization/XmlWriteXml.tsx` — private WriteXml method
+- Created `src/components/serialization/XmlModelWriteCore.tsx` — XmlModelWriteCore with full property serialization
+  - Handles: attributes, elements, text content, namespaces, wrapped/unwrapped arrays,
+    dictionaries, nested models, DateTime/Duration/BinaryData, fixed/extensible enums,
+    optional guards, inherited property exclusion, base call for derived models
+- Updated `PersistableModelWriteCore.tsx` — case "X": MemoryStream + XmlWriter + WriteXml pattern
+- Updated `PersistableModelInterfaceMethods.tsx` — GetFormatFromOptions returns "X" for XML-only models
+- Updated `emitter.tsx` — conditionally renders XmlWriteXml + XmlModelWriteCore for XML models
+- Created `test/xml-write-serialization.test.ts` with 13 tests covering all write path aspects
+- Key pattern: XML properties are categorized into attributes/elements/text and written in that order
+- Guard indentation fix: renderGuardedProperty uses callback pattern for correct inner indent
+- Reuses guard logic (needsSerializationGuard, buildGuardCondition) from PropertySerializer
+- Value writes use writer.WriteValue for simple types, extension methods for DateTime/Duration/Bytes

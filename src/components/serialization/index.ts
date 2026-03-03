@@ -52,3 +52,7 @@ export type {
   WriteMethodInfo,
   WritePropertySerializationProps,
 } from "./PropertySerializer.js";
+export { XmlModelWriteCore } from "./XmlModelWriteCore.js";
+export type { XmlModelWriteCoreProps } from "./XmlModelWriteCore.js";
+export { XmlWriteXml } from "./XmlWriteXml.js";
+export type { XmlWriteXmlProps } from "./XmlWriteXml.js";

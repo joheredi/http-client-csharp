@@ -22,4 +22,16 @@ export const SystemIO = createLibrary("System.IO", {
     kind: "class",
     members: {},
   },
+
+  /**
+   * Creates a stream whose backing store is memory.
+   * Used in XML serialization to buffer the XmlWriter output before
+   * converting it to BinaryData.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/system.io.memorystream
+   */
+  MemoryStream: {
+    kind: "class",
+    members: {},
+  },
 });

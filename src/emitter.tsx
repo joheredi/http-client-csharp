@@ -57,6 +57,8 @@ import { PersistableModelCreateCore } from "./components/serialization/Persistab
 import { PersistableModelInterfaceMethods } from "./components/serialization/PersistableModelInterfaceMethods.js";
 import { PersistableModelWriteCore } from "./components/serialization/PersistableModelWriteCore.js";
 import { PropertyMatchingLoop } from "./components/serialization/PropertyMatchingLoop.js";
+import { XmlModelWriteCore } from "./components/serialization/XmlModelWriteCore.js";
+import { XmlWriteXml } from "./components/serialization/XmlWriteXml.js";
 import { $lib } from "./lib.js";
 import { type CSharpEmitterOptions, resolveOptions } from "./options.js";
 import { getAllClients } from "./utils/clients.js";
@@ -202,6 +204,7 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
           ))}
         {models.map((m) => {
           const supportsJson = (m.usage & UsageFlags.Json) !== 0;
+          const supportsXml = (m.usage & UsageFlags.Xml) !== 0;
           return (
             <ModelSerializationFile type={m} options={options}>
               {supportsJson && <JsonModelInterfaceWrite type={m} />}
@@ -237,6 +240,10 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
               <ImplicitBinaryContentOperator type={m} />
               {"\n\n"}
               <ExplicitClientResultOperator type={m} />
+              {supportsXml && "\n\n"}
+              {supportsXml && <XmlWriteXml type={m} />}
+              {supportsXml && "\n\n"}
+              {supportsXml && <XmlModelWriteCore type={m} />}
             </ModelSerializationFile>
           );
         })}

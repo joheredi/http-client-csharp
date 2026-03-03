@@ -89,10 +89,7 @@ function createMockClient(
 /**
  * Creates a mock model property with the given type.
  */
-function createMockProperty(
-  name: string,
-  type: SdkType,
-): SdkModelPropertyType {
+function createMockProperty(name: string, type: SdkType): SdkModelPropertyType {
   return {
     kind: "property",
     name,
@@ -262,9 +259,7 @@ describe("getDirectReferences", () => {
 
   it("returns empty array for model with no references", () => {
     const model = createMockModel("Simple", {
-      properties: [
-        createMockProperty("name", { kind: "string" } as SdkType),
-      ],
+      properties: [createMockProperty("name", { kind: "string" } as SdkType)],
     });
 
     const refs = getDirectReferences(model);
@@ -284,7 +279,7 @@ describe("collectRootTypes", () => {
     const client = createMockClient([
       {
         kind: "basic",
-          operation: mockOperation,
+        operation: mockOperation,
         parameters: [{ type: paramModel }],
         response: {},
       },
@@ -299,7 +294,7 @@ describe("collectRootTypes", () => {
     const client = createMockClient([
       {
         kind: "basic",
-          operation: mockOperation,
+        operation: mockOperation,
         parameters: [],
         response: { type: responseModel },
       },
@@ -314,7 +309,7 @@ describe("collectRootTypes", () => {
     const client = createMockClient([
       {
         kind: "basic",
-          operation: mockOperation,
+        operation: mockOperation,
         parameters: [],
         response: {},
         exception: { type: errorModel },
@@ -330,7 +325,7 @@ describe("collectRootTypes", () => {
     const childClient = createMockClient([
       {
         kind: "basic",
-          operation: mockOperation,
+        operation: mockOperation,
         parameters: [],
         response: { type: childModel },
       },
@@ -346,10 +341,8 @@ describe("collectRootTypes", () => {
     const client = createMockClient([
       {
         kind: "basic",
-          operation: mockOperation,
-        parameters: [
-          { type: { kind: "array", valueType: model } as SdkType },
-        ],
+        operation: mockOperation,
+        parameters: [{ type: { kind: "array", valueType: model } as SdkType }],
         response: {},
       },
     ]);
@@ -362,7 +355,7 @@ describe("collectRootTypes", () => {
     const client = createMockClient([
       {
         kind: "basic",
-          operation: mockOperation,
+        operation: mockOperation,
         parameters: [],
         response: {},
       },
@@ -580,12 +573,7 @@ describe("applyUnreferencedTypeHandling", () => {
       const internalModel = createMockModel("Internal", {
         access: "internal",
       });
-      applyUnreferencedTypeHandling(
-        [internalModel],
-        [],
-        [],
-        "internalize",
-      );
+      applyUnreferencedTypeHandling([internalModel], [], [], "internalize");
 
       expect(internalModel.access).toBe("internal");
     });

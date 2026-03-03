@@ -48,9 +48,14 @@
  */
 
 import { useCSharpNamePolicy } from "@alloy-js/csharp";
-import { code } from "@alloy-js/core";
-import type { SdkModelType } from "@azure-tools/typespec-client-generator-core";
+import { type Children, code } from "@alloy-js/core";
+import {
+  type SdkModelType,
+  UsageFlags,
+} from "@azure-tools/typespec-client-generator-core";
 import { System } from "../../builtins/system.js";
+import { SystemIO } from "../../builtins/system-io.js";
+import { SystemXml } from "../../builtins/system-xml.js";
 import { SystemClientModelPrimitives } from "../../builtins/system-client-model.js";
 
 /**
@@ -70,6 +75,19 @@ export interface PersistableModelWriteCoreProps {
  */
 function shouldOverride(model: SdkModelType): boolean {
   return model.baseModel !== undefined;
+}
+
+/**
+ * Gets the XML root element name for a model.
+ *
+ * Uses the model's XML serialization options name if available,
+ * otherwise falls back to the model's TypeSpec name.
+ *
+ * @param model - The TCGC SDK model type.
+ * @returns The XML root element name string.
+ */
+function getXmlRootElementName(model: SdkModelType): string {
+  return model.serializationOptions.xml?.name ?? model.name;
 }
 
 /**
@@ -97,6 +115,50 @@ export function PersistableModelWriteCore(
   const modelName = namePolicy.getName(props.type.name, "class");
   const isDerived = shouldOverride(props.type);
 
+  const supportsJson = (props.type.usage & UsageFlags.Json) !== 0;
+  const supportsXml = (props.type.usage & UsageFlags.Xml) !== 0;
+
+  // Build the format cases based on which serialization formats the model supports
+  const formatCases: Children[] = [];
+
+  if (supportsJson) {
+    formatCases.push(
+      <>
+        {'\n        case "J":'}
+        {"\n"}
+        {code`            return ${SystemClientModelPrimitives.ModelReaderWriter}.Write(this, options);`}
+      </>,
+    );
+  }
+
+  if (supportsXml) {
+    const xmlRootName = getXmlRootElementName(props.type);
+    formatCases.push(
+      <>
+        {'\n        case "X":'}
+        {"\n"}
+        {code`            using (${SystemIO.MemoryStream} stream = new ${SystemIO.MemoryStream}(256))`}
+        {"\n            {"}
+        {"\n"}
+        {code`                using (${SystemXml.XmlWriter} writer = ${SystemXml.XmlWriter}.Create(stream, ModelSerializationExtensions.XmlWriterSettings))`}
+        {"\n                {"}
+        {`\n                    WriteXml(writer, options, "${xmlRootName}");`}
+        {"\n                }"}
+        {"\n                if (stream.Position > int.MaxValue)"}
+        {"\n                {"}
+        {"\n"}
+        {code`                    return ${System.BinaryData}.FromStream(stream);`}
+        {"\n                }"}
+        {"\n                else"}
+        {"\n                {"}
+        {"\n"}
+        {code`                    return new ${System.BinaryData}(stream.GetBuffer().AsMemory(0, (int)stream.Position));`}
+        {"\n                }"}
+        {"\n            }"}
+      </>,
+    );
+  }
+
   return (
     <>
       {code`protected ${isDerived ? "override" : "virtual"} ${System.BinaryData} PersistableModelWriteCore(${SystemClientModelPrimitives.ModelReaderWriterOptions} options)`}
@@ -104,9 +166,7 @@ export function PersistableModelWriteCore(
       {code`    string format = options.Format == "W" ? ((${SystemClientModelPrimitives.IPersistableModel}<${modelName}>)this).GetFormatFromOptions(options) : options.Format;`}
       {"\n    switch (format)"}
       {"\n    {"}
-      {'\n        case "J":'}
-      {"\n"}
-      {code`            return ${SystemClientModelPrimitives.ModelReaderWriter}.Write(this, options);`}
+      {formatCases}
       {"\n        default:"}
       {"\n"}
       {code`            throw new ${System.FormatException}($"The model {nameof(${modelName})} does not support writing '{options.Format}' format.");`}

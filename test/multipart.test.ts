@@ -188,7 +188,9 @@ describe("multipart generation", () => {
     const infraFile =
       outputs["src/Generated/Internal/MultiPartFormDataBinaryContent.cs"];
     expect(infraFile).toBeDefined();
-    expect(infraFile).toContain("internal partial class MultiPartFormDataBinaryContent");
+    expect(infraFile).toContain(
+      "internal partial class MultiPartFormDataBinaryContent",
+    );
   });
 
   /**
@@ -241,9 +243,7 @@ describe("multipart generation", () => {
     expect(restClientFile).toContain(
       "internal PipelineMessage CreateCreateItemRequest(BinaryContent content, RequestOptions options)",
     );
-    expect(restClientFile).toContain(
-      '"Content-Type", "application/json"',
-    );
+    expect(restClientFile).toContain('"Content-Type", "application/json"');
   });
 
   /**
@@ -281,7 +281,9 @@ describe("multipart generation", () => {
       "public virtual ClientResult Upload(BinaryContent content, string contentType, RequestOptions options",
     );
     // Async method wraps across lines — check key fragments
-    expect(subClientFile).toContain("public virtual async Task<ClientResult> UploadAsync(");
+    expect(subClientFile).toContain(
+      "public virtual async Task<ClientResult> UploadAsync(",
+    );
     expect(subClientFile).toContain("BinaryContent content,");
     expect(subClientFile).toContain("string contentType,");
   });
