@@ -136,12 +136,7 @@ public static BinaryContent FromObject(BinaryData value)
       {header}
       {"\n\n"}
       <Namespace name={props.packageName}>
-        <ClassDeclaration
-          internal
-          static
-          partial
-          name="BinaryContentHelper"
-        >
+        <ClassDeclaration internal static partial name="BinaryContentHelper">
           {code`
             public static BinaryContent FromEnumerable<T>(IEnumerable<T> enumerable) where T : notnull
             {

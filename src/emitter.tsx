@@ -147,14 +147,8 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
         packageName={packageName}
         options={options}
       />
-      <Utf8JsonBinaryContentFile
-        packageName={packageName}
-        options={options}
-      />
-      <BinaryContentHelperFile
-        packageName={packageName}
-        options={options}
-      />
+      <Utf8JsonBinaryContentFile packageName={packageName} options={options} />
+      <BinaryContentHelperFile packageName={packageName} options={options} />
       <PipelineRequestHeadersExtensionsFile
         packageName={packageName}
         options={options}

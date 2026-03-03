@@ -31,6 +31,7 @@ import {
 import { getLicenseHeader } from "../../utils/header.js";
 import { OverloadConstructor } from "../models/ModelConstructors.js";
 import { ConvenienceMethods } from "./ConvenienceMethod.js";
+import { PagingMethods } from "./PagingMethods.js";
 import { ProtocolMethods } from "./ProtocolMethod.js";
 
 /**
@@ -265,6 +266,7 @@ export function ClientFile(props: ClientFileProps) {
           {props.children}
           <ConvenienceMethods client={client} />
           <ProtocolMethods client={client} />
+          <PagingMethods client={client} />
           <SubClientFactoryMethods children={children} />
         </ClassDeclaration>
       </Namespace>

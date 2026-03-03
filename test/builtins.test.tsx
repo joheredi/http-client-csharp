@@ -340,9 +340,7 @@ describe("System.ClientModel builtins", () => {
      * symbol errors.
      */
     it("declares ExperimentalAttribute", () => {
-      expect(
-        SystemDiagnosticsCodeAnalysis.ExperimentalAttribute,
-      ).toBeDefined();
+      expect(SystemDiagnosticsCodeAnalysis.ExperimentalAttribute).toBeDefined();
     });
   });
 

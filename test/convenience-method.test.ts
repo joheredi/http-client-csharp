@@ -808,9 +808,7 @@ describe("ConvenienceMethod", () => {
     expect(clientFile).toContain("BinaryData data,");
 
     // BinaryData is a reference type → needs assertion
-    expect(clientFile).toContain(
-      "Argument.AssertNotNull(data, nameof(data));",
-    );
+    expect(clientFile).toContain("Argument.AssertNotNull(data, nameof(data));");
   });
 
   /**
@@ -929,7 +927,7 @@ describe("ConvenienceMethod", () => {
 
     // Should NOT have ArgumentException for empty string (model is not a string)
     expect(clientFile).not.toContain(
-      'is an empty string, and was expected to be non-empty.',
+      "is an empty string, and was expected to be non-empty.",
     );
   });
 

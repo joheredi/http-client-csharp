@@ -121,7 +121,9 @@ describe("EmitterContext", () => {
     // Enum file should be generated
     const enumFiles = Object.keys(outputs).filter(
       (k) =>
-        k.includes("Color") && k.endsWith(".cs") && !k.includes("Serialization"),
+        k.includes("Color") &&
+        k.endsWith(".cs") &&
+        !k.includes("Serialization"),
     );
     expect(enumFiles.length).toBeGreaterThan(0);
   });

@@ -24,7 +24,7 @@ import { cleanOperationName } from "../../utils/operation-naming.js";
  * Metadata for a convenience method parameter, including the type expression,
  * assertion requirements, and the expression to use when calling the protocol method.
  */
-interface ConvenienceParam {
+export interface ConvenienceParam {
   /** The camelCase parameter name as it appears in the C# method signature. */
   name: string;
   /** The C# type expression (keyword string, Alloy refkey, or JSX element). */
@@ -96,6 +96,7 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
 
   const methods = client.methods.filter(
     (m): m is SdkServiceMethod<SdkHttpOperation> =>
+      m.kind !== "paging" &&
       "operation" in m &&
       m.generateConvenient === true &&
       (m as SdkServiceMethod<SdkHttpOperation>).operation?.kind === "http",
@@ -249,7 +250,7 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
  * buildProtocolParams function. Changes to parameter ordering must be
  * kept in sync between both files.
  */
-function buildConvenienceParams(
+export function buildConvenienceParams(
   operation: SdkHttpOperation,
 ): ConvenienceParam[] {
   const pathParams = operation.parameters.filter(
@@ -483,7 +484,7 @@ function getConvenienceTypeInfo(type: SdkType): {
  * Model body parameters are passed directly — C# implicit operators handle
  * the conversion from the model type to BinaryContent.
  */
-function getProtocolCallArg(name: string, type: SdkType): string {
+export function getProtocolCallArg(name: string, type: SdkType): string {
   const unwrapped = unwrapType(type);
 
   if (unwrapped.kind === "enum") {
@@ -532,7 +533,7 @@ function getIntegerKeyword(kind: string): string {
  *
  * @returns An array of strings suitable for rendering as JSX children.
  */
-function buildConvenienceXmlDoc(
+export function buildConvenienceXmlDoc(
   description: string,
   params: ConvenienceParam[],
   assertableParams: ConvenienceParam[],
@@ -589,7 +590,7 @@ function buildConvenienceXmlDoc(
  * @returns An array of validation statement strings, or null if no validation
  *   is needed.
  */
-function buildConvenienceValidation(
+export function buildConvenienceValidation(
   assertableParams: ConvenienceParam[],
 ): Children {
   if (assertableParams.length === 0) return null;

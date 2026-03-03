@@ -6,7 +6,11 @@ import type { SdkContext } from "@azure-tools/typespec-client-generator-core";
  *
  * Sourced from the legacy emitter's InputNamespace.InvalidNamespaceSegments list.
  */
-const INVALID_NAMESPACE_SEGMENTS: ReadonlySet<string> = new Set(["Type", "Array", "Enum"]);
+const INVALID_NAMESPACE_SEGMENTS: ReadonlySet<string> = new Set([
+  "Type",
+  "Array",
+  "Enum",
+]);
 
 /**
  * Converts a raw package name string into a valid C# namespace identifier.
@@ -25,7 +29,11 @@ export function toNamespace(name: string): string {
   const dotted = name.replace(/-/g, ".");
   return dotted
     .split(".")
-    .map((segment) => (segment.length > 0 ? segment.charAt(0).toUpperCase() + segment.slice(1) : segment))
+    .map((segment) =>
+      segment.length > 0
+        ? segment.charAt(0).toUpperCase() + segment.slice(1)
+        : segment,
+    )
     .join(".");
 }
 
@@ -40,7 +48,9 @@ export function toNamespace(name: string): string {
  * @returns An array of segments that conflict with reserved words. Empty if no conflicts.
  */
 export function getInvalidNamespaceSegments(namespace: string): string[] {
-  return namespace.split(".").filter((segment) => INVALID_NAMESPACE_SEGMENTS.has(segment));
+  return namespace
+    .split(".")
+    .filter((segment) => INVALID_NAMESPACE_SEGMENTS.has(segment));
 }
 
 /**

@@ -2467,3 +2467,27 @@ Total tests went from 861 to 871 (all passing). Build, test, and lint all green.
 
 ### Stats
 - 873 tests passing across 46 test files (3 scenario tests = 1 model + 2 enum)
+
+## 2026-03-03 — Task 4.4.1: Implement paging client methods
+
+- Created `PagingMethods.tsx` component that generates paging-specific client methods for each paging operation
+- Each paging operation generates 4 methods: sync/async × protocol/convenience
+  - Protocol: `CollectionResult Method(params, RequestOptions options)` → `return new XxxCollectionResult(this, args);`
+  - Convenience: `CollectionResult<T> Method(params, CancellationToken ct)` → `return new XxxCollectionResultOfT(this, args);`
+  - Async variants use `AsyncCollectionResult` / `AsyncCollectionResult<T>` (NO Task<> wrapping)
+- Modified `ProtocolMethod.tsx` and `ConvenienceMethod.tsx` to exclude paging methods (`m.kind !== "paging"`) from their filters
+- Exported `buildProtocolParams`, `buildXmlDoc`, `buildConvenienceParams`, `buildConvenienceXmlDoc` for reuse
+- Integrated `PagingMethods` into `ClientFile.tsx`
+- Added 9 tests in `paging-methods.test.ts` covering: method generation, body correctness, XML docs, filter exclusion, coexistence with regular methods, using directives, naming conventions
+- All 882 tests pass (873 existing + 9 new)
+
+### Design decision
+- Created separate PagingMethods component instead of modifying existing ProtocolMethods/ConvenienceMethods
+- Paging methods have fundamentally different return types (CollectionResult vs ClientResult) and bodies (instantiate class vs pipeline call)
+- Reused param-building functions via exports to avoid duplication
+
+### Notes for next iteration
+- Task 4.4.2 (Write paging tests) is now unblocked
+- Task 4.3.1 (continuation-token strategy) will need to update both CollectionResultFile constructors AND PagingMethods bodies to pass extra params
+- Paging methods do NOT generate Argument.Assert validation (matches legacy emitter behavior)
+- `async` modifier is on the paging methods even though they don't use `await` — this matches the Method component's default behavior and matches legacy output

@@ -1,0 +1,318 @@
+import { Method, useCSharpNamePolicy } from "@alloy-js/csharp";
+import { code, namekey } from "@alloy-js/core";
+import type { Children } from "@alloy-js/core";
+import type {
+  SdkArrayType,
+  SdkClientType,
+  SdkHttpOperation,
+  SdkPagingServiceMethod,
+  SdkType,
+} from "@azure-tools/typespec-client-generator-core";
+import { TypeExpression } from "@typespec/emitter-framework/csharp";
+import {
+  SystemClientModel,
+  SystemClientModelPrimitives,
+} from "../../builtins/system-client-model.js";
+import { SystemThreading } from "../../builtins/system-threading.js";
+import { cleanOperationName } from "../../utils/operation-naming.js";
+import {
+  buildProtocolParams,
+  buildXmlDoc as buildProtocolXmlDoc,
+} from "./ProtocolMethod.js";
+import {
+  buildConvenienceParams,
+  buildConvenienceXmlDoc,
+} from "./ConvenienceMethod.js";
+
+/**
+ * Props for the {@link PagingMethods} component.
+ */
+export interface PagingMethodsProps {
+  /** The TCGC SDK client type whose paging operations produce paging method sets. */
+  client: SdkClientType<SdkHttpOperation>;
+}
+
+/**
+ * Generates paging-level client methods for all paging operations on a client.
+ *
+ * For each paging operation, this component produces up to 4 methods:
+ * - Protocol sync:  `CollectionResult Method(params, RequestOptions options)`
+ * - Protocol async: `AsyncCollectionResult MethodAsync(params, RequestOptions options)`
+ * - Convenience sync:  `CollectionResult<T> Method(params, CancellationToken ct = default)`
+ * - Convenience async: `AsyncCollectionResult<T> MethodAsync(params, CancellationToken ct = default)`
+ *
+ * Unlike regular protocol/convenience methods which call Pipeline.ProcessMessage,
+ * paging methods instantiate a collection result class that handles iteration
+ * over paginated responses internally.
+ *
+ * The collection result class names follow the pattern:
+ * `{ClientName}{OperationName}{CollectionResult|AsyncCollectionResult|CollectionResultOfT|AsyncCollectionResultOfT}`
+ *
+ * @example Generated output for a simple paging operation:
+ * ```csharp
+ * public virtual CollectionResult GetItems(RequestOptions options)
+ * {
+ *     return new MyClientGetItemsCollectionResult(this, options);
+ * }
+ *
+ * public virtual AsyncCollectionResult GetItemsAsync(RequestOptions options)
+ * {
+ *     return new MyClientGetItemsAsyncCollectionResult(this, options);
+ * }
+ *
+ * public virtual CollectionResult<Item> GetItems(CancellationToken cancellationToken = default)
+ * {
+ *     return new MyClientGetItemsCollectionResultOfT(this, cancellationToken.ToRequestOptions());
+ * }
+ *
+ * public virtual AsyncCollectionResult<Item> GetItemsAsync(CancellationToken cancellationToken = default)
+ * {
+ *     return new MyClientGetItemsAsyncCollectionResultOfT(this, cancellationToken.ToRequestOptions());
+ * }
+ * ```
+ */
+export function PagingMethods(props: PagingMethodsProps) {
+  const { client } = props;
+  const namePolicy = useCSharpNamePolicy();
+  const clientName = namePolicy.getName(client.name, "class");
+
+  const methods = client.methods.filter(
+    (m): m is SdkPagingServiceMethod<SdkHttpOperation> => m.kind === "paging",
+  );
+
+  if (methods.length === 0) return null;
+
+  return (
+    <>
+      {methods.flatMap((method) => {
+        const operation = method.operation;
+        const methodName = cleanOperationName(
+          namePolicy.getName(method.name, "class"),
+        );
+        const access = method.access ?? "public";
+        const description = method.doc ?? method.summary ?? "";
+
+        const accessProps =
+          access === "internal"
+            ? ({ internal: true } as const)
+            : ({ public: true } as const);
+
+        // Collection result class name base (matching CollectionResultFile naming)
+        const classNameBase = `${clientName}${methodName}`;
+
+        // Extract item type for convenience methods from paging metadata
+        const metadata = method.pagingMetadata;
+        const itemSegments = metadata.pageItemsSegments;
+        let itemTypeExpr: Children | undefined;
+
+        if (itemSegments && itemSegments.length > 0) {
+          const lastSegment = itemSegments[itemSegments.length - 1];
+          const itemSdkType: SdkType =
+            lastSegment.type.kind === "array"
+              ? (lastSegment.type as SdkArrayType).valueType
+              : lastSegment.type;
+
+          if (itemSdkType.__raw) {
+            itemTypeExpr = <TypeExpression type={itemSdkType.__raw} />;
+          }
+        }
+
+        const result: Children[] = [];
+
+        // Protocol methods (sync + async)
+        result.push(
+          ...renderProtocolPagingMethods(
+            method,
+            methodName,
+            classNameBase,
+            accessProps,
+            description,
+            operation,
+          ),
+        );
+
+        // Convenience methods (sync + async) — only if generateConvenient and item type is known
+        if (method.generateConvenient && itemTypeExpr) {
+          result.push(
+            ...renderConveniencePagingMethods(
+              method,
+              methodName,
+              classNameBase,
+              accessProps,
+              description,
+              operation,
+              itemTypeExpr,
+            ),
+          );
+        }
+
+        return result;
+      })}
+    </>
+  );
+}
+
+/**
+ * Renders protocol-level paging methods (sync + async pair).
+ *
+ * Protocol paging methods accept the same parameters as regular protocol methods
+ * (wire types for enums, BinaryContent for bodies, RequestOptions) but return
+ * CollectionResult/AsyncCollectionResult and instantiate the collection result class.
+ */
+function renderProtocolPagingMethods(
+  method: SdkPagingServiceMethod<SdkHttpOperation>,
+  methodName: string,
+  classNameBase: string,
+  accessProps: { internal: true } | { public: true },
+  description: string,
+  operation: SdkHttpOperation,
+): Children[] {
+  const params = buildProtocolParams(operation);
+  const hasOptionalParams = params.some((p) => p.optional);
+  const requiredParams = params.filter((p) => !p.optional);
+
+  // Build argument list to pass to collection result constructor: this, ...params, options
+  const constructorArgs = [
+    "this",
+    ...params.map((p) => p.name),
+    "options",
+  ].join(", ");
+
+  // Build <Method> parameter props
+  const methodParams = [
+    ...params.map((p) => ({
+      name: p.name,
+      type: p.type,
+      ...(p.optional ? { default: "default" } : {}),
+    })),
+    {
+      name: "options",
+      type: SystemClientModelPrimitives.RequestOptions as Children,
+      ...(hasOptionalParams ? { default: "null" } : {}),
+    },
+  ];
+
+  const xmlDoc = buildProtocolXmlDoc(description, params, requiredParams);
+
+  // Sync protocol method
+  const syncClassName = `${classNameBase}CollectionResult`;
+  const syncBody = `return new ${syncClassName}(${constructorArgs});`;
+
+  // Async protocol method
+  const asyncClassName = `${classNameBase}AsyncCollectionResult`;
+  const asyncBody = `return new ${asyncClassName}(${constructorArgs});`;
+
+  return [
+    "\n\n",
+    ...xmlDoc,
+    "\n",
+    <Method
+      {...accessProps}
+      virtual
+      name={namekey(methodName, { ignoreNameConflict: true })}
+      returns={SystemClientModel.CollectionResult}
+      parameters={methodParams}
+    >
+      {syncBody}
+    </Method>,
+    "\n\n",
+    ...xmlDoc,
+    "\n",
+    <Method
+      {...accessProps}
+      virtual
+      async
+      name={namekey(`${methodName}Async`, { ignoreNameConflict: true })}
+      returns={SystemClientModel.AsyncCollectionResult}
+      parameters={methodParams}
+    >
+      {asyncBody}
+    </Method>,
+  ];
+}
+
+/**
+ * Renders convenience-level paging methods (sync + async pair).
+ *
+ * Convenience paging methods accept typed parameters (original model types,
+ * not wire types) and a CancellationToken. They return CollectionResult{T}
+ * or AsyncCollectionResult{T} and instantiate the typed collection result class.
+ *
+ * Parameters are converted to protocol form when passed to the constructor
+ * (e.g., enum values are converted via .ToString() or integer casts).
+ */
+function renderConveniencePagingMethods(
+  method: SdkPagingServiceMethod<SdkHttpOperation>,
+  methodName: string,
+  classNameBase: string,
+  accessProps: { internal: true } | { public: true },
+  description: string,
+  operation: SdkHttpOperation,
+  itemTypeExpr: Children,
+): Children[] {
+  const params = buildConvenienceParams(operation);
+
+  // Build constructor args: this, ...convertedParams, cancellationToken.ToRequestOptions()
+  const convertedArgs = params.map((p) => p.protocolCallArg);
+  const constructorArgs = [
+    "this",
+    ...convertedArgs,
+    "cancellationToken.ToRequestOptions()",
+  ].join(", ");
+
+  // Build <Method> parameter props
+  const methodParams = [
+    ...params.map((p) => ({
+      name: p.name,
+      type: p.type,
+      ...(p.optional ? { default: "default" } : {}),
+    })),
+    {
+      name: "cancellationToken",
+      type: SystemThreading.CancellationToken as Children,
+      default: "default",
+    },
+  ];
+
+  const xmlDoc = buildConvenienceXmlDoc(description, params, []);
+
+  // Return types with generic item type
+  const syncReturn = code`${SystemClientModel.CollectionResult}<${itemTypeExpr}>`;
+  const asyncReturn = code`${SystemClientModel.AsyncCollectionResult}<${itemTypeExpr}>`;
+
+  // Sync convenience method
+  const syncClassName = `${classNameBase}CollectionResultOfT`;
+  const syncBody = `return new ${syncClassName}(${constructorArgs});`;
+
+  // Async convenience method
+  const asyncClassName = `${classNameBase}AsyncCollectionResultOfT`;
+  const asyncBody = `return new ${asyncClassName}(${constructorArgs});`;
+
+  return [
+    "\n\n",
+    ...xmlDoc,
+    "\n",
+    <Method
+      {...accessProps}
+      virtual
+      name={namekey(methodName, { ignoreNameConflict: true })}
+      returns={syncReturn}
+      parameters={methodParams}
+    >
+      {syncBody}
+    </Method>,
+    "\n\n",
+    ...xmlDoc,
+    "\n",
+    <Method
+      {...accessProps}
+      virtual
+      async
+      name={namekey(`${methodName}Async`, { ignoreNameConflict: true })}
+      returns={asyncReturn}
+      parameters={methodParams}
+    >
+      {asyncBody}
+    </Method>,
+  ];
+}

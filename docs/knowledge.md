@@ -1467,11 +1467,13 @@ See `BinaryContentHelperFile.tsx` for the working pattern vs. the broken `code` 
 ## Design Decisions
 
 ### Namespace resolution (task 0.3.3)
+
 **Approach chosen:** Add `toNamespace()` conversion inline in `resolvePackageName()` for the `packageNameOption` path only.
 **Why:** TCGC-provided namespaces (from clients, SdkPackage.namespaces, crossLanguagePackageId) are already valid C# identifiers. Only user-provided `package-name` options may contain kebab-case. The legacy emitter applied conversion to both option and TCGC client namespace paths, but in the new emitter TCGC values are trusted.
 **Rejected:** Creating a separate `resolveNamespace()` wrapper function — would add indirection without benefit since `packageName` is already used as namespace throughout the codebase.
 
 ### JsonPatch Builtins (Task 0.2.6)
+
 - `JsonPatch` is in `System.ClientModel.Primitives` namespace — added to existing `SystemClientModelPrimitives` library
 - `ExperimentalAttribute` is in `System.Diagnostics.CodeAnalysis` — requires separate `SystemDiagnosticsCodeAnalysis` library for correct `using` generation
 - JsonPatch has 10 methods used by merge-patch serialization: TryGetJson, GetJson, TryGetEncodedValue, Contains, IsRemoved, Set, SetPropagators, WriteTo, GetRemainder, GetFirstPropertyName
@@ -1481,12 +1483,26 @@ See `BinaryContentHelperFile.tsx` for the working pattern vs. the broken `code` 
 ## Scenario Test Framework Limitations
 
 ### Struct extraction not supported
+
 The scenario test tree-sitter configuration only supports extracting: class, function, interface, enum, and type alias declarations. C# `struct` declarations (used for extensible enums) cannot be extracted by type/name. Use full-file comparison instead by omitting the type and name from the code block heading:
-```
+
+````
 ```csharp src/Generated/Models/MyStruct.cs
 // full file content here
-```
+````
+
 ```
 
 ### Namespace differences with legacy emitter
 Our emitter generates dot-separated namespaces (e.g., `namespace Type.Enum.Fixed`) while the legacy emitter escapes dots to underscores (e.g., `namespace _Type._Enum.Fixed`). Both are valid C#, but they produce different fully-qualified type names. This affects all scenarios using namespaces with segments that start with uppercase or match C# type names.
+
+## Paging Client Methods
+
+165. **Paging method filter: `m.kind !== "paging"` in ProtocolMethods/ConvenienceMethods** — Paging operations (`kind: "paging"`) have HTTP operations underneath, so `m.operation?.kind === "http"` would match them. Must explicitly exclude paging from regular method generation.
+
+166. **Paging methods: NO validation, NO Task<> wrapping** — Unlike regular methods, paging methods don't call Argument.Assert. Async paging returns `AsyncCollectionResult` (not `Task<AsyncCollectionResult>`). The async type itself handles async iteration.
+
+167. **Paging constructor args must match CollectionResultFile** — Protocol body: `return new Xxx(this, ...params, options)`. Convenience body: `return new Xxx(this, ...convertedArgs, cancellationToken.ToRequestOptions())`. Extra params beyond `(client, options)` require CollectionResultFile constructor updates (task 4.3.1).
+
+168. **Exported param-building functions from ProtocolMethod/ConvenienceMethod** — `buildProtocolParams`, `buildXmlDoc`, `buildConvenienceParams`, `buildConvenienceXmlDoc` are exported for reuse in PagingMethods. Changes to these functions affect both regular and paging method generation.
+```

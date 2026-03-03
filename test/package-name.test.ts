@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { toNamespace, getInvalidNamespaceSegments } from "../src/utils/package-name.js";
+import {
+  toNamespace,
+  getInvalidNamespaceSegments,
+} from "../src/utils/package-name.js";
 
 /**
  * Tests for namespace resolution utilities (task 0.3.3).
@@ -20,7 +23,9 @@ describe("toNamespace", () => {
    * Matches legacy test: getClientNamespaceStringHelper(undefined, "client-plane-generated") === "Client.Plane.Generated"
    */
   it("converts kebab-case to PascalCase with dots", () => {
-    expect(toNamespace("client-plane-generated")).toBe("Client.Plane.Generated");
+    expect(toNamespace("client-plane-generated")).toBe(
+      "Client.Plane.Generated",
+    );
   });
 
   /**
@@ -28,8 +33,12 @@ describe("toNamespace", () => {
    * Matches legacy test: getClientNamespaceStringHelper(undefined, "client-plane-Generated")
    */
   it("handles mixed case in kebab segments", () => {
-    expect(toNamespace("client-plane-Generated")).toBe("Client.Plane.Generated");
-    expect(toNamespace("client-Plane-generated")).toBe("Client.Plane.Generated");
+    expect(toNamespace("client-plane-Generated")).toBe(
+      "Client.Plane.Generated",
+    );
+    expect(toNamespace("client-Plane-generated")).toBe(
+      "Client.Plane.Generated",
+    );
   });
 
   /**
@@ -37,7 +46,9 @@ describe("toNamespace", () => {
    * Matches legacy test: getClientNamespaceStringHelper(undefined, "client.plane.generated")
    */
   it("handles dot-separated input", () => {
-    expect(toNamespace("client.plane.generated")).toBe("Client.Plane.Generated");
+    expect(toNamespace("client.plane.generated")).toBe(
+      "Client.Plane.Generated",
+    );
   });
 
   /**
@@ -45,7 +56,9 @@ describe("toNamespace", () => {
    * This is important because TCGC-provided namespaces are already valid.
    */
   it("passes through already-valid namespaces unchanged", () => {
-    expect(toNamespace("Azure.AI.ContentSafety")).toBe("Azure.AI.ContentSafety");
+    expect(toNamespace("Azure.AI.ContentSafety")).toBe(
+      "Azure.AI.ContentSafety",
+    );
     expect(toNamespace("MyService")).toBe("MyService");
   });
 
@@ -68,7 +81,9 @@ describe("toNamespace", () => {
    * Mixed hyphens and dots — hyphens become dots, then all segments capitalize.
    */
   it("handles mixed hyphens and dots", () => {
-    expect(toNamespace("azure.ai-content-safety")).toBe("Azure.Ai.Content.Safety");
+    expect(toNamespace("azure.ai-content-safety")).toBe(
+      "Azure.Ai.Content.Safety",
+    );
   });
 });
 
@@ -87,7 +102,10 @@ describe("getInvalidNamespaceSegments", () => {
    * Multiple conflicting segments should all be returned.
    */
   it("returns multiple conflicts", () => {
-    expect(getInvalidNamespaceSegments("Type.Array.Service")).toEqual(["Type", "Array"]);
+    expect(getInvalidNamespaceSegments("Type.Array.Service")).toEqual([
+      "Type",
+      "Array",
+    ]);
   });
 
   /**

@@ -22,7 +22,7 @@ import { cleanOperationName } from "../../utils/operation-naming.js";
  * Metadata for a protocol method parameter, including optionality and type
  * classification needed for parameter validation and XML doc generation.
  */
-interface ProtocolParam {
+export interface ProtocolParam {
   /** The camelCase parameter name as it appears in the C# method signature. */
   name: string;
   /** The C# type expression (keyword string or Alloy refkey). */
@@ -94,6 +94,7 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
 
   const methods = client.methods.filter(
     (m): m is SdkServiceMethod<SdkHttpOperation> =>
+      m.kind !== "paging" &&
       "operation" in m &&
       (m as SdkServiceMethod<SdkHttpOperation>).operation?.kind === "http",
   );
@@ -195,7 +196,9 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
  * buildMethodParams function. Changes to parameter ordering must be kept
  * in sync between both files.
  */
-function buildProtocolParams(operation: SdkHttpOperation): ProtocolParam[] {
+export function buildProtocolParams(
+  operation: SdkHttpOperation,
+): ProtocolParam[] {
   const pathParams = operation.parameters.filter(
     (p): p is SdkPathParameter => p.kind === "path",
   );
@@ -296,7 +299,7 @@ function buildProtocolParams(operation: SdkHttpOperation): ProtocolParam[] {
  *   The first element has no leading newline; subsequent elements are
  *   prefixed with `\n` for proper line separation.
  */
-function buildXmlDoc(
+export function buildXmlDoc(
   description: string,
   params: ProtocolParam[],
   requiredParams: ProtocolParam[],
@@ -371,7 +374,7 @@ function buildXmlDoc(
  *   is needed. The first element has no leading newline; subsequent elements
  *   are prefixed with `\n`.
  */
-function buildValidation(requiredParams: ProtocolParam[]): Children {
+export function buildValidation(requiredParams: ProtocolParam[]): Children {
   if (requiredParams.length === 0) return null;
 
   return requiredParams.map((p, i) => {
@@ -390,7 +393,7 @@ function buildValidation(requiredParams: ProtocolParam[]): Children {
  *
  * Used for XML doc exception messages listing multiple parameter names.
  */
-function joinWithOr(items: string[]): string {
+export function joinWithOr(items: string[]): string {
   if (items.length === 1) return items[0];
   if (items.length === 2) return `${items[0]} or ${items[1]}`;
   return items.slice(0, -1).join(", ") + " or " + items[items.length - 1];

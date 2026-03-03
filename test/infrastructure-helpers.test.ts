@@ -801,9 +801,7 @@ describe("ClientUriBuilderFile", () => {
       @service
       namespace TestService;
     `);
-    expect(
-      outputs["src/Generated/Internal/ClientUriBuilder.cs"],
-    ).toBeDefined();
+    expect(outputs["src/Generated/Internal/ClientUriBuilder.cs"]).toBeDefined();
   });
 
   /**
@@ -818,7 +816,9 @@ describe("ClientUriBuilderFile", () => {
     `);
     const content = outputs["src/Generated/Internal/ClientUriBuilder.cs"];
     expect(content).toContain("internal partial class ClientUriBuilder");
-    expect(content).not.toContain("internal static partial class ClientUriBuilder");
+    expect(content).not.toContain(
+      "internal static partial class ClientUriBuilder",
+    );
   });
 
   /**
@@ -995,9 +995,7 @@ describe("TypeFormattersFile", () => {
       @service
       namespace TestService;
     `);
-    expect(
-      outputs["src/Generated/Internal/TypeFormatters.cs"],
-    ).toBeDefined();
+    expect(outputs["src/Generated/Internal/TypeFormatters.cs"]).toBeDefined();
   });
 
   /**
@@ -1010,9 +1008,7 @@ describe("TypeFormattersFile", () => {
       namespace TestService;
     `);
     const content = outputs["src/Generated/Internal/TypeFormatters.cs"];
-    expect(content).toContain(
-      "internal static partial class TypeFormatters",
-    );
+    expect(content).toContain("internal static partial class TypeFormatters");
   });
 
   /**
@@ -1028,9 +1024,7 @@ describe("TypeFormattersFile", () => {
     expect(content).toContain(
       'private const string RoundtripZFormat = "yyyy-MM-ddTHH:mm:ss.fffffffZ";',
     );
-    expect(content).toContain(
-      'public const string DefaultNumberFormat = "G";',
-    );
+    expect(content).toContain('public const string DefaultNumberFormat = "G";');
   });
 
   /**
@@ -1410,7 +1404,9 @@ describe("ModelSerializationExtensionsFile", () => {
     expect(content).toContain(
       "public static void WriteObjectValue(this Utf8JsonWriter writer, object value, ModelReaderWriterOptions options = null)",
     );
-    expect(content).toContain("writer.WriteObjectValue<object>(value, options)");
+    expect(content).toContain(
+      "writer.WriteObjectValue<object>(value, options)",
+    );
   });
 
   /**
@@ -1511,12 +1507,8 @@ describe("Infrastructure files — always generated", () => {
     expect(
       outputs["src/Generated/Internal/ClientPipelineExtensions.cs"],
     ).toBeDefined();
-    expect(
-      outputs["src/Generated/Internal/ClientUriBuilder.cs"],
-    ).toBeDefined();
-    expect(
-      outputs["src/Generated/Internal/TypeFormatters.cs"],
-    ).toBeDefined();
+    expect(outputs["src/Generated/Internal/ClientUriBuilder.cs"]).toBeDefined();
+    expect(outputs["src/Generated/Internal/TypeFormatters.cs"]).toBeDefined();
     expect(
       outputs["src/Generated/Internal/ModelSerializationExtensions.cs"],
     ).toBeDefined();
@@ -1820,9 +1812,7 @@ describe("BinaryContentHelperFile", () => {
     expect(content).toContain(
       "public static BinaryContent FromDictionary(IDictionary<string, BinaryData> dictionary)",
     );
-    expect(content).toContain(
-      "content.JsonWriter.WriteRawValue(item.Value);",
-    );
+    expect(content).toContain("content.JsonWriter.WriteRawValue(item.Value);");
   });
 
   /**
@@ -1856,9 +1846,7 @@ describe("BinaryContentHelperFile", () => {
     expect(content).toContain(
       "public static BinaryContent FromObject(BinaryData value)",
     );
-    expect(content).toContain(
-      "content.JsonWriter.WriteRawValue(value);",
-    );
+    expect(content).toContain("content.JsonWriter.WriteRawValue(value);");
     expect(content).toContain(
       "JsonSerializer.Serialize(content.JsonWriter, document.RootElement);",
     );
