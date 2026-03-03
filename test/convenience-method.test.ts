@@ -585,4 +585,383 @@ describe("ConvenienceMethod", () => {
       "CancellationToken cancellationToken = default",
     );
   });
+
+  /**
+   * Verifies that operations returning a scalar type (e.g., string) fall back
+   * to untyped ClientResult rather than ClientResult<string>.
+   *
+   * Currently, only model response types produce generic ClientResult<T> because
+   * only models have the explicit operator from ClientResult needed for the
+   * cast pattern `(ModelType)result`. Scalars, arrays, and dicts use untyped
+   * ClientResult. This test documents that behavior.
+   */
+  it("returns untyped ClientResult for scalar return types", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/name")
+      @get op getName(): string;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Scalar return → untyped ClientResult (no generic type parameter)
+    expect(clientFile).toContain(
+      "public virtual ClientResult GetName(CancellationToken cancellationToken = default)",
+    );
+
+    // Async variant also untyped
+    expect(clientFile).toContain(
+      "public virtual async Task<ClientResult> GetNameAsync(CancellationToken cancellationToken = default)",
+    );
+
+    // Should NOT have ClientResult<string> since scalar returns are untyped
+    expect(clientFile).not.toContain("ClientResult<string>");
+
+    // Delegates directly without cast/wrapping
+    expect(clientFile).toContain(
+      "return GetName(cancellationToken.ToRequestOptions());",
+    );
+  });
+
+  /**
+   * Verifies that operations returning an array type (e.g., Item[]) fall back
+   * to untyped ClientResult rather than ClientResult<IReadOnlyList<Item>>.
+   *
+   * Like scalar returns, array/collection returns currently use untyped
+   * ClientResult because the explicit cast pattern is only implemented for
+   * model types. This test documents the current behavior.
+   */
+  it("returns untyped ClientResult for array return types", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Item {
+        name: string;
+      }
+
+      @route("/items")
+      @get op getItems(): Item[];
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Array return → untyped ClientResult
+    expect(clientFile).toContain(
+      "public virtual ClientResult GetItems(CancellationToken cancellationToken = default)",
+    );
+
+    // Should NOT have a generic ClientResult return for arrays
+    expect(clientFile).not.toContain("ClientResult<IReadOnlyList");
+  });
+
+  /**
+   * Verifies that multiple operations on the same client each generate their
+   * own convenience method pair (sync + async). This ensures the component
+   * iterates over all eligible methods, not just the first one.
+   *
+   * This test catches regressions where the map/filter logic in
+   * ConvenienceMethods might silently skip operations or where name conflicts
+   * between unrelated methods could cause issues.
+   */
+  it("generates convenience methods for multiple operations", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Item {
+        name: string;
+      }
+
+      @route("/items")
+      @get op listItems(): Item[];
+
+      @route("/items")
+      @post op createItem(@body item: Item): Item;
+
+      @route("/health")
+      @get op healthCheck(): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // All three operations should have convenience methods
+    // Note: "listItems" goes through cleanOperationName → "GetItems"
+    expect(clientFile).toContain("ClientResult GetItems(");
+    expect(clientFile).toContain("Task<ClientResult> GetItemsAsync(");
+
+    expect(clientFile).toContain("ClientResult<Item> CreateItem(");
+    expect(clientFile).toContain("Task<ClientResult<Item>> CreateItemAsync(");
+
+    expect(clientFile).toContain("ClientResult HealthCheck(");
+    expect(clientFile).toContain("Task<ClientResult> HealthCheckAsync(");
+  });
+
+  /**
+   * Verifies that Uri parameters (from TypeSpec `url` type) are correctly
+   * mapped to System.Uri in the convenience method signature and require
+   * Argument.AssertNotNull validation (Uri is a reference type).
+   *
+   * This tests the BCL type mapping path in getConvenienceTypeInfo for the
+   * "url" kind, which is different from string or model mappings.
+   */
+  it("maps url type to System.Uri with null validation", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/redirect")
+      @post op redirect(@query target: url): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Uri param in method signature
+    expect(clientFile).toContain("Uri target,");
+
+    // Uri is a reference type → needs assertion
+    expect(clientFile).toContain(
+      "Argument.AssertNotNull(target, nameof(target));",
+    );
+
+    // Should have using System
+    expect(clientFile).toContain("using System;");
+  });
+
+  /**
+   * Verifies that DateTimeOffset parameters (from TypeSpec `utcDateTime` type)
+   * are value types and do NOT receive null validation. DateTimeOffset is a
+   * struct in C#, so it can never be null.
+   *
+   * This tests the BCL struct type path in getConvenienceTypeInfo, which
+   * correctly marks utcDateTime/offsetDateTime as non-assertable.
+   */
+  it("maps utcDateTime to DateTimeOffset without null validation", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/events")
+      @get op getEvents(@query since: utcDateTime): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // DateTimeOffset param in method signature
+    expect(clientFile).toContain("DateTimeOffset since,");
+
+    // DateTimeOffset is a value type → no assertion in convenience method body
+    const convMethodMatch = clientFile.match(
+      /GetEvents\(DateTimeOffset since, CancellationToken[\s\S]*?\{([\s\S]*?)\}/,
+    );
+    expect(convMethodMatch).not.toBeNull();
+    const convBody = convMethodMatch![1];
+    expect(convBody).not.toContain("Argument.Assert");
+  });
+
+  /**
+   * Verifies that bytes type parameters map to BinaryData with null validation.
+   * BinaryData is a reference type in C#, so required bytes params need
+   * Argument.AssertNotNull.
+   *
+   * This tests the "bytes" case in getConvenienceTypeInfo which maps to
+   * System.BinaryData.
+   */
+  it("maps bytes to BinaryData with null validation", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/upload")
+      @post op upload(@body data: bytes): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // BinaryData param in method signature
+    expect(clientFile).toContain("BinaryData data,");
+
+    // BinaryData is a reference type → needs assertion
+    expect(clientFile).toContain(
+      "Argument.AssertNotNull(data, nameof(data));",
+    );
+  });
+
+  /**
+   * Verifies that optional reference-type parameters (nullable strings, models)
+   * do NOT receive Argument.Assert* validation since callers may intentionally
+   * pass null. Optional params still get `= default` in the signature.
+   *
+   * This is a critical correctness check: validating optional params would be
+   * a runtime bug, as null is a valid value for optional parameters.
+   */
+  it("skips validation for optional reference-type params", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Item {
+        name: string;
+      }
+
+      @route("/items")
+      @get op searchItems(
+        @query q: string,
+        @query tag?: string,
+      ): Item;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Required string param IS validated
+    expect(clientFile).toContain(
+      "Argument.AssertNotNullOrEmpty(q, nameof(q));",
+    );
+
+    // Optional string param is NOT validated (no Assert for "tag")
+    expect(clientFile).not.toContain(
+      "Argument.AssertNotNullOrEmpty(tag, nameof(tag));",
+    );
+    expect(clientFile).not.toContain(
+      "Argument.AssertNotNull(tag, nameof(tag));",
+    );
+
+    // Optional param has default value in signature
+    expect(clientFile).toContain("string tag = default,");
+  });
+
+  /**
+   * Verifies that @doc decorators on parameters produce proper XML
+   * documentation in the convenience method's <param> tags.
+   *
+   * This tests the documentation pass-through in buildConvenienceXmlDoc
+   * where parameter docs are extracted from TCGC's doc/summary fields.
+   */
+  it("includes param documentation from @doc decorator", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Item {
+        name: string;
+      }
+
+      @route("/items")
+      @get op getItems(
+        @doc("The search query string")
+        @query q: string,
+      ): Item;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Param doc should include the description from @doc
+    expect(clientFile).toContain(
+      '/// <param name="q"> The search query string </param>',
+    );
+  });
+
+  /**
+   * Verifies that the exception XML doc for a single assertable parameter
+   * does not use commas or "or" — it's just the single param reference.
+   *
+   * This tests the joinWithOr() helper with exactly 1 item, ensuring
+   * the output is simply "<paramref name="x"/> is null." without any
+   * conjunction logic.
+   */
+  it("generates single-param exception doc without conjunction", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Item {
+        name: string;
+      }
+
+      @route("/items")
+      @post op createItem(@body item: Item): Item;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Single param → no "or" conjunction
+    expect(clientFile).toContain(
+      '/// <exception cref="ArgumentNullException"> <paramref name="item"/> is null. </exception>',
+    );
+
+    // Should NOT have ArgumentException for empty string (model is not a string)
+    expect(clientFile).not.toContain(
+      'is an empty string, and was expected to be non-empty.',
+    );
+  });
+
+  /**
+   * Verifies that two assertable parameters produce the "A or B" format
+   * (no comma) in the exception XML doc.
+   *
+   * This tests the joinWithOr() helper with exactly 2 items, which uses
+   * "or" without a comma (different from 3+ items which use commas).
+   */
+  it("generates two-param exception doc with or conjunction", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Item {
+        name: string;
+      }
+
+      @route("/items/{id}")
+      @put op updateItem(@path id: string, @body item: Item): Item;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Two params → "A or B" (no comma)
+    expect(clientFile).toContain(
+      '<paramref name="id"/> or <paramref name="item"/> is null.',
+    );
+  });
 });

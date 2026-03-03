@@ -2424,3 +2424,19 @@ Changes:
 Design decision: JsonPatch added to existing `SystemClientModelPrimitives` since it's in `System.ClientModel.Primitives` namespace. ExperimentalAttribute needs its own library (`SystemDiagnosticsCodeAnalysis`) because it's in a different namespace (`System.Diagnostics.CodeAnalysis`) and using statement generation requires matching namespaces.
 
 This unblocks phase 7 tasks (7.1.1, 7.2.1, 7.3.1, 7.3.2) for dynamic model and merge-patch implementation.
+
+## 2026-03-03 — Task 3.5.3: Write convenience method tests (complete)
+
+Added 10 new test cases to `test/convenience-method.test.ts` covering:
+- **Scalar return types** → verifies untyped ClientResult fallback (string return)
+- **Array return types** → verifies untyped ClientResult fallback (Item[] return)
+- **Multiple operations** → all eligible ops get convenience method pairs, including cleanOperationName (listItems → GetItems)
+- **BCL type params**: Uri (url → System.Uri with null validation), DateTimeOffset (utcDateTime → value type, no validation), BinaryData (bytes → reference type, with validation)
+- **Optional reference-type params** → verifies NO validation for optional strings (callers may pass null), with `= default`
+- **Param documentation** → @doc decorator content flows through to XML `<param>` tags
+- **Single-param exception docs** → no conjunction logic
+- **Two-param exception docs** → "A or B" format without comma
+
+Total tests went from 861 to 871 (all passing). Build, test, and lint all green.
+
+**Known gap**: Current implementation only generates generic `ClientResult<T>` for model response types. Scalar, array, and dictionary returns use untyped `ClientResult`. The legacy emitter generates `ClientResult<string>`, `ClientResult<IReadOnlyList<T>>`, etc. This is tracked but not yet implemented.

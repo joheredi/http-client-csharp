@@ -3065,7 +3065,7 @@
           "title": "Write convenience method tests",
           "description": "Test convenience method generation for various return types and parameter patterns.",
           "phase": "phase-3",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "3.5.2"
           ],
