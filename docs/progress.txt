@@ -3001,3 +3001,31 @@ The previous commit (da0bde3, task 10.1.4a) changed array parameters to use `IEn
 - When IEnumerable<string> makes an async method signature exceed the line length threshold, Alloy wraps parameters to multi-line format
 
 **All 1059 tests pass.**
+
+## 2026-03-03 — Task 10.1.4b: Fix implicit body convenience methods to spread individual parameters (complete)
+
+**Problem**: Operations with implicit body (no @body decorator, using spread `...Model`) generated convenience
+methods with the synthesized model as a parameter (e.g., `Simple(SimpleRequest name)`). They should spread
+individual scalar properties as separate parameters (e.g., `Simple(string name)`).
+
+**Changes**:
+- `src/components/clients/ConvenienceMethod.tsx`:
+  - Added `isSpreadBody()` detection function using TCGC's `correspondingMethodParams` — body is spread when
+    `bodyParam.type !== correspondingMethodParams[0].type` (matches legacy emitter logic).
+  - Changed `buildConvenienceParams()` return type to `ConvenienceParamsResult` (includes `spreadBodyType`).
+  - When body is spread: iterate `correspondingMethodParams` to add individual typed params instead of model.
+  - Added `buildSpreadProtocolCallExpr()` to construct `new BodyType(param1, ...)` for the protocol call.
+  - Method body uses `code` template for all cases to support Children expressions in protocol args.
+
+- `src/components/clients/PagingMethods.tsx`:
+  - Updated destructuring from `const params = buildConvenienceParams(...)` to `const { params } = ...`.
+
+- Test expectations updated in 3 scenario files:
+  - `basic_implicit_body.md`: `SimpleRequest name` → `string name`
+  - `body_optionality_required.md`: `BodyModel name` → `string name`
+  - `spread_model.md`: `BodyParameter name` → `string name`, `SpreadCompositeRequestMixRequest prop` → `string prop`
+
+**Key patterns**:
+- Use `TypeExpression` in `code` template for body model constructor (`new BodyType(...)`) to auto-manage `using` directives.
+- Maintain parameter ordering by inserting the constructor call at the first body param's position.
+- Assertions change from `AssertNotNull` to `AssertNotNullOrEmpty` for spread string params.

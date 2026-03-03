@@ -7,6 +7,7 @@ import type {
   SdkClientType,
   SdkHeaderParameter,
   SdkHttpOperation,
+  SdkModelType,
   SdkPathParameter,
   SdkQueryParameter,
   SdkServiceMethod,
@@ -119,18 +120,25 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
         const responseType = method.response.type;
 
         const params = buildConvenienceParams(operation);
-        const requiredParams = params.filter((p) => !p.optional);
+        const requiredParams = params.params.filter((p) => !p.optional);
         const assertableParams = requiredParams.filter((p) => p.needsAssertion);
 
-        // Build protocol method call argument list
-        const protocolArgList = [
-          ...params.map((p) => p.protocolCallArg),
-          "cancellationToken.ToRequestOptions()",
-        ].join(", ");
+        // Build protocol method call argument list.
+        // When the body is spread, replace individual body params with
+        // a model constructor call: new BodyType(param1, param2, ...).
+        const protocolCallExpr: Children = params.spreadBodyType
+          ? buildSpreadProtocolCallExpr(
+              params.params,
+              params.spreadBodyType as SdkModelType,
+            )
+          : [
+              ...params.params.map((p) => p.protocolCallArg),
+              "cancellationToken.ToRequestOptions()",
+            ].join(", ");
 
         // Build <Method> parameter props
         const methodParams = [
-          ...params.map((p) => ({
+          ...params.params.map((p) => ({
             name: p.name,
             type: p.type,
             ...(p.optional ? { default: "default" } : {}),
@@ -167,24 +175,25 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
 
         const xmlDoc = buildConvenienceXmlDoc(
           description,
-          params,
+          params.params,
           assertableParams,
         );
         const validation = buildConvenienceValidation(assertableParams);
 
-        // Sync method body
+        // Sync method body — use code template for all cases to support
+        // spread body Children expressions in protocolCallExpr.
         const syncBody = responseTypeExpr
           ? [
               validation,
               assertableParams.length > 0 ? "\n\n" : "",
-              code`${SystemClientModel.ClientResult} result = ${methodName}(${protocolArgList});`,
+              code`${SystemClientModel.ClientResult} result = ${methodName}(${protocolCallExpr});`,
               "\n",
               code`return ${SystemClientModel.ClientResult}.FromValue((${responseTypeExpr})result, result.GetRawResponse());`,
             ]
           : [
               validation,
               assertableParams.length > 0 ? "\n\n" : "",
-              `return ${methodName}(${protocolArgList});`,
+              code`return ${methodName}(${protocolCallExpr});`,
             ];
 
         // Async method body
@@ -192,14 +201,14 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
           ? [
               validation,
               assertableParams.length > 0 ? "\n\n" : "",
-              code`${SystemClientModel.ClientResult} result = await ${methodName}Async(${protocolArgList}).ConfigureAwait(false);`,
+              code`${SystemClientModel.ClientResult} result = await ${methodName}Async(${protocolCallExpr}).ConfigureAwait(false);`,
               "\n",
               code`return ${SystemClientModel.ClientResult}.FromValue((${responseTypeExpr})result, result.GetRawResponse());`,
             ]
           : [
               validation,
               assertableParams.length > 0 ? "\n\n" : "",
-              `return await ${methodName}Async(${protocolArgList}).ConfigureAwait(false);`,
+              code`return await ${methodName}Async(${protocolCallExpr}).ConfigureAwait(false);`,
             ];
 
         return (
@@ -237,6 +246,21 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
 }
 
 /**
+ * Result of building convenience method parameters, including optional
+ * spread body metadata for constructing the body model in the protocol call.
+ */
+export interface ConvenienceParamsResult {
+  /** The ordered convenience method parameters. */
+  params: ConvenienceParam[];
+  /**
+   * When non-null, the body parameter was spread into individual convenience
+   * params and the protocol call must construct the model via
+   * `new SpreadBodyType(param1, param2, ...)`.
+   */
+  spreadBodyType: SdkType | null;
+}
+
+/**
  * Builds the convenience method parameter list from an HTTP operation.
  *
  * Parameters follow the same ordering as protocol methods:
@@ -249,13 +273,18 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
  * (e.g., enums are not unwrapped to their wire type). Body parameters use
  * the model type instead of BinaryContent.
  *
+ * When the body is implicit or spread (no `@body` decorator, or `...Model`
+ * syntax), the body model's properties are exposed as individual parameters
+ * instead of the wrapper model type. The `spreadBodyType` field in the
+ * result indicates this case.
+ *
  * @remarks This mirrors the parameter ordering in ProtocolMethod's
  * buildProtocolParams function. Changes to parameter ordering must be
  * kept in sync between both files.
  */
 export function buildConvenienceParams(
   operation: SdkHttpOperation,
-): ConvenienceParam[] {
+): ConvenienceParamsResult {
   const pathParams = operation.parameters.filter(
     (p): p is SdkPathParameter => p.kind === "path",
   );
@@ -327,28 +356,95 @@ export function buildConvenienceParams(
   }
 
   // Body parameter as typed model (priority 200 required, 300 optional)
+  // When the body is spread (implicit or ...Model), expose individual
+  // properties instead of the wrapper model type.
+  let spreadBodyType: SdkType | null = null;
   if (bodyParam && !isConstantType(bodyParam.type)) {
-    const priority = bodyParam.optional ? 300 : 200;
-    const bodyName = getBodyParamName(bodyParam);
-    const convInfo = getConvenienceTypeInfo(bodyParam.type);
-    params.push({
-      name: bodyName,
-      type: convInfo.expression,
-      optional: bodyParam.optional ?? false,
-      isBody: true,
-      needsAssertion: convInfo.needsAssertion,
-      isStringType: convInfo.isString,
-      doc: bodyParam.doc ?? bodyParam.summary,
-      protocolCallArg: bodyName, // implicit BinaryContent conversion
-      priority,
-      index: index++,
-    });
+    if (isSpreadBody(bodyParam)) {
+      // Spread body: expose each model property as an individual parameter.
+      spreadBodyType = bodyParam.type;
+      for (const mp of bodyParam.correspondingMethodParams) {
+        const convInfo = getConvenienceTypeInfo(mp.type);
+        params.push({
+          name: mp.name,
+          type: convInfo.expression,
+          optional: mp.optional ?? false,
+          isBody: true,
+          needsAssertion: convInfo.needsAssertion,
+          isStringType: convInfo.isString,
+          doc: mp.doc ?? mp.summary,
+          protocolCallArg: getProtocolCallArg(mp.name, mp.type),
+          priority: mp.optional ? 300 : 200,
+          index: index++,
+        });
+      }
+    } else {
+      // Non-spread body: single typed model parameter.
+      const priority = bodyParam.optional ? 300 : 200;
+      const bodyName = getBodyParamName(bodyParam);
+      const convInfo = getConvenienceTypeInfo(bodyParam.type);
+      params.push({
+        name: bodyName,
+        type: convInfo.expression,
+        optional: bodyParam.optional ?? false,
+        isBody: true,
+        needsAssertion: convInfo.needsAssertion,
+        isStringType: convInfo.isString,
+        doc: bodyParam.doc ?? bodyParam.summary,
+        protocolCallArg: bodyName, // implicit BinaryContent conversion
+        priority,
+        index: index++,
+      });
+    }
   }
 
   // Sort by priority, then by original order for stability
   params.sort((a, b) => a.priority - b.priority || a.index - b.index);
 
-  return params.map(({ priority: _priority, index: _index, ...rest }) => rest);
+  return {
+    params: params.map(
+      ({ priority: _priority, index: _index, ...rest }) => rest,
+    ),
+    spreadBodyType,
+  };
+}
+
+/**
+ * Builds the protocol call argument expression for spread body operations.
+ *
+ * Instead of passing a single model parameter (which would use implicit
+ * BinaryContent conversion), this constructs the model from the individual
+ * spread parameters: `new BodyType(param1, param2, ...)`.
+ *
+ * Maintains parameter ordering: non-body args at their original positions,
+ * the body construction at the first body param's position, and
+ * `cancellationToken.ToRequestOptions()` at the end.
+ */
+function buildSpreadProtocolCallExpr(
+  params: ConvenienceParam[],
+  spreadBodyType: SdkModelType,
+): Children {
+  const bodyTypeExpr = <TypeExpression type={spreadBodyType.__raw!} />;
+  const spreadArgNames = params.filter((p) => p.isBody).map((p) => p.name);
+
+  const parts: Children[] = [];
+  let bodyInserted = false;
+  for (const p of params) {
+    if (p.isBody) {
+      if (!bodyInserted) {
+        if (parts.length > 0) parts.push(", ");
+        parts.push(code`new ${bodyTypeExpr}(${spreadArgNames.join(", ")})`);
+        bodyInserted = true;
+      }
+      // Skip remaining body params — they're combined in the constructor
+    } else {
+      if (parts.length > 0) parts.push(", ");
+      parts.push(p.protocolCallArg);
+    }
+  }
+  parts.push(", cancellationToken.ToRequestOptions()");
+
+  return parts;
 }
 
 /**
@@ -364,6 +460,26 @@ function getBodyParamName(bodyParam: SdkBodyParameter): string {
     return firstSegment.name;
   }
   return bodyParam.name;
+}
+
+/**
+ * Determines whether a body parameter should be spread into individual
+ * convenience method parameters.
+ *
+ * A body is considered "spread" when the body model type differs from the
+ * first corresponding method parameter's type. This occurs with:
+ * - Implicit body operations (no `@body` decorator, e.g. `op simple(name: string)`)
+ * - Spread syntax (`...Model`)
+ *
+ * Explicit `@body` parameters pass through as-is because the body type matches
+ * the corresponding method parameter type.
+ *
+ * This mirrors the legacy emitter's detection logic in `getParameterScope`.
+ */
+function isSpreadBody(bodyParam: SdkBodyParameter): boolean {
+  const correspondingParams = bodyParam.correspondingMethodParams;
+  if (!correspondingParams || correspondingParams.length === 0) return false;
+  return bodyParam.type !== correspondingParams[0].type;
 }
 
 /**

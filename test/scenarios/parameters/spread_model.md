@@ -107,30 +107,29 @@ public partial class Model
         /// <param name="name"></param>
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="name"/> is null. </exception>
+        /// <exception cref="ArgumentException"> <paramref name="name"/> is an empty string, and was expected to be non-empty. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult SpreadAsRequestBody(
-            BodyParameter name,
-            CancellationToken cancellationToken = default
-        )
+        public virtual ClientResult SpreadAsRequestBody(string name, CancellationToken cancellationToken = default)
         {
-            Argument.AssertNotNull(name, nameof(name));
+            Argument.AssertNotNullOrEmpty(name, nameof(name));
 
-            return SpreadAsRequestBody(name, cancellationToken.ToRequestOptions());
+            return SpreadAsRequestBody(new BodyParameter(name), cancellationToken.ToRequestOptions());
         }
 
         /// <summary>  </summary>
         /// <param name="name"></param>
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="name"/> is null. </exception>
+        /// <exception cref="ArgumentException"> <paramref name="name"/> is an empty string, and was expected to be non-empty. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         public virtual async Task<ClientResult> SpreadAsRequestBodyAsync(
-            BodyParameter name,
+            string name,
             CancellationToken cancellationToken = default
         )
         {
-            Argument.AssertNotNull(name, nameof(name));
+            Argument.AssertNotNullOrEmpty(name, nameof(name));
 
-            return await SpreadAsRequestBodyAsync(name, cancellationToken.ToRequestOptions()).ConfigureAwait(false);
+            return await SpreadAsRequestBodyAsync(new BodyParameter(name), cancellationToken.ToRequestOptions()).ConfigureAwait(false);
         }
 
         /// <summary>  </summary>
@@ -251,20 +250,20 @@ public partial class Model
         /// <param name="prop"></param>
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="name"/>, <paramref name="testHeader"/> or <paramref name="prop"/> is null. </exception>
-        /// <exception cref="ArgumentException"> <paramref name="name"/> or <paramref name="testHeader"/> is an empty string, and was expected to be non-empty. </exception>
+        /// <exception cref="ArgumentException"> <paramref name="name"/>, <paramref name="testHeader"/> or <paramref name="prop"/> is an empty string, and was expected to be non-empty. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         public virtual ClientResult SpreadCompositeRequestMix(
             string name,
             string testHeader,
-            SpreadCompositeRequestMixRequest prop,
+            string prop,
             CancellationToken cancellationToken = default
         )
         {
             Argument.AssertNotNullOrEmpty(name, nameof(name));
             Argument.AssertNotNullOrEmpty(testHeader, nameof(testHeader));
-            Argument.AssertNotNull(prop, nameof(prop));
+            Argument.AssertNotNullOrEmpty(prop, nameof(prop));
 
-            return SpreadCompositeRequestMix(name, testHeader, prop, cancellationToken.ToRequestOptions());
+            return SpreadCompositeRequestMix(name, testHeader, new SpreadCompositeRequestMixRequest(prop), cancellationToken.ToRequestOptions());
         }
 
         /// <summary>  </summary>
@@ -273,20 +272,20 @@ public partial class Model
         /// <param name="prop"></param>
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="name"/>, <paramref name="testHeader"/> or <paramref name="prop"/> is null. </exception>
-        /// <exception cref="ArgumentException"> <paramref name="name"/> or <paramref name="testHeader"/> is an empty string, and was expected to be non-empty. </exception>
+        /// <exception cref="ArgumentException"> <paramref name="name"/>, <paramref name="testHeader"/> or <paramref name="prop"/> is an empty string, and was expected to be non-empty. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         public virtual async Task<ClientResult> SpreadCompositeRequestMixAsync(
             string name,
             string testHeader,
-            SpreadCompositeRequestMixRequest prop,
+            string prop,
             CancellationToken cancellationToken = default
         )
         {
             Argument.AssertNotNullOrEmpty(name, nameof(name));
             Argument.AssertNotNullOrEmpty(testHeader, nameof(testHeader));
-            Argument.AssertNotNull(prop, nameof(prop));
+            Argument.AssertNotNullOrEmpty(prop, nameof(prop));
 
-            return await SpreadCompositeRequestMixAsync(name, testHeader, prop, cancellationToken.ToRequestOptions()).ConfigureAwait(false);
+            return await SpreadCompositeRequestMixAsync(name, testHeader, new SpreadCompositeRequestMixRequest(prop), cancellationToken.ToRequestOptions()).ConfigureAwait(false);
         }
 
         /// <summary>

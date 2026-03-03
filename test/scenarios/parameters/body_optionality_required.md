@@ -97,27 +97,29 @@ public partial class BodyOptionalityClient
         /// <param name="name"></param>
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="name"/> is null. </exception>
+        /// <exception cref="ArgumentException"> <paramref name="name"/> is an empty string, and was expected to be non-empty. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult RequiredImplicit(BodyModel name, CancellationToken cancellationToken = default)
+        public virtual ClientResult RequiredImplicit(string name, CancellationToken cancellationToken = default)
         {
-            Argument.AssertNotNull(name, nameof(name));
+            Argument.AssertNotNullOrEmpty(name, nameof(name));
 
-            return RequiredImplicit(name, cancellationToken.ToRequestOptions());
+            return RequiredImplicit(new BodyModel(name), cancellationToken.ToRequestOptions());
         }
 
         /// <summary>  </summary>
         /// <param name="name"></param>
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="name"/> is null. </exception>
+        /// <exception cref="ArgumentException"> <paramref name="name"/> is an empty string, and was expected to be non-empty. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         public virtual async Task<ClientResult> RequiredImplicitAsync(
-            BodyModel name,
+            string name,
             CancellationToken cancellationToken = default
         )
         {
-            Argument.AssertNotNull(name, nameof(name));
+            Argument.AssertNotNullOrEmpty(name, nameof(name));
 
-            return await RequiredImplicitAsync(name, cancellationToken.ToRequestOptions()).ConfigureAwait(false);
+            return await RequiredImplicitAsync(new BodyModel(name), cancellationToken.ToRequestOptions()).ConfigureAwait(false);
         }
 
         /// <summary>

@@ -46,27 +46,26 @@ public partial class ImplicitBody
         /// <param name="name"></param>
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="name"/> is null. </exception>
+        /// <exception cref="ArgumentException"> <paramref name="name"/> is an empty string, and was expected to be non-empty. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult Simple(SimpleRequest name, CancellationToken cancellationToken = default)
+        public virtual ClientResult Simple(string name, CancellationToken cancellationToken = default)
         {
-            Argument.AssertNotNull(name, nameof(name));
+            Argument.AssertNotNullOrEmpty(name, nameof(name));
 
-            return Simple(name, cancellationToken.ToRequestOptions());
+            return Simple(new SimpleRequest(name), cancellationToken.ToRequestOptions());
         }
 
         /// <summary>  </summary>
         /// <param name="name"></param>
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="name"/> is null. </exception>
+        /// <exception cref="ArgumentException"> <paramref name="name"/> is an empty string, and was expected to be non-empty. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async Task<ClientResult> SimpleAsync(
-            SimpleRequest name,
-            CancellationToken cancellationToken = default
-        )
+        public virtual async Task<ClientResult> SimpleAsync(string name, CancellationToken cancellationToken = default)
         {
-            Argument.AssertNotNull(name, nameof(name));
+            Argument.AssertNotNullOrEmpty(name, nameof(name));
 
-            return await SimpleAsync(name, cancellationToken.ToRequestOptions()).ConfigureAwait(false);
+            return await SimpleAsync(new SimpleRequest(name), cancellationToken.ToRequestOptions()).ConfigureAwait(false);
         }
 
         /// <summary>

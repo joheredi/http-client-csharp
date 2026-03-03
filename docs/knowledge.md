@@ -1774,29 +1774,37 @@ The legacy emitter generates `using (Stream dataStream = data.ToStream())` for t
 - **Deferred**: Constructor modification and `_additionalBinaryDataProperties` replacement deferred to task 7.2.1, which updates the serialization code in tandem
 
 ## Alloy Babel Plugin JSX Limitation
+
 The Alloy Babel JSX plugin (`@alloy-js/babel-plugin-jsx-dom-expressions`) crashes with `Cannot read properties of null (reading 'tagName')` when JSX fragments contain deeply nested conditional expressions with `code` template tags. Workaround: use string-array builders in helper functions and return simple JSX from the main component only. This was discovered during DynamicPropertySerializer implementation.
 
 ## SourceFile `using` Prop for Explicit Imports
+
 The `@alloy-js/csharp` `SourceFile` component accepts a `using` prop (string array) for explicitly adding `using` directives without needing refkey references. Example: `<SourceFile path="..." using={["System.Text"]} />`. Use this when the import is needed but the type reference is embedded in preprocessor-conditional blocks or plain strings.
 
 ## Dynamic Model Dictionary Serialization Pattern
+
 Dynamic model dictionaries use a `#if NET8_0_OR_GREATER` optimization for per-key patch checks: `Span<byte>` stackalloc for encoding dictionary keys to UTF-8. The variable naming follows: `buffer`/`bytesWritten`/`patchContains` at depth 0, `buffer0`/`bytesWritten0`/`patchContains0` at depth 1, etc. Inside `#if` blocks, use `global::System.Text.Encoding` (no import needed). Inside `#else` blocks, use `Encoding` (needs `using System.Text;`).
 
-## Dynamic Model List Serialization Pattern  
+## Dynamic Model List Serialization Pattern
+
 Dynamic model lists use `for` loops with index-based access (not `foreach`) to enable per-element `Patch.IsRemoved` checks. Index variables: `i`, `i0`, `i1`, etc. Dynamic model items check `element.Patch.IsRemoved("$"u8)`, primitive items check `Patch.IsRemoved(Encoding.UTF8.GetBytes($"$.path[{i}]"))`. Each collection-level loop ends with `Patch.WriteTo(writer, path)` before `WriteEndArray()`/`WriteEndObject()`.
 
 ## Design Decisions
+
 ### Task 7.2.1: Patch-Aware Serialization
+
 **Chosen:** Separate `DynamicPropertySerializer.tsx` with string-based helpers
 **Rejected:** Adding `isDynamic` flag to existing `PropertySerializer.tsx` functions
 **Reason:** String-based approach avoids Alloy Babel plugin issues with nested JSX, keeps regular serialization clean, and enables easier testing. The existing PropertySerializer helpers (getWriteMethodInfo, buildGuardCondition, etc.) are reused via imports.
 
 ### Task 10.1.8: Server/Endpoint Scenario Validation
+
 **Chosen:** Scenario markdown tests capturing full emitter output for 3 server scenarios (endpoint-not-defined, path-single, path-multiple)
 **Rejected:** Stub-based comparison against Spector golden files (stubs use `=> throw null` which don't match full emitter output)
 **Reason:** The scenario test framework uses tree-sitter to extract and compare full class declarations. The expected output must match the emitter's actual output, not the Spector stubs.
 
 ## Server/Endpoint Generation Notes
+
 - Non-versioned services use `ClientPipelineOptions` directly in constructors (no custom ClientOptions class generated). Spector golden files have custom `NotDefinedClientOptions`/`SingleClientOptions` extending `ClientPipelineOptions` with empty bodies — this is a known difference.
 - Versioned services (using `@versioned`) correctly generate custom `XxxClientOptions` with `ServiceVersion` enum and version string resolution.
 - The `@server` decorator's path template variables (e.g., `{endpoint}`) map to constructor parameters. The `endpoint: url` type maps to `Uri endpoint` in C#.
@@ -1816,6 +1824,7 @@ Dynamic model lists use `for` loops with index-based access (not `foreach`) to e
 5. **Namespace underscore prefix**: Sub-client namespaces use `Parameters.Basic.ExplicitBody` instead of `Parameters.Basic._ExplicitBody`. This is the known sub-namespace escaping convention difference.
 
 ### TypeSpec syntax for collection format parameters
+
 - `explode: true` (multi format): `@query(#{ explode: true }) colors: string[]`
 - Space-separated (SSV): `@query @encode(ArrayEncoding.spaceDelimited) colors: string[]`
 - Pipe-delimited: `@query @encode(ArrayEncoding.pipeDelimited) colors: string[]`
@@ -1831,3 +1840,12 @@ Dynamic model lists use `for` loops with index-based access (not `foreach`) to e
 **Rejected approach:** Creating a shared utility function for the array → IEnumerable mapping. The duplication between ProtocolMethod and RestClientFile is already documented (comment at line 454), and adding a shared function would increase indirection for only 3 call sites. The inline approach is simpler and matches the existing code style.
 
 **Key detail:** For convenience methods, the element type is resolved by recursively calling `getConvenienceTypeInfo()` on the element type (preserving typed enums, etc.), whereas protocol methods use `getProtocolTypeExpression()` which unwraps enums to wire types. This ensures `IEnumerable<MyEnum>` in convenience methods vs `IEnumerable<string>` in protocol methods for string-backed enum arrays.
+
+**Spread Body Detection:**
+
+- A body parameter is "spread" when `bodyParam.type !== bodyParam.correspondingMethodParams[0]?.type`
+- This occurs with implicit body (no @body) and spread syntax (...Model)
+- Explicit @body params have matching types → NOT spread
+- When spread: convenience methods expose individual properties as params
+- Protocol call uses `new BodyType(param1, param2, ...)` constructor with TypeExpression for using directives
+- `buildConvenienceParams` returns `{ params, spreadBodyType }` — `spreadBodyType` is non-null for spread bodies

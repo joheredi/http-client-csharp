@@ -264,7 +264,7 @@ function renderConveniencePagingMethods(
   operation: SdkHttpOperation,
   itemTypeExpr: Children,
 ): Children[] {
-  const params = buildConvenienceParams(operation);
+  const { params } = buildConvenienceParams(operation);
 
   // Build constructor args: this, ...convertedParams, cancellationToken.ToRequestOptions()
   const convertedArgs = params.map((p) => p.protocolCallArg);
