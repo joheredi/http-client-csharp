@@ -3559,7 +3559,7 @@
           "title": "Write infrastructure tests",
           "description": "Verify all infrastructure files generate correctly by comparing against golden files.",
           "phase": "phase-5",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "5.2.1",
             "5.3.1",

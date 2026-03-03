@@ -2900,3 +2900,15 @@ Key learnings:
 **Known limitations:**
 - BinaryData/unknown type properties are not yet handled in serialization (pre-existing gap)
 - Deserialization changes (data parameter, JsonPatch construction, constructor changes) are separate from this task
+
+## 2026-03-03 — Task 5.1.6: Write infrastructure tests (already done)
+
+All 19 infrastructure components already have comprehensive test coverage:
+- `test/infrastructure-helpers.test.ts` — covers 14 helper files (Argument, Optional, ChangeTrackingList/Dictionary, CancellationTokenExtensions, ErrorResult, SerializationFormat, ClientPipelineExtensions, ClientUriBuilder, TypeFormatters, ModelSerializationExtensions, Utf8JsonBinaryContent, BinaryContentHelper, PipelineRequestHeadersExtensions)
+- `test/project-scaffolding.test.ts` — covers ProjectFile and SolutionFile (9 tests)
+- `test/codegen-attributes.test.ts` — covers all 4 CodeGen attribute files
+- `test/model-reader-writer-context.test.ts` — covers ModelReaderWriterContextFile
+- `test/multipart-binary-content.test.ts` — covers MultiPartFormDataBinaryContentFile
+- Holistic "Infrastructure files — always generated" suite verifies all 14 always-generated files exist and have auto-generated headers
+
+All 1041 tests pass. Marked as done since acceptance criteria ("All infrastructure file tests pass") is satisfied.
