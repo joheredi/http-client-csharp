@@ -4033,7 +4033,7 @@
           "title": "Validate parameter scenarios",
           "description": "Compare output against Spector parameter golden files: basic, spread, collection-format, body-optionality.",
           "phase": "phase-10",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "3.5.3"
           ],
@@ -4183,6 +4183,26 @@
             "Generated output matches Spector content-negotiation golden files",
             "Generated output matches Spector media-type golden files"
           ]
+        },
+        {
+          "id": "10.1.4a",
+          "title": "Fix collection parameter type to use IEnumerable<T>",
+          "description": "Convenience method and protocol method parameters for collection types (string[]) should use IEnumerable<string> instead of string[] to match the legacy emitter pattern. Protocol methods incorrectly flatten to string. Affects collection-format Query and Header sub-clients.",
+          "status": "pending",
+          "dependencies": [
+            "10.1.4"
+          ],
+          "phase": "phase-10"
+        },
+        {
+          "id": "10.1.4b",
+          "title": "Fix implicit body convenience methods to spread individual parameters",
+          "description": "Operations with implicit body (no @body decorator, using spread operator) should expose individual scalar parameters in convenience methods instead of a synthesized model wrapper. E.g., Simple(string name) instead of Simple(SimpleRequest name). Affects Parameters.Basic.ImplicitBody and Parameters.BodyOptionality.requiredImplicit.",
+          "status": "pending",
+          "dependencies": [
+            "10.1.4"
+          ],
+          "phase": "phase-10"
         }
       ]
     },

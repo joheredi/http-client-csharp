@@ -1800,3 +1800,24 @@ Dynamic model lists use `for` loops with index-based access (not `foreach`) to e
 - Non-versioned services use `ClientPipelineOptions` directly in constructors (no custom ClientOptions class generated). Spector golden files have custom `NotDefinedClientOptions`/`SingleClientOptions` extending `ClientPipelineOptions` with empty bodies — this is a known difference.
 - Versioned services (using `@versioned`) correctly generate custom `XxxClientOptions` with `ServiceVersion` enum and version string resolution.
 - The `@server` decorator's path template variables (e.g., `{endpoint}`) map to constructor parameters. The `endpoint: url` type maps to `Uri endpoint` in C#.
+
+## Parameter Scenario Validation Gaps (Task 10.1.4)
+
+### Identified differences between emitter output and Spector golden files:
+
+1. **Collection parameter type mismatch**: Our emitter uses `string[]` for convenience method collection parameters; Spector golden files use `IEnumerable<string>`. This affects `Parameters.CollectionFormat` (Query and Header sub-clients). The `IEnumerable<string>` type is more flexible and matches the legacy emitter's pattern.
+
+2. **Implicit body convenience methods use model wrapper instead of individual params**: For operations with implicit body (no `@body` decorator), our emitter generates a synthesized model type (e.g., `SimpleRequest`) as the convenience method parameter. The Spector golden files expect individual scalar parameters spread out (e.g., `string name`). This affects `Parameters.Basic.ImplicitBody` and `Parameters.BodyOptionality.requiredImplicit`.
+
+3. **Protocol method collection parameters flatten to string**: For collection format operations, the protocol method signature uses `string` instead of `IEnumerable<string>` for the `colors` parameter. Spector golden files keep `IEnumerable<string>` for both convenience and protocol methods.
+
+4. **Non-versioned services lack custom ClientOptions class**: Already noted in Server/Endpoint section above - non-versioned services use `ClientPipelineOptions` directly instead of generating a custom `XxxClientOptions` class.
+
+5. **Namespace underscore prefix**: Sub-client namespaces use `Parameters.Basic.ExplicitBody` instead of `Parameters.Basic._ExplicitBody`. This is the known sub-namespace escaping convention difference.
+
+### TypeSpec syntax for collection format parameters
+- `explode: true` (multi format): `@query(#{ explode: true }) colors: string[]`
+- Space-separated (SSV): `@query @encode(ArrayEncoding.spaceDelimited) colors: string[]`
+- Pipe-delimited: `@query @encode(ArrayEncoding.pipeDelimited) colors: string[]`
+- CSV (default): `@query colors: string[]`
+- The old `format` property is deprecated; use `explode` and `@encode` decorators instead.
