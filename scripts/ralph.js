@@ -13,7 +13,7 @@ function getArg(name) {
   return idx !== -1 && args[idx + 1] ? args[idx + 1] : undefined;
 }
 
-const iterationsStr = getArg("--iterations");
+const iterationsStr = getArg("--iterations") ?? "50";
 if (!iterationsStr) {
   console.error("Error: --iterations <number> is required");
   process.exit(1);
