@@ -2,6 +2,7 @@ import { Method, useCSharpNamePolicy } from "@alloy-js/csharp";
 import { code, namekey } from "@alloy-js/core";
 import type { Children } from "@alloy-js/core";
 import type {
+  SdkBodyParameter,
   SdkClientType,
   SdkHeaderParameter,
   SdkHttpOperation,
@@ -276,6 +277,23 @@ export function buildProtocolParams(
       priority,
       index: index++,
     });
+
+    // For multipart/form-data operations, add a contentType string parameter
+    // immediately after the body parameter. The contentType includes the
+    // boundary string (e.g., "multipart/form-data; boundary=...") and must
+    // be passed dynamically rather than hardcoded.
+    if (isMultipartFormData(bodyParam)) {
+      params.push({
+        name: "contentType",
+        type: "string",
+        optional: false,
+        isStringType: true,
+        isBody: false,
+        doc: "The contentType to use which has the multipart/form-data boundary.",
+        priority: priority + 1,
+        index: index++,
+      });
+    }
   }
 
   // Sort by priority, then by original order for stability
@@ -508,4 +526,13 @@ function isConstantType(type: SdkType): boolean {
 /** Checks if a header parameter is the implicit Content-Type header. */
 function isImplicitContentTypeHeader(param: SdkHeaderParameter): boolean {
   return param.serializedName.toLowerCase() === "content-type";
+}
+
+/**
+ * Checks if a body parameter uses multipart/form-data content type.
+ * Multipart operations require a dynamic contentType parameter (with boundary)
+ * instead of a hardcoded Content-Type header.
+ */
+function isMultipartFormData(bodyParam: SdkBodyParameter): boolean {
+  return bodyParam.contentTypes?.includes("multipart/form-data") ?? false;
 }

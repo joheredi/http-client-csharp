@@ -2665,3 +2665,41 @@ validate current emitter behavior as regression tests.
 Pattern: Used SCENARIOS_UPDATE=true to auto-populate expected output after
 writing TypeSpec input in markdown files. This is the fastest way to create
 new scenario tests.
+
+## 2026-03-03 — Task 9.1.2: Implement multipart request building
+
+Changes made:
+- Modified `src/components/clients/ProtocolMethod.tsx`:
+  - Added `SdkBodyParameter` import
+  - Added `isMultipartFormData()` helper function
+  - In `buildProtocolParams()`, added synthetic `contentType: string` parameter
+    immediately after body parameter for multipart/form-data operations
+  - Priority is body+1 to ensure it appears right after `content` param
+  - Marked as required string (isStringType: true) for proper validation
+
+- Modified `src/components/clients/RestClientFile.tsx`:
+  - Added `isMultipartFormData()` helper function
+  - In `buildMethodParams()`, added `contentType: string` parameter for multipart
+  - In `buildRequestBody()`, changed Content-Type header to use `contentType`
+    variable (not hardcoded string) when operation is multipart/form-data
+
+- Created `test/multipart-request-building.test.ts` with 8 tests covering:
+  - Protocol method has contentType parameter for multipart ops
+  - contentType validated with AssertNotNullOrEmpty
+  - XML docs include contentType parameter
+  - CreateRequest method has contentType parameter
+  - CreateRequest uses contentType variable (not hardcoded string) for Content-Type
+  - Non-multipart operations are not affected (regression test)
+  - Protocol method passes contentType to CreateRequest
+  - CreateRequest sets request.Content for multipart body
+
+Design decision: Added synthetic `contentType` parameter matching legacy emitter's
+`ScmKnownParameters.ContentType` pattern, rather than letting the Content-Type
+header parameter through. This matches the generated output in Spector golden files
+exactly: `Basic(BinaryContent content, string contentType, RequestOptions options)`.
+
+Key insight: For multipart, Content-Type must be dynamic because it includes the
+boundary string (e.g., "multipart/form-data; boundary=abc123"). The boundary is
+generated at runtime by MultiPartFormDataBinaryContent.
+
+All 928 tests pass (8 new).

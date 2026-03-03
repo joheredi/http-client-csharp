@@ -3915,7 +3915,7 @@
           "title": "Implement multipart request building",
           "description": "Generate request building for multipart operations: create MultiPartFormDataBinaryContent, pass content.ContentType.",
           "phase": "phase-9",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "9.1.1",
             "3.3.2"

@@ -508,6 +508,18 @@ function buildMethodParams(
       priority,
       index: index++,
     });
+
+    // For multipart/form-data operations, add a contentType string parameter
+    // immediately after the body parameter. The contentType includes the
+    // boundary string and must be passed dynamically.
+    if (isMultipartFormData(bodyParam)) {
+      params.push({
+        name: "contentType",
+        type: "string",
+        priority: priority + 1,
+        index: index++,
+      });
+    }
   }
 
   // Sort by priority, then by original order for stability
@@ -530,6 +542,15 @@ function buildMethodParams(
  */
 function isImplicitContentTypeHeader(param: SdkHeaderParameter): boolean {
   return param.serializedName.toLowerCase() === "content-type";
+}
+
+/**
+ * Checks if a body parameter uses multipart/form-data content type.
+ * Multipart operations require a dynamic contentType parameter (with boundary)
+ * instead of a hardcoded Content-Type header.
+ */
+function isMultipartFormData(bodyParam: SdkBodyParameter): boolean {
+  return bodyParam.contentTypes?.includes("multipart/form-data") ?? false;
 }
 
 /**
@@ -916,9 +937,20 @@ function buildRequestBody(
   }
 
   // Content-Type header (derived from body's defaultContentType)
+  // For multipart/form-data operations, the contentType is passed as a method
+  // parameter (includes the boundary) rather than being hardcoded.
   if (bodyParam) {
+    const multipart = isMultipartFormData(bodyParam);
     const contentType = bodyParam.defaultContentType;
-    if (contentType) {
+    if (multipart) {
+      if (bodyParam.optional) {
+        parts.push(
+          `\nif (content != null)\n{\n    request.Headers.Set("Content-Type", contentType);\n}`,
+        );
+      } else {
+        parts.push(`\nrequest.Headers.Set("Content-Type", contentType);`);
+      }
+    } else if (contentType) {
       if (bodyParam.optional) {
         parts.push(
           `\nif (content != null)\n{\n    request.Headers.Set("Content-Type", "${contentType}");\n}`,

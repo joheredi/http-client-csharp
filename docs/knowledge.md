@@ -1579,3 +1579,14 @@ The `MultiPartFormDataBinaryContentFile` component uses `useEmitterContext().has
 5. **No `ModelReaderWriterContext` class for auth-only scenarios**: The legacy emitter generates empty context classes (e.g., `AuthenticationApiKeyContext.cs`). Our emitter skips context generation when there are no serializable models.
 
 6. **Union auth only applies first auth policy**: In the union (api-key + oauth2) scenario, our emitter only adds the ApiKeyAuthenticationPolicy to the pipeline, not the BearerTokenAuthenticationPolicy. The legacy emitter applies both policies or selects based on constructor used.
+
+## Design Decisions
+
+### Multipart contentType parameter (Task 9.1.2)
+**Chosen approach**: Add synthetic `contentType: string` parameter for multipart/form-data operations in both `buildProtocolParams()` and `buildMethodParams()`. Use the `contentType` variable in `buildRequestBody()` for the Content-Type header.
+
+**Rejected approach**: Letting the Content-Type header parameter through `isImplicitContentTypeHeader` for multipart operations. This was rejected because the legacy emitter adds a synthetic parameter (`ScmKnownParameters.ContentType`) rather than using the actual header parameter, and the naming/doc would differ.
+
+**Detection**: Use `bodyParam.contentTypes?.includes("multipart/form-data")` via `isMultipartFormData()` helper (defined in both ProtocolMethod.tsx and RestClientFile.tsx).
+
+**Why dynamic**: Multipart Content-Type includes the boundary string generated at runtime by `MultiPartFormDataBinaryContent`. Hardcoding "multipart/form-data" would cause server rejections.
