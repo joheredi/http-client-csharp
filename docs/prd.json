@@ -3720,7 +3720,7 @@
           "title": "Write XML serialization tests",
           "description": "Test XML serialization against golden files.",
           "phase": "phase-6",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "6.3.1"
           ],

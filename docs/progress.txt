@@ -3225,3 +3225,16 @@ Both scenarios verified against Spector golden files in `submodules/typespec/pac
 - Tests validate: main client generation, sub-client accessors, convenience methods, protocol methods, model generation
 - All 1,113 tests pass (7 new scenario snippet tests)
 - Documented API surface gaps vs legacy Spector golden files in knowledge.md
+
+## Task 6.3.2: Write XML serialization tests (2026-03-03)
+- Created `test/scenarios/serialization/` directory for serialization scenario tests
+- Created `test/scenarios/serialization/xml_serialization.md` with comprehensive XML serialization scenario tests
+- Tests cover 3 models across 6 code snippets:
+  - **SimpleXmlModel** — basic XML model (string + int) with full serialization: IPersistableModel, XmlModelWriteCore, WriteXml, DeserializeXxx, cast operators
+  - **XmlModelWithOptionalField** — validates Optional.IsDefined() guards for optional int? property in XML write path
+  - **DualFormatModel** — validates dual JSON+XML format support: IJsonModel + IPersistableModel, case "J" and case "X" in PersistableModelWriteCore/CreateCore, Content-Type sniffing in explicit cast operator, ToBinaryContent(format)
+- Used SCENARIOS_UPDATE=true to auto-populate expected C# output from emitter
+- Verified output matches legacy Spector golden file public API surface (IPersistableModel, XmlModelWriteCore signature, cast operators, internal constructor)
+- Pattern: XML serialization is triggered by `@header("content-type") contentType: "application/xml"` in TypeSpec
+- @typespec/xml package NOT available as dependency, so decorators like @attribute/@unwrapped cannot be tested in scenarios
+- All 1,119 tests pass (6 new scenario snippet tests)
