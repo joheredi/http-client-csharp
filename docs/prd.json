@@ -3816,7 +3816,7 @@
           "title": "Write merge-patch tests",
           "description": "Test dynamic model generation against golden files.",
           "phase": "phase-7",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "7.3.1"
           ],

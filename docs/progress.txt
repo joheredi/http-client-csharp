@@ -3278,3 +3278,24 @@ Task 0.4.4 was already fully implemented. The test/scenarios/ directory exists w
 - Navigation steps modeled as `NavStep[]` with `kind: "array" | "dict"`
 - Extension methods conditionally generated via `hasDynamicModels` prop
 - All 1134 tests pass (15 new propagator tests)
+
+## Task 7.3.2: Write merge-patch tests (2026-03-03)
+
+**What was done:**
+- Created `test/scenarios/merge_patch/simple_merge_patch.md` — scenario test for a simple
+  model with merge-patch content type. Validates _patch field, Patch ref-return property,
+  pragma wrapping, modified constructors (in JsonPatch patch), and model factory with default.
+- Created `test/scenarios/merge_patch/nested_merge_patch.md` — scenario test for nested
+  dynamic models with propagators. Validates SetPropagators call, Inner model without
+  propagators, and model factory using default for patch parameter with ToArray for collections.
+
+**Key patterns:**
+- Scenario test format: markdown with TypeSpec input + expected C# code blocks using
+  tree-sitter class_declaration extraction
+- The tree-sitter extraction captures from the class keyword to closing brace, with the
+  first line at column 0 and subsequent lines preserving file indentation
+- Factory method parameter wrapping is width-dependent: short param lists stay on one
+  line; long param lists wrap with one param per line
+
+**Files created:** 2 scenario markdown files (5 test assertions total)
+**Result:** All 1139 tests pass (1134 → 1139), build and lint clean
