@@ -5,9 +5,21 @@ import type {
   SdkArrayType,
   SdkClientType,
   SdkHttpOperation,
+  SdkLroPagingServiceMethod,
   SdkPagingServiceMethod,
   SdkType,
 } from "@azure-tools/typespec-client-generator-core";
+
+/**
+ * Union type for methods that produce paginated results.
+ * Both `SdkPagingServiceMethod` (kind "paging") and `SdkLroPagingServiceMethod`
+ * (kind "lropaging") share `pagingMetadata` via `SdkPagingServiceMethodOptions`.
+ * For System.ClientModel, LRO does not affect method signatures, so both kinds
+ * generate identical collection-result-based methods.
+ */
+type PagingLikeMethod<T extends import("@azure-tools/typespec-client-generator-core").SdkServiceOperation> =
+  | SdkPagingServiceMethod<T>
+  | SdkLroPagingServiceMethod<T>;
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import {
   SystemClientModel,
@@ -77,7 +89,8 @@ export function PagingMethods(props: PagingMethodsProps) {
   const clientName = namePolicy.getName(client.name, "class");
 
   const methods = client.methods.filter(
-    (m): m is SdkPagingServiceMethod<SdkHttpOperation> => m.kind === "paging",
+    (m): m is PagingLikeMethod<SdkHttpOperation> =>
+      m.kind === "paging" || m.kind === "lropaging",
   );
 
   if (methods.length === 0) return null;
@@ -160,7 +173,7 @@ export function PagingMethods(props: PagingMethodsProps) {
  * CollectionResult/AsyncCollectionResult and instantiate the collection result class.
  */
 function renderProtocolPagingMethods(
-  method: SdkPagingServiceMethod<SdkHttpOperation>,
+  method: PagingLikeMethod<SdkHttpOperation>,
   methodName: string,
   classNameBase: string,
   accessProps: { internal: true } | { public: true },
@@ -242,7 +255,7 @@ function renderProtocolPagingMethods(
  * (e.g., enum values are converted via .ToString() or integer casts).
  */
 function renderConveniencePagingMethods(
-  method: SdkPagingServiceMethod<SdkHttpOperation>,
+  method: PagingLikeMethod<SdkHttpOperation>,
   methodName: string,
   classNameBase: string,
   accessProps: { internal: true } | { public: true },

@@ -2576,3 +2576,24 @@ LRO methods share the same generation pipeline as basic methods. No separate LRO
 - TCGC's `SdkServiceMethod` union includes both `SdkLroServiceMethod` (kind "lro") and `SdkLroPagingServiceMethod` (kind "lropaging")
 - The "lropaging" kind is now excluded from both protocol and convenience method filters — task 4.5.2 will handle this combined case
 - The RestClient (CreateRequest methods) already handles all HTTP operations uniformly, including LRO
+
+## Task 4.5.2: Implement LRO+paging combination (2026-03-03)
+
+**What was done:**
+- Extended `PagingMethods.tsx` and `CollectionResultFile.tsx` to handle `lropaging` operations (kind "lropaging") identically to regular paging operations
+- Created `PagingLikeMethod<T>` union type combining `SdkPagingServiceMethod<T>` and `SdkLroPagingServiceMethod<T>` — both share `pagingMetadata` via `SdkPagingServiceMethodOptions`
+- Changed filter predicates from `m.kind === "paging"` to `m.kind === "paging" || m.kind === "lropaging"` in both files
+- Added 5 unit tests in `lro-paging-methods.test.ts` covering: method generation, body correctness, filter exclusion, collection result file generation, coexistence with regular and paging methods
+
+**Design decision:**
+- For System.ClientModel (non-Azure), LRO does not affect method signatures or return types. LRO+paging operations generate the same output as paging operations: CollectionResult/AsyncCollectionResult return types and collection result iterator classes.
+- This matches the legacy emitter's behavior where `InputLongRunningPagingServiceMethod` is not checked by `ScmMethodProviderCollection` (confirming lropaging doesn't need separate handling).
+
+**Patterns used:**
+- Union type `PagingLikeMethod` to avoid code duplication while maintaining type safety
+- Same test patterns as `paging-methods.test.ts` with `@markAsLro` + `@list` + `@pageItems` to trigger "lropaging" kind
+
+**Notes for next person:**
+- Task 4.5.3 (Write LRO tests) is now unblocked
+- The `lroMetadata` property on `SdkLroPagingServiceMethod` is available but unused for System.ClientModel — an Azure extension would need to read it for `Operation<T>` return types
+- Convenience async methods may wrap across lines due to printWidth — use split assertions in tests

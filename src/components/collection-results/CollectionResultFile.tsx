@@ -13,11 +13,23 @@ import type {
   SdkArrayType,
   SdkClientType,
   SdkHttpOperation,
+  SdkLroPagingServiceMethod,
   SdkModelPropertyType,
   SdkPagingServiceMethod,
   SdkServiceResponseHeader,
   SdkType,
 } from "@azure-tools/typespec-client-generator-core";
+
+/**
+ * Union type for methods that produce paginated results.
+ * Both `SdkPagingServiceMethod` (kind "paging") and `SdkLroPagingServiceMethod`
+ * (kind "lropaging") share `pagingMetadata` via `SdkPagingServiceMethodOptions`.
+ * For System.ClientModel, LRO does not affect collection result generation, so
+ * both kinds produce identical iterator classes.
+ */
+type PagingLikeMethod<T extends import("@azure-tools/typespec-client-generator-core").SdkServiceOperation> =
+  | SdkPagingServiceMethod<T>
+  | SdkLroPagingServiceMethod<T>;
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import { System } from "../../builtins/system.js";
 import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
@@ -64,7 +76,8 @@ export function CollectionResultFiles(props: CollectionResultFilesProps) {
   const { client, options } = props;
 
   const pagingMethods = client.methods.filter(
-    (m): m is SdkPagingServiceMethod<SdkHttpOperation> => m.kind === "paging",
+    (m): m is PagingLikeMethod<SdkHttpOperation> =>
+      m.kind === "paging" || m.kind === "lropaging",
   );
 
   if (pagingMethods.length === 0) return null;
@@ -110,7 +123,7 @@ export function CollectionResultFiles(props: CollectionResultFilesProps) {
  */
 interface CollectionResultFileProps {
   client: SdkClientType<SdkHttpOperation>;
-  method: SdkPagingServiceMethod<SdkHttpOperation>;
+  method: PagingLikeMethod<SdkHttpOperation>;
   options: ResolvedCSharpEmitterOptions;
   isAsync: boolean;
   isConvenience: boolean;

@@ -1543,3 +1543,9 @@ The `lropaging` kind is excluded from basic/LRO filters and will need separate h
 - **TCGC library must be in test host**: To use `@markAsLro` in tests, `@azure-tools/typespec-client-generator-core` must be listed in the test host's `libraries` array.
 - **Async convenience methods wrap**: Long method signatures (especially async with generic return types like `Task<ClientResult<T>>`) wrap across multiple lines due to printWidth. Use partial assertions (check method name + return type separately from parameters).
 - **LRO metadata available but unused**: `SdkLroServiceMethod.lroMetadata` contains `finalStateVia`, `finalResponse`, and `finalResultPath` — these are not used in the System.ClientModel target but would be needed for Azure extensions.
+
+## Design Decisions — Task 4.5.2
+
+171. **LRO+Paging treated identically to Paging for System.ClientModel**: Operations with TCGC kind "lropaging" produce the same output as "paging" operations — CollectionResult/AsyncCollectionResult return types and iterator classes. The `lroMetadata` is available on `SdkLroPagingServiceMethod` but unused because System.ClientModel doesn't have LRO-specific return types (no `Operation<T>`). A union type `PagingLikeMethod<T> = SdkPagingServiceMethod<T> | SdkLroPagingServiceMethod<T>` is used in both `PagingMethods.tsx` and `CollectionResultFile.tsx` to handle both kinds with shared code. The legacy emitter's `ScmMethodProviderCollection` similarly doesn't check for `InputLongRunningPagingServiceMethod`, confirming this approach.
+
+172. **Creating lropaging test TypeSpec**: Use `@markAsLro` (from `Azure.ClientGenerator.Core.Legacy`) combined with `@list` and `@pageItems` on the return model to produce `kind: "lropaging"`. TCGC classifies as lropaging when both LRO metadata and paging metadata exist: `const lro = getTcgcLroMetadata(...)` and `const paging = isList(...) || getMarkAsPageable(...)`.
