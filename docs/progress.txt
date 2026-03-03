@@ -2491,3 +2491,39 @@ Total tests went from 861 to 871 (all passing). Build, test, and lint all green.
 - Task 4.3.1 (continuation-token strategy) will need to update both CollectionResultFile constructors AND PagingMethods bodies to pass extra params
 - Paging methods do NOT generate Argument.Assert validation (matches legacy emitter behavior)
 - `async` modifier is on the paging methods even though they don't use `await` — this matches the Method component's default behavior and matches legacy output
+
+---
+
+2026-03-03 — Task 4.3.1: Implement continuation-token paging strategy
+
+Modified `src/components/collection-results/CollectionResultFile.tsx`:
+- Added import for `buildProtocolParams` from ProtocolMethod.tsx
+- Added detection of continuation-token metadata from `pagingMetadata.continuationTokenResponseSegments` and `continuationTokenParameterSegments`
+- Added body-based vs header-based detection using `kind === "responseheader"` discriminator
+- Added operation params as fields + constructor params for continuation-token operations (token is one of the operation params)
+- Added 4 new builder functions:
+  - `buildContinuationTokenBodyGetRawPagesBody` — while(true) loop with response model cast and string.IsNullOrEmpty check
+  - `buildContinuationTokenHeaderGetRawPagesBody` — while(true) loop with TryGetValue header extraction
+  - `buildContinuationTokenBodyGetContinuationTokenBody` — extract token from body, if/else with BinaryData.FromString
+  - `buildContinuationTokenHeaderGetContinuationTokenBody` — extract token from header, if/else with BinaryData.FromString
+- Added `buildCreateRequestArgs` helper to construct Create{Op}Request args, replacing token with nextToken on subsequent iterations
+- Renamed `buildNextLinkPropertyPath` to `buildResponsePropertyPath` (generic, reusable for both next-link and continuation-token)
+- Updated `buildConstructorDoc` to accept operation params and generate `<param>` docs for each
+
+Added 6 tests in `test/collection-results.test.ts`:
+1. Body-based continuation-token sync protocol GetRawPages loop
+2. Body-based continuation-token async protocol GetRawPagesAsync loop
+3. Body-based continuation-token GetContinuationToken method
+4. Body-based continuation-token convenience variant with GetValuesFromPage
+5. Header-based continuation-token paging loop (TryGetValue pattern)
+6. Header-based continuation-token GetContinuationToken method
+
+No changes to PagingMethods.tsx — it already passes all operation params to the CollectionResult constructor.
+
+All 888 tests pass (6 new). Build and lint pass.
+
+Patterns used:
+- Inline conditional dispatch matching existing next-link vs single-page pattern
+- buildProtocolParams reuse from ProtocolMethod.tsx
+- code template tag for C# expressions with refkeys
+- string literals for pure C# code without refkeys

@@ -29,6 +29,7 @@ import { SystemThreadingTasks } from "../../builtins/system-threading.js";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { cleanOperationName } from "../../utils/operation-naming.js";
+import { buildProtocolParams } from "../clients/ProtocolMethod.js";
 
 /**
  * Props for the {@link CollectionResultFiles} component.
@@ -53,11 +54,11 @@ export interface CollectionResultFilesProps {
  * storing the client reference and request options, then yielding pages via
  * GetRawPages/GetRawPagesAsync.
  *
- * Supports two paging strategies:
+ * Supports three paging strategies:
  * - Single-page: simple yield return (no nextLinkSegments or continuationToken)
  * - Next-link: while(true) loop with URI extraction and CreateNext{Op}Request
- *
- * Continuation-token strategy (4.3.1) will be added in a future task.
+ * - Continuation-token: while(true) loop with token extraction from response
+ *   body or header, and same Create{Op}Request re-invocation with updated token
  */
 export function CollectionResultFiles(props: CollectionResultFilesProps) {
   const { client, options } = props;
@@ -193,7 +194,63 @@ function CollectionResultFile(props: CollectionResultFileProps) {
   //   Simple (1 segment): "NextLink"
   //   Nested (2+ segments): "Nested?.NextLink"
   const nextLinkPropertyPath = hasNextLink
-    ? buildNextLinkPropertyPath(nextLinkSegments!, namePolicy)
+    ? buildResponsePropertyPath(nextLinkSegments!, namePolicy)
+    : undefined;
+
+  // Extract continuation-token metadata for multi-page paging.
+  // Continuation-token takes effect only when next-link is absent (matching
+  // the legacy emitter's precedence: nextLink > continuationToken > single-page).
+  const continuationTokenResponseSegments =
+    metadata.continuationTokenResponseSegments;
+  const continuationTokenParamSegments =
+    metadata.continuationTokenParameterSegments;
+  const hasContinuationToken =
+    !hasNextLink &&
+    continuationTokenResponseSegments !== undefined &&
+    continuationTokenResponseSegments.length > 0 &&
+    continuationTokenParamSegments !== undefined &&
+    continuationTokenParamSegments.length > 0;
+
+  // Determine if the continuation token is extracted from a response header
+  // (kind "responseheader") vs a response body property (kind "property").
+  const isContinuationTokenHeader =
+    hasContinuationToken &&
+    continuationTokenResponseSegments![0].kind === "responseheader";
+
+  // For header-based extraction, get the serialized HTTP header name
+  // (e.g., "next-token") from the response header segment.
+  const continuationTokenHeaderName =
+    isContinuationTokenHeader &&
+    "serializedName" in continuationTokenResponseSegments![0]
+      ? (
+          continuationTokenResponseSegments![0] as SdkServiceResponseHeader & {
+            serializedName: string;
+          }
+        ).serializedName
+      : undefined;
+
+  // For body-based extraction, build the property path from the response model
+  // to the continuation token value (e.g., "NextToken" or "Nested?.NextToken").
+  const continuationTokenPropertyPath =
+    hasContinuationToken && !isContinuationTokenHeader
+      ? buildResponsePropertyPath(
+          continuationTokenResponseSegments!,
+          namePolicy,
+        )
+      : undefined;
+
+  // Get all operation parameters for continuation-token operations.
+  // These are stored as fields and passed to Create{Op}Request on each iteration.
+  const operationParams = hasContinuationToken
+    ? buildProtocolParams(method.operation)
+    : [];
+
+  // Identify which operation parameter is the continuation token by matching
+  // against the last segment in continuationTokenParameterSegments.
+  const tokenParamName = hasContinuationToken
+    ? continuationTokenParamSegments![
+        continuationTokenParamSegments!.length - 1
+      ].name
     : undefined;
 
   // Base type: generic for convenience, non-generic for protocol
@@ -214,8 +271,7 @@ function CollectionResultFile(props: CollectionResultFileProps) {
   const nextRequestMethodName = `CreateNext${operationName}Request`;
 
   // Build GetRawPages/GetRawPagesAsync method body.
-  // Uses next-link while-loop strategy when nextLinkSegments are present,
-  // otherwise falls back to single-page yield-return strategy.
+  // Dispatch order: next-link > continuation-token > single-page.
   const getRawPagesBody = hasNextLink
     ? buildNextLinkGetRawPagesBody(
         isAsync,
@@ -224,16 +280,43 @@ function CollectionResultFile(props: CollectionResultFileProps) {
         responseTypeExpr!,
         nextLinkPropertyPath!,
       )
-    : buildSinglePageGetRawPagesBody(isAsync, requestMethodName);
+    : hasContinuationToken
+      ? isContinuationTokenHeader
+        ? buildContinuationTokenHeaderGetRawPagesBody(
+            isAsync,
+            requestMethodName,
+            operationParams,
+            tokenParamName!,
+            continuationTokenHeaderName!,
+          )
+        : buildContinuationTokenBodyGetRawPagesBody(
+            isAsync,
+            requestMethodName,
+            operationParams,
+            tokenParamName!,
+            responseTypeExpr!,
+            continuationTokenPropertyPath!,
+          )
+      : buildSinglePageGetRawPagesBody(isAsync, requestMethodName);
 
   // Build GetContinuationToken method body.
-  // Returns ContinuationToken from next-link URI when present, null otherwise.
+  // Returns ContinuationToken from next-link URI, continuation token string,
+  // or null depending on the paging strategy.
   const getContinuationTokenBody = hasNextLink
     ? buildNextLinkGetContinuationTokenBody(
         responseTypeExpr!,
         nextLinkPropertyPath!,
       )
-    : ["return null;"];
+    : hasContinuationToken
+      ? isContinuationTokenHeader
+        ? buildContinuationTokenHeaderGetContinuationTokenBody(
+            continuationTokenHeaderName!,
+          )
+        : buildContinuationTokenBodyGetContinuationTokenBody(
+            responseTypeExpr!,
+            continuationTokenPropertyPath!,
+          )
+      : ["return null;"];
 
   // Whether to render convenience methods
   const hasConvenienceInfo =
@@ -247,6 +330,12 @@ function CollectionResultFile(props: CollectionResultFileProps) {
         <ClassDeclaration internal partial name={className} baseType={baseType}>
           <Field private readonly name="client" type={refkey(client)} />
           {"\n"}
+          {operationParams.map((p) => (
+            <>
+              <Field private readonly name={p.name} type={p.type} />
+              {"\n"}
+            </>
+          ))}
           <Field
             private
             readonly
@@ -254,12 +343,16 @@ function CollectionResultFile(props: CollectionResultFileProps) {
             type={SystemClientModelPrimitives.RequestOptions}
           />
           {"\n\n"}
-          {buildConstructorDoc(className, clientName)}
+          {buildConstructorDoc(className, clientName, operationParams)}
           {"\n"}
           <Constructor
             public
             parameters={[
               { name: "client", type: refkey(client) },
+              ...operationParams.map((p) => ({
+                name: p.name,
+                type: p.type as Children,
+              })),
               {
                 name: "options",
                 type: SystemClientModelPrimitives.RequestOptions as Children,
@@ -267,6 +360,7 @@ function CollectionResultFile(props: CollectionResultFileProps) {
             ]}
           >
             _client = client;
+            {operationParams.map((p) => `\n_${p.name} = ${p.name};`)}
             {"\n"}
             _options = options;
           </Constructor>
@@ -487,20 +581,246 @@ function buildNextLinkGetContinuationTokenBody(
 }
 
 /**
- * Builds the C# property path for accessing a next-link value from a response model.
+ * Builds a Create{Op}Request argument list from stored operation parameter fields.
+ *
+ * For the initial request, all params use their stored field value (e.g., `_token`).
+ * For subsequent requests, the token parameter is replaced with `nextToken` (the local
+ * variable holding the extracted continuation token from the previous response).
+ *
+ * @param params - All operation parameters from buildProtocolParams
+ * @param tokenParamName - Name of the continuation token parameter to replace
+ * @param useNextToken - If true, replaces the token param with `nextToken`
+ */
+function buildCreateRequestArgs(
+  params: { name: string }[],
+  tokenParamName: string,
+  useNextToken: boolean,
+): string {
+  const args = params.map((p) =>
+    p.name === tokenParamName
+      ? useNextToken
+        ? "nextToken"
+        : `_${p.name}`
+      : `_${p.name}`,
+  );
+  args.push("_options");
+  return args.join(", ");
+}
+
+/**
+ * Builds the GetRawPages/GetRawPagesAsync body for the body-based continuation-token
+ * paging strategy.
+ *
+ * Generates a while(true) loop that:
+ * 1. Sends the request with stored params and yields the response
+ * 2. Extracts the continuation token from a response body property via a cast
+ * 3. Checks if the token is null/empty (terminates with yield break)
+ * 4. Re-creates the request using the same Create{Op}Request with the new token
+ *
+ * Unlike next-link which uses a separate CreateNext{Op}Request, continuation-token
+ * re-invokes the same Create{Op}Request with the updated token value.
+ *
+ * @param isAsync - Whether to generate async variant
+ * @param requestMethodName - Name of the request factory method
+ * @param params - All operation parameters from buildProtocolParams
+ * @param tokenParamName - Name of the continuation token parameter
+ * @param responseTypeExpr - JSX expression for the response model type (used for casting)
+ * @param tokenPropertyPath - C# property path to the token value in the response model
+ */
+function buildContinuationTokenBodyGetRawPagesBody(
+  isAsync: boolean,
+  requestMethodName: string,
+  params: { name: string }[],
+  tokenParamName: string,
+  responseTypeExpr: Children,
+  tokenPropertyPath: string,
+): Children[] {
+  const processMessage = isAsync
+    ? code`await _client.Pipeline.ProcessMessageAsync(message, _options).ConfigureAwait(false)`
+    : code`_client.Pipeline.ProcessMessage(message, _options)`;
+
+  const initialArgs = buildCreateRequestArgs(params, tokenParamName, false);
+  const subsequentArgs = buildCreateRequestArgs(params, tokenParamName, true);
+
+  return [
+    code`${SystemClientModelPrimitives.PipelineMessage} message = _client.${requestMethodName}(${initialArgs});`,
+    "\n",
+    "string nextToken = null;",
+    "\n",
+    "while (true)",
+    "\n",
+    "{",
+    "\n",
+    "    ",
+    code`${SystemClientModel.ClientResult} result = ${SystemClientModel.ClientResult}.FromResponse(${processMessage});`,
+    "\n",
+    "    yield return result;",
+    "\n",
+    "\n",
+    code`    nextToken = ((${responseTypeExpr})result).${tokenPropertyPath};`,
+    "\n",
+    "    if (string.IsNullOrEmpty(nextToken))",
+    "\n",
+    "    {",
+    "\n",
+    "        yield break;",
+    "\n",
+    "    }",
+    "\n",
+    `    message = _client.${requestMethodName}(${subsequentArgs});`,
+    "\n",
+    "}",
+  ];
+}
+
+/**
+ * Builds the GetRawPages/GetRawPagesAsync body for the header-based continuation-token
+ * paging strategy.
+ *
+ * Similar to body-based, but extracts the token from a response header using
+ * GetRawResponse().Headers.TryGetValue() instead of a response model property cast.
+ * The extraction and termination check are combined into a single if/else block.
+ *
+ * @param isAsync - Whether to generate async variant
+ * @param requestMethodName - Name of the request factory method
+ * @param params - All operation parameters from buildProtocolParams
+ * @param tokenParamName - Name of the continuation token parameter
+ * @param headerName - The serialized HTTP header name (e.g., "next-token")
+ */
+function buildContinuationTokenHeaderGetRawPagesBody(
+  isAsync: boolean,
+  requestMethodName: string,
+  params: { name: string }[],
+  tokenParamName: string,
+  headerName: string,
+): Children[] {
+  const processMessage = isAsync
+    ? code`await _client.Pipeline.ProcessMessageAsync(message, _options).ConfigureAwait(false)`
+    : code`_client.Pipeline.ProcessMessage(message, _options)`;
+
+  const initialArgs = buildCreateRequestArgs(params, tokenParamName, false);
+  const subsequentArgs = buildCreateRequestArgs(params, tokenParamName, true);
+
+  return [
+    code`${SystemClientModelPrimitives.PipelineMessage} message = _client.${requestMethodName}(${initialArgs});`,
+    "\n",
+    "string nextToken = null;",
+    "\n",
+    "while (true)",
+    "\n",
+    "{",
+    "\n",
+    "    ",
+    code`${SystemClientModel.ClientResult} result = ${SystemClientModel.ClientResult}.FromResponse(${processMessage});`,
+    "\n",
+    "    yield return result;",
+    "\n",
+    "\n",
+    `    if (result.GetRawResponse().Headers.TryGetValue("${headerName}", out string value) && !string.IsNullOrEmpty(value))`,
+    "\n",
+    "    {",
+    "\n",
+    "        nextToken = value;",
+    "\n",
+    "    }",
+    "\n",
+    "    else",
+    "\n",
+    "    {",
+    "\n",
+    "        yield break;",
+    "\n",
+    "    }",
+    "\n",
+    `    message = _client.${requestMethodName}(${subsequentArgs});`,
+    "\n",
+    "}",
+  ];
+}
+
+/**
+ * Builds the GetContinuationToken method body for body-based continuation-token paging.
+ *
+ * Extracts the token string from the response body via a cast to the response model type
+ * and a property path access. If the token is non-empty, wraps it in a ContinuationToken
+ * via ContinuationToken.FromBytes(BinaryData.FromString(...)). Otherwise returns null.
+ *
+ * @param responseTypeExpr - JSX expression for the response model type (used for casting)
+ * @param tokenPropertyPath - C# property path to the token value in the response model
+ */
+function buildContinuationTokenBodyGetContinuationTokenBody(
+  responseTypeExpr: Children,
+  tokenPropertyPath: string,
+): Children[] {
+  return [
+    code`string nextPage = ((${responseTypeExpr})page).${tokenPropertyPath};`,
+    "\n",
+    "if (!string.IsNullOrEmpty(nextPage))",
+    "\n",
+    "{",
+    "\n",
+    code`    return ${SystemClientModel.ContinuationToken}.FromBytes(${System.BinaryData}.FromString(nextPage));`,
+    "\n",
+    "}",
+    "\n",
+    "else",
+    "\n",
+    "{",
+    "\n",
+    "    return null;",
+    "\n",
+    "}",
+  ];
+}
+
+/**
+ * Builds the GetContinuationToken method body for header-based continuation-token paging.
+ *
+ * Extracts the token string from the response header using
+ * GetRawResponse().Headers.TryGetValue(). If the header is present and non-empty,
+ * wraps it in a ContinuationToken. Otherwise returns null.
+ *
+ * @param headerName - The serialized HTTP header name (e.g., "next-token")
+ */
+function buildContinuationTokenHeaderGetContinuationTokenBody(
+  headerName: string,
+): Children[] {
+  return [
+    `if (page.GetRawResponse().Headers.TryGetValue("${headerName}", out string value) && !string.IsNullOrEmpty(value))`,
+    "\n",
+    "{",
+    "\n",
+    code`    return ${SystemClientModel.ContinuationToken}.FromBytes(${System.BinaryData}.FromString(value));`,
+    "\n",
+    "}",
+    "\n",
+    "else",
+    "\n",
+    "{",
+    "\n",
+    "    return null;",
+    "\n",
+    "}",
+  ];
+}
+
+/**
+ * Builds a C# property path for accessing a value from a response model.
  *
  * Converts paging metadata segments into a dotted property path with null-conditional
  * operators for intermediate segments. The first segment uses direct property access (.Name)
  * while subsequent segments use null-conditional access (?.Name).
  *
+ * Used for both next-link URI paths and continuation-token body property paths.
+ *
  * Examples:
  * - Single segment ["nextLink"] → "NextLink"
  * - Nested segments ["nested", "nextLink"] → "Nested?.NextLink"
  *
- * @param segments - The next-link segments from TCGC paging metadata
+ * @param segments - The response segments from TCGC paging metadata
  * @param namePolicy - C# name policy for converting segment names to PascalCase
  */
-function buildNextLinkPropertyPath(
+function buildResponsePropertyPath(
   segments: (SdkServiceResponseHeader | SdkModelPropertyType)[],
   namePolicy: ReturnType<typeof useCSharpNamePolicy>,
 ): string {
@@ -516,13 +836,27 @@ function buildNextLinkPropertyPath(
 
 /**
  * Builds XML doc comments for the collection result constructor.
+ * Includes param docs for all operation parameters when present.
  */
-function buildConstructorDoc(className: string, clientName: string): string[] {
-  return [
+function buildConstructorDoc(
+  className: string,
+  clientName: string,
+  operationParams: { name: string; doc?: string }[] = [],
+): string[] {
+  const result = [
     `/// <summary> Initializes a new instance of ${className}, which is used to iterate over the pages of a collection. </summary>`,
     `\n/// <param name="client"> The ${clientName} client used to send requests. </param>`,
-    `\n/// <param name="options"> The request options, which can override default behaviors of the client pipeline on a per-call basis. </param>`,
   ];
+
+  for (const p of operationParams) {
+    result.push(`\n/// <param name="${p.name}"></param>`);
+  }
+
+  result.push(
+    `\n/// <param name="options"> The request options, which can override default behaviors of the client pipeline on a per-call basis. </param>`,
+  );
+
+  return result;
 }
 
 /**

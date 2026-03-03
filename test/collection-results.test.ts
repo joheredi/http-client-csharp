@@ -622,4 +622,407 @@ describe("CollectionResultFile", () => {
     );
     expect(content).toContain("((PageThing)page).Items");
   });
+
+  /**
+   * Verifies that body-based continuation-token paging generates the correct
+   * while(true) loop in sync protocol GetRawPages.
+   *
+   * When a paging response model has a @continuationToken property in the body,
+   * the GetRawPages method must:
+   * 1. Call Create{Op}Request with the stored token field (_token) initially
+   * 2. Extract the next token from the response body via a cast
+   * 3. Check string.IsNullOrEmpty for termination (not null check like next-link)
+   * 4. Re-invoke the SAME Create{Op}Request with the extracted nextToken
+   *
+   * This validates the core body-based continuation-token paging loop.
+   */
+  it("generates body-based continuation-token paging loop in sync protocol GetRawPages", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Thing {
+        name: string;
+      }
+
+      model PageThing {
+        @pageItems
+        things: Thing[];
+
+        @continuationToken
+        nextToken?: string;
+      }
+
+      @route("/things")
+      @list
+      @get
+      op listThings(@query @continuationToken token?: string): PageThing;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    // Find the sync protocol file
+    const fileName = Object.keys(outputs).find(
+      (k) =>
+        k.includes("CollectionResult.cs") &&
+        !k.includes("Async") &&
+        !k.includes("OfT"),
+    );
+    expect(fileName).toBeDefined();
+    const content = outputs[fileName!];
+
+    // Verify the _token field is stored
+    expect(content).toContain("private readonly string _token;");
+
+    // Verify constructor accepts token parameter
+    expect(content).toContain("TestServiceClient client,");
+    expect(content).toContain("string token,");
+    expect(content).toContain("RequestOptions options");
+    expect(content).toContain("_token = token;");
+
+    // Verify initial request uses stored _token
+    expect(content).toContain(
+      "PipelineMessage message = _client.CreateGetThingsRequest(_token, _options);",
+    );
+
+    // Verify while(true) loop
+    expect(content).toContain("while (true)");
+
+    // Verify token extraction from response body
+    expect(content).toContain(
+      "nextToken = ((PageThing)result).NextToken;",
+    );
+
+    // Verify string.IsNullOrEmpty check (not null check like next-link)
+    expect(content).toContain("if (string.IsNullOrEmpty(nextToken))");
+    expect(content).toContain("yield break;");
+
+    // Verify same Create{Op}Request is re-invoked with nextToken (not a CreateNext method)
+    expect(content).toContain(
+      "message = _client.CreateGetThingsRequest(nextToken, _options);",
+    );
+
+    // Verify constructor doc includes token param
+    expect(content).toContain('/// <param name="token"></param>');
+  });
+
+  /**
+   * Verifies that body-based continuation-token paging generates the correct
+   * async while(true) loop in GetRawPagesAsync.
+   *
+   * The async variant must use ProcessMessageAsync with ConfigureAwait(false)
+   * and the method must be marked async with IAsyncEnumerable return type.
+   * Token extraction and loop logic should match the sync variant.
+   */
+  it("generates body-based continuation-token paging loop in async protocol GetRawPagesAsync", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Thing {
+        name: string;
+      }
+
+      model PageThing {
+        @pageItems
+        things: Thing[];
+
+        @continuationToken
+        nextToken?: string;
+      }
+
+      @route("/things")
+      @list
+      @get
+      op listThings(@query @continuationToken token?: string): PageThing;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    // Find the async protocol file
+    const fileName = Object.keys(outputs).find(
+      (k) => k.includes("AsyncCollectionResult.cs") && !k.includes("OfT"),
+    );
+    expect(fileName).toBeDefined();
+    const content = outputs[fileName!];
+
+    // Verify async method signature
+    expect(content).toContain(
+      "public override async IAsyncEnumerable<ClientResult> GetRawPagesAsync()",
+    );
+
+    // Verify async pipeline call
+    expect(content).toContain(
+      "await _client.Pipeline.ProcessMessageAsync(message, _options).ConfigureAwait(false)",
+    );
+
+    // Verify token field and constructor
+    expect(content).toContain("private readonly string _token;");
+    expect(content).toContain("_token = token;");
+
+    // Verify continuation-token loop structure
+    expect(content).toContain("while (true)");
+    expect(content).toContain("nextToken = ((PageThing)result).NextToken;");
+    expect(content).toContain("if (string.IsNullOrEmpty(nextToken))");
+
+    // Verify same request method is re-used (not CreateNext)
+    expect(content).toContain(
+      "message = _client.CreateGetThingsRequest(nextToken, _options);",
+    );
+  });
+
+  /**
+   * Verifies that body-based continuation-token generates the correct
+   * GetContinuationToken method body.
+   *
+   * When continuation token segments are from the body, GetContinuationToken must:
+   * 1. Cast the page to the response model and extract the token string
+   * 2. If !string.IsNullOrEmpty, return ContinuationToken.FromBytes(BinaryData.FromString(...))
+   * 3. Otherwise return null (via if/else pattern, not if/return like next-link)
+   */
+  it("generates body-based continuation-token GetContinuationToken", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Thing {
+        name: string;
+      }
+
+      model PageThing {
+        @pageItems
+        things: Thing[];
+
+        @continuationToken
+        nextToken?: string;
+      }
+
+      @route("/things")
+      @list
+      @get
+      op listThings(@query @continuationToken token?: string): PageThing;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    // Check the sync protocol file
+    const fileName = Object.keys(outputs).find(
+      (k) =>
+        k.includes("CollectionResult.cs") &&
+        !k.includes("Async") &&
+        !k.includes("OfT"),
+    );
+    expect(fileName).toBeDefined();
+    const content = outputs[fileName!];
+
+    // Verify string extraction from response body
+    expect(content).toContain(
+      'string nextPage = ((PageThing)page).NextToken;',
+    );
+
+    // Verify !string.IsNullOrEmpty check
+    expect(content).toContain("if (!string.IsNullOrEmpty(nextPage))");
+
+    // Verify ContinuationToken creation
+    expect(content).toContain(
+      "ContinuationToken.FromBytes(BinaryData.FromString(nextPage))",
+    );
+
+    // Verify else branch returns null
+    expect(content).toContain("else");
+    expect(content).toContain("return null;");
+  });
+
+  /**
+   * Verifies that body-based continuation-token convenience variant generates
+   * both the paging loop and GetValuesFromPage method.
+   *
+   * The OfT variant must have the while(true) continuation-token loop in GetRawPages
+   * AND the GetValuesFromPage method that extracts typed items via a response cast.
+   */
+  it("generates body-based continuation-token convenience variant with GetValuesFromPage", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Thing {
+        name: string;
+      }
+
+      model PageThing {
+        @pageItems
+        things: Thing[];
+
+        @continuationToken
+        nextToken?: string;
+      }
+
+      @route("/things")
+      @list
+      @get
+      op listThings(@query @continuationToken token?: string): PageThing;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    // Find the sync convenience file
+    const fileName = Object.keys(outputs).find(
+      (k) => k.includes("CollectionResultOfT.cs") && !k.includes("Async"),
+    );
+    expect(fileName).toBeDefined();
+    const content = outputs[fileName!];
+
+    // Verify generic base type
+    expect(content).toContain(": CollectionResult<Thing>");
+
+    // Verify continuation-token while loop is present
+    expect(content).toContain("while (true)");
+    expect(content).toContain("nextToken = ((PageThing)result).NextToken;");
+    expect(content).toContain("if (string.IsNullOrEmpty(nextToken))");
+
+    // Verify GetValuesFromPage is also present
+    expect(content).toContain(
+      "protected override IEnumerable<Thing> GetValuesFromPage(ClientResult page)",
+    );
+    expect(content).toContain("((PageThing)page).Things");
+
+    // Verify token field and constructor
+    expect(content).toContain("private readonly string _token;");
+    expect(content).toContain("_token = token;");
+  });
+
+  /**
+   * Verifies that header-based continuation-token paging generates the correct
+   * GetRawPages loop with response header extraction.
+   *
+   * When the continuation token comes from a response header (not body),
+   * the extraction uses result.GetRawResponse().Headers.TryGetValue() instead
+   * of a response model property cast. The termination and extraction are
+   * combined into a single if/else block.
+   */
+  it("generates header-based continuation-token paging loop", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Thing {
+        name: string;
+      }
+
+      model PageThing {
+        @pageItems
+        things: Thing[];
+      }
+
+      @route("/things")
+      @list
+      @get
+      op listThings(
+        @query @continuationToken token?: string,
+      ): PageThing & {
+        @header("next-token") @continuationToken nextToken?: string;
+      };
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    // Find the sync protocol file
+    const fileName = Object.keys(outputs).find(
+      (k) =>
+        k.includes("CollectionResult.cs") &&
+        !k.includes("Async") &&
+        !k.includes("OfT"),
+    );
+    expect(fileName).toBeDefined();
+    const content = outputs[fileName!];
+
+    // Verify header-based extraction using TryGetValue
+    expect(content).toContain(
+      'result.GetRawResponse().Headers.TryGetValue("next-token", out string value)',
+    );
+
+    // Verify combined extraction + termination check
+    expect(content).toContain("!string.IsNullOrEmpty(value)");
+
+    // Verify nextToken assignment from header value
+    expect(content).toContain("nextToken = value;");
+
+    // Verify else branch with yield break
+    expect(content).toContain("else");
+    expect(content).toContain("yield break;");
+
+    // Verify same request method is re-used
+    expect(content).toContain(
+      "message = _client.CreateGetThingsRequest(nextToken, _options);",
+    );
+
+    // Verify token field and constructor
+    expect(content).toContain("private readonly string _token;");
+    expect(content).toContain("_token = token;");
+  });
+
+  /**
+   * Verifies that header-based continuation-token generates the correct
+   * GetContinuationToken method body with header extraction.
+   *
+   * When the token comes from a response header, GetContinuationToken uses
+   * page.GetRawResponse().Headers.TryGetValue() instead of a response model cast.
+   */
+  it("generates header-based continuation-token GetContinuationToken", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Thing {
+        name: string;
+      }
+
+      model PageThing {
+        @pageItems
+        things: Thing[];
+      }
+
+      @route("/things")
+      @list
+      @get
+      op listThings(
+        @query @continuationToken token?: string,
+      ): PageThing & {
+        @header("next-token") @continuationToken nextToken?: string;
+      };
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    // Check the sync protocol file
+    const fileName = Object.keys(outputs).find(
+      (k) =>
+        k.includes("CollectionResult.cs") &&
+        !k.includes("Async") &&
+        !k.includes("OfT"),
+    );
+    expect(fileName).toBeDefined();
+    const content = outputs[fileName!];
+
+    // Verify header-based extraction in GetContinuationToken
+    expect(content).toContain(
+      'page.GetRawResponse().Headers.TryGetValue("next-token", out string value)',
+    );
+    expect(content).toContain("!string.IsNullOrEmpty(value)");
+
+    // Verify ContinuationToken creation from header value
+    expect(content).toContain(
+      "ContinuationToken.FromBytes(BinaryData.FromString(value))",
+    );
+
+    // Verify else branch returns null
+    expect(content).toContain("else");
+    expect(content).toContain("return null;");
+  });
 });

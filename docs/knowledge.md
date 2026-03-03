@@ -1506,3 +1506,24 @@ Our emitter generates dot-separated namespaces (e.g., `namespace Type.Enum.Fixed
 
 168. **Exported param-building functions from ProtocolMethod/ConvenienceMethod** — `buildProtocolParams`, `buildXmlDoc`, `buildConvenienceParams`, `buildConvenienceXmlDoc` are exported for reuse in PagingMethods. Changes to these functions affect both regular and paging method generation.
 ```
+
+### Continuation-token paging strategy (Task 4.3.1)
+
+**Chosen approach**: Extend `CollectionResultFile.tsx` with inline continuation-token logic alongside existing next-link dispatch.
+
+**Why**: The existing code already uses inline conditional logic for single-page vs next-link strategies. Adding continuation-token as a third branch keeps the code structure consistent and avoids over-engineering with separate strategy abstractions.
+
+**Key implementation details**:
+- Continuation-token operations store ALL operation params (from `buildProtocolParams`) as fields in the CollectionResult class, because they need to be passed to `Create{Op}Request` on each iteration.
+- The token parameter is identified by matching `metadata.continuationTokenParameterSegments` against operation params.
+- Body-based vs header-based detection uses the `kind` discriminator on response segments: `"responseheader"` for headers, `"property"` for body.
+- Body-based extraction: `((ResponseType)result).PropertyPath` with `string.IsNullOrEmpty` check.
+- Header-based extraction: `result.GetRawResponse().Headers.TryGetValue("header-name", out string value)`.
+- GetContinuationToken uses `if/else` pattern (returning null in else block), unlike next-link which uses `if/return null`.
+- The same `Create{Op}Request` is re-invoked with updated token (unlike next-link which uses `CreateNext{Op}Request`).
+
+**Rejected**: Creating separate strategy components/abstractions — adds indirection without benefit given the small amount of code involved.
+
+169. **Continuation-token header detection** — `SdkServiceResponseHeader` has `kind: "responseheader"`, while `SdkModelPropertyType` (body properties) has `kind: "property"`. Use the `kind` discriminator to determine body vs header extraction strategy.
+
+170. **Response property path builder reuse** — `buildResponsePropertyPath` (renamed from `buildNextLinkPropertyPath`) is generic and works for both next-link URI paths and continuation-token body property paths. Both use the same `?.' null-conditional operator pattern for nested segments.
