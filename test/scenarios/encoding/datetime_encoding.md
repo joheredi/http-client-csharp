@@ -185,10 +185,10 @@ public partial class UnixTimestampArrayDatetimeProperty
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
-        public UnixTimestampArrayDatetimeProperty(DateTimeOffset[] value) {}
+        public UnixTimestampArrayDatetimeProperty(IEnumerable<DateTimeOffset> value) {}
 
         internal UnixTimestampArrayDatetimeProperty(
-            DateTimeOffset[] value,
+            IList<DateTimeOffset> value,
             IDictionary<string, BinaryData> additionalBinaryDataProperties
         )
         {
@@ -196,7 +196,7 @@ public partial class UnixTimestampArrayDatetimeProperty
             _additionalBinaryDataProperties = additionalBinaryDataProperties;
         }
 
-        public DateTimeOffset[] Value { get; }
+        public IList<DateTimeOffset> Value { get; }
     }
 ```
 

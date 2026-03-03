@@ -13,6 +13,7 @@ import { Property } from "@alloy-js/csharp";
 import type { SdkModelPropertyType } from "@azure-tools/typespec-client-generator-core";
 import { UsageFlags } from "@azure-tools/typespec-client-generator-core";
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
+import { renderCollectionPropertyType } from "../../utils/collection-type-expression.js";
 import {
   isCollectionType,
   isPropertyNullable,
@@ -129,12 +130,23 @@ export function ModelProperty(props: ModelPropertyProps) {
   const doc = property.doc ?? property.summary;
   const formattedDoc = doc ? `<summary> ${doc} </summary>` : undefined;
 
+  // Collection types (arrays, dicts) render as IList<T>/IReadOnlyList<T> or
+  // IDictionary<string,T>/IReadOnlyDictionary<string,T> instead of T[] or the
+  // default IDictionary. Non-collections use TypeExpression directly.
+  const isCollection = isCollectionType(property.type);
+  const readOnly = isPropertyReadOnly(property);
+  const typeExpr = isCollection ? (
+    renderCollectionPropertyType(type, readOnly)
+  ) : (
+    <TypeExpression type={type.__raw!} />
+  );
+
   return (
     <Property
       public={!isDiscriminator}
       internal={isDiscriminator}
       name={property.name}
-      type={<TypeExpression type={type.__raw!} />}
+      type={typeExpr}
       get
       set={hasSetter}
       nullable={nullable}

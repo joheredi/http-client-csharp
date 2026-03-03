@@ -151,10 +151,10 @@ public partial class Base64urlArrayBytesProperty
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
-        public Base64urlArrayBytesProperty(BinaryData_2[] value) {}
+        public Base64urlArrayBytesProperty(IEnumerable<BinaryData_2> value) {}
 
         internal Base64urlArrayBytesProperty(
-            BinaryData_2[] value,
+            IList<BinaryData_2> value,
             IDictionary<string, BinaryData> additionalBinaryDataProperties
         )
         {
@@ -162,7 +162,7 @@ public partial class Base64urlArrayBytesProperty
             _additionalBinaryDataProperties = additionalBinaryDataProperties;
         }
 
-        public BinaryData_2[] Value { get; }
+        public IList<BinaryData_2> Value { get; }
     }
 ```
 

@@ -112,7 +112,7 @@ public partial class Eagle : Bird
             string kind,
             int wingspan,
             IDictionary<string, BinaryData> additionalBinaryDataProperties,
-            Bird[] friends,
+            IList<Bird> friends,
             IDictionary<string, Bird> hate,
             Bird? partner
         ) : base(kind, wingspan, additionalBinaryDataProperties)
@@ -122,7 +122,7 @@ public partial class Eagle : Bird
             Partner = partner;
         }
 
-        public Bird[] Friends { get; }
+        public IList<Bird> Friends { get; }
         public IDictionary<string, Bird> Hate { get; }
         public Bird? Partner { get; set; }
     }

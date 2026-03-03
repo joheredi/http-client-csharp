@@ -927,6 +927,75 @@ describe("ModelProperty", () => {
     expect(content).toMatch(/public\s+.*Tags\s*\{\s*get;\s*\}/);
     expect(content).not.toMatch(/Tags\s*\{[^}]*set;/);
   });
+
+  /**
+   * Validates that array properties render as IList<T> (not T[]) on model
+   * classes. The legacy emitter uses IList<T> for writable (input) properties
+   * to allow mutation via Add/Remove. This test ensures the emitter replaces
+   * TypeExpression's default T[] with IList<T> for array model properties.
+   */
+  it("renders array property type as IList<T> instead of T[]", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        tags: string[];
+      }
+
+      @route("/widgets")
+      op createWidget(@body body: Widget): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
+    expect(modelFile).toBeDefined();
+    const content = outputs[modelFile!];
+
+    // Array property should be IList<string>, not string[]
+    expect(content).toMatch(/public\s+IList<string>\s+Tags\s*\{\s*get;\s*\}/);
+    // Must not render as string[]
+    expect(content).not.toContain("string[] Tags");
+    // Should include the using directive for System.Collections.Generic
+    expect(content).toContain("using System.Collections.Generic;");
+  });
+
+  /**
+   * Validates that array constructor parameters use IEnumerable<T> (broadest
+   * input interface) in the public constructor, and IList<T> (property type)
+   * in the serialization constructor. This matches the legacy emitter's
+   * GetInputType (public ctor) vs property type (serialization ctor).
+   */
+  it("renders array constructor params as IEnumerable<T> in public ctor and IList<T> in serialization ctor", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        tags: string[];
+      }
+
+      @route("/widgets")
+      op createWidget(@body body: Widget): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
+    expect(modelFile).toBeDefined();
+    const content = outputs[modelFile!];
+
+    // Public constructor parameter uses IEnumerable<string>
+    expect(content).toContain("IEnumerable<string> tags");
+    // Serialization constructor parameter uses IList<string>
+    expect(content).toMatch(/internal\s+Widget\s*\(\s*IList<string>\s+tags/);
+  });
 });
 
 /**

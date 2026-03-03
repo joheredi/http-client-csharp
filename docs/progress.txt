@@ -3058,3 +3058,30 @@ individual scalar properties as separate parameters (e.g., `Simple(string name)`
 - Sub-client method signatures use correct types (IEnumerable<T> for arrays, BinaryData not BinaryData_2)
 - The bugs only affect model file generation
 - 1076 tests passing (17 new: 13 model + 4 sub-client tests)
+
+## Task 10.1.5b — Fix array property types: T[] → IList<T>/IEnumerable<T> in models
+Date: 2026-03-03
+
+### What was done
+- Array model properties now render as `IList<T>` (writable) or `IReadOnlyList<T>` (read-only) instead of `T[]`
+- Public constructor array parameters now render as `IEnumerable<T>` (broadest input interface)
+- Serialization constructor array parameters use `IList<T>` (property type, not IEnumerable)
+- Dict properties already worked for writable (`IDictionary`), added `IReadOnlyDictionary` for read-only
+
+### Files changed
+- `src/builtins/system-collections-generic.ts` — Added IList, IReadOnlyList, IReadOnlyDictionary to library
+- `src/utils/collection-type-expression.tsx` — NEW: Helper functions `renderCollectionPropertyType` and `renderCollectionParameterType` that recursively render collection types with proper C# interfaces
+- `src/components/models/ModelProperty.tsx` — Uses `renderCollectionPropertyType` for collection properties instead of raw TypeExpression
+- `src/components/models/ModelConstructors.tsx` — Public ctor uses `renderCollectionParameterType` (IEnumerable), serialization ctor uses `renderCollectionPropertyType` (IList). Created `buildPropertyTypeParameters` helper for the serialization path.
+- `test/scenarios/encoding/bytes_encoding.md` — Updated expectations: BinaryData_2[] → IList<BinaryData_2>
+- `test/scenarios/encoding/datetime_encoding.md` — Updated expectations: DateTimeOffset[] → IList<DateTimeOffset>
+- `test/scenarios/models/single_discriminator.md` — Updated expectations: Bird[] → IList<Bird>
+- `test/model.test.ts` — Added 2 tests: array property type assertion and constructor parameter type assertion
+
+### Key patterns
+- `renderCollectionPropertyType(type, isReadOnly)` — recursively handles nested collections
+- `renderCollectionParameterType(type)` — uses IEnumerable for outer array, IList for inner nested
+- Uses `code` template tag with SystemCollectionsGeneric library references for automatic `using` generation
+- Serialization constructor has two code paths: `computeSerializationCtorParams` (derived models) and `buildSerializationParameters` (base models) — both now share `buildPropertyTypeParameters`
+
+### Tests: 1078 passed (2 new)

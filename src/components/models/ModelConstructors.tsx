@@ -56,12 +56,18 @@ import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
 import { System } from "../../builtins/system.js";
 import {
+  renderCollectionParameterType,
+  renderCollectionPropertyType,
+} from "../../utils/collection-type-expression.js";
+import {
+  isCollectionType,
   isPropertyNullable,
   unwrapNullableType,
 } from "../../utils/nullable.js";
 import {
   getPropertyInitializerKind,
   isConstructorParameter,
+  isPropertyReadOnly,
   propertyRequiresNullCheck,
 } from "../../utils/property.js";
 import { efCsharpRefkey } from "../../utils/refkey.js";
@@ -309,7 +315,13 @@ function buildParameters(
   return properties.map((p) => {
     const nullable = isPropertyNullable(p);
     const unwrapped = unwrapNullableType(p.type);
-    const baseType = <TypeExpression type={unwrapped.__raw!} />;
+    // Collection types use IEnumerable<T> for public constructor params
+    // (the broadest input interface), non-collections use TypeExpression.
+    const baseType = isCollectionType(p.type) ? (
+      renderCollectionParameterType(unwrapped)
+    ) : (
+      <TypeExpression type={unwrapped.__raw!} />
+    );
 
     return {
       name: namePolicy.getName(p.name, "parameter"),
@@ -416,20 +428,38 @@ export const ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME =
  * @param namePolicy - The C# naming policy for parameter name conversion.
  * @returns An array of ParameterProps for the Constructor component.
  */
-export function buildSerializationParameters(
+/**
+ * Builds ParameterProps using property-level types (IList/IReadOnlyList for
+ * arrays, IDictionary/IReadOnlyDictionary for dicts). Used by both
+ * buildSerializationParameters and computeSerializationCtorParams.
+ */
+function buildPropertyTypeParameters(
   properties: SdkModelPropertyType[],
   namePolicy: ReturnType<typeof useCSharpNamePolicy>,
 ): ParameterProps[] {
-  const propParams = properties.map((p) => {
+  return properties.map((p) => {
     const nullable = isPropertyNullable(p);
     const unwrapped = unwrapNullableType(p.type);
-    const baseType = <TypeExpression type={unwrapped.__raw!} />;
+    // Serialization constructor uses property types: IList<T>/IReadOnlyList<T>
+    // for arrays, IDictionary/IReadOnlyDictionary for dicts.
+    const baseType = isCollectionType(p.type) ? (
+      renderCollectionPropertyType(unwrapped, isPropertyReadOnly(p))
+    ) : (
+      <TypeExpression type={unwrapped.__raw!} />
+    );
 
     return {
       name: namePolicy.getName(p.name, "parameter"),
       type: nullable ? <>{baseType}?</> : baseType,
     };
   });
+}
+
+export function buildSerializationParameters(
+  properties: SdkModelPropertyType[],
+  namePolicy: ReturnType<typeof useCSharpNamePolicy>,
+): ParameterProps[] {
+  const propParams = buildPropertyTypeParameters(properties, namePolicy);
 
   propParams.push({
     name: ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME,
@@ -520,7 +550,7 @@ export function computeSerializationCtorParams(
     const ownProps = model.properties.filter(
       (p) => !isBaseDiscriminatorOverride(p),
     );
-    const ownParams = buildParameters(ownProps, namePolicy);
+    const ownParams = buildPropertyTypeParameters(ownProps, namePolicy);
     return [...baseParams, ...ownParams];
   }
   return buildSerializationParameters(model.properties, namePolicy);
@@ -770,7 +800,10 @@ function DerivedModelConstructors(props: {
     baseModel,
     namePolicy,
   );
-  const ownSerializationParams = buildParameters(ownProperties, namePolicy);
+  const ownSerializationParams = buildPropertyTypeParameters(
+    ownProperties,
+    namePolicy,
+  );
 
   const serializationParams = [
     ...baseSerializationCtorParams,

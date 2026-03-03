@@ -39,6 +39,42 @@ export const SystemCollectionsGeneric = createLibrary(
     },
 
     /**
+     * Generic mutable list interface.
+     * Used as the property type for writable array properties on model classes
+     * (e.g., `IList<string>` for `tags: string[]` on an input model).
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ilist-1
+     */
+    IList: {
+      kind: "interface",
+      members: {},
+    },
+
+    /**
+     * Generic read-only list interface.
+     * Used as the property type for read-only array properties on model classes
+     * (e.g., `IReadOnlyList<string>` for output-only list properties).
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlylist-1
+     */
+    IReadOnlyList: {
+      kind: "interface",
+      members: {},
+    },
+
+    /**
+     * Generic read-only dictionary interface.
+     * Used as the property type for read-only dictionary properties on model classes
+     * (e.g., `IReadOnlyDictionary<string, T>` for output-only dict properties).
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ireadonlydictionary-2
+     */
+    IReadOnlyDictionary: {
+      kind: "interface",
+      members: {},
+    },
+
+    /**
      * Generic interface for asynchronous iteration over a collection of elements.
      * Used as the return type for async paging methods (GetRawPagesAsync,
      * GetValuesFromPageAsync) in generated collection result classes.

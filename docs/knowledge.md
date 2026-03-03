@@ -1869,3 +1869,15 @@ The C# PascalCase naming policy converts `ISO8601DurationProperty` to `Iso8601Du
 **Chosen approach**: Write scenario test files with TypeSpec input and use `SCENARIOS_UPDATE=true` to auto-populate expected output, then compare with Spector golden files. This captures what the emitter currently generates and guards against regressions while identifying discrepancies with golden files.
 
 **Rejected approach**: Writing expected output manually from golden files. Rejected because the golden files show stub implementations (`=> throw null;`) while our emitter generates full code, making direct comparison infeasible for scenario tests.
+
+## Design Decisions
+
+### Collection type rendering for model properties (Task 10.1.5b)
+
+**Approach chosen**: Created helper functions `renderCollectionPropertyType` and `renderCollectionParameterType` in `src/utils/collection-type-expression.tsx` that compose C# collection interface types using Alloy `code` templates and `SystemCollectionsGeneric` library references.
+
+**Rejected approach**: Modifying `TypeExpression` from `@typespec/emitter-framework/csharp` — it lives in a dependency package that shouldn't be modified.
+
+**Key gotcha**: The serialization constructor for derived discriminated models used `buildParameters` (public ctor style) for its own properties in `computeSerializationCtorParams`. After adding IEnumerable to public ctor params, this caused the serialization ctor to also use IEnumerable instead of IList. Fixed by creating `buildPropertyTypeParameters` shared between `buildSerializationParameters` and `computeSerializationCtorParams`.
+
+**Key gotcha**: The `computeSerializationCtorParams` function AND a separate code path in the derived model constructor rendering at line ~799 BOTH call `buildParameters` for own serialization params. Both need updating when changing parameter type rendering.
