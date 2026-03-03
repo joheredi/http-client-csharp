@@ -1719,7 +1719,7 @@ at getCreateTemplate (babel-plugin-jsx-dom-expressions/index.js:1397)
 
 ```tsx
 // BAD — crashes Babel if renderFoo() can return null
-return <>{items.map(x => renderFoo(x))}</>;
+return <>{items.map((x) => renderFoo(x))}</>;
 
 // GOOD — build array imperatively
 const parts: Children[] = [];
@@ -1741,3 +1741,15 @@ This pattern is used in `XmlDeserialize.tsx` and matches `XmlModelWriteCore.tsx`
 **Rejected**: Composable sub-components (XmlAttributeLoop, XmlElementLoop)
 
 **Rationale**: XML deserialization has fundamentally different structure from JSON (two loops instead of one, namespace declarations, explicit casts instead of getter methods). Creating reusable sub-components would add complexity without reuse potential. The monolithic approach matches XmlModelWriteCore.tsx's pattern. We still reuse `DeserializeVariableDeclarations` and `DeserializeReturnStatement` which are format-agnostic.
+
+### Dual Format ToBinaryContent Method (Task 6.3.1)
+
+**Chosen**: Standalone `ToBinaryContent.tsx` component in `src/components/serialization/`
+
+**Rejected**: Embedding inside `CastOperators.tsx`
+
+**Rationale**: ToBinaryContent is a named method, not an operator. It follows the project convention of one component per serialization method. Only generated for dual-format models (both JSON and XML flags set).
+
+### PersistableModelCreateCore XML Case Uses data.ToStream() (Task 6.3.1)
+
+The legacy emitter generates `using (Stream dataStream = data.ToStream())` for the XML "X" case in PersistableModelCreateCore. The initial implementation incorrectly used `new MemoryStream(data.ToArray())` which copies data unnecessarily. Fixed to match legacy golden output: `Stream` type, `dataStream` variable name, `data.ToStream()` call.

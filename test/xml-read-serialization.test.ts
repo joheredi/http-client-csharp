@@ -83,14 +83,14 @@ describe("XML Read Path", () => {
 
     // PersistableModelCreateCore should have XML read case
     expect(content).toMatch(/PersistableModelCreateCore[\s\S]*?case "X":/);
-    // Should use MemoryStream + XElement.Load
-    expect(content).toContain("new MemoryStream(data.ToArray())");
+    // Should use data.ToStream() + XElement.Load
+    expect(content).toContain("data.ToStream()");
     expect(content).toContain(
-      "XElement.Load(stream, LoadOptions.PreserveWhitespace)",
+      "XElement.Load(dataStream, LoadOptions.PreserveWhitespace)",
     );
     // Should call DeserializeXmlPayload
     expect(content).toContain(
-      "DeserializeXmlPayload(XElement.Load(stream, LoadOptions.PreserveWhitespace), options)",
+      "DeserializeXmlPayload(XElement.Load(dataStream, LoadOptions.PreserveWhitespace), options)",
     );
   });
 

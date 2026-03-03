@@ -3699,7 +3699,7 @@
           "title": "Implement dual format support",
           "description": "Handle models with both JSON and XML: format dispatch, Content-Type sniffing, ToBinaryContent(format).",
           "phase": "phase-6",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "6.1.1",
             "6.2.1"

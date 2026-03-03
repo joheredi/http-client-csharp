@@ -152,11 +152,11 @@ export function PersistableModelCreateCore(
       {supportsXml && '\n        case "X":'}
       {supportsXml && "\n"}
       {supportsXml &&
-        code`            using (${SystemIO.MemoryStream} stream = new ${SystemIO.MemoryStream}(data.ToArray()))`}
+        code`            using (${SystemIO.Stream} dataStream = data.ToStream())`}
       {supportsXml && "\n            {"}
       {supportsXml && "\n"}
       {supportsXml &&
-        code`                return Deserialize${modelName}(${SystemXmlLinq.XElement}.Load(stream, ${SystemXmlLinq.LoadOptions}.PreserveWhitespace), options);`}
+        code`                return Deserialize${modelName}(${SystemXmlLinq.XElement}.Load(dataStream, ${SystemXmlLinq.LoadOptions}.PreserveWhitespace), options);`}
       {supportsXml && "\n            }"}
       {"\n        default:"}
       {"\n"}

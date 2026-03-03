@@ -56,3 +56,5 @@ export { XmlModelWriteCore } from "./XmlModelWriteCore.js";
 export type { XmlModelWriteCoreProps } from "./XmlModelWriteCore.js";
 export { XmlWriteXml } from "./XmlWriteXml.js";
 export type { XmlWriteXmlProps } from "./XmlWriteXml.js";
+export { ToBinaryContent } from "./ToBinaryContent.js";
+export type { ToBinaryContentProps } from "./ToBinaryContent.js";

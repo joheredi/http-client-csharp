@@ -60,6 +60,7 @@ import { PropertyMatchingLoop } from "./components/serialization/PropertyMatchin
 import { XmlDeserialize } from "./components/serialization/XmlDeserialize.js";
 import { XmlModelWriteCore } from "./components/serialization/XmlModelWriteCore.js";
 import { XmlWriteXml } from "./components/serialization/XmlWriteXml.js";
+import { ToBinaryContent } from "./components/serialization/ToBinaryContent.js";
 import { $lib } from "./lib.js";
 import { type CSharpEmitterOptions, resolveOptions } from "./options.js";
 import { getAllClients } from "./utils/clients.js";
@@ -245,6 +246,8 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
               <ImplicitBinaryContentOperator type={m} />
               {"\n\n"}
               <ExplicitClientResultOperator type={m} />
+              {supportsJson && supportsXml && "\n\n"}
+              {supportsJson && supportsXml && <ToBinaryContent type={m} />}
               {supportsXml && "\n\n"}
               {supportsXml && <XmlWriteXml type={m} />}
               {supportsXml && "\n\n"}

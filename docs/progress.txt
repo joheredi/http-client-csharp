@@ -2813,3 +2813,28 @@ Key learnings:
 - Babel JSX gotcha: Alloy's Babel plugin crashes with null children in JSX fragments when using
   .map() directly in JSX that can return null. Fix: build Children[] arrays imperatively (push to
   array with null guards) rather than using .map() directly inside JSX fragment expressions.
+
+## 2026-03-03 — Task 6.3.1: Implement dual format support (complete)
+
+### What was done
+1. Created `ToBinaryContent.tsx` component — generates `internal BinaryContent ToBinaryContent(string format)` for dual-format (JSON + XML) models only
+2. Fixed `PersistableModelCreateCore.tsx` XML case — changed from `new MemoryStream(data.ToArray())` to `data.ToStream()` with `Stream` type and `dataStream` variable name, matching legacy golden output
+3. Added `ToBinaryContent` rendering in `emitter.tsx` for dual-format models (after ExplicitClientResultOperator)
+4. Updated serialization `index.ts` exports
+5. Created `test/dual-format.test.ts` with 5 tests covering ToBinaryContent generation and PersistableModelCreateCore XML case
+6. Updated existing XML read test expectation to match new `data.ToStream()` pattern
+
+### Key findings
+- Format dispatch (JSON + XML switch cases) and Content-Type sniffing were already implemented in prior tasks
+- ToBinaryContent is the only missing piece — it's only for dual-format models (both JSON AND XML)
+- Legacy emitter only generates ToBinaryContent when `_supportsJson && _supportsXml`
+- Convenience method integration (calling `model.ToBinaryContent("X")` instead of implicit operator) is handled by the operation/client layer, not the serialization layer
+
+### Patterns used
+- Standalone component per serialization method (matches project convention)
+- `code` template with builtin refkeys for automatic `using` directive generation
+- UsageFlags.Json/Xml bitwise checks for dual-format detection
+
+### Test results
+- 1027 tests pass (5 new, 0 failures)
+- Build, lint, format all clean
