@@ -2,6 +2,7 @@ import { Method, useCSharpNamePolicy } from "@alloy-js/csharp";
 import { code, namekey } from "@alloy-js/core";
 import type { Children } from "@alloy-js/core";
 import type {
+  SdkArrayType,
   SdkBodyParameter,
   SdkClientType,
   SdkHeaderParameter,
@@ -15,6 +16,7 @@ import {
   SystemClientModel,
   SystemClientModelPrimitives,
 } from "../../builtins/system-client-model.js";
+import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
 import { System } from "../../builtins/system.js";
 import { SystemThreadingTasks } from "../../builtins/system-threading.js";
 import { cleanOperationName } from "../../utils/operation-naming.js";
@@ -498,6 +500,14 @@ function getProtocolTypeExpression(type: SdkType): Children {
       return getProtocolTypeExpression(unwrapped.valueType);
     case "enumvalue":
       return getProtocolTypeExpression(unwrapped.enumType.valueType);
+
+    // Array → IEnumerable<elementType> (broadest input interface for collection params)
+    case "array": {
+      const elementTypeExpr = getProtocolTypeExpression(
+        (unwrapped as SdkArrayType).valueType,
+      );
+      return code`${SystemCollectionsGeneric.IEnumerable}<${elementTypeExpr}>`;
+    }
 
     default:
       return "string";

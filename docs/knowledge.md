@@ -1821,3 +1821,13 @@ Dynamic model lists use `for` loops with index-based access (not `foreach`) to e
 - Pipe-delimited: `@query @encode(ArrayEncoding.pipeDelimited) colors: string[]`
 - CSV (default): `@query colors: string[]`
 - The old `format` property is deprecated; use `explode` and `@encode` decorators instead.
+
+## Design Decisions
+
+### Task 10.1.4a — Collection Parameter Type (IEnumerable<T>)
+
+**Approach chosen:** Add `case "array"` to both `getProtocolTypeExpression` (ProtocolMethod.tsx) and `getConvenienceTypeInfo` (ConvenienceMethod.tsx) using `SystemCollectionsGeneric.IEnumerable` refkey, matching the existing pattern in RestClientFile.tsx.
+
+**Rejected approach:** Creating a shared utility function for the array → IEnumerable mapping. The duplication between ProtocolMethod and RestClientFile is already documented (comment at line 454), and adding a shared function would increase indirection for only 3 call sites. The inline approach is simpler and matches the existing code style.
+
+**Key detail:** For convenience methods, the element type is resolved by recursively calling `getConvenienceTypeInfo()` on the element type (preserving typed enums, etc.), whereas protocol methods use `getProtocolTypeExpression()` which unwraps enums to wire types. This ensures `IEnumerable<MyEnum>` in convenience methods vs `IEnumerable<string>` in protocol methods for string-backed enum arrays.

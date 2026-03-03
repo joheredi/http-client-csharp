@@ -4188,7 +4188,7 @@
           "id": "10.1.4a",
           "title": "Fix collection parameter type to use IEnumerable<T>",
           "description": "Convenience method and protocol method parameters for collection types (string[]) should use IEnumerable<string> instead of string[] to match the legacy emitter pattern. Protocol methods incorrectly flatten to string. Affects collection-format Query and Header sub-clients.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "10.1.4"
           ],

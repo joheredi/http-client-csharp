@@ -2,6 +2,7 @@ import { Method, useCSharpNamePolicy } from "@alloy-js/csharp";
 import { code, namekey } from "@alloy-js/core";
 import type { Children } from "@alloy-js/core";
 import type {
+  SdkArrayType,
   SdkBodyParameter,
   SdkClientType,
   SdkHeaderParameter,
@@ -13,6 +14,7 @@ import type {
 } from "@azure-tools/typespec-client-generator-core";
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import { SystemClientModel } from "../../builtins/system-client-model.js";
+import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
 import {
   SystemThreading,
   SystemThreadingTasks,
@@ -461,8 +463,18 @@ function getConvenienceTypeInfo(type: SdkType): {
         isString: false,
       };
 
-    // Collection types — reference types
-    case "array":
+    // Array → IEnumerable<elementType> (broadest input interface for collection params)
+    case "array": {
+      const elementType = (unwrapped as SdkArrayType).valueType;
+      const elementInfo = getConvenienceTypeInfo(elementType);
+      return {
+        expression: code`${SystemCollectionsGeneric.IEnumerable}<${elementInfo.expression}>`,
+        needsAssertion: true,
+        isString: false,
+      };
+    }
+
+    // Dictionary — reference type
     case "dict":
       return {
         expression: <TypeExpression type={unwrapped.__raw!} />,

@@ -962,4 +962,41 @@ describe("ConvenienceMethod", () => {
       '<paramref name="id"/> or <paramref name="item"/> is null.',
     );
   });
+
+  /**
+   * Verifies that array query parameters use IEnumerable<T> in the convenience
+   * method signature instead of T[].
+   *
+   * Collection parameters in both protocol and convenience methods must use
+   * IEnumerable<T> — the broadest input interface — to match the legacy emitter
+   * pattern. The Spector golden files (parameters/collection-format) confirm this.
+   * Without IEnumerable<T>, callers would be forced to pass arrays and couldn't
+   * use Lists, LINQ queries, or other IEnumerable implementations.
+   */
+  it("generates IEnumerable<string> for array query parameters", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/items")
+      @get op listItems(@query colors: string[]): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Convenience method param should be IEnumerable<string>, not string[]
+    expect(clientFile).toContain("IEnumerable<string> colors");
+
+    // Should have the using directive for System.Collections.Generic
+    expect(clientFile).toContain("using System.Collections.Generic;");
+
+    // Collection params are reference types → need assertion
+    expect(clientFile).toContain(
+      "Argument.AssertNotNull(colors, nameof(colors));",
+    );
+  });
 });

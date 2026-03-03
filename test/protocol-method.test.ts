@@ -357,4 +357,41 @@ describe("ProtocolMethod", () => {
     // Task<ClientResult> requires this using
     expect(clientFile).toContain("using System.Threading.Tasks;");
   });
+
+  /**
+   * Verifies that array query parameters use IEnumerable<T> in the protocol
+   * method signature instead of T[] or flattened string.
+   *
+   * Collection parameters must use IEnumerable<T> — the broadest input
+   * interface — to match the legacy emitter pattern. The Spector golden files
+   * (parameters/collection-format) confirm this. Without this fix, collection
+   * params would render as "string" (the default fallback), making the method
+   * signature incorrect and causing compilation errors in consumer code.
+   */
+  it("generates IEnumerable<string> for array query parameters", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/items")
+      @get op listItems(@query colors: string[]): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Protocol method param should be IEnumerable<string>, not string[] or string
+    expect(clientFile).toContain("IEnumerable<string> colors");
+
+    // Should have the using directive for System.Collections.Generic
+    expect(clientFile).toContain("using System.Collections.Generic;");
+
+    // Argument.AssertNotNull for the collection param (reference type)
+    expect(clientFile).toContain(
+      "Argument.AssertNotNull(colors, nameof(colors));",
+    );
+  });
 });

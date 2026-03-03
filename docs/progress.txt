@@ -2951,3 +2951,25 @@ All 5 scenarios pass (1057 total tests). Used SCENARIOS_UPDATE=true to auto-gene
 4. **Namespace underscore prefix**: Known difference — `ExplicitBody` vs `_ExplicitBody`. Already documented.
 
 **TypeSpec syntax gotcha**: Collection format decorators use `@query(#{ explode: true })` for multi, `@encode(ArrayEncoding.spaceDelimited)` for SSV, `@encode(ArrayEncoding.pipeDelimited)` for pipes. The old `format` property is deprecated.
+
+2026-03-03 — Task 10.1.4a: Fix collection parameter type to use IEnumerable<T> (complete)
+
+Fixed both ProtocolMethod.tsx and ConvenienceMethod.tsx to use `IEnumerable<T>` for array
+collection parameters instead of falling back to `string` (protocol) or `string[]` (convenience).
+
+Changes:
+- ProtocolMethod.tsx: Added `case "array"` to `getProtocolTypeExpression()` that constructs
+  `IEnumerable<elementType>` using `SystemCollectionsGeneric.IEnumerable` refkey. Previously,
+  array types fell through to `default: return "string"`.
+- ConvenienceMethod.tsx: Replaced combined `case "array": case "dict":` with separate handlers.
+  Array now constructs `IEnumerable<elementType>` via `getConvenienceTypeInfo()` recursion on
+  the element type. Dict remains unchanged using TypeExpression.
+- Added `SdkArrayType` import and `SystemCollectionsGeneric` import to both files.
+- Added unit tests in protocol-method.test.ts and convenience-method.test.ts verifying
+  `IEnumerable<string>` appears in generated output for `string[]` query parameters.
+
+Pattern: Both fixes mirror RestClientFile.tsx (line 426-431) which already handled arrays
+correctly for CreateRequest method signatures. The refkey `SystemCollectionsGeneric.IEnumerable`
+auto-generates the `using System.Collections.Generic;` directive.
+
+Result: 1006 tests pass (1004 baseline + 2 new). Build and lint clean.
