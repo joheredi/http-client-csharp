@@ -334,7 +334,7 @@
           "title": "Implement namespace resolution",
           "description": "Create a utility function that resolves the C# root namespace from the TCGC SdkPackage. The legacy emitter uses getClientNamespaceString() in utils.ts which: (1) checks the package-name option, (2) falls back to the service namespace, (3) converts kebab-case segments to PascalCase, (4) joins with dots. Implement the same logic. Also handle namespace conflict detection from the legacy InputNamespace.InvalidNamespaceSegments list.",
           "phase": "phase-0",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [

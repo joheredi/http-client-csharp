@@ -2402,3 +2402,11 @@ Future work: Refactor existing components to consume context via useEmitterConte
 instead of prop drilling options/packageName (separate task).
 
 Tests: 846 passed, 0 failed. Build and lint clean.
+
+## 2026-03-03 — Task 0.3.3: Implement namespace resolution (complete)
+- Added `toNamespace()` function in `src/utils/package-name.ts` that converts raw package names to valid C# namespaces (kebab-case → PascalCase.dot format, matching legacy `getClientNamespaceStringHelper` behavior)
+- Added `getInvalidNamespaceSegments()` function that detects namespace segments conflicting with C# reserved words ("Type", "Array", "Enum")
+- Updated `resolvePackageName()` to apply `toNamespace()` to the `package-name` emitter option path
+- TCGC-provided namespaces (from clients, namespaces, crossLanguagePackageId) are NOT converted since they're already valid
+- Created `test/package-name.test.ts` with 11 unit tests covering kebab-case, dot-separated, mixed-case, passthrough, edge cases, and conflict detection
+- All 857 tests pass, lint clean

@@ -1463,3 +1463,10 @@ See `BinaryContentHelperFile.tsx` for the working pattern vs. the broken `code` 
 **Rejected:** Creating context in `emitter.tsx` and passing as prop — mixes imperative emitter entry point with Alloy component context patterns.
 
 **Gotcha:** Tests using `@route` and `@service` must include `using TypeSpec.Http;` in the TypeSpec code, even when using `HttpTester` (which auto-imports the library). Without it, `@route` produces an `invalid-ref` diagnostic.
+
+## Design Decisions
+
+### Namespace resolution (task 0.3.3)
+**Approach chosen:** Add `toNamespace()` conversion inline in `resolvePackageName()` for the `packageNameOption` path only.
+**Why:** TCGC-provided namespaces (from clients, SdkPackage.namespaces, crossLanguagePackageId) are already valid C# identifiers. Only user-provided `package-name` options may contain kebab-case. The legacy emitter applied conversion to both option and TCGC client namespace paths, but in the new emitter TCGC values are trusted.
+**Rejected:** Creating a separate `resolveNamespace()` wrapper function — would add indirection without benefit since `packageName` is already used as namespace throughout the codebase.
