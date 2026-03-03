@@ -22,3 +22,4 @@ export {
   SystemClientModel,
   SystemClientModelPrimitives,
 } from "./system-client-model.js";
+export { SystemDiagnosticsCodeAnalysis } from "./system-diagnostics.js";

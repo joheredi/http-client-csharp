@@ -1470,3 +1470,10 @@ See `BinaryContentHelperFile.tsx` for the working pattern vs. the broken `code` 
 **Approach chosen:** Add `toNamespace()` conversion inline in `resolvePackageName()` for the `packageNameOption` path only.
 **Why:** TCGC-provided namespaces (from clients, SdkPackage.namespaces, crossLanguagePackageId) are already valid C# identifiers. Only user-provided `package-name` options may contain kebab-case. The legacy emitter applied conversion to both option and TCGC client namespace paths, but in the new emitter TCGC values are trusted.
 **Rejected:** Creating a separate `resolveNamespace()` wrapper function — would add indirection without benefit since `packageName` is already used as namespace throughout the codebase.
+
+### JsonPatch Builtins (Task 0.2.6)
+- `JsonPatch` is in `System.ClientModel.Primitives` namespace — added to existing `SystemClientModelPrimitives` library
+- `ExperimentalAttribute` is in `System.Diagnostics.CodeAnalysis` — requires separate `SystemDiagnosticsCodeAnalysis` library for correct `using` generation
+- JsonPatch has 10 methods used by merge-patch serialization: TryGetJson, GetJson, TryGetEncodedValue, Contains, IsRemoved, Set, SetPropagators, WriteTo, GetRemainder, GetFirstPropertyName
+- The `[Experimental("SCME0001")]` attribute is applied to JsonPatch fields/properties on dynamic models
+- Phase 7 tasks (dynamic models, merge-patch) will import these builtins

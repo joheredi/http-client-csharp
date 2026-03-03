@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   SystemClientModel,
   SystemClientModelPrimitives,
+  SystemDiagnosticsCodeAnalysis,
 } from "../src/builtins/index.js";
 
 /**
@@ -296,6 +297,53 @@ describe("System.ClientModel builtins", () => {
         SystemClientModelPrimitives.ModelReaderWriterBuildableAttribute,
       ).toBeDefined();
     });
+
+    /**
+     * Verifies that JsonPatch is declared with all its methods.
+     * JsonPatch tracks JSON Merge Patch (RFC 7386) changes on dynamic models.
+     * It is stored as a private field on models with the JsonMergePatch usage flag
+     * and used during serialization to write only changed properties.
+     * Missing any of these methods would break merge-patch serialization in phase 7.
+     */
+    it("declares JsonPatch with expected members", () => {
+      expect(SystemClientModelPrimitives.JsonPatch).toBeDefined();
+      expect(SystemClientModelPrimitives.JsonPatch.TryGetJson).toBeDefined();
+      expect(SystemClientModelPrimitives.JsonPatch.GetJson).toBeDefined();
+      expect(
+        SystemClientModelPrimitives.JsonPatch.TryGetEncodedValue,
+      ).toBeDefined();
+      expect(SystemClientModelPrimitives.JsonPatch.Contains).toBeDefined();
+      expect(SystemClientModelPrimitives.JsonPatch.IsRemoved).toBeDefined();
+      expect(SystemClientModelPrimitives.JsonPatch.Set).toBeDefined();
+      expect(
+        SystemClientModelPrimitives.JsonPatch.SetPropagators,
+      ).toBeDefined();
+      expect(SystemClientModelPrimitives.JsonPatch.WriteTo).toBeDefined();
+      expect(SystemClientModelPrimitives.JsonPatch.GetRemainder).toBeDefined();
+      expect(
+        SystemClientModelPrimitives.JsonPatch.GetFirstPropertyName,
+      ).toBeDefined();
+    });
+  });
+
+  /**
+   * Verifies that diagnostic attribute types in the
+   * System.Diagnostics.CodeAnalysis namespace are declared and accessible.
+   * These attributes are applied to experimental merge-patch fields and properties.
+   */
+  describe("SystemDiagnosticsCodeAnalysis library", () => {
+    /**
+     * Verifies that ExperimentalAttribute is declared. This attribute is applied
+     * to JsonPatch fields and properties on dynamic models with diagnostic ID
+     * "SCME0001" to indicate the API is under evaluation. Without this builtin,
+     * generated [Experimental("SCME0001")] attributes would produce unresolved
+     * symbol errors.
+     */
+    it("declares ExperimentalAttribute", () => {
+      expect(
+        SystemDiagnosticsCodeAnalysis.ExperimentalAttribute,
+      ).toBeDefined();
+    });
   });
 
   /**
@@ -482,6 +530,60 @@ describe("System.ClientModel builtins", () => {
       expect(content).toContain("CollectionResult");
       expect(content).toContain("AsyncCollectionResult");
       expect(content).toContain("ContinuationToken");
+    });
+
+    /**
+     * Verifies that referencing JsonPatch produces the correct
+     * `using System.ClientModel.Primitives;` directive. JsonPatch is used
+     * as a private field type on dynamic models for merge-patch support.
+     * This test ensures the namespace resolution works for this new type.
+     */
+    it("produces 'using System.ClientModel.Primitives;' when referencing JsonPatch", () => {
+      const result = render(
+        <Output>
+          <SourceFile path="TestDynamicModel.cs">
+            <ClassDeclaration name="TestDynamicModel">
+              <Property
+                name="Patch"
+                type={SystemClientModelPrimitives.JsonPatch}
+                get
+                set
+              />
+            </ClassDeclaration>
+          </SourceFile>
+        </Output>,
+      );
+
+      const content = (result.contents[0] as { contents: string }).contents;
+      expect(content).toContain("using System.ClientModel.Primitives;");
+      expect(content).toContain("JsonPatch");
+    });
+
+    /**
+     * Verifies that referencing ExperimentalAttribute produces the correct
+     * `using System.Diagnostics.CodeAnalysis;` directive. This attribute is
+     * applied to JsonPatch fields/properties with diagnostic ID "SCME0001".
+     * Without correct namespace resolution, the generated code would fail to compile.
+     */
+    it("produces 'using System.Diagnostics.CodeAnalysis;' when referencing ExperimentalAttribute", () => {
+      const result = render(
+        <Output>
+          <SourceFile path="TestExperimental.cs">
+            <ClassDeclaration name="TestExperimental">
+              <Property
+                name="Attr"
+                type={SystemDiagnosticsCodeAnalysis.ExperimentalAttribute}
+                get
+                set
+              />
+            </ClassDeclaration>
+          </SourceFile>
+        </Output>,
+      );
+
+      const content = (result.contents[0] as { contents: string }).contents;
+      expect(content).toContain("using System.Diagnostics.CodeAnalysis;");
+      expect(content).toContain("ExperimentalAttribute");
     });
   });
 });

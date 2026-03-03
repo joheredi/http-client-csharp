@@ -255,7 +255,7 @@
           "title": "Add SCM JsonPatch builtins",
           "description": "Add JsonPatch and related experimental types for merge-patch support. These are only needed when dynamic models are present. See MrwSerializationTypeDefinition.Dynamic.cs in the legacy generator.",
           "phase": "phase-0",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "0.2.1"
           ],

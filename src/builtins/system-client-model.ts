@@ -464,5 +464,43 @@ export const SystemClientModelPrimitives = createLibrary(
       kind: "class",
       members: {},
     },
+
+    /**
+     * Tracks JSON Merge Patch (RFC 7386) changes on dynamic models.
+     * Stored as a private field (`_patch`) on models with the JsonMergePatch usage
+     * flag. Methods allow querying, setting, and serializing patched JSON properties.
+     * Marked with `[Experimental("SCME0001")]` because the API is under evaluation.
+     *
+     * @remarks Used by the merge-patch serialization path (phase 7) to write only
+     * changed properties. Propagators (`SetPropagators`) connect parent/child models
+     * so that changes bubble up through the object graph.
+     *
+     * @see ScmModelProvider.cs in the legacy generator for usage context.
+     */
+    JsonPatch: {
+      kind: "class",
+      members: {
+        /** Attempts to retrieve the full patched JSON at the given JSON path. */
+        TryGetJson: { kind: "method", methodKind: "ordinary" },
+        /** Retrieves the patched JSON at the given JSON path. Throws if not found. */
+        GetJson: { kind: "method", methodKind: "ordinary" },
+        /** Attempts to retrieve a single encoded value at the given JSON path. */
+        TryGetEncodedValue: { kind: "method", methodKind: "ordinary" },
+        /** Checks whether the patch contains a value at the given JSON path or prefix+property. */
+        Contains: { kind: "method", methodKind: "ordinary" },
+        /** Checks whether the value at the given JSON path has been explicitly removed. */
+        IsRemoved: { kind: "method", methodKind: "ordinary" },
+        /** Sets a value at the given JSON path in the patch. */
+        Set: { kind: "method", methodKind: "ordinary" },
+        /** Configures propagation callbacks so parent models detect changes in nested patches. */
+        SetPropagators: { kind: "method", methodKind: "ordinary" },
+        /** Writes the entire patch or a sub-path to a Utf8JsonWriter. */
+        WriteTo: { kind: "method", methodKind: "ordinary" },
+        /** Returns the remainder of a JSON path after consuming the first segment. */
+        GetRemainder: { kind: "method", methodKind: "ordinary" },
+        /** Extracts the first property name from a JSON path segment. */
+        GetFirstPropertyName: { kind: "method", methodKind: "ordinary" },
+      },
+    },
   },
 );
