@@ -3168,3 +3168,17 @@ Both scenarios verified against Spector golden files in `submodules/typespec/pac
 - `test/scenarios/versioning/versioning_removed.md`: New scenario test
 
 **Tests:** 1092 passed (7 new), 0 failed. Build and lint clean.
+
+## Task 10.1.6: Validate paging scenarios
+- **Date**: 2026-03-03
+- **What was done**: Created 3 new paging scenario test files comparing emitter output against Spector `Payload.Pageable` golden files:
+  1. `server_driven_pagination.md` — Validates sub-client with multiple next-link paging operations (Link, LinkString). Tests 8 method variants (4 per operation: sync/async × protocol/convenience). Matches Spector ServerDrivenPagination golden file.
+  2. `page_size_paging.md` — Validates paging without continuation (single-page, single yield) and with @pageSize parameter. Tests sub-client class + 2 CollectionResult implementations. Matches Spector PageSize golden file.
+  3. `continuation_token_params.md` — Validates continuation-token paging with additional header/query parameters (foo, bar). Tests sub-client class + 2 CollectionResult implementations with multi-param storage. Matches Spector ContinuationToken golden pattern.
+
+- **Discrepancies found** (documented in knowledge.md, tracked in prd.json):
+  1. Optional int32 mapped to `int` instead of `int?` for @pageSize (task 10.1.6.1)
+  2. Continuation token parameter comes after header params instead of first (task 10.1.6.2)
+
+- **Result**: 1099 tests passed (7 new scenario tests), 0 failed, clean build
+- **Patterns**: Used SCENARIOS_UPDATE=true approach — create skeleton markdown with TypeSpec + code block headers, run update to populate actual emitter output, then compare with golden files.

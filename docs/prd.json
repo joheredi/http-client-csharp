@@ -4077,7 +4077,7 @@
           "title": "Validate paging scenarios",
           "description": "Compare output against Spector payload/pageable golden files.",
           "phase": "phase-10",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "4.4.2"
           ],
@@ -4241,6 +4241,24 @@
           "status": "done",
           "dependencies": [],
           "phase": "phase-10"
+        },
+        {
+          "id": "10.1.6.1",
+          "title": "Fix optional int32 mapping for @pageSize parameter",
+          "description": "The emitter maps optional int32 (pageSize?: int32) to 'int pageSize = default' instead of 'int? pageSize'. The Spector golden file for Payload.Pageable.PageSize uses nullable 'int?' which allows distinguishing 'not set' from '0'. Fix the type mapping for optional value types in paging parameters.",
+          "status": "pending",
+          "dependencies": [
+            "10.1.6"
+          ]
+        },
+        {
+          "id": "10.1.6.2",
+          "title": "Fix continuation token parameter ordering",
+          "description": "The emitter places @continuationToken parameter after header params in method signatures (foo, token, bar) instead of first (token, foo, bar). The Spector golden file for Payload.Pageable.ServerDrivenPagination.ContinuationToken shows token should come first. Fix parameter ordering in PagingMethods to match legacy emitter.",
+          "status": "pending",
+          "dependencies": [
+            "10.1.6"
+          ]
         }
       ]
     },

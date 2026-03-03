@@ -1914,3 +1914,17 @@ transformed, this heuristic may need adjustment (unlikely since TCGC names are a
 - **Fix:** `isMultiTypeNamedUnion()` in `CSharpTypeExpression.tsx` detects these unions by walking variant scalar chains to compare roots. When different roots are found, maps to `BinaryData`.
 - **Distinction from extensible enums:** Extensible enums (e.g., `union Bar { string, "a", "b" }`) have all variants of the same scalar root type and are handled by the default TypeExpression which resolves them via existing struct declarations.
 - **Design decision:** Detect at TypeExpression level (not at model property level) to catch all usages of multi-type unions regardless of context.
+
+## Paging Scenario Validation Discrepancies (Task 10.1.6)
+
+### Discrepancy: Optional int32 mapped to `int` instead of `int?`
+- **Golden file**: `int? pageSize` (nullable int)
+- **Our output**: `int pageSize = default` (non-nullable int, defaults to 0)
+- **Location**: Seen in `PageSize.GetWithPageSize()` methods. The TypeSpec `pageSize?: int32` with `@pageSize @query` should produce nullable `int?` in C# to match the Spector golden `Payload.Pageable.PageSize`.
+- **Impact**: Callers cannot distinguish "not set" from "set to 0" for page size.
+
+### Discrepancy: Continuation token parameter order
+- **Golden file**: `(string token, string foo, string bar, RequestOptions options)`
+- **Our output**: `(string foo, string token, string bar, RequestOptions options)`
+- **Location**: Seen in `ContinuationToken.RequestQueryResponseBody()` methods. The `@continuationToken` parameter should come first in the method signature, matching the legacy emitter pattern from `Payload.Pageable.ServerDrivenPagination.ContinuationToken`.
+- **Impact**: Public API surface mismatch with legacy emitter.
