@@ -1893,3 +1893,18 @@ The C# PascalCase naming policy converts `ISO8601DurationProperty` to `Iso8601Du
 ### Critical rule: Never duplicate createLibrary() for the same type
 
 If you need `BinaryData`, `DateTimeOffset`, or any System type in a new component, always import from `src/builtins/system.ts`. Never create a new `createLibrary("System", ...)` call — it creates a separate refkey that Alloy will disambiguate with `_2` suffixes when both appear in the same scope.
+
+### Custom naming policy preserves TCGC-provided type names
+
+The `createHttpClientNamePolicy()` in `HttpClientCSharpOutput.tsx` wraps the standard
+`createCSharpNamePolicy()` to preserve TCGC-provided type names. For type-level contexts
+(class, struct, enum, interface, record), names starting with an uppercase letter are returned
+as-is. This prevents `changecase.pascalCase()` from breaking acronyms like `ISO8601`.
+
+Important: The "class" naming context is used for TWO purposes:
+1. Type names (models, clients, enums) — already correctly cased by TCGC, start with uppercase
+2. Method names being PascalCased — from TCGC in camelCase, start with lowercase
+
+The `/^[A-Z]/` heuristic distinguishes these cases. If you add a new use of
+`namePolicy.getName(name, "class")` where `name` starts with uppercase and should be
+transformed, this heuristic may need adjustment (unlikely since TCGC names are authoritative).

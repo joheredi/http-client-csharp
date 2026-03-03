@@ -1,5 +1,5 @@
-import { createCSharpNamePolicy } from "@alloy-js/csharp";
-import { type Children } from "@alloy-js/core";
+import { createCSharpNamePolicy, type CSharpElements } from "@alloy-js/csharp";
+import { createNamePolicy, type Children } from "@alloy-js/core";
 import type {
   SdkContext,
   SdkHttpOperation,
@@ -60,7 +60,7 @@ export function HttpClientCSharpOutput(props: HttpClientCSharpOutputProps) {
   return (
     <Output
       program={props.program}
-      namePolicy={createCSharpNamePolicy()}
+      namePolicy={createHttpClientNamePolicy()}
       tabWidth={4}
       printWidth={120}
     >
@@ -111,4 +111,51 @@ function detectMultipartOperations(
     }
   }
   return false;
+}
+
+/**
+ * Type-level naming contexts where TCGC may provide already-cased names.
+ *
+ * TCGC (TypeSpec Client Generator Core) provides type names that are already
+ * in the correct C# casing, including proper handling of acronyms like
+ * `ISO8601`. The standard `changecase.pascalCase()` breaks these acronyms
+ * (e.g., `ISO8601DurationProperty` → `Iso8601DurationProperty`).
+ *
+ * For type-level contexts, names that already start with an uppercase letter
+ * are assumed to be correctly cased by TCGC and are returned as-is. Names
+ * starting with a lowercase letter (e.g., method names passed with "class"
+ * context for PascalCase conversion) are still transformed normally.
+ */
+const typeContexts: ReadonlySet<string> = new Set<CSharpElements>([
+  "class",
+  "struct",
+  "enum",
+  "interface",
+  "record",
+]);
+
+/**
+ * Creates a C# naming policy that preserves TCGC-provided type names.
+ *
+ * TCGC provides type names (models, enums, clients, etc.) in the correct
+ * C# casing, including acronyms like `ISO8601`. The standard Alloy C# naming
+ * policy applies `changecase.pascalCase()` which incorrectly converts
+ * `ISO8601DurationProperty` to `Iso8601DurationProperty`.
+ *
+ * This policy detects names that are already correctly cased (starting with
+ * an uppercase letter) in type-level contexts and preserves them. Names
+ * starting with a lowercase letter are still transformed to PascalCase,
+ * which handles cases like method names being PascalCased for C#.
+ */
+function createHttpClientNamePolicy() {
+  const base = createCSharpNamePolicy();
+  return createNamePolicy<CSharpElements>((name, element) => {
+    // For type-level contexts, preserve names that are already correctly cased
+    // (start with uppercase). TCGC provides type names in correct C# casing.
+    // Names starting with lowercase (e.g., method names) still need PascalCase.
+    if (typeContexts.has(element) && /^[A-Z]/.test(name)) {
+      return name;
+    }
+    return base.getName(name, element);
+  });
 }

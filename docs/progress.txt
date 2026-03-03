@@ -3116,3 +3116,27 @@ Never create duplicate `createLibrary()` calls for the same namespace+type — t
 - `pnpm build` ✅
 - `pnpm test` ✅ (1078/1078 tests pass)
 - `pnpm lint` ✅
+
+2026-03-03 — Task 10.1.5c: Fix ISO8601 naming preserved as acronym in model names (complete)
+
+Problem: Model name `ISO8601DurationProperty` was incorrectly converted to `Iso8601DurationProperty`
+by the C# PascalCase naming policy. `changecase.pascalCase()` breaks consecutive uppercase acronyms.
+
+Fix: Created `createHttpClientNamePolicy()` in `HttpClientCSharpOutput.tsx` that wraps
+`createCSharpNamePolicy()`. For type-level contexts (class, struct, enum, interface, record),
+names that already start with an uppercase letter are preserved as-is (TCGC provides correct casing).
+Names starting with lowercase (e.g., method names being PascalCased) still go through the standard policy.
+
+Key insight: The "class" naming context was used for BOTH type names (already PascalCase from TCGC)
+AND method names (camelCase from TCGC needing PascalCase). The heuristic `/^[A-Z]/` distinguishes
+these cases — type names start with uppercase, method names start with lowercase.
+
+Changes:
+- `src/components/HttpClientCSharpOutput.tsx`: Added `createHttpClientNamePolicy()` function and
+  `typeContexts` set. Changed `namePolicy` prop from `createCSharpNamePolicy()` to
+  `createHttpClientNamePolicy()`.
+- `test/scenarios/encoding/duration_encoding.md`: Updated scenario test expectations from
+  `Iso8601DurationProperty` to `ISO8601DurationProperty`
+- `test/model.test.ts`: Added "preserves acronyms in model names (ISO8601)" test
+
+Tests: 1079 passed (1 new), 0 failed. Build and lint clean.

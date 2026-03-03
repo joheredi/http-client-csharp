@@ -84,18 +84,18 @@ public partial class DefaultDurationProperty
     }
 ```
 
-```csharp src/Generated/Models/Iso8601DurationProperty.cs class Iso8601DurationProperty
-public partial class Iso8601DurationProperty
+```csharp src/Generated/Models/ISO8601DurationProperty.cs class ISO8601DurationProperty
+public partial class ISO8601DurationProperty
     {
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
-        public Iso8601DurationProperty(TimeSpan value)
+        public ISO8601DurationProperty(TimeSpan value)
         {
             Value = value;
         }
 
-        internal Iso8601DurationProperty(TimeSpan value, IDictionary<string, BinaryData> additionalBinaryDataProperties)
+        internal ISO8601DurationProperty(TimeSpan value, IDictionary<string, BinaryData> additionalBinaryDataProperties)
         {
             Value = value;
             _additionalBinaryDataProperties = additionalBinaryDataProperties;

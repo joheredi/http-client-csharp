@@ -3146,4 +3146,52 @@ describe("ModelUsageGoldenFiles", () => {
     );
     expect(enumFile).toBeDefined();
   });
+
+  /**
+   * Validates that model names containing acronyms (consecutive uppercase
+   * letters) are preserved as-is from TCGC, not re-cased by the naming policy.
+   *
+   * The standard `changecase.pascalCase()` converts "ISO8601DurationProperty"
+   * to "Iso8601DurationProperty", breaking the acronym. TCGC provides model
+   * names in the correct C# casing, so the emitter must preserve them.
+   *
+   * This test is critical because:
+   * - The legacy emitter outputs `ISO8601DurationProperty` (preserving the acronym)
+   * - Without the custom naming policy in HttpClientCSharpOutput, the acronym
+   *   would be broken, causing the generated code to differ from the legacy output
+   * - This affects file names, class names, and all cross-references to the model
+   */
+  it("preserves acronyms in model names (ISO8601)", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model ISO8601DurationProperty {
+        value: duration;
+      }
+
+      @route("/test")
+      op test(): ISO8601DurationProperty;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    // Verify the file is generated with the correct name (preserving the acronym)
+    const modelFileKey = Object.keys(outputs).find((k) =>
+      k.includes("ISO8601DurationProperty.cs"),
+    );
+    expect(modelFileKey).toBeDefined();
+    expect(modelFileKey).toContain(
+      "src/Generated/Models/ISO8601DurationProperty.cs",
+    );
+
+    // Verify the class name preserves the acronym
+    const content = outputs[modelFileKey!];
+    expect(content).toContain("public partial class ISO8601DurationProperty");
+
+    // Verify it does NOT contain the incorrectly-cased version
+    expect(content).not.toContain("Iso8601DurationProperty");
+  });
 });
