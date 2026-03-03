@@ -3299,3 +3299,22 @@ Task 0.4.4 was already fully implemented. The test/scenarios/ directory exists w
 
 **Files created:** 2 scenario markdown files (5 test assertions total)
 **Result:** All 1139 tests pass (1134 → 1139), build and lint clean
+
+## 2026-03-03 — Task 5.4.1: Implement custom code awareness (complete)
+
+**What was done:**
+- Created `src/utils/custom-code-model.ts` — Type definitions for custom code model (CustomCodeModel, CustomTypeInfo, CustomMemberInfo, SuppressedMemberInfo, SerializationOverrideInfo)
+- Created `src/utils/custom-code-scanner.ts` — Regex-based C# file scanner that reads .cs files from the output directory (excluding Generated/) and extracts partial class declarations, CodeGen attributes (CodeGenType, CodeGenMember, CodeGenSuppress, CodeGenSerialization), and property declarations
+- Created `src/contexts/custom-code-context.ts` — React-style context providing custom code model to component tree, plus `isMemberSuppressed()` helper for checking if generated members should be filtered
+- Updated `src/components/HttpClientCSharpOutput.tsx` — Added `customCode` prop and `CustomCodeContext.Provider` wrapper
+- Updated `src/emitter.tsx` — Added `scanCustomCode()` call before rendering, passes model to HttpClientCSharpOutput
+- Updated `src/components/models/ModelFile.tsx` — Uses `useCustomCode()` and `isMemberSuppressed()` to filter properties that have been replaced or suppressed by user-written custom partial classes
+- Created `test/custom-code.test.ts` — 20 tests covering: parseCustomCodeFile (10 tests), findCustomCodeFiles (3 tests), scanCustomCode (3 tests), isMemberSuppressed (4 tests)
+
+**Design decisions:**
+- Used regex-based parsing instead of tree-sitter — no external dependencies needed, patterns are formulaic enough (CodeGen attributes, partial class declarations)
+- Used separate CustomCodeContext rather than adding to EmitterContext — keeps concerns separated, can be optionally provided
+- Scanner operates at `{emitterOutputDir}/src/` level, excluding `Generated/` subdirectory
+- Custom code model keyed by **original generated name** (from CodeGenType attribute) for O(1) lookup during generation
+
+**Test results:** 1159 tests pass (20 new), 61 test files. Build, lint all clean.

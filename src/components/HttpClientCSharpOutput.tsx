@@ -7,10 +7,14 @@ import type {
 import { type Program } from "@typespec/compiler";
 import { Output } from "@typespec/emitter-framework";
 import {
+  CustomCodeContext,
+} from "../contexts/custom-code-context.js";
+import {
   EmitterContext,
   type EmitterContextType,
 } from "../contexts/emitter-context.js";
 import { getAllClients } from "../utils/clients.js";
+import type { CustomCodeModel } from "../utils/custom-code-model.js";
 import type {
   CSharpEmitterOptions,
   ResolvedCSharpEmitterOptions,
@@ -28,6 +32,12 @@ export interface HttpClientCSharpOutputProps {
   sdkContext: SdkContext<CSharpEmitterOptions, SdkHttpOperation>;
   /** Resolved package name for the generated library. */
   packageName: string;
+  /**
+   * Custom code model describing user-written partial classes and their
+   * CodeGen attributes. When provided, components use this to filter or
+   * rename generated members that conflict with custom code.
+   */
+  customCode?: CustomCodeModel;
   /** Optional children to render inside the output. */
   children?: Children;
 }
@@ -65,7 +75,13 @@ export function HttpClientCSharpOutput(props: HttpClientCSharpOutputProps) {
       printWidth={120}
     >
       <EmitterContext.Provider value={emitterCtx}>
-        {props.children}
+        {props.customCode ? (
+          <CustomCodeContext.Provider value={props.customCode}>
+            {props.children}
+          </CustomCodeContext.Provider>
+        ) : (
+          props.children
+        )}
       </EmitterContext.Provider>
     </Output>
   );

@@ -9,6 +9,10 @@ import { code, type Children, For } from "@alloy-js/core";
 import type { SdkModelType } from "@azure-tools/typespec-client-generator-core";
 import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
 import { System } from "../../builtins/system.js";
+import {
+  isMemberSuppressed,
+  useCustomCode,
+} from "../../contexts/custom-code-context.js";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { isModelStruct } from "../../utils/model.js";
@@ -78,9 +82,20 @@ export function ModelFile(props: ModelFileProps) {
   // properties (e.g., kind: "eagle") — they're inherited from the base class.
   // Keep the model's own discriminator property (e.g., Shark's sharktype: string).
   const isDerived = isDerivedDiscriminatedModel(props.type);
-  const renderProperties = isDerived
+  let renderProperties = isDerived
     ? props.type.properties.filter((p) => !isBaseDiscriminatorOverride(p))
-    : props.type.properties;
+    : [...props.type.properties];
+
+  // Filter out properties that are suppressed by user-written custom code.
+  // Custom partial classes can use [CodeGenMember("Name")] to replace a
+  // generated property, or [CodeGenSuppress("Name")] to remove it entirely.
+  const customCode = useCustomCode();
+  if (customCode) {
+    renderProperties = renderProperties.filter((p) => {
+      const propName = namePolicy.getName(p.name, "class-property");
+      return !isMemberSuppressed(customCode, modelName, propName);
+    });
+  }
 
   // Only root models (no base model) declare the _additionalBinaryDataProperties
   // field. Derived models inherit it from their base class. The access modifier

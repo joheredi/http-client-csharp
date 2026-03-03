@@ -3584,7 +3584,7 @@
           "title": "Implement custom code awareness",
           "description": "Implement the ability to detect user-written partial classes and filter conflicting generated members. The legacy generator uses Roslyn to analyze custom code; the rewrite needs an alternative strategy (e.g., reading existing .cs files via TypeScript-based parsing or tree-sitter). When a user has written a partial class with a member matching a generated member, the emitter should skip generating that member. This integrates with CodeGenType, CodeGenMember, CodeGenSuppress, and CodeGenSerialization attributes.",
           "phase": "phase-5",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "5.2.1"
           ],

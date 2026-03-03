@@ -2020,3 +2020,23 @@ When a dynamic model has properties of other dynamic model types (arrays, dicts,
 
 ### Dynamic models completely replace additionalBinaryDataProperties with _patch
 Dynamic models do NOT have `_additionalBinaryDataProperties` at all — no field, no constructor parameter, no serialization loop. The `_patch` field and `JsonPatch` replace them entirely. The model factory uses `default` (not `additionalBinaryDataProperties: null`) as the last constructor argument.
+
+### Custom Code Awareness — Regex-Based Scanner
+
+**Decision:** Use regex-based C# parsing for custom code detection instead of tree-sitter or Roslyn.
+
+**Key patterns parsed:**
+- `[CodeGenType("name")]` → maps custom class to original generated type name
+- `[CodeGenMember("name")]` → indicates property replacement (suppress original in generated output)
+- `[CodeGenSuppress("member", typeof(T))]` → explicit member suppression
+- `[CodeGenSerialization("prop", "serName")]` → serialization override hooks
+
+**Architecture:**
+- `scanCustomCode(emitterOutputDir)` called in `$onEmit` before rendering JSX tree
+- Model passed via `CustomCodeContext.Provider` in `HttpClientCSharpOutput`
+- Components call `useCustomCode()` and `isMemberSuppressed()` to filter
+- Scanner finds `.cs` files under `{emitterOutputDir}/src/` excluding `Generated/`
+
+**Gotcha:** The `PROPERTY_PATTERN` regex must use `[` inside a character class without escaping per ESLint's `no-useless-escape` rule. Use `[\w.<>[,?\s\]]` not `[\w.<>\[\],?\s]`.
+
+**Gotcha:** The `CustomCodeContext` is separate from `EmitterContext` — it's conditionally provided only when custom code exists. Components using `useCustomCode()` get `undefined` when no custom code is found, so always check for `undefined`.

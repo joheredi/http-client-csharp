@@ -66,6 +66,7 @@ import { ToBinaryContent } from "./components/serialization/ToBinaryContent.js";
 import { $lib } from "./lib.js";
 import { type CSharpEmitterOptions, resolveOptions } from "./options.js";
 import { getAllClients } from "./utils/clients.js";
+import { scanCustomCode } from "./utils/custom-code-scanner.js";
 import { resolvePackageName } from "./utils/package-name.js";
 import { applyUnreferencedTypeHandling } from "./utils/unreferenced-types.js";
 
@@ -129,12 +130,18 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
   const shouldGenerateProject =
     options["new-project"] || !existsSync(csprojPath);
 
+  // Scan for user-written custom partial classes in the output directory.
+  // Custom code files live under src/ but outside the Generated/ subdirectory.
+  // When found, their CodeGen attributes inform member filtering/renaming.
+  const customCode = await scanCustomCode(context.emitterOutputDir);
+
   const output = (
     <HttpClientCSharpOutput
       program={context.program}
       options={options}
       sdkContext={sdkContext}
       packageName={packageName}
+      customCode={customCode}
     >
       {shouldGenerateProject && (
         <ProjectFile packageName={packageName} options={options} />
