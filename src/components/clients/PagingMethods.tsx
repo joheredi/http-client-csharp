@@ -17,9 +17,10 @@ import type {
  * For System.ClientModel, LRO does not affect method signatures, so both kinds
  * generate identical collection-result-based methods.
  */
-type PagingLikeMethod<T extends import("@azure-tools/typespec-client-generator-core").SdkServiceOperation> =
-  | SdkPagingServiceMethod<T>
-  | SdkLroPagingServiceMethod<T>;
+type PagingLikeMethod<
+  T extends
+    import("@azure-tools/typespec-client-generator-core").SdkServiceOperation,
+> = SdkPagingServiceMethod<T> | SdkLroPagingServiceMethod<T>;
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import {
   SystemClientModel,

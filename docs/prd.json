@@ -3893,7 +3893,7 @@
           "title": "Generate MultiPartFormDataBinaryContent",
           "description": "Conditionally generate MultiPartFormDataBinaryContent.cs when multipart operations exist. See golden file and MultiPartFormDataBinaryContentDefinition.",
           "phase": "phase-9",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "5.1.5d"
           ],

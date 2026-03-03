@@ -27,9 +27,10 @@ import type {
  * For System.ClientModel, LRO does not affect collection result generation, so
  * both kinds produce identical iterator classes.
  */
-type PagingLikeMethod<T extends import("@azure-tools/typespec-client-generator-core").SdkServiceOperation> =
-  | SdkPagingServiceMethod<T>
-  | SdkLroPagingServiceMethod<T>;
+type PagingLikeMethod<
+  T extends
+    import("@azure-tools/typespec-client-generator-core").SdkServiceOperation,
+> = SdkPagingServiceMethod<T> | SdkLroPagingServiceMethod<T>;
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import { System } from "../../builtins/system.js";
 import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";

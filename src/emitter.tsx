@@ -32,6 +32,7 @@ import { SolutionFile } from "./components/infrastructure/SolutionFile.js";
 import { TypeFormattersFile } from "./components/infrastructure/TypeFormattersFile.js";
 import { Utf8JsonBinaryContentFile } from "./components/infrastructure/Utf8JsonBinaryContentFile.js";
 import { BinaryContentHelperFile } from "./components/infrastructure/BinaryContentHelperFile.js";
+import { MultiPartFormDataBinaryContentFile } from "./components/infrastructure/MultiPartFormDataBinaryContentFile.js";
 import { PipelineRequestHeadersExtensionsFile } from "./components/infrastructure/PipelineRequestHeadersExtensionsFile.js";
 import { ModelFactoryFile } from "./components/model-factory/ModelFactoryFile.js";
 import { hasDiscriminatedSubtypes } from "./components/models/ModelConstructors.js";
@@ -149,6 +150,7 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
       />
       <Utf8JsonBinaryContentFile packageName={packageName} options={options} />
       <BinaryContentHelperFile packageName={packageName} options={options} />
+      <MultiPartFormDataBinaryContentFile packageName={packageName} />
       <PipelineRequestHeadersExtensionsFile
         packageName={packageName}
         options={options}

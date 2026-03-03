@@ -2619,3 +2619,22 @@ LRO methods share the same generation pipeline as basic methods. No separate LRO
 ### Notes for next iteration
 - All LRO tests now complete (component + scenario). No remaining LRO tasks.
 - The scenario harness change (`importLibraries()`) means future scenarios can use any registered library decorator.
+
+## Task 9.1.1: Generate MultiPartFormDataBinaryContent (2026-03-03)
+
+- Created `src/components/infrastructure/MultiPartFormDataBinaryContentFile.tsx`
+  - Conditionally generates `MultiPartFormDataBinaryContent.cs` when `hasMultipartOperations` is true
+  - Uses `useEmitterContext()` to check the flag; returns `false` (renders nothing) when not needed
+  - Uses plain strings for method bodies with #if preprocessor directives (per knowledge.md gotcha)
+  - Uses `ClassDeclaration` with `baseType="BinaryContent"` for the class wrapper
+  - Generates 10 public `Add()` overloads (string, int, long, float, double, decimal, bool, Stream, byte[], BinaryData)
+  - Generates private `Add(HttpContent, ...)` delegation method
+  - Generates `CreateBoundary()`, `AddContentTypeHeader()`, `TryComputeLength()`, `WriteTo()`, `WriteToAsync()`, `Dispose()`
+- Updated `src/emitter.tsx` to import and render the component (unconditionally in JSX tree; self-filters via context)
+- Created `test/multipart-binary-content.test.ts` with 9 tests covering:
+  - Conditional generation (not generated without multipart ops)
+  - File path, class declaration, using statements, namespace
+  - All Add method overloads, constructor, properties, BinaryContent overrides
+  - Preprocessor directives, InvariantCulture usage
+- **Gotcha**: TypeSpec multipart tests need `using TypeSpec.Http;` even with HttpTester to resolve `@header`, `@multipartBody`, `HttpPart`
+- All 915 tests pass (9 new)

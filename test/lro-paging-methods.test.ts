@@ -230,10 +230,14 @@ describe("LroPagingMethods", () => {
     expect(asyncConvenience).toBeDefined();
 
     // Verify protocol sync extends CollectionResult
-    expect(syncProtocol).toContain("class TestServiceClientGetBatchItemsCollectionResult : CollectionResult");
+    expect(syncProtocol).toContain(
+      "class TestServiceClientGetBatchItemsCollectionResult : CollectionResult",
+    );
 
     // Verify protocol async extends AsyncCollectionResult
-    expect(asyncProtocol).toContain("class TestServiceClientGetBatchItemsAsyncCollectionResult : AsyncCollectionResult");
+    expect(asyncProtocol).toContain(
+      "class TestServiceClientGetBatchItemsAsyncCollectionResult : AsyncCollectionResult",
+    );
   });
 
   /**

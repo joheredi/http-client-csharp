@@ -1549,3 +1549,17 @@ The `lropaging` kind is excluded from basic/LRO filters and will need separate h
 171. **LRO+Paging treated identically to Paging for System.ClientModel**: Operations with TCGC kind "lropaging" produce the same output as "paging" operations — CollectionResult/AsyncCollectionResult return types and iterator classes. The `lroMetadata` is available on `SdkLroPagingServiceMethod` but unused because System.ClientModel doesn't have LRO-specific return types (no `Operation<T>`). A union type `PagingLikeMethod<T> = SdkPagingServiceMethod<T> | SdkLroPagingServiceMethod<T>` is used in both `PagingMethods.tsx` and `CollectionResultFile.tsx` to handle both kinds with shared code. The legacy emitter's `ScmMethodProviderCollection` similarly doesn't check for `InputLongRunningPagingServiceMethod`, confirming this approach.
 
 172. **Creating lropaging test TypeSpec**: Use `@markAsLro` (from `Azure.ClientGenerator.Core.Legacy`) combined with `@list` and `@pageItems` on the return model to produce `kind: "lropaging"`. TCGC classifies as lropaging when both LRO metadata and paging metadata exist: `const lro = getTcgcLroMetadata(...)` and `const paging = isList(...) || getMarkAsPageable(...)`.
+
+## Multipart TypeSpec tests require explicit `using TypeSpec.Http;` (2026-03-03)
+
+When writing tests with TypeSpec that use `@header`, `@multipartBody`, or `HttpPart<T>`, you MUST include `using TypeSpec.Http;` in the TypeSpec code even when using `HttpTester` (which calls `Tester.importLibraries()`). Without it, the compiler reports "Unknown decorator @header" and "Unknown identifier HttpPart". The `@service` decorator works without explicit import, but HTTP-specific decorators need it.
+
+## MultiPartFormDataBinaryContentFile uses self-filtering pattern (2026-03-03)
+
+The `MultiPartFormDataBinaryContentFile` component uses `useEmitterContext().hasMultipartOperations` internally to decide whether to render. When the flag is false, it returns `false` (renders nothing in JSX). This pattern keeps `emitter.tsx` clean — the component is added unconditionally to the JSX tree and self-filters. Other conditional infrastructure files can follow this same pattern.
+
+## Design Decision: MultiPartFormDataBinaryContentFile uses plain strings (2026-03-03)
+
+**Chosen approach:** Plain string body inside `<ClassDeclaration baseType="BinaryContent">`, matching the BinaryContentHelperFile.tsx pattern. The class content is static (no TypeSpec-dependent parts), and preprocessor directives require plain strings per the documented gotcha.
+
+**Rejected approach:** Full Alloy components (Method, Property, etc.) — too complex for static content, preprocessor directives problematic with Alloy component indentation, no benefit since content doesn't vary with TypeSpec input.
