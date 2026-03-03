@@ -2440,3 +2440,30 @@ Added 10 new test cases to `test/convenience-method.test.ts` covering:
 Total tests went from 861 to 871 (all passing). Build, test, and lint all green.
 
 **Known gap**: Current implementation only generates generic `ClientResult<T>` for model response types. Scalar, array, and dictionary returns use untyped `ClientResult`. The legacy emitter generates `ClientResult<string>`, `ClientResult<IReadOnlyList<T>>`, etc. This is tracked but not yet implemented.
+
+## 2026-03-03 — Task 10.1.3: Validate enum scenarios + housekeeping
+
+### Housekeeping
+- Marked tasks 0.2.5, 0.4.1, 0.4.2, 0.4.3 as done (already implemented)
+  - 0.2.5: Auth builtins (BearerTokenAuthenticationPolicy, UserAgentPolicy, AuthenticationTokenProvider) exist in src/builtins/system-client-model.ts
+  - 0.4.1: Scenario test harness exists in test/scenarios.test.ts with tree-sitter C# extractor
+  - 0.4.2: Test utilities accomplished via Tester/HttpTester pattern in test-host.ts
+  - 0.4.3: Baseline scenario test exists in test/scenarios/models/basic_model.md
+
+### Task 10.1.3: Validate enum scenarios
+- Created test/scenarios/enums/ directory
+- Created test/scenarios/enums/fixed_enum.md — validates fixed enum generation against Spector Type.Enum.Fixed golden file
+- Created test/scenarios/enums/extensible_enum.md — validates extensible enum generation against Spector Type.Enum.Extensible golden file
+
+### Validation results
+- **Fixed enum**: Output matches Spector golden file exactly (enum members, XML doc comments, structure)
+- **Extensible enum**: Public API surface matches golden file (readonly partial struct, IEquatable<T>, constructor, static properties, operators, Equals, GetHashCode, ToString, EditorBrowsable attributes)
+
+### Patterns and notes
+- Scenario tests use SCENARIOS_UPDATE=true to auto-populate expected output
+- For struct types (extensible enums), use full-file comparison (no type/name annotation) since the scenario framework's tree-sitter config doesn't support struct extraction
+- For fixed enums, use `enum EnumName` snippet extraction
+- Namespace handling note: Our emitter uses dot-separated namespaces (e.g., `Type.Enum.Fixed`) while the legacy emitter escapes to underscores (`_Type._Enum.Fixed`). This is a general namespace issue, not enum-specific.
+
+### Stats
+- 873 tests passing across 46 test files (3 scenario tests = 1 model + 2 enum)

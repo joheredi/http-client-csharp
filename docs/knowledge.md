@@ -1477,3 +1477,16 @@ See `BinaryContentHelperFile.tsx` for the working pattern vs. the broken `code` 
 - JsonPatch has 10 methods used by merge-patch serialization: TryGetJson, GetJson, TryGetEncodedValue, Contains, IsRemoved, Set, SetPropagators, WriteTo, GetRemainder, GetFirstPropertyName
 - The `[Experimental("SCME0001")]` attribute is applied to JsonPatch fields/properties on dynamic models
 - Phase 7 tasks (dynamic models, merge-patch) will import these builtins
+
+## Scenario Test Framework Limitations
+
+### Struct extraction not supported
+The scenario test tree-sitter configuration only supports extracting: class, function, interface, enum, and type alias declarations. C# `struct` declarations (used for extensible enums) cannot be extracted by type/name. Use full-file comparison instead by omitting the type and name from the code block heading:
+```
+```csharp src/Generated/Models/MyStruct.cs
+// full file content here
+```
+```
+
+### Namespace differences with legacy emitter
+Our emitter generates dot-separated namespaces (e.g., `namespace Type.Enum.Fixed`) while the legacy emitter escapes dots to underscores (e.g., `namespace _Type._Enum.Fixed`). Both are valid C#, but they produce different fully-qualified type names. This affects all scenarios using namespaces with segments that start with uppercase or match C# type names.

@@ -231,7 +231,7 @@
           "title": "Add SCM auth token builtins",
           "description": "Add token auth types: BearerTokenPolicy, UserAgentPolicy, AuthenticationTokenProvider. These are used in client pipeline construction. See ClientProvider.cs in the legacy generator for usage patterns.",
           "phase": "phase-0",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "0.2.1"
           ],
@@ -384,7 +384,7 @@
           "title": "Set up scenario test harness",
           "description": "Set up the @typespec/emitter-framework scenario test harness for end-to-end testing. Use createCSharpExtractorConfig() to configure tree-sitter for C# snippet extraction. Create a test entry point that calls executeScenarios() with the emitter tester configured to import @typespec/http and @typespec/rest. Create the test/scenarios/ directory for markdown scenario files.",
           "phase": "phase-0",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "0.1.4"
           ],
@@ -410,7 +410,7 @@
           "title": "Create test utility functions",
           "description": "Create test helper utilities for unit testing individual components. Include: createTestHost() that sets up a TypeSpec test host with the emitter configured, compileAndEmit(code) that compiles TypeSpec code and returns the emitted output directory, assertFileContents(output, path, expected) for file content assertions. Follow the existing test pattern at test/test-host.ts and test/hello.test.ts.",
           "phase": "phase-0",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "0.1.4"
           ],
@@ -437,7 +437,7 @@
           "title": "Write baseline test",
           "description": "Write the first scenario test verifying the emitter works end-to-end. Test that a minimal TypeSpec service (just `@service namespace MyService;`) emits the correct file structure. This validates the entire pipeline from $onEmit through Alloy rendering to file output.",
           "phase": "phase-0",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "0.4.1",
             "0.4.2",
@@ -4010,7 +4010,7 @@
           "title": "Validate enum scenarios",
           "description": "Compare output against Spector type/enum golden files: fixed, extensible.",
           "phase": "phase-10",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "1.5.6",
             "1.7.4"
