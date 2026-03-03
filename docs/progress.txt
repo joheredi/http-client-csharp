@@ -2323,3 +2323,33 @@ All 800 tests pass (up from 779 baseline — 21 new assertions added).
 ### Notes for next iterations
 - Tasks 5.1.5c (ModelSerializationExtensions) and 5.1.5d (binary content/headers) are the remaining infrastructure tasks.
 - After 5.1.5c is done, smoke tests should pass since the 4 required infra files will be complete.
+
+---
+2026-03-03 — Task 5.1.5c: Generate ModelSerializationExtensions
+
+What was done:
+- Task 5.1.5c was already fully implemented — ModelSerializationExtensionsFile.tsx existed with a complete JSON-only implementation matching the Plugin golden file, and was already integrated into emitter.tsx.
+- Added 16 new unit tests for the component covering:
+  - File generation at correct path
+  - Class declaration (internal static partial)
+  - WireOptions field
+  - JsonDocumentOptions field with MaxDepth=256
+  - GetObject extension method (all ValueKind cases)
+  - GetBytesFromBase64 with format support
+  - GetDateTimeOffset with Unix timestamp handling
+  - WriteStringValue overloads (DateTimeOffset, DateTime, TimeSpan, char)
+  - WriteBase64StringValue with null handling
+  - WriteNumberValue for Unix timestamps
+  - WriteObjectValue<T> polymorphic serializer (all 15 type cases)
+  - Non-generic WriteObjectValue overload
+  - ThrowNonNullablePropertyIsNull with [Conditional("DEBUG")]
+  - GetRequiredString method
+  - Required using directives
+  - Namespace derivation from service name
+- Added ModelSerializationExtensions.cs to the "always generated" infrastructure test
+- All 816 tests pass (up from 800)
+
+Notes for next iteration:
+- Remaining infrastructure task: 5.1.5d (binary content and header extension files)
+- The Local golden file has additional XML methods and JSON path utilities not in the current implementation; those belong to Phase 6 (XML serialization) tasks
+- Smoke tests should be closer to passing now with 3 of 4 required infra files in place

@@ -3456,7 +3456,7 @@
           "title": "Generate ModelSerializationExtensions",
           "description": "Generate ModelSerializationExtensions.cs (428 lines). This is the largest infrastructure file, providing extension methods for JSON serialization: WireOptions, GetObject, GetBytesFromBase64, GetChar, GetDateTimeOffset, GetTimeSpan, WriteStringValue, WriteBase64StringValue, WriteNumberValue, WriteObjectValue, ThrowNonNullablePropertyIsNull. Uses ModelReaderWriterOptions and JsonSerializerOptions. Reference golden file and legacy ModelSerializationExtensionsDefinition.",
           "phase": "phase-5",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "0.3.1"
           ],

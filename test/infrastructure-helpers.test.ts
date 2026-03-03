@@ -1165,6 +1165,326 @@ describe("TypeFormattersFile", () => {
   });
 });
 
+/**
+ * Tests for the ModelSerializationExtensionsFile component.
+ *
+ * ModelSerializationExtensions.cs provides extension methods and static helpers
+ * used by serialization/deserialization code throughout the generated client.
+ * It includes:
+ * - WireOptions — default ModelReaderWriterOptions with "W" (wire) format
+ * - JsonDocumentOptions — configured with MaxDepth=256 for parsing
+ * - JsonElement extension methods for reading typed values
+ * - Utf8JsonWriter extension methods for writing typed values
+ * - WriteObjectValue<T> polymorphic serializer
+ *
+ * This file is always generated as part of the infrastructure layer.
+ */
+describe("ModelSerializationExtensionsFile", () => {
+  /**
+   * Verifies that ModelSerializationExtensions.cs is generated at the
+   * standard Internal path, matching the legacy emitter's output structure.
+   */
+  it("generates ModelSerializationExtensions.cs at the correct path", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    expect(
+      outputs["src/Generated/Internal/ModelSerializationExtensions.cs"],
+    ).toBeDefined();
+  });
+
+  /**
+   * Verifies the class is declared as internal, static, and partial,
+   * matching the legacy emitter convention for infrastructure helpers
+   * that provide extension methods.
+   */
+  it("declares internal static partial class", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content =
+      outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
+    expect(content).toContain(
+      "internal static partial class ModelSerializationExtensions",
+    );
+  });
+
+  /**
+   * Verifies the WireOptions field is generated — this is the default
+   * ModelReaderWriterOptions("W") used by all serialization code as the
+   * fallback options when no explicit options are provided.
+   */
+  it("contains WireOptions field", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content =
+      outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
+    expect(content).toContain(
+      'internal static readonly ModelReaderWriterOptions WireOptions = new ModelReaderWriterOptions("W")',
+    );
+  });
+
+  /**
+   * Verifies the JsonDocumentOptions field is generated with MaxDepth=256.
+   * This prevents StackOverflow when parsing deeply nested JSON responses.
+   */
+  it("contains JsonDocumentOptions field with MaxDepth", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content =
+      outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
+    expect(content).toContain(
+      "internal static readonly JsonDocumentOptions JsonDocumentOptions",
+    );
+    expect(content).toContain("MaxDepth = 256");
+  });
+
+  /**
+   * Verifies the GetObject extension method that converts a JsonElement
+   * into a C# object based on its ValueKind. This is essential for
+   * deserializing additional/unknown properties (additionalProperties).
+   */
+  it("contains GetObject extension method", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content =
+      outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
+    expect(content).toContain(
+      "public static object GetObject(this JsonElement element)",
+    );
+    expect(content).toContain("case JsonValueKind.String:");
+    expect(content).toContain("case JsonValueKind.Number:");
+    expect(content).toContain("case JsonValueKind.Object:");
+    expect(content).toContain("case JsonValueKind.Array:");
+  });
+
+  /**
+   * Verifies GetBytesFromBase64 extension method that handles both
+   * standard ("D") and URL-safe ("U") Base64 encoding formats.
+   */
+  it("contains GetBytesFromBase64 extension method", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content =
+      outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
+    expect(content).toContain(
+      "public static byte[] GetBytesFromBase64(this JsonElement element, string format)",
+    );
+    expect(content).toContain(
+      "TypeFormatters.FromBase64UrlString(element.GetRequiredString())",
+    );
+  });
+
+  /**
+   * Verifies GetDateTimeOffset extension method that handles Unix timestamps
+   * ("U" format with Number kind) and formatted date strings.
+   */
+  it("contains GetDateTimeOffset extension method", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content =
+      outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
+    expect(content).toContain(
+      "public static DateTimeOffset GetDateTimeOffset(this JsonElement element, string format)",
+    );
+    expect(content).toContain(
+      "DateTimeOffset.FromUnixTimeSeconds(element.GetInt64())",
+    );
+  });
+
+  /**
+   * Verifies the set of Utf8JsonWriter.WriteStringValue overloads for
+   * DateTimeOffset, DateTime, TimeSpan, and char types.
+   */
+  it("contains WriteStringValue overloads", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content =
+      outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
+    expect(content).toContain(
+      "public static void WriteStringValue(this Utf8JsonWriter writer, DateTimeOffset value, string format)",
+    );
+    expect(content).toContain(
+      "public static void WriteStringValue(this Utf8JsonWriter writer, DateTime value, string format)",
+    );
+    expect(content).toContain(
+      "public static void WriteStringValue(this Utf8JsonWriter writer, TimeSpan value, string format)",
+    );
+    expect(content).toContain(
+      "public static void WriteStringValue(this Utf8JsonWriter writer, char value)",
+    );
+  });
+
+  /**
+   * Verifies WriteBase64StringValue handles both URL-safe ("U") and
+   * standard ("D") Base64 formats, with null-handling.
+   */
+  it("contains WriteBase64StringValue method", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content =
+      outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
+    expect(content).toContain(
+      "public static void WriteBase64StringValue(this Utf8JsonWriter writer, byte[] value, string format)",
+    );
+    expect(content).toContain("writer.WriteNullValue()");
+    expect(content).toContain("TypeFormatters.ToBase64UrlString(value)");
+  });
+
+  /**
+   * Verifies WriteNumberValue for DateTimeOffset using Unix timestamps.
+   * Only the "U" format is supported for numeric date representation.
+   */
+  it("contains WriteNumberValue method", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content =
+      outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
+    expect(content).toContain(
+      "public static void WriteNumberValue(this Utf8JsonWriter writer, DateTimeOffset value, string format)",
+    );
+    expect(content).toContain("value.ToUnixTimeSeconds()");
+  });
+
+  /**
+   * Verifies WriteObjectValue<T> — the polymorphic serializer that dispatches
+   * based on value type (IJsonModel, byte[], BinaryData, JsonElement, int,
+   * decimal, double, float, long, string, bool, Guid, DateTimeOffset,
+   * DateTime, dictionary-like, array-like, TimeSpan). This is the most
+   * critical method as it handles all additional/unknown properties.
+   */
+  it("contains WriteObjectValue<T> polymorphic serializer", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content =
+      outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
+    expect(content).toContain(
+      "public static void WriteObjectValue<T>(this Utf8JsonWriter writer, T value, ModelReaderWriterOptions options = null)",
+    );
+    expect(content).toContain("case IJsonModel<T> jsonModel:");
+    expect(content).toContain("case byte[] bytes:");
+    expect(content).toContain("case BinaryData bytes0:");
+    expect(content).toContain("case JsonElement json:");
+    expect(content).toContain("case int i:");
+    expect(content).toContain("case double d0:");
+    expect(content).toContain("double.IsNaN(d0)");
+    expect(content).toContain(
+      "case IEnumerable<KeyValuePair<string, object>> enumerable:",
+    );
+    expect(content).toContain("case IEnumerable<object> objectEnumerable:");
+    expect(content).toContain("case TimeSpan timeSpan:");
+  });
+
+  /**
+   * Verifies the non-generic WriteObjectValue overload that delegates
+   * to WriteObjectValue<object>. This enables callers to pass plain
+   * `object` without explicit type parameters.
+   */
+  it("contains non-generic WriteObjectValue overload", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content =
+      outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
+    expect(content).toContain(
+      "public static void WriteObjectValue(this Utf8JsonWriter writer, object value, ModelReaderWriterOptions options = null)",
+    );
+    expect(content).toContain("writer.WriteObjectValue<object>(value, options)");
+  });
+
+  /**
+   * Verifies ThrowNonNullablePropertyIsNull with [Conditional("DEBUG")]
+   * attribute. This method only throws in debug builds, matching the
+   * legacy emitter's behavior for service-returned null on non-nullable properties.
+   */
+  it("contains ThrowNonNullablePropertyIsNull with Conditional attribute", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content =
+      outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
+    expect(content).toContain('[Conditional("DEBUG")]');
+    expect(content).toContain(
+      "public static void ThrowNonNullablePropertyIsNull(this JsonProperty @property)",
+    );
+  });
+
+  /**
+   * Verifies GetRequiredString that throws InvalidOperationException
+   * when a required string value is null. Used during deserialization
+   * of non-nullable string properties.
+   */
+  it("contains GetRequiredString method", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content =
+      outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
+    expect(content).toContain(
+      "public static string GetRequiredString(this JsonElement element)",
+    );
+    expect(content).toContain("throw new InvalidOperationException");
+  });
+
+  /**
+   * Verifies all required using directives are present. These namespaces
+   * are needed for JSON serialization types (System.Text.Json),
+   * model reader/writer (System.ClientModel.Primitives), and
+   * diagnostic attributes (System.Diagnostics).
+   */
+  it("includes required using directives", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content =
+      outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
+    expect(content).toContain("using System;");
+    expect(content).toContain("using System.ClientModel.Primitives;");
+    expect(content).toContain("using System.Collections.Generic;");
+    expect(content).toContain("using System.Diagnostics;");
+    expect(content).toContain("using System.Globalization;");
+    expect(content).toContain("using System.Text.Json;");
+  });
+
+  /**
+   * Verifies the namespace is derived from the service name, matching
+   * the convention used by all other infrastructure files.
+   */
+  it("uses the correct namespace from package name", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace MySerializationLib;
+    `);
+    const content =
+      outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
+    expect(content).toContain("namespace MySerializationLib");
+  });
+});
+
 describe("Infrastructure files — always generated", () => {
   /**
    * Verifies that all infrastructure helper files are generated even
@@ -1196,6 +1516,9 @@ describe("Infrastructure files — always generated", () => {
     ).toBeDefined();
     expect(
       outputs["src/Generated/Internal/TypeFormatters.cs"],
+    ).toBeDefined();
+    expect(
+      outputs["src/Generated/Internal/ModelSerializationExtensions.cs"],
     ).toBeDefined();
   });
 
