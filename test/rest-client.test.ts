@@ -1022,9 +1022,10 @@ describe("RestClientFile", () => {
     expect(restClient).toBeDefined();
 
     // Verify all parameter types in signature
+    // Optional value type (bool) becomes nullable (bool?) in C#
     expect(restClient).toContain("string q");
     expect(restClient).toContain("int pageSize");
-    expect(restClient).toContain("bool includeDeleted");
+    expect(restClient).toContain("bool? includeDeleted");
 
     // Verify required params always appended
     expect(restClient).toContain('uri.AppendQuery("q", q, true);');

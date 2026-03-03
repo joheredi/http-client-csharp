@@ -1902,6 +1902,7 @@ The `createHttpClientNamePolicy()` in `HttpClientCSharpOutput.tsx` wraps the sta
 as-is. This prevents `changecase.pascalCase()` from breaking acronyms like `ISO8601`.
 
 Important: The "class" naming context is used for TWO purposes:
+
 1. Type names (models, clients, enums) — already correctly cased by TCGC, start with uppercase
 2. Method names being PascalCased — from TCGC in camelCase, start with lowercase
 
@@ -1910,6 +1911,7 @@ The `/^[A-Z]/` heuristic distinguishes these cases. If you add a new use of
 transformed, this heuristic may need adjustment (unlikely since TCGC names are authoritative).
 
 ### Multi-type named unions → BinaryData
+
 - **Gotcha:** Named unions with variants of different root scalar types (e.g., `union Foo { string, int32 }`) produce `<Unresolved Symbol>` if delegated to the default TypeExpression, because no C# declaration exists for them.
 - **Fix:** `isMultiTypeNamedUnion()` in `CSharpTypeExpression.tsx` detects these unions by walking variant scalar chains to compare roots. When different roots are found, maps to `BinaryData`.
 - **Distinction from extensible enums:** Extensible enums (e.g., `union Bar { string, "a", "b" }`) have all variants of the same scalar root type and are handled by the default TypeExpression which resolves them via existing struct declarations.
@@ -1918,13 +1920,25 @@ transformed, this heuristic may need adjustment (unlikely since TCGC names are a
 ## Paging Scenario Validation Discrepancies (Task 10.1.6)
 
 ### Discrepancy: Optional int32 mapped to `int` instead of `int?`
+
 - **Golden file**: `int? pageSize` (nullable int)
 - **Our output**: `int pageSize = default` (non-nullable int, defaults to 0)
 - **Location**: Seen in `PageSize.GetWithPageSize()` methods. The TypeSpec `pageSize?: int32` with `@pageSize @query` should produce nullable `int?` in C# to match the Spector golden `Payload.Pageable.PageSize`.
 - **Impact**: Callers cannot distinguish "not set" from "set to 0" for page size.
 
 ### Discrepancy: Continuation token parameter order
+
 - **Golden file**: `(string token, string foo, string bar, RequestOptions options)`
 - **Our output**: `(string foo, string token, string bar, RequestOptions options)`
 - **Location**: Seen in `ContinuationToken.RequestQueryResponseBody()` methods. The `@continuationToken` parameter should come first in the method signature, matching the legacy emitter pattern from `Payload.Pageable.ServerDrivenPagination.ContinuationToken`.
 - **Impact**: Public API surface mismatch with legacy emitter.
+
+## Optional Value Type Parameters — Nullable Rendering
+
+**Issue**: Optional value type parameters (int, bool, float, DateTimeOffset, TimeSpan, etc.) must render as nullable (`int?`, `bool?`) in C# method signatures. Without `?`, `int param = default` means `param = 0`, not `param = null` — making it impossible to distinguish "not set" from the zero value.
+
+**Fix pattern**: The `maybeNullable(typeExpr, sdkType, optional)` helper (in ProtocolMethod.tsx, ConvenienceMethod.tsx, RestClientFile.tsx) appends `?` to value type expressions when the parameter is optional.
+
+**Protocol vs Convenience distinction**: Protocol methods unwrap enums to wire types (string-backed enum → `string`, which is a reference type and doesn't need `?`). Convenience methods keep enums as-is (always value types in C# → need `?` when optional). Use `isProtocolParamValueType` for protocol context and `isConvenienceParamValueType` for convenience context.
+
+**Propagation**: Modifying the type in `buildProtocolParams` / `buildConvenienceParams` propagates to ALL consumers: method signatures, CollectionResult fields/constructors, and RestClient CreateRequest params.

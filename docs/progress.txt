@@ -3182,3 +3182,26 @@ Both scenarios verified against Spector golden files in `submodules/typespec/pac
 
 - **Result**: 1099 tests passed (7 new scenario tests), 0 failed, clean build
 - **Patterns**: Used SCENARIOS_UPDATE=true approach — create skeleton markdown with TypeSpec + code block headers, run update to populate actual emitter output, then compare with golden files.
+
+## 2026-03-03 — Task 10.1.6.1: Fix optional int32 mapping for @pageSize parameter
+
+**What was done:**
+- Fixed optional value type parameters (int, bool, float, etc.) to render as nullable (`int?`, `bool?`) in C# method signatures
+- The fix applies to protocol methods, convenience methods, paging methods, and RestClient CreateRequest methods
+
+**Files modified:**
+- `src/utils/nullable.ts` — Added `isProtocolParamValueType()` and `isConvenienceParamValueType()` helpers
+- `src/components/clients/ProtocolMethod.tsx` — Added `maybeNullable()` helper, used in `buildProtocolParams`
+- `src/components/clients/ConvenienceMethod.tsx` — Added `maybeNullable()` helper, used in `buildConvenienceParams`
+- `src/components/clients/RestClientFile.tsx` — Added `maybeNullable()` helper, used in `buildMethodParams`
+- Updated test expectations in convenience-method.test.ts, rest-client.test.ts, and page_size_paging.md
+
+**Patterns used:**
+- `maybeNullable(typeExpr, sdkType, optional)` — appends `?` to value type expressions when optional
+- `isProtocolParamValueType(type)` — checks if type maps to C# value type (unwraps enums to wire types)
+- `isConvenienceParamValueType(type)` — same but enums are always value types in convenience context
+
+**Key learning:**
+- Protocol methods unwrap enums to wire types, so string-backed enum → string (reference type, no `?`), int-backed enum → int (value type, gets `?`)
+- Convenience methods keep enums as-is, and enums are value types in C#
+- The type expression modification in buildParams propagates to all consumers: method signatures, CollectionResult fields/constructors, and RestClient CreateRequest params

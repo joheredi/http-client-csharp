@@ -19,6 +19,7 @@ import {
 import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
 import { System } from "../../builtins/system.js";
 import { SystemThreadingTasks } from "../../builtins/system-threading.js";
+import { isProtocolParamValueType } from "../../utils/nullable.js";
 import { cleanOperationName } from "../../utils/operation-naming.js";
 
 /**
@@ -238,9 +239,10 @@ export function buildProtocolParams(
     if (isConstantType(p.type) || p.onClient) continue;
     if (isImplicitContentTypeHeader(p)) continue;
     const typeInfo = getTypeInfo(p.type);
+    const typeExpr = maybeNullable(typeInfo.expression, p.type, p.optional);
     params.push({
       name: p.name,
-      type: typeInfo.expression,
+      type: typeExpr,
       optional: p.optional,
       isStringType: typeInfo.isString,
       isBody: false,
@@ -254,9 +256,10 @@ export function buildProtocolParams(
   for (const p of queryParams) {
     if (isConstantType(p.type) || p.onClient) continue;
     const typeInfo = getTypeInfo(p.type);
+    const typeExpr = maybeNullable(typeInfo.expression, p.type, p.optional);
     params.push({
       name: p.name,
-      type: typeInfo.expression,
+      type: typeExpr,
       optional: p.optional,
       isStringType: typeInfo.isString,
       isBody: false,
@@ -545,4 +548,26 @@ function isImplicitContentTypeHeader(param: SdkHeaderParameter): boolean {
  */
 function isMultipartFormData(bodyParam: SdkBodyParameter): boolean {
   return bodyParam.contentTypes?.includes("multipart/form-data") ?? false;
+}
+
+/**
+ * Makes a type expression nullable by appending `?` when the parameter is optional
+ * and the underlying type is a C# value type.
+ *
+ * Value types (int, bool, DateTimeOffset, etc.) need explicit `?` to become
+ * `Nullable<T>` in C#. Reference types (string, model classes, etc.) don't need
+ * this treatment since they are inherently nullable.
+ *
+ * @param typeExpr - The C# type expression (string keyword or Alloy refkey).
+ * @param sdkType - The original SDK type from TCGC.
+ * @param optional - Whether the parameter is optional.
+ * @returns The type expression, with `?` appended if nullable value type.
+ */
+function maybeNullable(
+  typeExpr: Children,
+  sdkType: SdkType,
+  optional: boolean,
+): Children {
+  if (!optional || !isProtocolParamValueType(sdkType)) return typeExpr;
+  return typeof typeExpr === "string" ? `${typeExpr}?` : code`${typeExpr}?`;
 }

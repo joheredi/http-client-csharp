@@ -577,8 +577,8 @@ describe("ConvenienceMethod", () => {
     // Required string param has no default
     expect(clientFile).toMatch(/string q,\s/);
 
-    // Optional int32 param has default value
-    expect(clientFile).toContain("int limit = default,");
+    // Optional int32 param has default value (nullable for value types)
+    expect(clientFile).toContain("int? limit = default,");
 
     // CancellationToken always has default
     expect(clientFile).toContain(

@@ -28,6 +28,7 @@ import {
 import { System } from "../../builtins/system.js";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
+import { isProtocolParamValueType } from "../../utils/nullable.js";
 import { cleanOperationName } from "../../utils/operation-naming.js";
 
 /**
@@ -479,9 +480,14 @@ function buildMethodParams(
     if (isConstantType(p.type) || p.onClient) continue;
     if (isImplicitContentTypeHeader(p)) continue;
     const priority = p.optional ? 400 : 100;
+    const typeExpr = maybeNullable(
+      getProtocolTypeExpression(p.type),
+      p.type,
+      p.optional,
+    );
     params.push({
       name: p.name,
-      type: getProtocolTypeExpression(p.type),
+      type: typeExpr,
       priority,
       index: index++,
     });
@@ -491,9 +497,14 @@ function buildMethodParams(
   for (const p of queryParams) {
     if (isConstantType(p.type) || p.onClient) continue;
     const priority = p.optional ? 400 : 100;
+    const typeExpr = maybeNullable(
+      getProtocolTypeExpression(p.type),
+      p.type,
+      p.optional,
+    );
     params.push({
       name: p.name,
-      type: getProtocolTypeExpression(p.type),
+      type: typeExpr,
       priority,
       index: index++,
     });
@@ -551,6 +562,19 @@ function isImplicitContentTypeHeader(param: SdkHeaderParameter): boolean {
  */
 function isMultipartFormData(bodyParam: SdkBodyParameter): boolean {
   return bodyParam.contentTypes?.includes("multipart/form-data") ?? false;
+}
+
+/**
+ * Makes a type expression nullable by appending `?` when the parameter is optional
+ * and the underlying type is a C# value type.
+ */
+function maybeNullable(
+  typeExpr: Children,
+  sdkType: SdkType,
+  optional: boolean,
+): Children {
+  if (!optional || !isProtocolParamValueType(sdkType)) return typeExpr;
+  return typeof typeExpr === "string" ? `${typeExpr}?` : code`${typeExpr}?`;
 }
 
 /**

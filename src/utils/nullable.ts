@@ -107,3 +107,61 @@ export function isPropertyNullable(property: {
   // Optional non-collection types are nullable
   return property.optional;
 }
+
+/**
+ * Set of SdkType kinds that map to C# value types (structs).
+ * Value types need explicit `?` annotation to become nullable (`Nullable<T>`).
+ */
+const VALUE_TYPE_KINDS = new Set([
+  "int32",
+  "int64",
+  "float32",
+  "float64",
+  "boolean",
+  "int8",
+  "uint8",
+  "int16",
+  "uint16",
+  "uint32",
+  "uint64",
+  "decimal",
+  "utcDateTime",
+  "offsetDateTime",
+  "duration",
+]);
+
+/**
+ * Determines if a type resolves to a C# value type in protocol method context.
+ *
+ * Protocol methods unwrap enums to their wire type (e.g., string-backed enum → string,
+ * int-backed enum → int). So enum value-type-ness depends on the underlying wire type.
+ *
+ * @param type - An SDK type from TCGC.
+ * @returns `true` if the type maps to a C# value type after protocol-level unwrapping.
+ */
+export function isProtocolParamValueType(type: SdkType): boolean {
+  const unwrapped = unwrapNullableType(type);
+  if (unwrapped.kind === "enum")
+    return isProtocolParamValueType(unwrapped.valueType);
+  if (unwrapped.kind === "enumvalue")
+    return isProtocolParamValueType(unwrapped.enumType.valueType);
+  return VALUE_TYPE_KINDS.has(unwrapped.kind);
+}
+
+/**
+ * Determines if a type resolves to a C# value type in convenience method context.
+ *
+ * Convenience methods preserve enum types (they are rendered as the C# enum/struct,
+ * not unwrapped to wire types). Enums are always value types in C#.
+ *
+ * @param type - An SDK type from TCGC.
+ * @returns `true` if the type maps to a C# value type.
+ */
+export function isConvenienceParamValueType(type: SdkType): boolean {
+  const unwrapped = unwrapNullableType(type);
+  return (
+    VALUE_TYPE_KINDS.has(unwrapped.kind) ||
+    unwrapped.kind === "enum" ||
+    unwrapped.kind === "enumvalue"
+  );
+}

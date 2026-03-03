@@ -122,7 +122,7 @@ public partial class PageSize
         /// <param name="options"> The request options, which can override default behaviors of the client pipeline on a per-call basis. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual CollectionResult GetWithPageSize(int pageSize = default, RequestOptions options = null)
+        public virtual CollectionResult GetWithPageSize(int? pageSize = default, RequestOptions options = null)
         {
             return new PageSizeGetWithPageSizeCollectionResult(this, pageSize, options);
         }
@@ -140,7 +140,7 @@ public partial class PageSize
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
         public virtual async AsyncCollectionResult GetWithPageSizeAsync(
-            int pageSize = default,
+            int? pageSize = default,
             RequestOptions options = null
         )
         {
@@ -152,7 +152,7 @@ public partial class PageSize
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         public virtual CollectionResult<Pet> GetWithPageSize(
-            int pageSize = default,
+            int? pageSize = default,
             CancellationToken cancellationToken = default
         )
         {
@@ -164,7 +164,7 @@ public partial class PageSize
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         public virtual async AsyncCollectionResult<Pet> GetWithPageSizeAsync(
-            int pageSize = default,
+            int? pageSize = default,
             CancellationToken cancellationToken = default
         )
         {

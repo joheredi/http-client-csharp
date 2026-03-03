@@ -21,6 +21,7 @@ import {
   SystemThreadingTasks,
 } from "../../builtins/system-threading.js";
 import { System } from "../../builtins/system.js";
+import { isConvenienceParamValueType } from "../../utils/nullable.js";
 import { cleanOperationName } from "../../utils/operation-naming.js";
 
 /**
@@ -323,9 +324,10 @@ export function buildConvenienceParams(
     if (isConstantType(p.type) || p.onClient) continue;
     if (isImplicitContentTypeHeader(p)) continue;
     const convInfo = getConvenienceTypeInfo(p.type);
+    const typeExpr = maybeNullable(convInfo.expression, p.type, p.optional);
     params.push({
       name: p.name,
-      type: convInfo.expression,
+      type: typeExpr,
       optional: p.optional,
       isBody: false,
       needsAssertion: convInfo.needsAssertion,
@@ -341,9 +343,10 @@ export function buildConvenienceParams(
   for (const p of queryParams) {
     if (isConstantType(p.type) || p.onClient) continue;
     const convInfo = getConvenienceTypeInfo(p.type);
+    const typeExpr = maybeNullable(convInfo.expression, p.type, p.optional);
     params.push({
       name: p.name,
-      type: convInfo.expression,
+      type: typeExpr,
       optional: p.optional,
       isBody: false,
       needsAssertion: convInfo.needsAssertion,
@@ -365,10 +368,16 @@ export function buildConvenienceParams(
       spreadBodyType = bodyParam.type;
       for (const mp of bodyParam.correspondingMethodParams) {
         const convInfo = getConvenienceTypeInfo(mp.type);
+        const mpOptional = mp.optional ?? false;
+        const typeExpr = maybeNullable(
+          convInfo.expression,
+          mp.type,
+          mpOptional,
+        );
         params.push({
           name: mp.name,
-          type: convInfo.expression,
-          optional: mp.optional ?? false,
+          type: typeExpr,
+          optional: mpOptional,
           isBody: true,
           needsAssertion: convInfo.needsAssertion,
           isStringType: convInfo.isString,
@@ -383,10 +392,16 @@ export function buildConvenienceParams(
       const priority = bodyParam.optional ? 300 : 200;
       const bodyName = getBodyParamName(bodyParam);
       const convInfo = getConvenienceTypeInfo(bodyParam.type);
+      const bodyOptional = bodyParam.optional ?? false;
+      const typeExpr = maybeNullable(
+        convInfo.expression,
+        bodyParam.type,
+        bodyOptional,
+      );
       params.push({
         name: bodyName,
-        type: convInfo.expression,
-        optional: bodyParam.optional ?? false,
+        type: typeExpr,
+        optional: bodyOptional,
         isBody: true,
         needsAssertion: convInfo.needsAssertion,
         isStringType: convInfo.isString,
@@ -767,4 +782,21 @@ function isConstantType(type: SdkType): boolean {
 /** Checks if a header parameter is the implicit Content-Type header. */
 function isImplicitContentTypeHeader(param: SdkHeaderParameter): boolean {
   return param.serializedName.toLowerCase() === "content-type";
+}
+
+/**
+ * Makes a type expression nullable by appending `?` when the parameter is optional
+ * and the underlying type is a C# value type.
+ *
+ * Value types (int, bool, DateTimeOffset, enums, etc.) need explicit `?` to become
+ * `Nullable<T>` in C#. Reference types (string, model classes, etc.) don't need
+ * this treatment since they are inherently nullable.
+ */
+function maybeNullable(
+  typeExpr: Children,
+  sdkType: SdkType,
+  optional: boolean,
+): Children {
+  if (!optional || !isConvenienceParamValueType(sdkType)) return typeExpr;
+  return typeof typeExpr === "string" ? `${typeExpr}?` : code`${typeExpr}?`;
 }
