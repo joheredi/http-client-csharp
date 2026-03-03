@@ -2527,3 +2527,24 @@ Patterns used:
 - buildProtocolParams reuse from ProtocolMethod.tsx
 - code template tag for C# expressions with refkeys
 - string literals for pure C# code without refkeys
+
+---
+
+## Task 4.4.2 — Write paging tests (2026-03-03)
+
+**What was done:**
+- Created two paging scenario test files in `test/scenarios/paging/`:
+  - `next_link_paging.md` — Validates next-link paging strategy (2 class assertions)
+  - `continuation_token_paging.md` — Validates continuation-token paging strategy (2 class assertions)
+- Each scenario defines a TypeSpec input with the appropriate paging decorators and validates the generated C# collection result class output using tree-sitter-based snippet extraction
+
+**Test coverage:**
+- Next-link sync protocol CollectionResult class (while loop, URI extraction, GetContinuationToken)
+- Next-link sync convenience CollectionResult<T> class (with GetValuesFromPage)
+- Continuation-token sync protocol CollectionResult class (token field, constructor, string.IsNullOrEmpty check)
+- Continuation-token sync convenience CollectionResult<T> class (with GetValuesFromPage)
+
+**Key finding:**
+- The Alloy constructor formatter wraps parameters to multiple lines when the class name + parameters exceed a line length threshold. The `CollectionResultOfT` variant with 3 constructor params crosses this threshold and uses multi-line format, while the non-OfT variant with the same params stays on one line. This is due to the longer class name.
+
+**Tests: 892 total (888 existing + 4 new), all passing**
