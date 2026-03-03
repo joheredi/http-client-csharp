@@ -461,7 +461,7 @@
           "title": "Configure test directory structure",
           "description": "Set up the test directory structure mirroring the Spector test organization. Create subdirectories under test/scenarios/ for: models, enums, clients, serialization, parameters, paging, authentication, versioning. This provides organized locations for scenario tests as features are implemented.",
           "phase": "phase-0",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "0.4.1"
           ],

@@ -3238,3 +3238,7 @@ Both scenarios verified against Spector golden files in `submodules/typespec/pac
 - Pattern: XML serialization is triggered by `@header("content-type") contentType: "application/xml"` in TypeSpec
 - @typespec/xml package NOT available as dependency, so decorators like @attribute/@unwrapped cannot be tested in scenarios
 - All 1,119 tests pass (6 new scenario snippet tests)
+
+## 2026-03-03 — Task 0.4.4: Configure test directory structure (marked as already done)
+
+Task 0.4.4 was already fully implemented. The test/scenarios/ directory exists with subdirectories for: models, enums, paging, parameters, authentication, versioning, encoding, lro, server, payload, serialization. These directories already contain test files from prior phases. Marked as done in prd.json.
