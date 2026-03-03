@@ -2548,3 +2548,31 @@ Patterns used:
 - The Alloy constructor formatter wraps parameters to multiple lines when the class name + parameters exceed a line length threshold. The `CollectionResultOfT` variant with 3 constructor params crosses this threshold and uses multi-line format, while the non-OfT variant with the same params stays on one line. This is due to the longer class name.
 
 **Tests: 892 total (888 existing + 4 new), all passing**
+
+## Task 4.5.1 — Implement LRO method signatures and return types (2026-03-03)
+
+### What was done
+- Analyzed LRO (Long-Running Operation) method generation pipeline
+- Confirmed that for System.ClientModel (non-Azure), LRO methods use identical signatures and return types as basic methods (ClientResult/ClientResult<T>)
+- Updated ProtocolMethod.tsx and ConvenienceMethod.tsx filters to explicitly exclude "lropaging" (kind that needs separate handling in task 4.5.2)
+- Added `@azure-tools/typespec-client-generator-core` to the test host libraries to enable `@markAsLro` decorator in tests
+- Created comprehensive LRO test suite (6 tests): protocol methods, convenience methods, path+body params, model return, CreateRequest, XML docs
+- All 898 tests pass (6 new)
+
+### Design decision
+LRO methods share the same generation pipeline as basic methods. No separate LRO component is needed because:
+- In System.ClientModel, LRO method signatures are identical to basic methods
+- LRO metadata (finalStateVia, finalResponse, resultPath) doesn't affect method signatures in the non-Azure target
+- The existing filter `m.kind !== "paging"` already passes LRO methods through correctly
+- The `lropaging` kind is excluded from basic/LRO filters (needs combined handling in 4.5.2)
+
+### Patterns used
+- `@markAsLro` from `Azure.ClientGenerator.Core.Legacy` to force TCGC to produce kind "lro" in tests
+- Multi-line assertion pattern for async convenience methods (printWidth causes wrapping)
+- Used short type names (Job, Status, Result) to keep signatures within printWidth
+
+### Things the next person should know
+- `@markAsLro` only works on operations that return a model (void returns produce a warning and are ignored)
+- TCGC's `SdkServiceMethod` union includes both `SdkLroServiceMethod` (kind "lro") and `SdkLroPagingServiceMethod` (kind "lropaging")
+- The "lropaging" kind is now excluded from both protocol and convenience method filters — task 4.5.2 will handle this combined case
+- The RestClient (CreateRequest methods) already handles all HTTP operations uniformly, including LRO

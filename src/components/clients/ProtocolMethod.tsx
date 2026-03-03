@@ -95,6 +95,7 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
   const methods = client.methods.filter(
     (m): m is SdkServiceMethod<SdkHttpOperation> =>
       m.kind !== "paging" &&
+      m.kind !== "lropaging" &&
       "operation" in m &&
       (m as SdkServiceMethod<SdkHttpOperation>).operation?.kind === "http",
   );

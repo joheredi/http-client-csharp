@@ -1514,6 +1514,7 @@ Our emitter generates dot-separated namespaces (e.g., `namespace Type.Enum.Fixed
 **Why**: The existing code already uses inline conditional logic for single-page vs next-link strategies. Adding continuation-token as a third branch keeps the code structure consistent and avoids over-engineering with separate strategy abstractions.
 
 **Key implementation details**:
+
 - Continuation-token operations store ALL operation params (from `buildProtocolParams`) as fields in the CollectionResult class, because they need to be passed to `Create{Op}Request` on each iteration.
 - The token parameter is identified by matching `metadata.continuationTokenParameterSegments` against operation params.
 - Body-based vs header-based detection uses the `kind` discriminator on response segments: `"responseheader"` for headers, `"property"` for body.
@@ -1527,3 +1528,18 @@ Our emitter generates dot-separated namespaces (e.g., `namespace Type.Enum.Fixed
 169. **Continuation-token header detection** — `SdkServiceResponseHeader` has `kind: "responseheader"`, while `SdkModelPropertyType` (body properties) has `kind: "property"`. Use the `kind` discriminator to determine body vs header extraction strategy.
 
 170. **Response property path builder reuse** — `buildResponsePropertyPath` (renamed from `buildNextLinkPropertyPath`) is generic and works for both next-link URI paths and continuation-token body property paths. Both use the same `?.' null-conditional operator pattern for nested segments.
+
+## LRO Method Generation (Task 4.5.1)
+
+### Design Decision
+
+For System.ClientModel (non-Azure), LRO methods use the same generation pipeline as basic methods. No separate LRO component (like PagingMethods) is needed because the method signatures are identical — `ClientResult`/`ClientResult<T>` for protocol/convenience.
+
+The `lropaging` kind is excluded from basic/LRO filters and will need separate handling (task 4.5.2).
+
+### Gotchas
+
+- **`@markAsLro` requires model return**: The `@Azure.ClientGenerator.Core.Legacy.markAsLro` decorator can only be applied to operations that return a model. Void returns produce warning `invalid-mark-as-lro-target` and the decorator is ignored.
+- **TCGC library must be in test host**: To use `@markAsLro` in tests, `@azure-tools/typespec-client-generator-core` must be listed in the test host's `libraries` array.
+- **Async convenience methods wrap**: Long method signatures (especially async with generic return types like `Task<ClientResult<T>>`) wrap across multiple lines due to printWidth. Use partial assertions (check method name + return type separately from parameters).
+- **LRO metadata available but unused**: `SdkLroServiceMethod.lroMetadata` contains `finalStateVia`, `finalResponse`, and `finalResultPath` — these are not used in the System.ClientModel target but would be needed for Azure extensions.

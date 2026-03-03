@@ -1,7 +1,12 @@
 import { resolvePath } from "@typespec/compiler";
 import { createTester } from "@typespec/compiler/testing";
 export const ApiTester = createTester(resolvePath(import.meta.dirname, ".."), {
-  libraries: ["http-client-csharp", "@typespec/http", "@typespec/versioning"],
+  libraries: [
+    "http-client-csharp",
+    "@typespec/http",
+    "@typespec/versioning",
+    "@azure-tools/typespec-client-generator-core",
+  ],
 });
 
 export const Tester = ApiTester.emit("http-client-csharp");

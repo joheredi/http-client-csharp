@@ -690,9 +690,7 @@ describe("CollectionResultFile", () => {
     expect(content).toContain("while (true)");
 
     // Verify token extraction from response body
-    expect(content).toContain(
-      "nextToken = ((PageThing)result).NextToken;",
-    );
+    expect(content).toContain("nextToken = ((PageThing)result).NextToken;");
 
     // Verify string.IsNullOrEmpty check (not null check like next-link)
     expect(content).toContain("if (string.IsNullOrEmpty(nextToken))");
@@ -819,9 +817,7 @@ describe("CollectionResultFile", () => {
     const content = outputs[fileName!];
 
     // Verify string extraction from response body
-    expect(content).toContain(
-      'string nextPage = ((PageThing)page).NextToken;',
-    );
+    expect(content).toContain("string nextPage = ((PageThing)page).NextToken;");
 
     // Verify !string.IsNullOrEmpty check
     expect(content).toContain("if (!string.IsNullOrEmpty(nextPage))");
