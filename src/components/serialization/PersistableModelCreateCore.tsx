@@ -64,6 +64,7 @@ import { SystemClientModelPrimitives } from "../../builtins/system-client-model.
 import { SystemIO } from "../../builtins/system-io.js";
 import { SystemTextJson } from "../../builtins/system-text-json.js";
 import { SystemXmlLinq } from "../../builtins/system-xml-linq.js";
+import { isDynamicModel } from "../models/DynamicModel.js";
 
 /**
  * Props for the {@link PersistableModelCreateCore} component.
@@ -134,6 +135,12 @@ export function PersistableModelCreateCore(
   const supportsJson = (props.type.usage & UsageFlags.Json) !== 0;
   const supportsXml = (props.type.usage & UsageFlags.Xml) !== 0;
 
+  const isDynamic = isDynamicModel(props.type);
+  // Dynamic models pass `data` to DeserializeXxx for JsonPatch initialization.
+  const deserializeArgs = isDynamic
+    ? `document.RootElement, data, options`
+    : `document.RootElement, options`;
+
   return (
     <>
       {code`protected ${isDerived ? "override" : "virtual"} ${returnTypeName} PersistableModelCreateCore(${System.BinaryData} data, ${SystemClientModelPrimitives.ModelReaderWriterOptions} options)`}
@@ -147,7 +154,7 @@ export function PersistableModelCreateCore(
         code`            using (${SystemTextJson.JsonDocument} document = ${SystemTextJson.JsonDocument}.Parse(data))`}
       {supportsJson && "\n            {"}
       {supportsJson &&
-        `\n                return Deserialize${modelName}(document.RootElement, options);`}
+        `\n                return Deserialize${modelName}(${deserializeArgs});`}
       {supportsJson && "\n            }"}
       {supportsXml && '\n        case "X":'}
       {supportsXml && "\n"}

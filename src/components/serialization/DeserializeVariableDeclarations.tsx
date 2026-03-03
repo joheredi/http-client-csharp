@@ -45,6 +45,7 @@ import type {
   SdkModelType,
 } from "@azure-tools/typespec-client-generator-core";
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
+import { SystemClientModelPrimitives } from "../../builtins/system-client-model.js";
 import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
 import { System } from "../../builtins/system.js";
 import {
@@ -56,6 +57,7 @@ import {
   isBaseDiscriminatorOverride,
   isDerivedDiscriminatedModel,
 } from "../models/ModelConstructors.js";
+import { isDynamicModel } from "../models/DynamicModel.js";
 
 /**
  * Props for the {@link DeserializeVariableDeclarations} component.
@@ -71,7 +73,8 @@ export interface DeserializeVariableDeclarationsProps {
  */
 export type VariableInfo =
   | { kind: "property"; property: SdkModelPropertyType }
-  | { kind: "additional-binary-data" };
+  | { kind: "additional-binary-data" }
+  | { kind: "patch" };
 
 /**
  * Computes the flat list of variables to declare, in the same order as
@@ -101,7 +104,9 @@ export function computeVariableInfos(model: SdkModelType): VariableInfo[] {
     ...model.properties.map(
       (p): VariableInfo => ({ kind: "property", property: p }),
     ),
-    { kind: "additional-binary-data" },
+    isDynamicModel(model)
+      ? { kind: "patch" as const }
+      : { kind: "additional-binary-data" as const },
   ];
 }
 
@@ -139,6 +144,19 @@ export function DeserializeVariableDeclarations(
             <>
               {"\n    "}
               {code`${SystemCollectionsGeneric.IDictionary}<string, ${System.BinaryData}> ${ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME} = new ChangeTrackingDictionary<string, ${System.BinaryData}>();`}
+            </>
+          );
+        }
+
+        if (info.kind === "patch") {
+          return (
+            <>
+              {"\n"}
+              {"#pragma warning disable SCME0001 // Type is for evaluation purposes only and is subject to change or removal in future updates.\n"}
+              {"    "}
+              {code`${SystemClientModelPrimitives.JsonPatch} patch = new ${SystemClientModelPrimitives.JsonPatch}(data is null ? ReadOnlyMemory<byte>.Empty : data.ToMemory());`}
+              {"\n"}
+              {"#pragma warning restore SCME0001 // Type is for evaluation purposes only and is subject to change or removal in future updates."}
             </>
           );
         }

@@ -54,6 +54,7 @@ import type { SdkModelType } from "@azure-tools/typespec-client-generator-core";
 import { System } from "../../builtins/system.js";
 import { SystemClientModelPrimitives } from "../../builtins/system-client-model.js";
 import { SystemTextJson } from "../../builtins/system-text-json.js";
+import { isDynamicModel } from "../models/DynamicModel.js";
 import { getRootModelType } from "./PersistableModelCreateCore.js";
 
 /**
@@ -114,7 +115,9 @@ export function JsonModelCreateCore(props: JsonModelCreateCoreProps) {
       {"\n    }"}
       {"\n"}
       {code`    using ${SystemTextJson.JsonDocument} document = ${SystemTextJson.JsonDocument}.ParseValue(ref reader);`}
-      {`\n    return Deserialize${modelName}(document.RootElement, options);`}
+      {isDynamicModel(props.type)
+        ? `\n    return Deserialize${modelName}(document.RootElement, null, options);`
+        : `\n    return Deserialize${modelName}(document.RootElement, options);`}
       {"\n}"}
     </>
   );

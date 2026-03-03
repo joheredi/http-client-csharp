@@ -71,6 +71,7 @@ import {
   isDerivedDiscriminatedModel,
   isModelAbstract,
 } from "../models/ModelConstructors.js";
+import { isDynamicModel } from "../models/DynamicModel.js";
 
 /**
  * Props for the {@link ModelFactoryMethod} component.
@@ -283,8 +284,13 @@ export function ModelFactoryMethod(props: ModelFactoryMethodProps) {
     }
   }
 
-  // Always pass null for additionalBinaryDataProperties as a named argument
-  ctorArgs.push(`${ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME}: null`);
+  // For dynamic models, pass `default` for the `in JsonPatch patch` parameter.
+  // For non-dynamic models, pass `null` for `additionalBinaryDataProperties` as a named argument.
+  if (isDynamicModel(props.type)) {
+    ctorArgs.push("default");
+  } else {
+    ctorArgs.push(`${ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME}: null`);
+  }
 
   // For abstract models, the factory method instantiates the Unknown variant
   // instead of the abstract class itself. The method name and return type still

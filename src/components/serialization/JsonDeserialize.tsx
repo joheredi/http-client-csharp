@@ -39,7 +39,9 @@ import { useCSharpNamePolicy } from "@alloy-js/csharp";
 import { code, type Children } from "@alloy-js/core";
 import type { SdkModelType } from "@azure-tools/typespec-client-generator-core";
 import { SystemClientModelPrimitives } from "../../builtins/system-client-model.js";
+import { System } from "../../builtins/system.js";
 import { SystemTextJson } from "../../builtins/system-text-json.js";
+import { isDynamicModel } from "../models/DynamicModel.js";
 import { hasDiscriminatedSubtypes } from "../models/ModelConstructors.js";
 import { DiscriminatorDeserialization } from "./DiscriminatorDeserialization.js";
 
@@ -81,9 +83,17 @@ export function JsonDeserialize(props: JsonDeserializeProps) {
   const modelName = namePolicy.getName(props.type.name, "class");
   const isDiscriminated = hasDiscriminatedSubtypes(props.type);
 
+  const isDynamic = isDynamicModel(props.type);
+
+  // Dynamic models need a `BinaryData data` parameter to initialize JsonPatch
+  // with the raw binary data for round-trip fidelity.
+  const methodSignature = isDynamic
+    ? code`internal static ${modelName} Deserialize${modelName}(${SystemTextJson.JsonElement} element, ${System.BinaryData} data, ${SystemClientModelPrimitives.ModelReaderWriterOptions} options)`
+    : code`internal static ${modelName} Deserialize${modelName}(${SystemTextJson.JsonElement} element, ${SystemClientModelPrimitives.ModelReaderWriterOptions} options)`;
+
   return (
     <>
-      {code`internal static ${modelName} Deserialize${modelName}(${SystemTextJson.JsonElement} element, ${SystemClientModelPrimitives.ModelReaderWriterOptions} options)`}
+      {methodSignature}
       {"\n{"}
       {"\n    if (element.ValueKind == JsonValueKind.Null)"}
       {"\n    {"}

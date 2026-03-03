@@ -53,6 +53,7 @@ import type {
 } from "@azure-tools/typespec-client-generator-core";
 import { UsageFlags } from "@azure-tools/typespec-client-generator-core";
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
+import { SystemClientModelPrimitives } from "../../builtins/system-client-model.js";
 import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
 import { System } from "../../builtins/system.js";
 import {
@@ -71,6 +72,10 @@ import {
   propertyRequiresNullCheck,
 } from "../../utils/property.js";
 import { efCsharpRefkey } from "../../utils/refkey.js";
+import {
+  hasDynamicModelProperties,
+  isDynamicModel,
+} from "./DynamicModel.js";
 
 /**
  * Props for the {@link ModelConstructors} component.
@@ -458,20 +463,29 @@ function buildPropertyTypeParameters(
 export function buildSerializationParameters(
   properties: SdkModelPropertyType[],
   namePolicy: ReturnType<typeof useCSharpNamePolicy>,
+  isDynamic: boolean = false,
 ): ParameterProps[] {
   const propParams = buildPropertyTypeParameters(properties, namePolicy);
 
-  propParams.push({
-    name: ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME,
-    type: (
-      <>
-        {SystemCollectionsGeneric.IDictionary}
-        {"<string, "}
-        {System.BinaryData}
-        {">"}
-      </>
-    ),
-  });
+  if (isDynamic) {
+    propParams.push({
+      name: "patch",
+      type: SystemClientModelPrimitives.JsonPatch,
+      in: true,
+    });
+  } else {
+    propParams.push({
+      name: ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME,
+      type: (
+        <>
+          {SystemCollectionsGeneric.IDictionary}
+          {"<string, "}
+          {System.BinaryData}
+          {">"}
+        </>
+      ),
+    });
+  }
 
   return propParams;
 }
@@ -501,6 +515,8 @@ function buildSerializationAssignments(
   properties: SdkModelPropertyType[],
   namePolicy: ReturnType<typeof useCSharpNamePolicy>,
   includeAdditionalBinaryData: boolean = true,
+  isDynamic: boolean = false,
+  hasNestedDynamicProps: boolean = false,
 ): string[] {
   const lines: string[] = [];
 
@@ -511,9 +527,16 @@ function buildSerializationAssignments(
   }
 
   if (includeAdditionalBinaryData) {
-    lines.push(
-      `${ADDITIONAL_BINARY_DATA_PROPS_FIELD_NAME} = ${ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME};`,
-    );
+    if (isDynamic) {
+      lines.push("_patch = patch;");
+      if (hasNestedDynamicProps) {
+        lines.push("_patch.SetPropagators(PropagateSet, PropagateGet);");
+      }
+    } else {
+      lines.push(
+        `${ADDITIONAL_BINARY_DATA_PROPS_FIELD_NAME} = ${ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME};`,
+      );
+    }
   }
 
   return lines;
@@ -553,7 +576,7 @@ export function computeSerializationCtorParams(
     const ownParams = buildPropertyTypeParameters(ownProps, namePolicy);
     return [...baseParams, ...ownParams];
   }
-  return buildSerializationParameters(model.properties, namePolicy);
+  return buildSerializationParameters(model.properties, namePolicy, isDynamicModel(model));
 }
 
 /**
@@ -693,13 +716,19 @@ function BaseModelConstructors(props: {
   const body = bodyParts.join("\n");
 
   // === Internal serialization constructor ===
+  const isDynamic = isDynamicModel(type);
+  const hasNestedDynamic = isDynamic && hasDynamicModelProperties(type, namePolicy);
   const serializationParams = buildSerializationParameters(
     type.properties,
     namePolicy,
+    isDynamic,
   );
   const serializationAssignments = buildSerializationAssignments(
     type.properties,
     namePolicy,
+    true,
+    isDynamic,
+    hasNestedDynamic,
   );
   const serializationBody = serializationAssignments.join("\n");
 
@@ -709,9 +738,11 @@ function BaseModelConstructors(props: {
         {body}
       </Constructor>
       {"\n\n"}
+      {isDynamic && "#pragma warning disable SCME0001 // Type is for evaluation purposes only and is subject to change or removal in future updates.\n"}
       <OverloadConstructor internal parameters={serializationParams}>
         {serializationBody}
       </OverloadConstructor>
+      {isDynamic && "\n#pragma warning restore SCME0001 // Type is for evaluation purposes only and is subject to change or removal in future updates."}
     </>
   );
 }

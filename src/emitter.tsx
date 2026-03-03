@@ -36,11 +36,12 @@ import { MultiPartFormDataBinaryContentFile } from "./components/infrastructure/
 import { PipelineRequestHeadersExtensionsFile } from "./components/infrastructure/PipelineRequestHeadersExtensionsFile.js";
 import { ModelFactoryFile } from "./components/model-factory/ModelFactoryFile.js";
 import { hasDiscriminatedSubtypes } from "./components/models/ModelConstructors.js";
-import { isDynamicModel } from "./components/models/DynamicModel.js";
+import { isDynamicModel, DynamicModelPropagators } from "./components/models/DynamicModel.js";
 import { ModelFile } from "./components/models/ModelFile.js";
 import { UnknownDiscriminatorModelFile } from "./components/models/UnknownDiscriminatorModel.js";
 import { AdditionalBinaryDataRead } from "./components/serialization/AdditionalBinaryDataRead.js";
 import { AdditionalBinaryDataWrite } from "./components/serialization/AdditionalBinaryDataWrite.js";
+import { DynamicPatchRead } from "./components/serialization/DynamicPatchRead.js";
 import {
   ExplicitClientResultOperator,
   ImplicitBinaryContentOperator,
@@ -157,6 +158,7 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
       <ModelSerializationExtensionsFile
         packageName={packageName}
         options={options}
+        hasDynamicModels={models.some((m) => isDynamicModel(m))}
       />
       <ClientPipelineExtensionsFile
         packageName={packageName}
@@ -240,7 +242,11 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
                 <JsonDeserialize type={m}>
                   <DeserializeVariableDeclarations type={m} />
                   <PropertyMatchingLoop type={m}>
-                    <AdditionalBinaryDataRead />
+                    {isDynamicModel(m) ? (
+                      <DynamicPatchRead />
+                    ) : (
+                      <AdditionalBinaryDataRead />
+                    )}
                   </PropertyMatchingLoop>
                   <DeserializeReturnStatement type={m} />
                 </JsonDeserialize>
@@ -257,6 +263,8 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
               {supportsXml && <XmlModelWriteCore type={m} />}
               {supportsXml && "\n\n"}
               {supportsXml && <XmlDeserialize type={m} />}
+              {isDynamicModel(m) && "\n\n"}
+              {isDynamicModel(m) && <DynamicModelPropagators type={m} />}
             </ModelSerializationFile>
           );
         })}

@@ -3242,3 +3242,39 @@ Both scenarios verified against Spector golden files in `submodules/typespec/pac
 ## 2026-03-03 — Task 0.4.4: Configure test directory structure (marked as already done)
 
 Task 0.4.4 was already fully implemented. The test/scenarios/ directory exists with subdirectories for: models, enums, paging, parameters, authentication, versioning, encoding, lro, server, payload, serialization. These directories already contain test files from prior phases. Marked as done in prd.json.
+
+## 2026-03-03 — Task 7.3.1: Implement patch propagators for dynamic models
+**What was done:**
+- Generated `SetPropagators(PropagateSet, PropagateGet)` call in serialization constructor for dynamic models with nested dynamic model properties
+- Generated `PropagateGet` and `PropagateSet` methods in serialization partial class
+- Replaced `additionalBinaryDataProperties` with `in JsonPatch patch` in serialization constructor
+- Removed `_additionalBinaryDataProperties` field from dynamic model files
+- Added `BinaryData data` parameter to `DeserializeXxx()` for dynamic models
+- Added `JsonPatch patch` variable initialization in deserialization
+- Added `DynamicPatchRead` component for `patch.Set(...)` unknown property capture
+- Changed model factory to use `default` instead of `additionalBinaryDataProperties: null`
+- Added `GetUtf8Bytes`, `SliceToStartOfPropertyName`, `TryGetIndex`, `GetFirstPropertyName`, `GetRemainder` extension methods to ModelSerializationExtensionsFile (conditional on hasDynamicModels)
+- Fixed nested dynamic model deserialization to pass `item.GetUtf8Bytes()` as BinaryData data parameter
+
+**Files modified:**
+- `src/components/models/DynamicModel.tsx` — Added ~300 lines: propagator types, helpers, `DynamicModelPropagators` component
+- `src/components/models/ModelConstructors.tsx` — Dynamic model constructor: `in JsonPatch patch`, `_patch = patch;`, `SetPropagators`, SCME0001 pragma
+- `src/components/models/ModelFile.tsx` — Exclude `_additionalBinaryDataProperties` for dynamic models
+- `src/emitter.tsx` — Wire `DynamicModelPropagators`, `DynamicPatchRead`, pass `hasDynamicModels` to infrastructure
+- `src/components/serialization/DynamicPatchRead.tsx` — NEW: unknown property handler using `patch.Set(...)`
+- `src/components/serialization/DeserializeVariableDeclarations.tsx` — `patch` variant for `JsonPatch` initialization
+- `src/components/serialization/DeserializeReturnStatement.tsx` — Handle `patch` variant
+- `src/components/serialization/JsonDeserialize.tsx` — `BinaryData data` parameter for dynamic models
+- `src/components/serialization/PersistableModelCreateCore.tsx` — Pass `data` for dynamic models
+- `src/components/serialization/JsonModelCreateCore.tsx` — Pass `null` for `data` for dynamic models
+- `src/components/serialization/PropertyMatchingLoop.tsx` — Nested dynamic model deserialization passes `GetUtf8Bytes()`
+- `src/components/model-factory/ModelFactoryMethod.tsx` — `default` for dynamic models
+- `src/components/infrastructure/ModelSerializationExtensionsFile.tsx` — Conditional dynamic extension methods
+- `test/dynamic-model-propagators.test.ts` — NEW: 15 tests covering propagators, deserialization, factory, infrastructure
+
+**Key patterns:**
+- String-building approach for propagator code (like DynamicPropertySerializer.tsx)
+- `getDynamicModelProperties()` walks full inheritance hierarchy
+- Navigation steps modeled as `NavStep[]` with `kind: "array" | "dict"`
+- Extension methods conditionally generated via `hasDynamicModels` prop
+- All 1134 tests pass (15 new propagator tests)

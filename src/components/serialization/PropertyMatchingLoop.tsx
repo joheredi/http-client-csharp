@@ -62,6 +62,7 @@ import {
   isPropertyNullable,
   unwrapNullableType,
 } from "../../utils/nullable.js";
+import { isDynamicModel } from "../models/DynamicModel.js";
 import {
   isBaseDiscriminatorOverride,
   isDerivedDiscriminatedModel,
@@ -567,10 +568,15 @@ export function getReadExpression(
 
   // Model types — call static DeserializeXxx method on the model class.
   // The pattern is: ModelName.DeserializeModelName({accessor}, options)
+  // For dynamic models, pass the raw UTF-8 bytes as the BinaryData parameter:
+  // ModelName.DeserializeModelName({accessor}, {accessor}.GetUtf8Bytes(), options)
   // This delegates deserialization to the nested model's own static method.
   if (kind === "model" && namePolicy) {
     const modelType = unwrapped as SdkModelType;
     const modelName = namePolicy.getName(modelType.name, "class");
+    if (isDynamicModel(modelType)) {
+      return `${modelName}.Deserialize${modelName}(${accessor}, ${accessor}.GetUtf8Bytes(), options)`;
+    }
     return `${modelName}.Deserialize${modelName}(${accessor}, options)`;
   }
 

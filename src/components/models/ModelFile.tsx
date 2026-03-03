@@ -87,9 +87,8 @@ export function ModelFile(props: ModelFileProps) {
   // is `private protected` for classes (allowing derived class access) and
   // `private` for structs (which cannot be inherited).
   //
-  // Dynamic models (JsonMergePatch usage) additionally get a _patch field
-  // and Patch property for tracking partial updates. The _additionalBinaryDataProperties
-  // field is kept until task 7.2.1 updates serialization to use _patch instead.
+  // Dynamic models (JsonMergePatch usage) replace _additionalBinaryDataProperties
+  // with _patch field and Patch property for tracking partial updates.
   const isRoot = props.type.baseModel === undefined;
   const isDynamic = isDynamicModel(props.type);
   const fieldModifier = isStruct ? "private" : "private protected";
@@ -102,7 +101,7 @@ export function ModelFile(props: ModelFileProps) {
           {"\n\n"}
         </>
       )}
-      {isRoot && (
+      {isRoot && !isDynamic && (
         <>
           {code`/// <summary> Keeps track of any properties unknown to the library. </summary>\n${fieldModifier} readonly ${SystemCollectionsGeneric.IDictionary}<string, ${System.BinaryData}> _additionalBinaryDataProperties;`}
           {"\n\n"}

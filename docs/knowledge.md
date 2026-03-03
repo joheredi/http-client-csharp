@@ -2000,3 +2000,23 @@ The following API surface differences were found comparing our emitter output ag
 - **Observed**: `CreateGetAsTextRequest` sets `Accept` header twice: `request.Headers.Set("Accept", "text/plain"); request.Headers.Set("Accept", "text/plain");`
 - **Location**: StringBody.RestClient.cs for getAsText and getAsJson operations
 - **Impact**: Redundant header setting, no functional issue since Set() overwrites
+
+## Design Decisions
+
+### Propagator code generation: string-building vs JSX (Task 7.3.1)
+**Chosen**: String-building approach (like `DynamicPropertySerializer.tsx`)
+**Rejected**: JSX component approach
+**Why**: PropagateGet/PropagateSet methods have complex nested logic with variable counters, conditional blocks, and string interpolation that maps poorly to JSX composition. The string-building approach is already used by `DynamicPropertySerializer.tsx` for similar dynamic model serialization code, so it's consistent with the codebase pattern.
+
+### Conditional infrastructure extension methods (Task 7.3.1)
+**Chosen**: Conditionally generate `GetUtf8Bytes`, `SliceToStartOfPropertyName`, `TryGetIndex`, `GetFirstPropertyName`, `GetRemainder` via `hasDynamicModels` prop
+**Rejected**: Always generating them unconditionally
+**Why**: Non-dynamic model projects shouldn't have unused infrastructure code. The `hasDynamicModels` prop is computed in `emitter.tsx` via `models.some((m) => isDynamicModel(m))` and passed to `ModelSerializationExtensionsFile`.
+
+## Gotchas
+
+### Nested dynamic model deserialization requires GetUtf8Bytes data parameter
+When a dynamic model has properties of other dynamic model types (arrays, dicts, or direct refs), the nested deserialization call must pass `item.GetUtf8Bytes()` as the `BinaryData data` parameter. Without this, the nested model's `JsonPatch` won't be initialized with the original binary data. The fix is in `PropertyMatchingLoop.tsx`'s `getReadExpression()` function.
+
+### Dynamic models completely replace additionalBinaryDataProperties with _patch
+Dynamic models do NOT have `_additionalBinaryDataProperties` at all — no field, no constructor parameter, no serialization loop. The `_patch` field and `JsonPatch` replace them entirely. The model factory uses `default` (not `additionalBinaryDataProperties: null`) as the last constructor argument.

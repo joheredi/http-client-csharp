@@ -11,6 +11,8 @@ export interface ModelSerializationExtensionsFileProps {
   packageName: string;
   /** Resolved emitter options used for generating the file header. */
   options: ResolvedCSharpEmitterOptions;
+  /** Whether any dynamic (JSON Merge Patch) models exist, requiring patch-related extension methods. */
+  hasDynamicModels?: boolean;
 }
 
 /**
@@ -28,22 +30,132 @@ export interface ModelSerializationExtensionsFileProps {
  * The generated class matches the legacy emitter's output:
  * `src/Generated/Internal/ModelSerializationExtensions.cs`.
  */
+/**
+ * Generates extension methods required by dynamic (JSON Merge Patch) model
+ * propagators and patch deserialization:
+ *
+ * - `GetUtf8Bytes` — converts a `JsonElement` to `BinaryData` using raw UTF-8 bytes
+ * - `SliceToStartOfPropertyName` — extracts the property name portion from a JSON path
+ * - `GetFirstPropertyName` — reads the first property name from a JSON path segment
+ * - `TryGetIndex` — parses an array index from a JSON path segment
+ * - `GetRemainder` — returns the rest of a JSON path after consuming a segment
+ *
+ * These methods are only generated when the emitter encounters dynamic models.
+ */
+function dynamicModelExtensionMethods() {
+  return code`
+    internal static partial class ModelSerializationExtensions
+    {
+        public static BinaryData GetUtf8Bytes(this JsonElement element)
+        {
+#if NET9_0_OR_GREATER
+            return new global::System.BinaryData(global::System.Runtime.InteropServices.JsonMarshal.GetRawUtf8Value(element).ToArray());
+#else
+            return BinaryData.FromString(element.GetRawText());
+#endif
+        }
+
+        public static ReadOnlySpan<byte> SliceToStartOfPropertyName(this ReadOnlySpan<byte> jsonPath)
+        {
+            ReadOnlySpan<byte> local = jsonPath;
+            if (local.Length < 3)
+            {
+                return ReadOnlySpan<byte>.Empty;
+            }
+            if (local[0] != '$')
+            {
+                return ReadOnlySpan<byte>.Empty;
+            }
+            return local.Length >= 4 && local[1] == '[' && (local[2] == '\\'' || local[2] == '"') ? local.Slice(3) : ReadOnlySpan<byte>.Empty;
+        }
+
+        public static string GetFirstPropertyName(this ReadOnlySpan<byte> jsonPath, out int bytesConsumed)
+        {
+            ReadOnlySpan<byte> local = jsonPath;
+            for (bytesConsumed = 0; bytesConsumed < local.Length; bytesConsumed++)
+            {
+                byte current = local[bytesConsumed];
+                if (current == '.')
+                {
+                    break;
+                }
+                else
+                {
+                    if (current == '\\'' || current == '"')
+                    {
+                        if (bytesConsumed + 1 < local.Length && local[bytesConsumed + 1] == ']')
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            string key;
+#if NET6_0_OR_GREATER
+            key = global::System.Text.Encoding.UTF8.GetString(local.Slice(0, bytesConsumed));
+#else
+            key = Encoding.UTF8.GetString(local.Slice(0, bytesConsumed).ToArray());
+#endif
+            bytesConsumed += jsonPath.Length - local.Length;
+            return key;
+        }
+
+        public static bool TryGetIndex(this ReadOnlySpan<byte> indexSlice, out int index, out int bytesConsumed)
+        {
+            index = -1;
+            bytesConsumed = 0;
+
+            if (indexSlice.IsEmpty || indexSlice[0] != '[')
+            {
+                return false;
+            }
+
+            indexSlice = indexSlice.Slice(1);
+            if (indexSlice.IsEmpty || indexSlice[0] == '-')
+            {
+                return false;
+            }
+
+            int indexEnd = indexSlice.Slice(1).IndexOf((byte)']');
+            if (indexEnd < 0)
+            {
+                return false;
+            }
+
+            return Utf8Parser.TryParse(indexSlice.Slice(0, indexEnd + 1), out index, out bytesConsumed);
+        }
+
+        public static ReadOnlySpan<byte> GetRemainder(this ReadOnlySpan<byte> jsonPath, int index)
+        {
+            return index >= jsonPath.Length ? ReadOnlySpan<byte>.Empty : jsonPath[index] == '.' ? jsonPath.Slice(index) : jsonPath.Slice(index + 2);
+        }
+    }
+  `;
+}
+
 export function ModelSerializationExtensionsFile(
   props: ModelSerializationExtensionsFileProps,
 ) {
   const header = getLicenseHeader(props.options);
 
+  const baseUsings = [
+    "System",
+    "System.ClientModel.Primitives",
+    "System.Collections.Generic",
+    "System.Diagnostics",
+    "System.Globalization",
+    "System.Text.Json",
+  ];
+
+  const dynamicUsings = props.hasDynamicModels
+    ? ["System.Buffers.Text", "System.Text"]
+    : [];
+
   return (
     <SourceFile
       path="src/Generated/Internal/ModelSerializationExtensions.cs"
-      using={[
-        "System",
-        "System.ClientModel.Primitives",
-        "System.Collections.Generic",
-        "System.Diagnostics",
-        "System.Globalization",
-        "System.Text.Json",
-      ]}
+      using={[...baseUsings, ...dynamicUsings].sort()}
     >
       {header}
       {"\n\n"}
@@ -291,6 +403,7 @@ export function ModelSerializationExtensionsFile(
               }
           }
         `}
+        {props.hasDynamicModels && dynamicModelExtensionMethods()}
       </Namespace>
     </SourceFile>
   );

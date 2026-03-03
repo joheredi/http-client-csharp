@@ -60,6 +60,9 @@ export function DeserializeReturnStatement(
     if (info.kind === "additional-binary-data") {
       return ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME;
     }
+    if (info.kind === "patch") {
+      return "patch";
+    }
     return namePolicy.getName(info.property.name, "parameter");
   });
 
