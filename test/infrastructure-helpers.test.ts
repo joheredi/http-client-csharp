@@ -790,6 +790,381 @@ describe("ClientPipelineExtensionsFile", () => {
   });
 });
 
+describe("ClientUriBuilderFile", () => {
+  /**
+   * Verifies ClientUriBuilder.cs is generated at the correct Internal path.
+   * This file is required by generated REST client code that constructs
+   * request URIs from route templates, path, and query parameters.
+   */
+  it("generates ClientUriBuilder.cs at the correct path", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    expect(
+      outputs["src/Generated/Internal/ClientUriBuilder.cs"],
+    ).toBeDefined();
+  });
+
+  /**
+   * Verifies the class is internal, partial — matching legacy output.
+   * Unlike most infrastructure helpers, ClientUriBuilder is NOT static
+   * because it maintains instance state (UriBuilder, StringBuilder, pathLength).
+   */
+  it("declares internal partial class (not static)", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content = outputs["src/Generated/Internal/ClientUriBuilder.cs"];
+    expect(content).toContain("internal partial class ClientUriBuilder");
+    expect(content).not.toContain("internal static partial class ClientUriBuilder");
+  });
+
+  /**
+   * Verifies the private fields and properties that hold URI state.
+   * These are the core data structures the builder uses internally.
+   */
+  it("contains private fields and lazy-init properties", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content = outputs["src/Generated/Internal/ClientUriBuilder.cs"];
+    expect(content).toContain("private UriBuilder _uriBuilder;");
+    expect(content).toContain("private StringBuilder _pathAndQuery;");
+    expect(content).toContain("private int _pathLength;");
+    expect(content).toContain(
+      "private UriBuilder UriBuilder => _uriBuilder ??= new UriBuilder();",
+    );
+    expect(content).toContain(
+      "private StringBuilder PathAndQuery => _pathAndQuery ??= new StringBuilder();",
+    );
+  });
+
+  /**
+   * Verifies the Reset method that initializes the builder from a base URI.
+   * This is always the first call in the generated REST client request methods.
+   */
+  it("contains Reset method", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content = outputs["src/Generated/Internal/ClientUriBuilder.cs"];
+    expect(content).toContain("public void Reset(Uri uri)");
+    expect(content).toContain("_uriBuilder = new UriBuilder(uri);");
+  });
+
+  /**
+   * Verifies the AppendPath overloads for various types.
+   * These are used when substituting path parameters in route templates
+   * (e.g., /items/{id} where id can be int, string, Guid, etc.).
+   */
+  it("contains AppendPath overloads for multiple types", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content = outputs["src/Generated/Internal/ClientUriBuilder.cs"];
+    expect(content).toContain(
+      "public void AppendPath(string value, bool escape)",
+    );
+    expect(content).toContain(
+      "public void AppendPath(bool value, bool escape = false)",
+    );
+    expect(content).toContain(
+      "public void AppendPath(int value, bool escape = true)",
+    );
+    expect(content).toContain(
+      "public void AppendPath(Guid value, bool escape = true)",
+    );
+    expect(content).toContain(
+      "public void AppendPath(long value, bool escape = true)",
+    );
+    expect(content).toContain(
+      "public void AppendPath(DateTimeOffset value, SerializationFormat format = SerializationFormat.Default, bool escape = true)",
+    );
+  });
+
+  /**
+   * Verifies the AppendQuery overloads used for adding query parameters.
+   * The generated client calls these for each query parameter on an operation.
+   */
+  it("contains AppendQuery overloads for multiple types", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content = outputs["src/Generated/Internal/ClientUriBuilder.cs"];
+    expect(content).toContain(
+      "public void AppendQuery(string name, string value, bool escape)",
+    );
+    expect(content).toContain(
+      "public void AppendQuery(string name, int value, bool escape = true)",
+    );
+    expect(content).toContain(
+      "public void AppendQuery(string name, decimal value, bool escape = true)",
+    );
+    expect(content).toContain(
+      "public void AppendQuery(string name, Guid value, bool escape = true)",
+    );
+  });
+
+  /**
+   * Verifies the delimited append methods for collections.
+   * These handle array/list parameters serialized as delimited strings.
+   */
+  it("contains AppendPathDelimited and AppendQueryDelimited", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content = outputs["src/Generated/Internal/ClientUriBuilder.cs"];
+    expect(content).toContain("public void AppendPathDelimited<T>");
+    expect(content).toContain("public void AppendQueryDelimited<T>");
+  });
+
+  /**
+   * Verifies the UpdateQuery method for modifying existing query parameters.
+   * This is needed for paging scenarios where the next-link URL overwrites query values.
+   */
+  it("contains UpdateQuery method", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content = outputs["src/Generated/Internal/ClientUriBuilder.cs"];
+    expect(content).toContain(
+      "public void UpdateQuery(string name, string value)",
+    );
+  });
+
+  /**
+   * Verifies the ToUri method that constructs the final URI.
+   * This is always the last call in the generated REST client request methods.
+   */
+  it("contains ToUri method", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content = outputs["src/Generated/Internal/ClientUriBuilder.cs"];
+    expect(content).toContain("public Uri ToUri()");
+    expect(content).toContain("return UriBuilder.Uri;");
+  });
+
+  /**
+   * Verifies required using directives: System (for Uri, UriBuilder),
+   * System.Collections.Generic (for IEnumerable), System.Linq (for Select),
+   * System.Text (for StringBuilder).
+   */
+  it("includes required using directives", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content = outputs["src/Generated/Internal/ClientUriBuilder.cs"];
+    expect(content).toContain("using System;");
+    expect(content).toContain("using System.Collections.Generic;");
+    expect(content).toContain("using System.Linq;");
+    expect(content).toContain("using System.Text;");
+  });
+
+  /**
+   * Verifies the correct namespace is used, derived from the service name.
+   */
+  it("uses the correct namespace from package name", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace MyUriLib;
+    `);
+    const content = outputs["src/Generated/Internal/ClientUriBuilder.cs"];
+    expect(content).toContain("namespace MyUriLib");
+  });
+});
+
+describe("TypeFormattersFile", () => {
+  /**
+   * Verifies TypeFormatters.cs is generated at the correct Internal path.
+   * This file provides string conversion and parsing utilities used by
+   * ClientUriBuilder and serialization code.
+   */
+  it("generates TypeFormatters.cs at the correct path", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    expect(
+      outputs["src/Generated/Internal/TypeFormatters.cs"],
+    ).toBeDefined();
+  });
+
+  /**
+   * Verifies the class is internal, static, partial — matching legacy output.
+   * Static because all methods are utility functions with no instance state.
+   */
+  it("declares internal static partial class", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content = outputs["src/Generated/Internal/TypeFormatters.cs"];
+    expect(content).toContain(
+      "internal static partial class TypeFormatters",
+    );
+  });
+
+  /**
+   * Verifies the format constants used across the class.
+   * RoundtripZFormat is the ISO8601 format with 7-digit fractional seconds in UTC.
+   */
+  it("contains format constants", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content = outputs["src/Generated/Internal/TypeFormatters.cs"];
+    expect(content).toContain(
+      'private const string RoundtripZFormat = "yyyy-MM-ddTHH:mm:ss.fffffffZ";',
+    );
+    expect(content).toContain(
+      'public const string DefaultNumberFormat = "G";',
+    );
+  });
+
+  /**
+   * Verifies the ToString overloads for bool, DateTime, DateTimeOffset,
+   * TimeSpan, and byte[]. These are the core formatting methods.
+   */
+  it("contains ToString overloads", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content = outputs["src/Generated/Internal/TypeFormatters.cs"];
+    expect(content).toContain(
+      'public static string ToString(bool value) => value ? "true" : "false";',
+    );
+    expect(content).toContain(
+      "public static string ToString(DateTime value, string format)",
+    );
+    expect(content).toContain(
+      "public static string ToString(DateTimeOffset value, string format)",
+    );
+    expect(content).toContain(
+      "public static string ToString(TimeSpan value, string format)",
+    );
+    expect(content).toContain(
+      "public static string ToString(byte[] value, string format)",
+    );
+  });
+
+  /**
+   * Verifies Base64URL encoding and decoding methods.
+   * These are needed for Bytes_Base64Url serialization format.
+   */
+  it("contains Base64URL encode and decode methods", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content = outputs["src/Generated/Internal/TypeFormatters.cs"];
+    expect(content).toContain(
+      "public static string ToBase64UrlString(byte[] value)",
+    );
+    expect(content).toContain(
+      "public static byte[] FromBase64UrlString(string value)",
+    );
+  });
+
+  /**
+   * Verifies the Parse methods for deserialization.
+   * These are used when reading response values from JSON/headers.
+   */
+  it("contains ParseDateTimeOffset and ParseTimeSpan", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content = outputs["src/Generated/Internal/TypeFormatters.cs"];
+    expect(content).toContain(
+      "public static DateTimeOffset ParseDateTimeOffset(string value, string format)",
+    );
+    expect(content).toContain(
+      "public static TimeSpan ParseTimeSpan(string value, string format)",
+    );
+  });
+
+  /**
+   * Verifies the ToFormatSpecifier method that maps SerializationFormat
+   * enum values to their corresponding format strings. This is the bridge
+   * between TypeSpec encoding metadata and C# format specifiers.
+   */
+  it("contains ToFormatSpecifier mapping", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content = outputs["src/Generated/Internal/TypeFormatters.cs"];
+    expect(content).toContain(
+      "public static string ToFormatSpecifier(SerializationFormat format)",
+    );
+    expect(content).toContain('SerializationFormat.DateTime_RFC1123 => "R"');
+    expect(content).toContain('SerializationFormat.DateTime_RFC3339 => "O"');
+    expect(content).toContain('SerializationFormat.Bytes_Base64Url => "U"');
+    expect(content).toContain('SerializationFormat.Duration_ISO8601 => "P"');
+  });
+
+  /**
+   * Verifies the ConvertToString dispatch method that handles many types.
+   * This is the primary method called by ClientUriBuilder for parameter formatting.
+   */
+  it("contains ConvertToString dispatch method", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content = outputs["src/Generated/Internal/TypeFormatters.cs"];
+    expect(content).toContain(
+      "public static string ConvertToString(object value, SerializationFormat format = SerializationFormat.Default)",
+    );
+    expect(content).toContain('null => "null"');
+    expect(content).toContain("string s => s");
+    expect(content).toContain("bool b => ToString(b)");
+    expect(content).toContain("Guid guid => guid.ToString()");
+  });
+
+  /**
+   * Verifies required using directives: System (base types),
+   * System.Collections.Generic (IEnumerable), System.Globalization
+   * (CultureInfo), System.Xml (XmlConvert for ISO8601 durations).
+   */
+  it("includes required using directives", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content = outputs["src/Generated/Internal/TypeFormatters.cs"];
+    expect(content).toContain("using System;");
+    expect(content).toContain("using System.Collections.Generic;");
+    expect(content).toContain("using System.Globalization;");
+    expect(content).toContain("using System.Xml;");
+  });
+
+  /**
+   * Verifies the correct namespace is used, derived from the service name.
+   */
+  it("uses the correct namespace from package name", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace MyFormatterLib;
+    `);
+    const content = outputs["src/Generated/Internal/TypeFormatters.cs"];
+    expect(content).toContain("namespace MyFormatterLib");
+  });
+});
+
 describe("Infrastructure files — always generated", () => {
   /**
    * Verifies that all infrastructure helper files are generated even
@@ -815,6 +1190,12 @@ describe("Infrastructure files — always generated", () => {
     ).toBeDefined();
     expect(
       outputs["src/Generated/Internal/ClientPipelineExtensions.cs"],
+    ).toBeDefined();
+    expect(
+      outputs["src/Generated/Internal/ClientUriBuilder.cs"],
+    ).toBeDefined();
+    expect(
+      outputs["src/Generated/Internal/TypeFormatters.cs"],
     ).toBeDefined();
   });
 

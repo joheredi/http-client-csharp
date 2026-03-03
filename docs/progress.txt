@@ -2305,3 +2305,21 @@ Followed ArgumentFile.tsx pattern exactly:
 
 ### Gotcha discovered
 Adding a file named `ErrorResult.cs` broke 3 model tests that searched for `Result.cs` using `.includes()`. Any future infrastructure file names must be checked against existing test search patterns. The fix was to use `.endsWith("/Result.cs")` for more precise matching.
+
+## 2026-03-03 — Task 5.1.5b: Generate URI builder and type formatters
+
+### What was done
+Task 5.1.5b was already implemented — both `ClientUriBuilderFile.tsx` and `TypeFormattersFile.tsx` existed with full implementations matching the golden files, and were already wired into `emitter.tsx`. The missing piece was **tests**.
+
+Added comprehensive tests for both components in `test/infrastructure-helpers.test.ts`:
+
+- **ClientUriBuilderFile** (9 tests): path validation, class modifiers (internal partial, NOT static), private fields/lazy-init properties, Reset method, AppendPath overloads, AppendQuery overloads, delimited methods, UpdateQuery, ToUri, using directives, namespace.
+- **TypeFormattersFile** (9 tests): path validation, class modifiers (internal static partial), format constants, ToString overloads, Base64URL methods, Parse methods, ToFormatSpecifier mapping, ConvertToString dispatch, using directives, namespace.
+- Updated "always generated" test to include both `ClientUriBuilder.cs` and `TypeFormatters.cs`.
+
+### Test results
+All 800 tests pass (up from 779 baseline — 21 new assertions added).
+
+### Notes for next iterations
+- Tasks 5.1.5c (ModelSerializationExtensions) and 5.1.5d (binary content/headers) are the remaining infrastructure tasks.
+- After 5.1.5c is done, smoke tests should pass since the 4 required infra files will be complete.
