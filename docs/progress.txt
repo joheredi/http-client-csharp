@@ -2838,3 +2838,33 @@ Key learnings:
 ### Test results
 - 1027 tests pass (5 new, 0 failures)
 - Build, lint, format all clean
+
+## Task 7.1.1: Implement dynamic model structure — 2026-03-03
+
+### What was done
+- Created `src/builtins/system-component-model.ts` with `EditorBrowsableAttribute` and `EditorBrowsableState` library declarations
+- Created `src/builtins/system-text-json-serialization.ts` with `JsonIgnoreAttribute` library declaration
+- Updated `src/builtins/index.ts` to export new builtins
+- Created `src/components/models/DynamicModel.tsx` with:
+  - `isDynamicModel()` function — detects `UsageFlags.JsonMergePatch` on models
+  - `DynamicModelMembers` component — generates `_patch` field and `Patch` ref-return property
+- Modified `src/components/models/ModelFile.tsx` to conditionally render `DynamicModelMembers` for models with `JsonMergePatch` usage flag
+- Created `test/dynamic-model.test.ts` with 5 tests covering field generation, property attributes, pragma warnings, using directives, and regression for non-dynamic models
+
+### Design decisions
+- **Approach**: Created separate `DynamicModel.tsx` component rather than inlining into `ModelFile.tsx` for separation of concerns
+- **`_additionalBinaryDataProperties` kept alongside `_patch`**: The serialization code (task 7.2.1) still references `_additionalBinaryDataProperties`. Removing it now would break compilation. Task 7.2.1 should replace it with `_patch` in the serialization path.
+- **Constructor change deferred**: The "internal constructor accepts JsonPatch" acceptance criterion is deferred to task 7.2.1, which updates the serialization constructor to use `in JsonPatch patch` instead of `additionalBinaryDataProperties`.
+- **`[Experimental("SCME0001")]` attribute deferred**: `ExperimentalAttribute` is inaccessible (internal) on `netstandard2.0` from `System.ClientModel` v1.9.0. The attribute will be added in task 7.2.1 with `#if NET8_0_OR_GREATER` conditional compilation. For now, `#pragma warning disable SCME0001` suppresses the experimental diagnostic from the `JsonPatch` type itself.
+
+### Patterns used
+- `Attribute` component from `@alloy-js/csharp` for `[JsonIgnore]` and `[EditorBrowsable(Never)]`
+- `Field` component for the `_patch` field declaration
+- `code` template for the `ref` return property (Property component doesn't support ref returns or expression bodies)
+- `createLibrary()` for new builtin type declarations (auto-generates `using` directives)
+
+### What next person should know
+- Task 7.2.1 should: (1) replace `_additionalBinaryDataProperties` with `_patch` in the serialization constructor, (2) add `[Experimental("SCME0001")]` with conditional compilation, (3) update serialization code to use `_patch` for patch-aware serialization
+- The `Attribute` component strips the `Attribute` suffix from type names (e.g., `JsonIgnoreAttribute` → `[JsonIgnore]`)
+- The `Property` component from `@alloy-js/csharp` does NOT support `ref` return types or expression bodies — use `code` template for these
+- The `Field` component does NOT support `attributes` prop — use standalone `<Attribute>` above the `<Field>` to add attributes

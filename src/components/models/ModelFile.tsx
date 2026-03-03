@@ -13,6 +13,7 @@ import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { isModelStruct } from "../../utils/model.js";
 import { efCsharpRefkey } from "../../utils/refkey.js";
+import { DynamicModelMembers, isDynamicModel } from "./DynamicModel.js";
 import {
   isBaseDiscriminatorOverride,
   isDerivedDiscriminatedModel,
@@ -85,11 +86,22 @@ export function ModelFile(props: ModelFileProps) {
   // field. Derived models inherit it from their base class. The access modifier
   // is `private protected` for classes (allowing derived class access) and
   // `private` for structs (which cannot be inherited).
+  //
+  // Dynamic models (JsonMergePatch usage) additionally get a _patch field
+  // and Patch property for tracking partial updates. The _additionalBinaryDataProperties
+  // field is kept until task 7.2.1 updates serialization to use _patch instead.
   const isRoot = props.type.baseModel === undefined;
+  const isDynamic = isDynamicModel(props.type);
   const fieldModifier = isStruct ? "private" : "private protected";
 
   const members = (
     <>
+      {isRoot && isDynamic && (
+        <>
+          <DynamicModelMembers />
+          {"\n\n"}
+        </>
+      )}
       {isRoot && (
         <>
           {code`/// <summary> Keeps track of any properties unknown to the library. </summary>\n${fieldModifier} readonly ${SystemCollectionsGeneric.IDictionary}<string, ${System.BinaryData}> _additionalBinaryDataProperties;`}

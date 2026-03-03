@@ -3747,7 +3747,7 @@
           "title": "Implement dynamic model structure",
           "description": "Detect JsonMergePatch usage flag. Generate _patch field, Patch ref-return property with experimental/JsonIgnore attributes. Modify internal constructor to accept JsonPatch. See ScmModelProvider and golden files at Spector/http/payload/json-merge-patch/.",
           "phase": "phase-7",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "1.2.1",
             "0.2.6"

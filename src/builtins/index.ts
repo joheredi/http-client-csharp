@@ -14,9 +14,11 @@
  * ```
  */
 export { System } from "./system.js";
+export { SystemComponentModel } from "./system-component-model.js";
 export { SystemIO } from "./system-io.js";
 export { SystemThreading, SystemThreadingTasks } from "./system-threading.js";
 export { SystemTextJson } from "./system-text-json.js";
+export { SystemTextJsonSerialization } from "./system-text-json-serialization.js";
 export { SystemXml } from "./system-xml.js";
 export { SystemXmlLinq } from "./system-xml-linq.js";
 export {

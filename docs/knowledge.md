@@ -1753,3 +1753,21 @@ This pattern is used in `XmlDeserialize.tsx` and matches `XmlModelWriteCore.tsx`
 ### PersistableModelCreateCore XML Case Uses data.ToStream() (Task 6.3.1)
 
 The legacy emitter generates `using (Stream dataStream = data.ToStream())` for the XML "X" case in PersistableModelCreateCore. The initial implementation incorrectly used `new MemoryStream(data.ToArray())` which copies data unnecessarily. Fixed to match legacy golden output: `Stream` type, `dataStream` variable name, `data.ToStream()` call.
+
+## ExperimentalAttribute accessibility on netstandard2.0 (Task 7.1.1)
+
+`System.Diagnostics.CodeAnalysis.ExperimentalAttribute` is `internal` in System.ClientModel v1.9.0 when targeting netstandard2.0. Generated code using `[Experimental("SCME0001")]` fails with CS0122. The legacy emitter uses this attribute in its golden files but may use a different System.ClientModel version. For now, use `#pragma warning disable SCME0001` to suppress the experimental diagnostic from `JsonPatch` type usage, and defer `[Experimental]` attribute to when conditional compilation (`#if NET8_0_OR_GREATER`) is implemented.
+
+## Alloy C# component limitations (Task 7.1.1)
+
+- `Property` component does NOT support `ref` return types or expression body syntax (`=> ref _patch;`). Use `code` template for these patterns.
+- `Field` component does NOT support `attributes` prop. Place standalone `<Attribute>` components above `<Field>` for field-level attributes.
+- `Attribute` component strips the `Attribute` suffix automatically (e.g., `JsonIgnoreAttribute` → `[JsonIgnore]`).
+
+## Design Decisions
+
+### Dynamic model structure (Task 7.1.1)
+- **Approach chosen**: Separate `DynamicModel.tsx` component with `isDynamicModel()` helper and `DynamicModelMembers` component
+- **Why**: Separates dynamic model concerns from ModelFile.tsx, follows PRD suggestion, easier to test independently
+- **Rejected**: Inline all dynamic model logic in ModelFile.tsx — would increase complexity of an already-complex component
+- **Deferred**: Constructor modification and `_additionalBinaryDataProperties` replacement deferred to task 7.2.1, which updates the serialization code in tandem
