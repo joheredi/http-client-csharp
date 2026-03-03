@@ -154,6 +154,50 @@ describe("CSharpScalarOverrides", () => {
     });
   });
 
+  describe("union type overrides", () => {
+    /**
+     * Multi-type named unions (e.g., `union Foo { string, int32 }`) have no
+     * single C# type equivalent and should map to BinaryData. This matches the
+     * legacy emitter's behavior for versioning scenarios where unions contain
+     * heterogeneous scalar types (e.g., string + integer).
+     */
+    it("maps multi-type named union to BinaryData", async () => {
+      const { test } = await runner.compile(`
+        union MyUnion {
+          string,
+          int32,
+        }
+        model Test {
+          @test test: MyUnion;
+        }
+      `);
+      const type = (test as ModelProperty).type;
+      const content = renderType(type);
+      expect(content).toContain("BinaryData");
+    });
+
+    /**
+     * Named unions with scalar types derived from different roots should also
+     * map to BinaryData. V2Scalar extends int32, so string + V2Scalar is
+     * multi-type (string root vs numeric root).
+     */
+    it("maps named union with derived scalars to BinaryData", async () => {
+      const { test } = await runner.compile(`
+        scalar V2Scalar extends int32;
+        union MyUnion {
+          string,
+          V2Scalar,
+        }
+        model Test {
+          @test test: MyUnion;
+        }
+      `);
+      const type = (test as ModelProperty).type;
+      const content = renderType(type);
+      expect(content).toContain("BinaryData");
+    });
+  });
+
   describe("BinaryData library declaration", () => {
     /**
      * Verifies that System.BinaryData from the builtins library is properly

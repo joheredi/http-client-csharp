@@ -4099,7 +4099,7 @@
           "title": "Validate versioning scenarios",
           "description": "Compare output against Spector versioning golden files: added, removed.",
           "phase": "phase-10",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "3.1.4"
           ],

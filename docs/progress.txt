@@ -3140,3 +3140,31 @@ Changes:
 - `test/model.test.ts`: Added "preserves acronyms in model names (ISO8601)" test
 
 Tests: 1079 passed (1 new), 0 failed. Build and lint clean.
+
+## 2026-03-03 — Task 10.1.7: Validate versioning scenarios (complete)
+
+**Problem:** No scenario tests existed for versioning scenarios (added/removed). Additionally, multi-type named unions (e.g., `union Foo { string, int32 }`) produced `<Unresolved Symbol>` instead of `BinaryData`.
+
+**Fix 1 — Multi-type named union → BinaryData:** Added `isMultiTypeNamedUnion()` helper to `CSharpTypeExpression.tsx`. When a named union has variants with different root scalar types (e.g., string + numeric), it's mapped to `BinaryData` instead of delegating to the default TypeExpression (which can't resolve it). The helper:
+- Filters out null/void variants
+- Detects non-scalar/non-literal variants as multi-type
+- For scalar variants, walks the `.baseScalar` chain to compare root types
+- Returns true when root types differ (e.g., "string" vs "numeric")
+
+**Fix 2 — Versioning scenario tests:** Created two scenario markdown files:
+- `test/scenarios/versioning/versioning_added.md` — validates @added decorator behavior with 6 code blocks (ModelV1, ModelV2, EnumV1, EnumV2, AddedClient, InterfaceV2)
+- `test/scenarios/versioning/versioning_removed.md` — validates @removed decorator behavior with 5 code blocks (ModelV2, ModelV3, EnumV2, EnumV3, RemovedClient)
+
+Both scenarios verified against Spector golden files in `submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/versioning/`. All public API signatures match exactly.
+
+**Fix 3 — Unit tests:** Added 2 type expression tests:
+- "maps multi-type named union to BinaryData" — tests `union { string, int32 }`
+- "maps named union with derived scalars to BinaryData" — tests `union { string, V2Scalar extends int32 }`
+
+**Changes:**
+- `src/components/CSharpTypeExpression.tsx`: Added `isMultiTypeNamedUnion()` function and updated Union override
+- `test/type-expression.test.tsx`: Added 2 union type override tests
+- `test/scenarios/versioning/versioning_added.md`: New scenario test
+- `test/scenarios/versioning/versioning_removed.md`: New scenario test
+
+**Tests:** 1092 passed (7 new), 0 failed. Build and lint clean.

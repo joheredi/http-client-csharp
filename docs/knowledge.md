@@ -1908,3 +1908,9 @@ Important: The "class" naming context is used for TWO purposes:
 The `/^[A-Z]/` heuristic distinguishes these cases. If you add a new use of
 `namePolicy.getName(name, "class")` where `name` starts with uppercase and should be
 transformed, this heuristic may need adjustment (unlikely since TCGC names are authoritative).
+
+### Multi-type named unions → BinaryData
+- **Gotcha:** Named unions with variants of different root scalar types (e.g., `union Foo { string, int32 }`) produce `<Unresolved Symbol>` if delegated to the default TypeExpression, because no C# declaration exists for them.
+- **Fix:** `isMultiTypeNamedUnion()` in `CSharpTypeExpression.tsx` detects these unions by walking variant scalar chains to compare roots. When different roots are found, maps to `BinaryData`.
+- **Distinction from extensible enums:** Extensible enums (e.g., `union Bar { string, "a", "b" }`) have all variants of the same scalar root type and are handled by the default TypeExpression which resolves them via existing struct declarations.
+- **Design decision:** Detect at TypeExpression level (not at model property level) to catch all usages of multi-type unions regardless of context.
