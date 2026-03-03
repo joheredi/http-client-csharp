@@ -57,6 +57,7 @@ import { PersistableModelCreateCore } from "./components/serialization/Persistab
 import { PersistableModelInterfaceMethods } from "./components/serialization/PersistableModelInterfaceMethods.js";
 import { PersistableModelWriteCore } from "./components/serialization/PersistableModelWriteCore.js";
 import { PropertyMatchingLoop } from "./components/serialization/PropertyMatchingLoop.js";
+import { XmlDeserialize } from "./components/serialization/XmlDeserialize.js";
 import { XmlModelWriteCore } from "./components/serialization/XmlModelWriteCore.js";
 import { XmlWriteXml } from "./components/serialization/XmlWriteXml.js";
 import { $lib } from "./lib.js";
@@ -226,6 +227,10 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
               {supportsJson && <JsonModelCreateCore type={m} />}
               {supportsJson && "\n\n"}
               {supportsJson && <DeserializationConstructor type={m} />}
+              {!supportsJson && supportsXml && "\n\n"}
+              {!supportsJson && supportsXml && (
+                <DeserializationConstructor type={m} />
+              )}
               {supportsJson && "\n\n"}
               {supportsJson && (
                 <JsonDeserialize type={m}>
@@ -244,6 +249,8 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
               {supportsXml && <XmlWriteXml type={m} />}
               {supportsXml && "\n\n"}
               {supportsXml && <XmlModelWriteCore type={m} />}
+              {supportsXml && "\n\n"}
+              {supportsXml && <XmlDeserialize type={m} />}
             </ModelSerializationFile>
           );
         })}

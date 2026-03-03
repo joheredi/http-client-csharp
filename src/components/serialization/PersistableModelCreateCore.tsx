@@ -58,9 +58,12 @@
 import { useCSharpNamePolicy } from "@alloy-js/csharp";
 import { code } from "@alloy-js/core";
 import type { SdkModelType } from "@azure-tools/typespec-client-generator-core";
+import { UsageFlags } from "@azure-tools/typespec-client-generator-core";
 import { System } from "../../builtins/system.js";
 import { SystemClientModelPrimitives } from "../../builtins/system-client-model.js";
+import { SystemIO } from "../../builtins/system-io.js";
 import { SystemTextJson } from "../../builtins/system-text-json.js";
+import { SystemXmlLinq } from "../../builtins/system-xml-linq.js";
 
 /**
  * Props for the {@link PersistableModelCreateCore} component.
@@ -128,6 +131,8 @@ export function PersistableModelCreateCore(
   const isDerived = shouldOverride(props.type);
   const rootModel = getRootModelType(props.type);
   const returnTypeName = namePolicy.getName(rootModel.name, "class");
+  const supportsJson = (props.type.usage & UsageFlags.Json) !== 0;
+  const supportsXml = (props.type.usage & UsageFlags.Xml) !== 0;
 
   return (
     <>
@@ -136,12 +141,23 @@ export function PersistableModelCreateCore(
       {code`    string format = options.Format == "W" ? ((${SystemClientModelPrimitives.IPersistableModel}<${modelName}>)this).GetFormatFromOptions(options) : options.Format;`}
       {"\n    switch (format)"}
       {"\n    {"}
-      {'\n        case "J":'}
-      {"\n"}
-      {code`            using (${SystemTextJson.JsonDocument} document = ${SystemTextJson.JsonDocument}.Parse(data))`}
-      {"\n            {"}
-      {`\n                return Deserialize${modelName}(document.RootElement, options);`}
-      {"\n            }"}
+      {supportsJson && '\n        case "J":'}
+      {supportsJson && "\n"}
+      {supportsJson &&
+        code`            using (${SystemTextJson.JsonDocument} document = ${SystemTextJson.JsonDocument}.Parse(data))`}
+      {supportsJson && "\n            {"}
+      {supportsJson &&
+        `\n                return Deserialize${modelName}(document.RootElement, options);`}
+      {supportsJson && "\n            }"}
+      {supportsXml && '\n        case "X":'}
+      {supportsXml && "\n"}
+      {supportsXml &&
+        code`            using (${SystemIO.MemoryStream} stream = new ${SystemIO.MemoryStream}(data.ToArray()))`}
+      {supportsXml && "\n            {"}
+      {supportsXml && "\n"}
+      {supportsXml &&
+        code`                return Deserialize${modelName}(${SystemXmlLinq.XElement}.Load(stream, ${SystemXmlLinq.LoadOptions}.PreserveWhitespace), options);`}
+      {supportsXml && "\n            }"}
       {"\n        default:"}
       {"\n"}
       {code`            throw new ${System.FormatException}($"The model {nameof(${modelName})} does not support reading '{options.Format}' format.");`}

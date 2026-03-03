@@ -2788,3 +2788,28 @@ Key learnings:
 - Guard indentation fix: renderGuardedProperty uses callback pattern for correct inner indent
 - Reuses guard logic (needsSerializationGuard, buildGuardCondition) from PropertySerializer
 - Value writes use writer.WriteValue for simple types, extension methods for DateTime/Duration/Bytes
+
+2026-03-03 — Task 6.2.1: Implement XML read path (complete)
+- Created `src/components/serialization/XmlDeserialize.tsx` — DeserializeXxx(XElement, ModelReaderWriterOptions)
+  - Null check, namespace declarations, variable declarations, attribute matching loop,
+    element matching loop, text content assignment, constructor return
+  - Handles: string/int/bool/float/double with explicit casts, DateTime/Duration/Bytes with
+    extension methods, nested models with recursive Deserialize calls, fixed/extensible enums,
+    wrapped/unwrapped arrays, dictionaries, nested dicts/arrays, namespaced elements/attributes
+  - Reuses DeserializeVariableDeclarations and DeserializeReturnStatement from JSON pipeline
+- Updated `src/components/serialization/PersistableModelCreateCore.tsx`:
+  - Added case "X" with MemoryStream + XElement.Load(stream, LoadOptions.PreserveWhitespace) pattern
+  - Conditionally renders "J" case only when model supports JSON
+- Updated `src/emitter.tsx`:
+  - Added XmlDeserialize component rendering for XML models
+  - Added DeserializationConstructor rendering for XML-only models (was JSON-only before)
+- Created `test/xml-read-serialization.test.ts` with 13 tests covering all read path aspects
+- Key patterns:
+  - XML uses explicit casts ((string)child, (int)child) instead of JsonElement.GetXxx() methods
+  - Attributes use separate foreach over element.Attributes()
+  - Elements use separate foreach over element.Elements()
+  - Both match by child.Name.LocalName == "propertyName"
+  - Namespaced properties also check child.Name.Namespace == nsVar
+- Babel JSX gotcha: Alloy's Babel plugin crashes with null children in JSX fragments when using
+  .map() directly in JSX that can return null. Fix: build Children[] arrays imperatively (push to
+  array with null guards) rather than using .map() directly inside JSX fragment expressions.

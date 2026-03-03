@@ -1705,3 +1705,39 @@ The `case "X":` branch creates `MemoryStream(256)` + `XmlWriter.Create(stream, M
 
 XML-only models (UsageFlags.Xml without UsageFlags.Json) return `"X"` from `GetFormatFromOptions`.
 Dual-format models with JSON still return `"J"` (JSON takes precedence).
+
+## Babel JSX Fragment Null Children Bug
+
+When using Alloy's JSX Babel plugin (`@alloy-js/babel-plugin-jsx-dom-expressions`), calling `.map()` inside a JSX fragment `<>...</>` where map callbacks can return `null` causes a BUILD-TIME crash:
+
+```
+TypeError: Cannot read properties of null (reading 'tagName')
+at getCreateTemplate (babel-plugin-jsx-dom-expressions/index.js:1397)
+```
+
+**Workaround**: Build `Children[]` arrays imperatively with null guards before the JSX return, then render the array variable:
+
+```tsx
+// BAD — crashes Babel if renderFoo() can return null
+return <>{items.map(x => renderFoo(x))}</>;
+
+// GOOD — build array imperatively
+const parts: Children[] = [];
+for (const x of items) {
+  const result = renderFoo(x);
+  if (result) parts.push(result);
+}
+return <>{parts}</>;
+```
+
+This pattern is used in `XmlDeserialize.tsx` and matches `XmlModelWriteCore.tsx`'s `propertyWrites` array pattern.
+
+## Design Decisions
+
+### XML Deserialization Approach (Task 6.2.1)
+
+**Chosen**: Single component `XmlDeserialize.tsx` with helper functions (monolithic approach)
+
+**Rejected**: Composable sub-components (XmlAttributeLoop, XmlElementLoop)
+
+**Rationale**: XML deserialization has fundamentally different structure from JSON (two loops instead of one, namespace declarations, explicit casts instead of getter methods). Creating reusable sub-components would add complexity without reuse potential. The monolithic approach matches XmlModelWriteCore.tsx's pattern. We still reuse `DeserializeVariableDeclarations` and `DeserializeReturnStatement` which are format-agnostic.
