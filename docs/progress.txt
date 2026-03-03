@@ -2353,3 +2353,27 @@ Notes for next iteration:
 - Remaining infrastructure task: 5.1.5d (binary content and header extension files)
 - The Local golden file has additional XML methods and JSON path utilities not in the current implementation; those belong to Phase 6 (XML serialization) tasks
 - Smoke tests should be closer to passing now with 3 of 4 required infra files in place
+
+2026-03-03 — Task 5.1.5d: Generate binary content and header extension files (complete)
+
+Created three infrastructure component files in src/components/infrastructure/:
+
+1. **Utf8JsonBinaryContentFile.tsx** — Generates `Utf8JsonBinaryContent.cs`, an internal partial class extending `BinaryContent`. Wraps `Utf8JsonWriter` around `MemoryStream` for building JSON request bodies. Overrides WriteToAsync, WriteTo, TryComputeLength, and Dispose.
+
+2. **BinaryContentHelperFile.tsx** — Generates `BinaryContentHelper.cs`, an internal static partial class with factory methods converting .NET types to `BinaryContent`:
+   - `FromEnumerable<T>` / `FromEnumerable(BinaryData)` / `FromEnumerable(ReadOnlySpan<T>)`
+   - `FromDictionary<T>` / `FromDictionary(BinaryData)`
+   - `FromObject(object)` / `FromObject(BinaryData)`
+   - BinaryData methods use `#if NET6_0_OR_GREATER` for WriteRawValue support
+
+3. **PipelineRequestHeadersExtensionsFile.tsx** — Generates `PipelineRequestHeadersExtensions.cs`, an internal static class with extension methods for `PipelineRequestHeaders`:
+   - `SetDelimited<T>` (two overloads: with/without SerializationFormat)
+   - `Add` with prefix for dictionary-based header injection
+
+Key patterns:
+- All files follow the same pattern as existing infrastructure files (code template literals, SourceFile → Namespace → ClassDeclaration).
+- Methods with `#if NET6_0_OR_GREATER` preprocessor directives must use plain string variables (not code blocks) to avoid Alloy's indentation engine concatenating lines with directives. This was discovered through debugging and is documented in knowledge.md.
+- Added 26 new tests covering all three files in infrastructure-helpers.test.ts.
+- Also updated the "generates all helper files" test to include the new files.
+
+Unblocks: 5.1.6 (infrastructure tests), 9.1.1 (multipart support)

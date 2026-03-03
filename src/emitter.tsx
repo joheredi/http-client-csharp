@@ -30,6 +30,9 @@ import { ProjectFile } from "./components/infrastructure/ProjectFile.js";
 import { SerializationFormatFile } from "./components/infrastructure/SerializationFormatFile.js";
 import { SolutionFile } from "./components/infrastructure/SolutionFile.js";
 import { TypeFormattersFile } from "./components/infrastructure/TypeFormattersFile.js";
+import { Utf8JsonBinaryContentFile } from "./components/infrastructure/Utf8JsonBinaryContentFile.js";
+import { BinaryContentHelperFile } from "./components/infrastructure/BinaryContentHelperFile.js";
+import { PipelineRequestHeadersExtensionsFile } from "./components/infrastructure/PipelineRequestHeadersExtensionsFile.js";
 import { ModelFactoryFile } from "./components/model-factory/ModelFactoryFile.js";
 import { hasDiscriminatedSubtypes } from "./components/models/ModelConstructors.js";
 import { ModelFile } from "./components/models/ModelFile.js";
@@ -140,6 +143,18 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
         options={options}
       />
       <ClientPipelineExtensionsFile
+        packageName={packageName}
+        options={options}
+      />
+      <Utf8JsonBinaryContentFile
+        packageName={packageName}
+        options={options}
+      />
+      <BinaryContentHelperFile
+        packageName={packageName}
+        options={options}
+      />
+      <PipelineRequestHeadersExtensionsFile
         packageName={packageName}
         options={options}
       />

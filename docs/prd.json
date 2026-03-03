@@ -3484,7 +3484,7 @@
           "title": "Generate binary content and header extension files",
           "description": "Generate Utf8JsonBinaryContent.cs, BinaryContentHelper.cs, PipelineRequestHeadersExtensions.cs. These files are NOT in the Sample-TypeSpec golden output \u2014 they need to be reverse-engineered from the legacy generator definitions at: Utf8JsonBinaryContentDefinition.cs, BinaryContentHelperDefinition.cs, PipelineRequestHeadersExtensionsDefinition.cs in submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator.ClientModel/src/Providers/. Check if these are conditionally generated.",
           "phase": "phase-5",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "0.3.1"
           ],

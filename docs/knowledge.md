@@ -1442,3 +1442,14 @@ The eslint config has a custom rule allowing variables prefixed with `_` to be u
 ### CI workflow and pnpm/action-setup require packageManager field
 
 `pnpm/action-setup@v3` requires a pnpm version. This is specified via the `"packageManager": "pnpm@10.30.1"` field in `package.json`. Without it, the CI build step fails with "No pnpm version is specified".
+
+## Gotcha: Preprocessor directives in infrastructure files (2026-03-03)
+
+When generating C# code with `#if NET6_0_OR_GREATER` preprocessor directives inside Alloy's `ClassDeclaration` component:
+
+- **DO NOT** use `code` template blocks for lines between `#if`/`#else`/`#endif`. The `code` block strips leading whitespace and its output gets concatenated with the previous line (e.g., `#endifreturn content;`).
+- **DO** define the entire method body containing preprocessor directives as a plain TypeScript string variable, then interpolate it as a JSX child: `{fromObjectBinaryData}`.
+- The plain string approach gives full control over line breaks and indentation, avoiding Alloy's dedent/re-indent behavior.
+- Plain strings inside `ClassDeclaration` DO get indented by Alloy, which is fine — C# allows indented `#if` directives (e.g., `        #if NET6_0_OR_GREATER`).
+
+See `BinaryContentHelperFile.tsx` for the working pattern vs. the broken `code` block approach.
