@@ -30,6 +30,9 @@ importers:
       '@alloy-js/rollup-plugin':
         specifier: 0.1.0
         version: 0.1.0(@babel/core@7.29.0)(rollup@4.59.0)
+      '@azure-tools/typespec-azure-core':
+        specifier: '>=0.65.0 <0.66.0'
+        version: 0.65.0(@typespec/compiler@1.9.0(@types/node@25.3.2))(@typespec/http@1.9.1(@typespec/compiler@1.9.0(@types/node@25.3.2))(@typespec/streams@0.79.0(@typespec/compiler@1.9.0(@types/node@25.3.2))))(@typespec/rest@0.79.0(@typespec/compiler@1.9.0(@types/node@25.3.2))(@typespec/http@1.9.1(@typespec/compiler@1.9.0(@types/node@25.3.2))(@typespec/streams@0.79.0(@typespec/compiler@1.9.0(@types/node@25.3.2)))))
       '@azure-tools/typespec-client-generator-core':
         specifier: '>=0.65.3 <0.66.0'
         version: 0.65.4(21f90f89e1011d7e6aa12aad70e2dc4a)
@@ -55,6 +58,9 @@ importers:
         specifier: '>=0.79.0 <0.80.0'
         version: 0.79.0(@typespec/compiler@1.9.0(@types/node@25.3.2))(@typespec/http@1.9.1(@typespec/compiler@1.9.0(@types/node@25.3.2))(@typespec/streams@0.79.0(@typespec/compiler@1.9.0(@types/node@25.3.2))))
       '@typespec/versioning':
+        specifier: '>=0.79.0 <0.80.0'
+        version: 0.79.0(@typespec/compiler@1.9.0(@types/node@25.3.2))
+      '@typespec/xml':
         specifier: '>=0.79.0 <0.80.0'
         version: 0.79.0(@typespec/compiler@1.9.0(@types/node@25.3.2))
       concurrently:

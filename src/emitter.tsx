@@ -36,7 +36,10 @@ import { MultiPartFormDataBinaryContentFile } from "./components/infrastructure/
 import { PipelineRequestHeadersExtensionsFile } from "./components/infrastructure/PipelineRequestHeadersExtensionsFile.js";
 import { ModelFactoryFile } from "./components/model-factory/ModelFactoryFile.js";
 import { hasDiscriminatedSubtypes } from "./components/models/ModelConstructors.js";
-import { isDynamicModel, DynamicModelPropagators } from "./components/models/DynamicModel.js";
+import {
+  isDynamicModel,
+  DynamicModelPropagators,
+} from "./components/models/DynamicModel.js";
 import { ModelFile } from "./components/models/ModelFile.js";
 import { UnknownDiscriminatorModelFile } from "./components/models/UnknownDiscriminatorModel.js";
 import { AdditionalBinaryDataRead } from "./components/serialization/AdditionalBinaryDataRead.js";

@@ -18,3 +18,24 @@ export const Tester = ApiTester.emit("http-client-csharp");
  * all registered libraries available to the TypeSpec compiler.
  */
 export const HttpTester = Tester.importLibraries();
+
+/**
+ * Tester for integration tests that registers all libraries needed
+ * by the full SampleService TypeSpec (rest, xml, azure-core).
+ */
+export const IntegrationApiTester = createTester(
+  resolvePath(import.meta.dirname, ".."),
+  {
+    libraries: [
+      "http-client-csharp",
+      "@typespec/http",
+      "@typespec/rest",
+      "@typespec/versioning",
+      "@typespec/xml",
+      "@azure-tools/typespec-client-generator-core",
+      "@azure-tools/typespec-azure-core",
+    ],
+  },
+);
+export const IntegrationTester =
+  IntegrationApiTester.emit("http-client-csharp").importLibraries();

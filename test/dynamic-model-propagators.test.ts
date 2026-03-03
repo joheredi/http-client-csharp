@@ -154,9 +154,7 @@ describe("DynamicModelPropagators", () => {
       Math.max(0, propagateGetStart - 200),
       propagateGetStart,
     );
-    expect(beforePropagateGet).toContain(
-      "#pragma warning disable SCME0001",
-    );
+    expect(beforePropagateGet).toContain("#pragma warning disable SCME0001");
   });
 
   /**
@@ -280,14 +278,10 @@ describe("DynamicModelPropagators", () => {
       Math.max(0, ctorIndex - 200),
       ctorIndex,
     );
-    expect(beforeCtor).toContain(
-      "#pragma warning disable SCME0001",
-    );
+    expect(beforeCtor).toContain("#pragma warning disable SCME0001");
 
     const afterCtor = modelFile.substring(ctorIndex, ctorIndex + 500);
-    expect(afterCtor).toContain(
-      "#pragma warning restore SCME0001",
-    );
+    expect(afterCtor).toContain("#pragma warning restore SCME0001");
   });
 });
 

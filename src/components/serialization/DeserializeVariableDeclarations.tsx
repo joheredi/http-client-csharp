@@ -152,11 +152,15 @@ export function DeserializeVariableDeclarations(
           return (
             <>
               {"\n"}
-              {"#pragma warning disable SCME0001 // Type is for evaluation purposes only and is subject to change or removal in future updates.\n"}
+              {
+                "#pragma warning disable SCME0001 // Type is for evaluation purposes only and is subject to change or removal in future updates.\n"
+              }
               {"    "}
               {code`${SystemClientModelPrimitives.JsonPatch} patch = new ${SystemClientModelPrimitives.JsonPatch}(data is null ? ReadOnlyMemory<byte>.Empty : data.ToMemory());`}
               {"\n"}
-              {"#pragma warning restore SCME0001 // Type is for evaluation purposes only and is subject to change or removal in future updates."}
+              {
+                "#pragma warning restore SCME0001 // Type is for evaluation purposes only and is subject to change or removal in future updates."
+              }
             </>
           );
         }

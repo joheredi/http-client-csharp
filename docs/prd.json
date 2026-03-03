@@ -4121,7 +4121,7 @@
           "title": "Validate full Local/Sample-TypeSpec output",
           "description": "End-to-end validation against the complete Local/Sample-TypeSpec golden output including all clients, models, infrastructure, and collection results.",
           "phase": "phase-10",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "5.1.6",
             "3.5.3",

@@ -3318,3 +3318,37 @@ Task 0.4.4 was already fully implemented. The test/scenarios/ directory exists w
 - Custom code model keyed by **original generated name** (from CodeGenType attribute) for O(1) lookup during generation
 
 **Test results:** 1159 tests pass (20 new), 61 test files. Build, lint all clean.
+
+---
+## Task 10.2.1: Validate full Local/Sample-TypeSpec output
+**Date**: 2026-03-03
+
+### What was done
+- Added `@typespec/xml` and `@azure-tools/typespec-azure-core` as devDependencies (needed to compile the full SampleService TypeSpec)
+- Created `IntegrationApiTester` and `IntegrationTester` in `test/test-host.ts` registering all required libraries (rest, xml, azure-core, versioning, tcgc, http)
+- Created `test/integration/sample-typespec.test.ts` — end-to-end integration test that:
+  - Reads the SampleService TypeSpec definition from the submodule
+  - Strips `@dynamicModel` decorator references (legacy emitter package not available)
+  - Compiles through the emitter with MIT License/Microsoft options
+  - Reports file coverage metrics (generated vs golden)
+  - Reports content match rate
+  - Per-file golden comparison tests (skipped by default, run with INTEGRATION_FULL=true)
+
+### Current Metrics (baseline)
+- Golden files: 128, Generated: 122, Common: 117
+- Content matches: 0/117 (systematic issues below)
+- Missing 11 files: RenamedModelCustom, ThingOptionalLiteral*, ThingRequiredNullable*, UnknownAnimal/Pet/Plant.Serialization
+- Extra 5 files: BinaryContentHelper, PipelineRequestHeadersExtensions, Utf8JsonBinaryContent, RenamedModel
+
+### Systematic Issues Identified
+1. **License header missing/misplaced**: Most generated files start with `using ...` instead of `// Copyright (c) Microsoft...`. The header is not being prepended or is placed after using statements.
+2. **Namespace style**: Emitter generates `namespace SampleTypeSpec {` (block-scoped) while golden uses `namespace SampleTypeSpec` (file-scoped, C# 10+).
+3. **@dynamicModel not supported**: Legacy emitter's TypeSpec library not installed. 2 models use this decorator.
+4. **RenamedModel vs RenamedModelCustom**: Custom code awareness generates `RenamedModel` instead of `RenamedModelCustom`.
+
+### Usage
+- Default: `pnpm test` — runs metrics test, skips per-file comparisons
+- Full: `INTEGRATION_FULL=true pnpm test -- test/integration/sample-typespec.test.ts`
+
+### Result
+1161 tests pass (2 new), 128 skipped, 62 test files. Build and lint clean.

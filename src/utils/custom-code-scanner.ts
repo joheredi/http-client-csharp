@@ -85,9 +85,7 @@ export async function scanCustomCode(
  * @param srcDir - The `src/` directory to scan.
  * @returns Array of absolute file paths to custom .cs files.
  */
-export async function findCustomCodeFiles(
-  srcDir: string,
-): Promise<string[]> {
+export async function findCustomCodeFiles(srcDir: string): Promise<string[]> {
   const results: string[] = [];
 
   async function walk(dir: string): Promise<void> {
@@ -131,15 +129,13 @@ const NAMESPACE_PATTERN = /^\s*namespace\s+([\w.]+)\s*[{;]/m;
  * Matches a `[CodeGenType("name")]` attribute.
  * Captures the original name string.
  */
-const CODEGEN_TYPE_PATTERN =
-  /\[CodeGenType\(\s*"([^"]+)"\s*\)\]/g;
+const CODEGEN_TYPE_PATTERN = /\[CodeGenType\(\s*"([^"]+)"\s*\)\]/g;
 
 /**
  * Matches a `[CodeGenMember("name")]` attribute.
  * Captures the original member name.
  */
-const CODEGEN_MEMBER_PATTERN =
-  /\[CodeGenMember\(\s*"([^"]+)"\s*\)\]/g;
+const CODEGEN_MEMBER_PATTERN = /\[CodeGenMember\(\s*"([^"]+)"\s*\)\]/g;
 
 /**
  * Matches `[CodeGenSuppress("member", typeof(T1), ...)]`.
@@ -220,8 +216,7 @@ export function parseCustomCodeFile(content: string): CustomTypeInfo[] {
     const suppressedMembers = parseSuppressAttributes(preClassBlock);
 
     // Parse CodeGenSerialization attributes (on the class, before its declaration)
-    const serializationOverrides =
-      parseSerializationAttributes(preClassBlock);
+    const serializationOverrides = parseSerializationAttributes(preClassBlock);
 
     results.push({
       declaredName: className,

@@ -6,9 +6,7 @@ import type {
 } from "@azure-tools/typespec-client-generator-core";
 import { type Program } from "@typespec/compiler";
 import { Output } from "@typespec/emitter-framework";
-import {
-  CustomCodeContext,
-} from "../contexts/custom-code-context.js";
+import { CustomCodeContext } from "../contexts/custom-code-context.js";
 import {
   EmitterContext,
   type EmitterContextType,

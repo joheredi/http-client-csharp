@@ -72,10 +72,7 @@ import {
   propertyRequiresNullCheck,
 } from "../../utils/property.js";
 import { efCsharpRefkey } from "../../utils/refkey.js";
-import {
-  hasDynamicModelProperties,
-  isDynamicModel,
-} from "./DynamicModel.js";
+import { hasDynamicModelProperties, isDynamicModel } from "./DynamicModel.js";
 
 /**
  * Props for the {@link ModelConstructors} component.
@@ -576,7 +573,11 @@ export function computeSerializationCtorParams(
     const ownParams = buildPropertyTypeParameters(ownProps, namePolicy);
     return [...baseParams, ...ownParams];
   }
-  return buildSerializationParameters(model.properties, namePolicy, isDynamicModel(model));
+  return buildSerializationParameters(
+    model.properties,
+    namePolicy,
+    isDynamicModel(model),
+  );
 }
 
 /**
@@ -717,7 +718,8 @@ function BaseModelConstructors(props: {
 
   // === Internal serialization constructor ===
   const isDynamic = isDynamicModel(type);
-  const hasNestedDynamic = isDynamic && hasDynamicModelProperties(type, namePolicy);
+  const hasNestedDynamic =
+    isDynamic && hasDynamicModelProperties(type, namePolicy);
   const serializationParams = buildSerializationParameters(
     type.properties,
     namePolicy,
@@ -738,11 +740,13 @@ function BaseModelConstructors(props: {
         {body}
       </Constructor>
       {"\n\n"}
-      {isDynamic && "#pragma warning disable SCME0001 // Type is for evaluation purposes only and is subject to change or removal in future updates.\n"}
+      {isDynamic &&
+        "#pragma warning disable SCME0001 // Type is for evaluation purposes only and is subject to change or removal in future updates.\n"}
       <OverloadConstructor internal parameters={serializationParams}>
         {serializationBody}
       </OverloadConstructor>
-      {isDynamic && "\n#pragma warning restore SCME0001 // Type is for evaluation purposes only and is subject to change or removal in future updates."}
+      {isDynamic &&
+        "\n#pragma warning restore SCME0001 // Type is for evaluation purposes only and is subject to change or removal in future updates."}
     </>
   );
 }

@@ -489,9 +489,7 @@ export function DynamicModelPropagators(props: { type: SdkModelType }) {
 
   // Build PropagateGet method
   const getLines: string[] = [];
-  getLines.push(
-    `${indent}/// <summary></summary>`,
-  );
+  getLines.push(`${indent}/// <summary></summary>`);
   getLines.push(`${indent}/// <param name="jsonPath"></param>`);
   getLines.push(`${indent}/// <param name="value"></param>`);
   getLines.push(`${indent}/// <returns></returns>`);
@@ -521,9 +519,7 @@ export function DynamicModelPropagators(props: { type: SdkModelType }) {
   // Build PropagateSet method
   const setLines: string[] = [];
   setLines.push("");
-  setLines.push(
-    `${indent}/// <summary></summary>`,
-  );
+  setLines.push(`${indent}/// <summary></summary>`);
   setLines.push(`${indent}/// <param name="jsonPath"></param>`);
   setLines.push(`${indent}/// <param name="value"></param>`);
   setLines.push(`${indent}/// <returns></returns>`);
