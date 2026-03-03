@@ -3085,3 +3085,34 @@ Date: 2026-03-03
 - Serialization constructor has two code paths: `computeSerializationCtorParams` (derived models) and `buildSerializationParameters` (base models) — both now share `buildPropertyTypeParameters`
 
 ### Tests: 1078 passed (2 new)
+
+## 2026-03-03: Task 10.1.5a — Fix BinaryData_2 naming conflict in bytes models
+
+### What was done
+Fixed the `BinaryData_2` naming conflict that occurred when a model had both a `bytes` property and `_additionalBinaryDataProperties`. The root cause was two separate `createLibrary("System", ...)` calls each defining a `BinaryData` type:
+1. `src/builtins/system.ts` — used by ModelFile, ModelConstructors, serialization components
+2. `src/components/CSharpTypeExpression.tsx` — used for scalar type overrides (bytes → BinaryData)
+
+These created two different Alloy refkeys for the same `System.BinaryData` type, causing Alloy's naming policy to disambiguate one as `BinaryData_2`.
+
+### Fix applied
+- Removed the duplicate `SystemBinaryData = createLibrary("System", { BinaryData: ... })` from `CSharpTypeExpression.tsx`
+- Replaced with import of `System` from `../builtins/system.js` (the canonical source)
+- Also removed the alloy-js/csharp built-in System import since our custom System has DateTimeOffset/TimeSpan too
+- Updated `index.ts` to remove the `SystemBinaryData` export
+- Updated test expectations in `bytes_encoding.md` from `BinaryData_2` → `BinaryData`
+- Updated `type-expression.test.tsx` to use `System.BinaryData` instead of `SystemBinaryData.BinaryData`
+
+### Key pattern
+Never create duplicate `createLibrary()` calls for the same namespace+type — they create distinct refkeys that Alloy disambiguates with `_2` suffixes when both appear in the same file scope.
+
+### Files changed
+- `src/components/CSharpTypeExpression.tsx` — removed duplicate library, unified imports
+- `src/components/index.ts` — removed SystemBinaryData export
+- `test/type-expression.test.tsx` — updated test for new import
+- `test/scenarios/encoding/bytes_encoding.md` — fixed BinaryData_2 → BinaryData expectations
+
+### Validation
+- `pnpm build` ✅
+- `pnpm test` ✅ (1078/1078 tests pass)
+- `pnpm lint` ✅

@@ -1850,9 +1850,9 @@ Dynamic model lists use `for` loops with index-based access (not `foreach`) to e
 - Protocol call uses `new BodyType(param1, param2, ...)` constructor with TypeExpression for using directives
 - `buildConvenienceParams` returns `{ params, spreadBodyType }` — `spreadBodyType` is non-null for spread bodies
 
-### BinaryData_2 naming conflict in bytes models
+### BinaryData_2 naming conflict in bytes models (RESOLVED — task 10.1.5a)
 
-When a model has a `bytes` property alongside `_additionalBinaryDataProperties` (which also uses `BinaryData`), the naming policy creates `BinaryData_2` for the bytes-mapped property type. This only affects model files — sub-client method parameters correctly use `BinaryData`. Root cause is likely two different refkeys resolving to the same `BinaryData` type name. Tracked as task 10.1.5a.
+When a model has a `bytes` property alongside `_additionalBinaryDataProperties` (which also uses `BinaryData`), the naming policy was creating `BinaryData_2` for the bytes-mapped property type. Root cause was two separate `createLibrary("System", ...)` calls creating distinct refkeys for the same `BinaryData` type. Fixed by removing the duplicate `SystemBinaryData` library from `CSharpTypeExpression.tsx` and using `System.BinaryData` from `src/builtins/system.ts` everywhere.
 
 ### Array properties use T[] instead of IList<T> in models
 
@@ -1881,3 +1881,15 @@ The C# PascalCase naming policy converts `ISO8601DurationProperty` to `Iso8601Du
 **Key gotcha**: The serialization constructor for derived discriminated models used `buildParameters` (public ctor style) for its own properties in `computeSerializationCtorParams`. After adding IEnumerable to public ctor params, this caused the serialization ctor to also use IEnumerable instead of IList. Fixed by creating `buildPropertyTypeParameters` shared between `buildSerializationParameters` and `computeSerializationCtorParams`.
 
 **Key gotcha**: The `computeSerializationCtorParams` function AND a separate code path in the derived model constructor rendering at line ~799 BOTH call `buildParameters` for own serialization params. Both need updating when changing parameter type rendering.
+
+## Design Decisions
+
+### BinaryData refkey unification (task 10.1.5a)
+
+**Chosen approach**: Remove the duplicate `SystemBinaryData` library declaration from `CSharpTypeExpression.tsx` and use `System.BinaryData` from `src/builtins/system.ts` everywhere.
+**Rejected approach**: Keep both libraries and try to use the same one in ModelFile.tsx — this would require exporting `SystemBinaryData` more widely and doesn't fix the root cause.
+**Why**: The root cause was two `createLibrary("System", ...)` calls defining the same type. Each call creates a distinct refkey. When both refkeys resolve in the same file scope, Alloy's naming policy disambiguates with `_2`. The fix consolidates to a single `createLibrary` call in `src/builtins/system.ts`.
+
+### Critical rule: Never duplicate createLibrary() for the same type
+
+If you need `BinaryData`, `DateTimeOffset`, or any System type in a new component, always import from `src/builtins/system.ts`. Never create a new `createLibrary("System", ...)` call — it creates a separate refkey that Alloy will disambiguate with `_2` suffixes when both appear in the same scope.

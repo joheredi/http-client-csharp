@@ -1,27 +1,13 @@
 import { type Children } from "@alloy-js/core";
-import { createLibrary, Reference } from "@alloy-js/csharp";
-import System from "@alloy-js/csharp/global/System";
+import { Reference } from "@alloy-js/csharp";
 import type { IntrinsicType, Scalar, Union } from "@typespec/compiler";
 import {
   Experimental_ComponentOverrides,
   Experimental_ComponentOverridesConfig,
 } from "@typespec/emitter-framework";
 import { intrinsicNameToCSharpType } from "@typespec/emitter-framework/csharp";
+import { System } from "../builtins/system.js";
 import { efCsharpRefkey } from "../utils/refkey.js";
-
-/**
- * Library declaration for System.BinaryData.
- *
- * BinaryData is not included in the @alloy-js/csharp builtins, so we declare
- * it here. The legacy HTTP client C# emitter maps `bytes` and `unknown` to
- * BinaryData (instead of byte[] and object) because BinaryData provides richer
- * serialization support for binary payloads in the System.ClientModel stack.
- *
- * When referenced in a SourceFile, alloy auto-generates `using System;`.
- */
-export const SystemBinaryData = createLibrary("System", {
-  BinaryData: { kind: "class" as const, members: {} },
-});
 
 /**
  * Map of TypeSpec built-in scalar names to their HTTP client C# type overrides.
@@ -33,12 +19,12 @@ export const SystemBinaryData = createLibrary("System", {
  * Values are either:
  * - String literals for C# keywords (no `using` needed): "long", "double"
  * - Alloy library symbol references for System types (auto-generates `using`):
- *   SystemBinaryData.BinaryData, System.DateTimeOffset, System.TimeSpan
+ *   System.BinaryData, System.DateTimeOffset, System.TimeSpan
  */
 const scalarOverrideMap = new Map<string, Children>([
   // bytes → BinaryData (EF default: byte[])
   // BinaryData provides richer serialization for the SCM pipeline
-  ["bytes", SystemBinaryData.BinaryData],
+  ["bytes", System.BinaryData],
 
   // integer → long (EF default: int)
   // 64-bit safety: the abstract "integer" type should map to the widest safe type
@@ -165,7 +151,7 @@ const csharpTypeOverrides = Experimental_ComponentOverridesConfig()
     reference: (props) => {
       const intrinsic = props.type as IntrinsicType;
       if (intrinsic.name === "unknown") {
-        return SystemBinaryData.BinaryData;
+        return System.BinaryData;
       }
       return props.default;
     },

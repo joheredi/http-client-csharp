@@ -4,10 +4,8 @@ import type { ModelProperty } from "@typespec/compiler";
 import { Output } from "@typespec/emitter-framework";
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import { beforeEach, describe, expect, it } from "vitest";
-import {
-  CSharpScalarOverrides,
-  SystemBinaryData,
-} from "../src/components/CSharpTypeExpression.js";
+import { CSharpScalarOverrides } from "../src/components/CSharpTypeExpression.js";
+import { System } from "../src/builtins/system.js";
 import { ApiTester } from "./test-host.js";
 
 /**
@@ -158,12 +156,15 @@ describe("CSharpScalarOverrides", () => {
 
   describe("BinaryData library declaration", () => {
     /**
-     * Verifies that the SystemBinaryData library is properly declared
-     * and accessible. This is important because BinaryData is not in
+     * Verifies that System.BinaryData from the builtins library is properly
+     * declared and accessible. This is important because BinaryData is not in
      * @alloy-js/csharp builtins and needs a custom library declaration.
+     * Using the single System library from builtins (rather than a separate
+     * SystemBinaryData library) avoids refkey conflicts that cause BinaryData_2
+     * naming in generated model files.
      */
-    it("SystemBinaryData.BinaryData is defined", () => {
-      expect(SystemBinaryData.BinaryData).toBeDefined();
+    it("System.BinaryData is defined", () => {
+      expect(System.BinaryData).toBeDefined();
     });
 
     /**

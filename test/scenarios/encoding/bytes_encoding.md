@@ -76,23 +76,20 @@ public partial class DefaultBytesProperty
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
-        public DefaultBytesProperty(BinaryData_2 value)
+        public DefaultBytesProperty(BinaryData value)
         {
             Argument.AssertNotNull(value, nameof(value));
 
             Value = value;
         }
 
-        internal DefaultBytesProperty(
-            BinaryData_2 value,
-            IDictionary<string, BinaryData> additionalBinaryDataProperties
-        )
+        internal DefaultBytesProperty(BinaryData value, IDictionary<string, BinaryData> additionalBinaryDataProperties)
         {
             Value = value;
             _additionalBinaryDataProperties = additionalBinaryDataProperties;
         }
 
-        public BinaryData_2 Value { get; set; }
+        public BinaryData Value { get; set; }
     }
 ```
 
@@ -102,20 +99,20 @@ public partial class Base64BytesProperty
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
-        public Base64BytesProperty(BinaryData_2 value)
+        public Base64BytesProperty(BinaryData value)
         {
             Argument.AssertNotNull(value, nameof(value));
 
             Value = value;
         }
 
-        internal Base64BytesProperty(BinaryData_2 value, IDictionary<string, BinaryData> additionalBinaryDataProperties)
+        internal Base64BytesProperty(BinaryData value, IDictionary<string, BinaryData> additionalBinaryDataProperties)
         {
             Value = value;
             _additionalBinaryDataProperties = additionalBinaryDataProperties;
         }
 
-        public BinaryData_2 Value { get; set; }
+        public BinaryData Value { get; set; }
     }
 ```
 
@@ -125,7 +122,7 @@ public partial class Base64urlBytesProperty
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
-        public Base64urlBytesProperty(BinaryData_2 value)
+        public Base64urlBytesProperty(BinaryData value)
         {
             Argument.AssertNotNull(value, nameof(value));
 
@@ -133,7 +130,7 @@ public partial class Base64urlBytesProperty
         }
 
         internal Base64urlBytesProperty(
-            BinaryData_2 value,
+            BinaryData value,
             IDictionary<string, BinaryData> additionalBinaryDataProperties
         )
         {
@@ -141,7 +138,7 @@ public partial class Base64urlBytesProperty
             _additionalBinaryDataProperties = additionalBinaryDataProperties;
         }
 
-        public BinaryData_2 Value { get; set; }
+        public BinaryData Value { get; set; }
     }
 ```
 
@@ -151,10 +148,10 @@ public partial class Base64urlArrayBytesProperty
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
-        public Base64urlArrayBytesProperty(IEnumerable<BinaryData_2> value) {}
+        public Base64urlArrayBytesProperty(IEnumerable<BinaryData> value) {}
 
         internal Base64urlArrayBytesProperty(
-            IList<BinaryData_2> value,
+            IList<BinaryData> value,
             IDictionary<string, BinaryData> additionalBinaryDataProperties
         )
         {
@@ -162,7 +159,7 @@ public partial class Base64urlArrayBytesProperty
             _additionalBinaryDataProperties = additionalBinaryDataProperties;
         }
 
-        public IList<BinaryData_2> Value { get; }
+        public IList<BinaryData> Value { get; }
     }
 ```
 

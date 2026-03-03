@@ -3420,7 +3420,7 @@
           "id": "10.1.5a",
           "title": "Fix BinaryData_2 naming conflict in bytes models",
           "description": "When a model has a bytes property and _additionalBinaryDataProperties, the bytes type renders as BinaryData_2 instead of BinaryData due to name conflict. The _additionalBinaryDataProperties field also uses BinaryData (from System), causing the naming policy to disambiguate. Discovered during encoding validation (task 10.1.5). Sub-client method signatures correctly use BinaryData \u2014 only model files are affected.",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "phase": "phase-10"
         },
