@@ -1,4 +1,6 @@
-IMPORTANT: Complete ONE task per loop. After completion, exit the copilot CLI. NEVER work on a second task.
+Read `docs/alloy-csharp-guide.md` before starting any task — it defines the Alloy framework patterns you must follow.
+
+Complete ONE task per loop. After completion, exit the copilot CLI. NEVER work on a second task.
 
 ---
 
@@ -37,7 +39,7 @@ Choose the highest-priority task. **You decide** what has the highest priority �
 
 ## Phase 2: STUDY — Research before coding
 
-Use up to 500 parallel subagents to study the codebase. **Do NOT assume something is not implemented** — always search first using subagents. Think hard.
+Use up to 500 parallel subagents to study the codebase. **Do NOT assume something is not implemented** — always search first using subagents. Think hard about what you find before moving on.
 
 1. Search the codebase for existing implementations related to your task.
 2. Study how the functionality is implemented in the legacy emitter (`submodules/typespec/packages/http-client-csharp`).
@@ -79,11 +81,13 @@ Run validation with a **single subagent** (do not fan out builds/tests to multip
 pnpm build && pnpm test
 ```
 
+### What each validation step catches
+
 - **`pnpm build`** — TypeScript type system catches structural errors before runtime.
 - **`pnpm test`** — vitest assertions verify the emitted C# matches expected output. This is the primary correctness gate.
 - **`pnpm lint`** — ESLint catches code quality regressions. Run when making style-sensitive changes.
 
-If tests unrelated to your work fail, it is **your job** to resolve them as part of this increment of change. **IMPORTANT**: You should think hard when investigating these failures — it is not acceptable to just update the test expectations to make it pass without being 100% certain that it is the correct thing to do
+If tests unrelated to your work fail, it is **your job** to resolve them as part of this increment of change. **IMPORTANT**: You should think hard when investigating these failures — it is not acceptable to just update the test expectations to make it pass without being 100% certain that it is the correct thing to do.
 
 ---
 
@@ -134,3 +138,5 @@ Exit the copilot CLI. If the PRD is complete (no remaining not-started tasks), o
 9999999\. Generated output must NEVER contain `<Unresolved Symbol: refkey[...]>`. If you see this in test output, your change is broken — fix it before committing.
 
 99999999\. When you learn something new about how to build, test, or debug this project — or discover a pattern that works well — update `.github/copilot-instructions.md` via a subagent. Keep updates brief and actionable.
+
+999999999\. If you find test failures BEFORE starting your task, create a task in `docs/prd.json` to track it, commit, and exit. Do not work on anything else.
