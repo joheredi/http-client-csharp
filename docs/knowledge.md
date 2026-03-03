@@ -1790,3 +1790,13 @@ Dynamic model lists use `for` loops with index-based access (not `foreach`) to e
 **Chosen:** Separate `DynamicPropertySerializer.tsx` with string-based helpers
 **Rejected:** Adding `isDynamic` flag to existing `PropertySerializer.tsx` functions
 **Reason:** String-based approach avoids Alloy Babel plugin issues with nested JSX, keeps regular serialization clean, and enables easier testing. The existing PropertySerializer helpers (getWriteMethodInfo, buildGuardCondition, etc.) are reused via imports.
+
+### Task 10.1.8: Server/Endpoint Scenario Validation
+**Chosen:** Scenario markdown tests capturing full emitter output for 3 server scenarios (endpoint-not-defined, path-single, path-multiple)
+**Rejected:** Stub-based comparison against Spector golden files (stubs use `=> throw null` which don't match full emitter output)
+**Reason:** The scenario test framework uses tree-sitter to extract and compare full class declarations. The expected output must match the emitter's actual output, not the Spector stubs.
+
+## Server/Endpoint Generation Notes
+- Non-versioned services use `ClientPipelineOptions` directly in constructors (no custom ClientOptions class generated). Spector golden files have custom `NotDefinedClientOptions`/`SingleClientOptions` extending `ClientPipelineOptions` with empty bodies — this is a known difference.
+- Versioned services (using `@versioned`) correctly generate custom `XxxClientOptions` with `ServiceVersion` enum and version string resolution.
+- The `@server` decorator's path template variables (e.g., `{endpoint}`) map to constructor parameters. The `endpoint: url` type maps to `Uri endpoint` in C#.

@@ -4145,7 +4145,7 @@
           "title": "Validate server and endpoint scenarios",
           "description": "Compare output against Spector server/endpoint golden files. Verify correct endpoint parameter handling, multi-server support, and URL template resolution.",
           "phase": "phase-10",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "3.3.1"
           ],

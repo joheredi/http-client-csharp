@@ -2912,3 +2912,23 @@ All 19 infrastructure components already have comprehensive test coverage:
 - Holistic "Infrastructure files — always generated" suite verifies all 14 always-generated files exist and have auto-generated headers
 
 All 1041 tests pass. Marked as done since acceptance criteria ("All infrastructure file tests pass") is satisfied.
+
+## 2026-03-03 — Task 10.1.8: Validate server and endpoint scenarios
+
+**What was done:**
+- Created scenario test markdown files under `test/scenarios/server/` to validate the emitter's server/endpoint handling:
+  - `endpoint_not_defined.md` — Tests client generation when no `@server` decorator is used. Verifies `Uri endpoint` constructor parameter is automatically added.
+  - `path_single.md` — Tests client generation with `@server("{endpoint}", ...)` single path parameter.
+  - `path_multiple.md` — Tests versioned client with `@server("{endpoint}/server/path/multiple/{apiVersion}", ...)` and `@versioned`. Validates `MultipleClientOptions` with `ServiceVersion` enum.
+- All 3 scenarios (4 test cases total) pass against the emitter's current output.
+- Test count increased from 1041 to 1045.
+
+**Key observations:**
+- Non-versioned services use `ClientPipelineOptions` directly instead of generating a custom `XxxClientOptions` class (differs from Spector golden files which have custom options classes like `NotDefinedClientOptions`).
+- Versioned services correctly generate custom `MultipleClientOptions` with `ServiceVersion` enum.
+- Server path template variables are resolved via `@server` decorator parameters.
+
+**Patterns used:**
+- Followed existing scenario test markdown format: `## TypeSpec` section + `## Clients` section with annotated C# code blocks.
+- Used `Tester.importLibraries().using("TypeSpec.Http")` and `.using("TypeSpec.Versioning")` for versioned scenarios.
+- Verified emitter output against Spector golden files from `submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/server/`.
