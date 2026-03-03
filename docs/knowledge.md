@@ -1953,3 +1953,50 @@ Fix: use `reorderTokenFirst()` from `src/utils/parameter-ordering.ts` after buil
 3. `RestClientFile.tsx` — CreateRequest method params for paging methods
 
 The `getContinuationTokenParamName()` utility extracts the token param name from `pagingMetadata.continuationTokenParameterSegments` (last segment's `name`), respecting the nextLink > continuationToken > single-page precedence.
+
+## Content-Negotiation & Media-Type Gaps vs Legacy Emitter (Task 10.1.9)
+
+The following API surface differences were found comparing our emitter output against the Spector golden files:
+
+### Discrepancy: Sub-client namespace naming
+
+- **Golden file**: `Payload.ContentNegotiation._SameBody` (underscore prefix on sub-client namespaces)
+- **Our output**: `Payload.ContentNegotiation.SameBody` (no underscore prefix)
+- **Location**: Affects all sub-client namespace names (SameBody, DifferentBody, StringBody)
+- **Impact**: Namespace mismatch with legacy emitter's public API surface
+
+### Discrepancy: Binary response convenience method return types
+
+- **Golden file**: `ClientResult<BinaryData> GetAvatarAsPng(CancellationToken)` — wraps binary responses in typed `ClientResult<BinaryData>`
+- **Our output**: `ClientResult GetAvatarAsPng(CancellationToken)` — returns untyped `ClientResult`
+- **Location**: SameBody.GetAvatarAsPng, SameBody.GetAvatarAsJpeg, DifferentBody.GetAvatarAsPng
+- **Root cause**: `ConvenienceMethod.tsx` only wraps model-type responses in `ClientResult<T>`, not scalar types like `bytes`/`BinaryData`
+- **Impact**: Callers must manually extract BinaryData from the response instead of getting typed access
+
+### Discrepancy: String response convenience method return types
+
+- **Golden file**: `ClientResult<string> GetAsText(CancellationToken)` — wraps string responses in typed `ClientResult<string>`
+- **Our output**: `ClientResult GetAsText(CancellationToken)` — returns untyped `ClientResult`
+- **Location**: StringBody.GetAsText, StringBody.GetAsJson
+- **Root cause**: Same as above — only model types get typed `ClientResult<T>`
+- **Impact**: Callers must manually extract string from the response
+
+### Discrepancy: Protocol method options parameter defaults
+
+- **Golden file**: `SendAsText(BinaryContent content, RequestOptions options = null)` — options has `= null` default
+- **Our output**: `SendAsText(BinaryContent content, RequestOptions options)` — no default
+- **Location**: StringBody send operations (SendAsText, SendAsJson)
+- **Impact**: Callers must always provide RequestOptions explicitly
+
+### Discrepancy: Main client constructor signature
+
+- **Golden file**: Uses `ContentNegotiationClientOptions` custom options class, default endpoint `http://localhost:3000`
+- **Our output**: Uses `ClientPipelineOptions` base class, no default endpoint
+- **Location**: ContentNegotiationClient, MediaTypeClient constructors
+- **Impact**: Different client instantiation API
+
+### Bug: Duplicate Accept headers in RestClient
+
+- **Observed**: `CreateGetAsTextRequest` sets `Accept` header twice: `request.Headers.Set("Accept", "text/plain"); request.Headers.Set("Accept", "text/plain");`
+- **Location**: StringBody.RestClient.cs for getAsText and getAsJson operations
+- **Impact**: Redundant header setting, no functional issue since Set() overwrites

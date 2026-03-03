@@ -3215,3 +3215,13 @@ Both scenarios verified against Spector golden files in `submodules/typespec/pac
 - Added unit test in `parameter-ordering.test.ts` (6 tests for the reorder utility)
 - Added integration test in `paging-methods.test.ts` (verifies token comes before header/query params)
 - Pattern: the legacy emitter always puts @continuationToken parameter first, before other query/header params
+
+2026-03-03 — Task 10.1.9: Validate content-negotiation and media-type scenarios (complete)
+- Created 3 scenario test files in test/scenarios/payload/:
+  - content_negotiation_same_body.md — validates SameBody sub-client with binary responses (PNG/JPEG)
+  - content_negotiation_different_body.md — validates DifferentBody sub-client (binary vs model responses)
+  - media_type_string_body.md — validates StringBody sub-client with text/plain and application/json
+- Used SCENARIOS_UPDATE=true to auto-populate expected C# output from emitter
+- Tests validate: main client generation, sub-client accessors, convenience methods, protocol methods, model generation
+- All 1,113 tests pass (7 new scenario snippet tests)
+- Documented API surface gaps vs legacy Spector golden files in knowledge.md
