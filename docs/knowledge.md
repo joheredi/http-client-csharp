@@ -1590,3 +1590,19 @@ The `MultiPartFormDataBinaryContentFile` component uses `useEmitterContext().has
 **Detection**: Use `bodyParam.contentTypes?.includes("multipart/form-data")` via `isMultipartFormData()` helper (defined in both ProtocolMethod.tsx and RestClientFile.tsx).
 
 **Why dynamic**: Multipart Content-Type includes the boundary string generated at runtime by `MultiPartFormDataBinaryContent`. Hardcoding "multipart/form-data" would cause server rejections.
+
+## Async method signature line wrapping
+
+When Alloy generates async C# methods with 3+ parameters, the parameters wrap across multiple lines:
+```csharp
+public virtual async Task<ClientResult> UploadAsync(
+    BinaryContent content,
+    string contentType,
+    RequestOptions options
+)
+```
+In tests, use fragment matching (`toContain("UploadAsync(")`) rather than full single-line signature matching, which will fail due to line breaks.
+
+## detectMultipartOperations must use getAllClients()
+
+The `detectMultipartOperations()` function in `HttpClientCSharpOutput.tsx` must scan ALL clients (root + sub-clients) using `getAllClients()`, not just `sdkPackage.clients` which only contains root-level clients. Sub-clients accessed via `client.children` may have multipart operations that require the `MultiPartFormDataBinaryContent.cs` infrastructure file.

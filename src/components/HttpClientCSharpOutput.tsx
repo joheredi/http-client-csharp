@@ -10,6 +10,7 @@ import {
   EmitterContext,
   type EmitterContextType,
 } from "../contexts/emitter-context.js";
+import { getAllClients } from "../utils/clients.js";
 import type {
   CSharpEmitterOptions,
   ResolvedCSharpEmitterOptions,
@@ -98,7 +99,8 @@ function detectXmlSerialization(
 function detectMultipartOperations(
   sdkContext: SdkContext<CSharpEmitterOptions, SdkHttpOperation>,
 ): boolean {
-  for (const client of sdkContext.sdkPackage.clients) {
+  const allClients = getAllClients(sdkContext.sdkPackage.clients);
+  for (const client of allClients) {
     for (const method of client.methods) {
       if (method.kind === "basic") {
         const httpOp = method.operation;

@@ -2703,3 +2703,26 @@ boundary string (e.g., "multipart/form-data; boundary=abc123"). The boundary is
 generated at runtime by MultiPartFormDataBinaryContent.
 
 All 928 tests pass (8 new).
+
+## 2026-03-03 — Task 9.1.3: Write multipart tests (complete)
+
+### What was done
+Created `test/multipart.test.ts` with 10 integration tests covering end-to-end multipart generation scenarios:
+
+- **Multiple multipart operations** — all ops get `(BinaryContent content, string contentType, RequestOptions options)` signature
+- **Mixed client (multipart + non-multipart)** — only multipart ops get contentType parameter
+- **Infrastructure file for mixed client** — MultiPartFormDataBinaryContent generated when at least one multipart op exists
+- **Mixed RestClient CreateRequest** — multipart uses dynamic contentType, non-multipart uses hardcoded Content-Type
+- **Sub-client multipart operations** — sub-client ops get contentType parameter via interface pattern
+- **Infrastructure file for sub-client-only multipart** — file generated even when only sub-client has multipart
+- **ContentType validation per operation** — AssertNotNullOrEmpty applied to each multipart op independently
+- **ContentType passthrough to CreateRequest** — each protocol method passes contentType to its CreateRequest
+- **Multiple CreateRequest methods** — RestClient generates separate CreateRequest for each multipart op
+- **Body part count transparency** — different multipart body shapes produce same protocol method signature
+
+### Bug fixed
+Fixed `detectMultipartOperations()` in `HttpClientCSharpOutput.tsx` — it only scanned root clients (`sdkPackage.clients`) but missed sub-client methods in `client.children`. Updated to use `getAllClients()` which does BFS traversal. Without this fix, `MultiPartFormDataBinaryContent.cs` was not generated when only a sub-client had multipart operations.
+
+### Testing notes
+- Async method signatures wrap across multiple lines in generated C# — use fragment matching (e.g., `toContain("public virtual async Task<ClientResult> UploadAsync(")`) instead of full signature matching
+- All 938 tests pass (928 baseline + 10 new), build and lint clean
