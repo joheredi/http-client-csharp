@@ -118,6 +118,7 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
       program={context.program}
       options={options}
       sdkContext={sdkContext}
+      packageName={packageName}
     >
       {shouldGenerateProject && (
         <ProjectFile packageName={packageName} options={options} />

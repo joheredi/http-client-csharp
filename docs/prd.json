@@ -306,7 +306,7 @@
           "title": "Create EmitterContext provider",
           "description": "Create an Alloy ComponentContext that carries the resolved emitter options and derived state through the component tree. Components throughout the emitter will use this context to access: the package name, license info, whether XML serialization is needed, whether dynamic models exist, whether multipart operations exist, the TCGC SdkPackage with all clients/models/enums. Use createContext() from @alloy-js/core to create the context, and provide it in the HttpClientCSharpOutput component.",
           "phase": "phase-0",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "0.3.1",
             "0.1.1"

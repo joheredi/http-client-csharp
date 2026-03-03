@@ -1453,3 +1453,13 @@ When generating C# code with `#if NET6_0_OR_GREATER` preprocessor directives ins
 - Plain strings inside `ClassDeclaration` DO get indented by Alloy, which is fine — C# allows indented `#if` directives (e.g., `        #if NET6_0_OR_GREATER`).
 
 See `BinaryContentHelperFile.tsx` for the working pattern vs. the broken `code` block approach.
+
+### EmitterContext follows flight-instructor pattern (Task 0.3.2)
+
+**Chosen approach:** Created `EmitterContext` using `createContext()` from `@alloy-js/core` in `src/contexts/emitter-context.ts`, with a `useEmitterContext()` typed hook that throws if called outside the component tree. Context is provided via `EmitterContext.Provider` inside `HttpClientCSharpOutput`.
+
+**Why:** This matches the RestClientContext pattern in `submodules/flight-instructor/src/csharp/contexts/rest-client-context.ts`. Pre-computing derived state (needsXmlSerialization, hasMultipartOperations) in the root component avoids re-scanning the SdkPackage in every downstream consumer.
+
+**Rejected:** Creating context in `emitter.tsx` and passing as prop — mixes imperative emitter entry point with Alloy component context patterns.
+
+**Gotcha:** Tests using `@route` and `@service` must include `using TypeSpec.Http;` in the TypeSpec code, even when using `HttpTester` (which auto-imports the library). Without it, `@route` produces an `invalid-ref` diagnostic.

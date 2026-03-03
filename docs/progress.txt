@@ -2377,3 +2377,28 @@ Key patterns:
 - Also updated the "generates all helper files" test to include the new files.
 
 Unblocks: 5.1.6 (infrastructure tests), 9.1.1 (multipart support)
+
+2026-03-03 — Task 0.3.2: Create EmitterContext provider (complete)
+
+Created an Alloy ComponentContext that carries resolved emitter options and derived
+state through the component tree. Implementation:
+
+- Created src/contexts/emitter-context.ts with EmitterContextType interface,
+  EmitterContext ComponentContext, and useEmitterContext() typed hook with validation
+- Updated HttpClientCSharpOutput.tsx to:
+  - Accept new packageName prop
+  - Compute derived state (needsXmlSerialization, hasMultipartOperations, hasDynamicModels)
+  - Wrap children in EmitterContext.Provider
+- Updated emitter.tsx to pass packageName to HttpClientCSharpOutput
+- Exported EmitterContext, useEmitterContext, and EmitterContextType from index.ts
+- Added test/emitter-context.test.ts with 4 tests verifying:
+  - Context provided without breaking compilation
+  - Emitted output structure unchanged
+  - Works with full service (models + operations)
+  - Works with enums
+
+Pattern: Follows flight-instructor RestClientContext pattern (createContext + useXxxContext hook).
+Future work: Refactor existing components to consume context via useEmitterContext()
+instead of prop drilling options/packageName (separate task).
+
+Tests: 846 passed, 0 failed. Build and lint clean.
