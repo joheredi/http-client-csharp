@@ -3205,3 +3205,13 @@ Both scenarios verified against Spector golden files in `submodules/typespec/pac
 - Protocol methods unwrap enums to wire types, so string-backed enum → string (reference type, no `?`), int-backed enum → int (value type, gets `?`)
 - Convenience methods keep enums as-is, and enums are value types in C#
 - The type expression modification in buildParams propagates to all consumers: method signatures, CollectionResult fields/constructors, and RestClient CreateRequest params
+
+2026-03-03 — Task 10.1.6.2: Fix continuation token parameter ordering (complete)
+- Created `src/utils/parameter-ordering.ts` with `getContinuationTokenParamName()` and `reorderTokenFirst()` utilities
+- Applied reorder in PagingMethods.tsx (protocol + convenience method signatures and constructor args)
+- Applied reorder in CollectionResultFile.tsx (constructor params, fields, CreateRequest args)
+- Applied reorder in RestClientFile.tsx (CreateRequest method params for paging methods)
+- Updated test scenario `continuation_token_params.md` to expect token-first ordering
+- Added unit test in `parameter-ordering.test.ts` (6 tests for the reorder utility)
+- Added integration test in `paging-methods.test.ts` (verifies token comes before header/query params)
+- Pattern: the legacy emitter always puts @continuationToken parameter first, before other query/header params

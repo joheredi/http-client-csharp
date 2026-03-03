@@ -42,6 +42,7 @@ import { SystemThreadingTasks } from "../../builtins/system-threading.js";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { cleanOperationName } from "../../utils/operation-naming.js";
+import { reorderTokenFirst } from "../../utils/parameter-ordering.js";
 import { buildProtocolParams } from "../clients/ProtocolMethod.js";
 
 /**
@@ -255,10 +256,6 @@ function CollectionResultFile(props: CollectionResultFileProps) {
 
   // Get all operation parameters for continuation-token operations.
   // These are stored as fields and passed to Create{Op}Request on each iteration.
-  const operationParams = hasContinuationToken
-    ? buildProtocolParams(method.operation)
-    : [];
-
   // Identify which operation parameter is the continuation token by matching
   // against the last segment in continuationTokenParameterSegments.
   const tokenParamName = hasContinuationToken
@@ -266,6 +263,11 @@ function CollectionResultFile(props: CollectionResultFileProps) {
         continuationTokenParamSegments!.length - 1
       ].name
     : undefined;
+
+  // Reorder params to put the continuation token first (matching legacy emitter).
+  const operationParams = hasContinuationToken
+    ? reorderTokenFirst(buildProtocolParams(method.operation), tokenParamName)
+    : [];
 
   // Base type: generic for convenience, non-generic for protocol
   const baseType =

@@ -15,6 +15,8 @@ import type {
   SdkHeaderParameter,
   SdkHttpOperation,
   SdkHttpResponse,
+  SdkLroPagingServiceMethod,
+  SdkPagingServiceMethod,
   SdkPathParameter,
   SdkQueryParameter,
   SdkServiceMethod,
@@ -30,6 +32,10 @@ import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { isProtocolParamValueType } from "../../utils/nullable.js";
 import { cleanOperationName } from "../../utils/operation-naming.js";
+import {
+  getContinuationTokenParamName,
+  reorderTokenFirst,
+} from "../../utils/parameter-ordering.js";
 
 /**
  * A unique set of success status codes that needs a PipelineMessageClassifier.
@@ -253,12 +259,24 @@ function CreateRequestMethod(props: CreateRequestMethodProps) {
   const bodyParam = operation.bodyParam;
 
   // Build method parameter list (sorted by convention)
-  const methodParams = buildMethodParams(
+  let methodParams = buildMethodParams(
     pathParams,
     queryParams,
     headerParams,
     bodyParam,
   );
+
+  // For paging methods with continuation tokens, reorder params so the
+  // token comes first in the CreateRequest signature (matching legacy emitter).
+  if (method.kind === "paging" || method.kind === "lropaging") {
+    const pagingMethod = method as
+      | SdkPagingServiceMethod<SdkHttpOperation>
+      | SdkLroPagingServiceMethod<SdkHttpOperation>;
+    const tokenParamName = getContinuationTokenParamName(
+      pagingMethod.pagingMetadata,
+    );
+    methodParams = reorderTokenFirst(methodParams, tokenParamName);
+  }
 
   // Build method body
   const body = buildRequestBody(

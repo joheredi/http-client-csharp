@@ -1942,3 +1942,14 @@ transformed, this heuristic may need adjustment (unlikely since TCGC names are a
 **Protocol vs Convenience distinction**: Protocol methods unwrap enums to wire types (string-backed enum → `string`, which is a reference type and doesn't need `?`). Convenience methods keep enums as-is (always value types in C# → need `?` when optional). Use `isProtocolParamValueType` for protocol context and `isConvenienceParamValueType` for convenience context.
 
 **Propagation**: Modifying the type in `buildProtocolParams` / `buildConvenienceParams` propagates to ALL consumers: method signatures, CollectionResult fields/constructors, and RestClient CreateRequest params.
+
+## Continuation Token Parameter Ordering (Task 10.1.6.2)
+
+The legacy emitter always places the `@continuationToken` parameter first in paging method signatures, before other query/header parameters. Without explicit reordering, the priority-based sorting puts header params before query params (since headers are iterated first), which causes the token (often a query param) to appear after header params.
+
+Fix: use `reorderTokenFirst()` from `src/utils/parameter-ordering.ts` after building params via `buildProtocolParams`/`buildConvenienceParams`/`buildMethodParams`. This must be applied consistently in three places:
+1. `PagingMethods.tsx` — client method signatures and constructor args
+2. `CollectionResultFile.tsx` — collection result constructor params and CreateRequest args
+3. `RestClientFile.tsx` — CreateRequest method params for paging methods
+
+The `getContinuationTokenParamName()` utility extracts the token param name from `pagingMetadata.continuationTokenParameterSegments` (last segment's `name`), respecting the nextLink > continuationToken > single-page precedence.

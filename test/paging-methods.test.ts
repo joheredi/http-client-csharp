@@ -417,4 +417,72 @@ describe("PagingMethods", () => {
     // Should NOT have the raw "List" name
     expect(clientFile).not.toContain("ListThings(RequestOptions");
   });
+
+  /**
+   * Verifies that the continuation token parameter is placed first in paging
+   * method signatures when there are additional header/query parameters.
+   *
+   * The legacy emitter always places the @continuationToken parameter before
+   * other query/header parameters (e.g., `token, foo, bar` not `foo, token, bar`).
+   * This is important because SDK consumers expect a consistent parameter
+   * ordering that matches the Spector golden files. Without this ordering fix,
+   * header parameters would appear before the continuation token due to the
+   * priority-based sorting (headers are iterated before queries at the same
+   * priority level).
+   *
+   * Corresponds to task 10.1.6.2 and Spector scenario
+   * Payload.Pageable.ServerDrivenPagination.ContinuationToken.
+   */
+  it("places continuation token parameter first in method signatures", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Pet {
+        id: string;
+        name: string;
+      }
+
+      model PetPage {
+        @pageItems
+        pets: Pet[];
+
+        @continuationToken
+        nextToken?: string;
+      }
+
+      @route("/pets")
+      @list
+      @get
+      op listPets(@continuationToken @query token?: string, @header foo?: string, @query bar?: string): PetPage;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Protocol method: token must come before foo and bar
+    // (foo is a header param, token/bar are query params; without the fix,
+    // headers would sort before queries and produce foo, token, bar)
+    // Params are on separate lines, so we check parameter order via the
+    // method signature containing token before foo.
+    const protocolSync = clientFile.indexOf("GetPets(");
+    const protocolParams = clientFile.slice(
+      protocolSync,
+      clientFile.indexOf(")", protocolSync) + 1,
+    );
+    const tokenIdx = protocolParams.indexOf("string token");
+    const fooIdx = protocolParams.indexOf("string foo");
+    const barIdx = protocolParams.indexOf("string bar");
+    expect(tokenIdx).toBeLessThan(fooIdx);
+    expect(fooIdx).toBeLessThan(barIdx);
+
+    // Constructor args also pass token first
+    expect(clientFile).toContain("(this, token, foo, bar, options)");
+    expect(clientFile).toContain(
+      "(this, token, foo, bar, cancellationToken.ToRequestOptions())",
+    );
+  });
 });

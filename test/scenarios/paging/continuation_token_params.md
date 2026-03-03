@@ -65,20 +65,20 @@ public partial class ContinuationToken
         /// </item>
         /// </list>
         /// </summary>
-        /// <param name="foo"></param>
         /// <param name="token"></param>
+        /// <param name="foo"></param>
         /// <param name="bar"></param>
         /// <param name="options"> The request options, which can override default behaviors of the client pipeline on a per-call basis. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
         public virtual CollectionResult RequestQueryResponseBody(
-            string foo = default,
             string token = default,
+            string foo = default,
             string bar = default,
             RequestOptions options = null
         )
         {
-            return new ContinuationTokenRequestQueryResponseBodyCollectionResult(this, foo, token, bar, options);
+            return new ContinuationTokenRequestQueryResponseBodyCollectionResult(this, token, foo, bar, options);
         }
 
         /// <summary>
@@ -89,52 +89,52 @@ public partial class ContinuationToken
         /// </item>
         /// </list>
         /// </summary>
-        /// <param name="foo"></param>
         /// <param name="token"></param>
+        /// <param name="foo"></param>
         /// <param name="bar"></param>
         /// <param name="options"> The request options, which can override default behaviors of the client pipeline on a per-call basis. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
         public virtual async AsyncCollectionResult RequestQueryResponseBodyAsync(
-            string foo = default,
             string token = default,
+            string foo = default,
             string bar = default,
             RequestOptions options = null
         )
         {
-            return new ContinuationTokenRequestQueryResponseBodyAsyncCollectionResult(this, foo, token, bar, options);
+            return new ContinuationTokenRequestQueryResponseBodyAsyncCollectionResult(this, token, foo, bar, options);
         }
 
         /// <summary>  </summary>
-        /// <param name="foo"></param>
         /// <param name="token"></param>
+        /// <param name="foo"></param>
         /// <param name="bar"></param>
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         public virtual CollectionResult<Pet> RequestQueryResponseBody(
-            string foo = default,
             string token = default,
+            string foo = default,
             string bar = default,
             CancellationToken cancellationToken = default
         )
         {
-            return new ContinuationTokenRequestQueryResponseBodyCollectionResultOfT(this, foo, token, bar, cancellationToken.ToRequestOptions());
+            return new ContinuationTokenRequestQueryResponseBodyCollectionResultOfT(this, token, foo, bar, cancellationToken.ToRequestOptions());
         }
 
         /// <summary>  </summary>
-        /// <param name="foo"></param>
         /// <param name="token"></param>
+        /// <param name="foo"></param>
         /// <param name="bar"></param>
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         public virtual async AsyncCollectionResult<Pet> RequestQueryResponseBodyAsync(
-            string foo = default,
             string token = default,
+            string foo = default,
             string bar = default,
             CancellationToken cancellationToken = default
         )
         {
-            return new ContinuationTokenRequestQueryResponseBodyAsyncCollectionResultOfT(this, foo, token, bar, cancellationToken.ToRequestOptions());
+            return new ContinuationTokenRequestQueryResponseBodyAsyncCollectionResultOfT(this, token, foo, bar, cancellationToken.ToRequestOptions());
         }
     }
 ```
@@ -148,28 +148,28 @@ Should generate continuation-token collection result that stores all parameters
 internal partial class ContinuationTokenRequestQueryResponseBodyCollectionResult : CollectionResult
     {
         private readonly ContinuationToken _client;
-        private readonly string _foo;
         private readonly string _token;
+        private readonly string _foo;
         private readonly string _bar;
         private readonly RequestOptions _options;
 
         /// <summary> Initializes a new instance of ContinuationTokenRequestQueryResponseBodyCollectionResult, which is used to iterate over the pages of a collection. </summary>
         /// <param name="client"> The ContinuationToken client used to send requests. </param>
-        /// <param name="foo"></param>
         /// <param name="token"></param>
+        /// <param name="foo"></param>
         /// <param name="bar"></param>
         /// <param name="options"> The request options, which can override default behaviors of the client pipeline on a per-call basis. </param>
         public ContinuationTokenRequestQueryResponseBodyCollectionResult(
             ContinuationToken client,
-            string foo,
             string token,
+            string foo,
             string bar,
             RequestOptions options
         )
         {
             _client = client;
-            _foo = foo;
             _token = token;
+            _foo = foo;
             _bar = bar;
             _options = options;
         }
@@ -178,7 +178,7 @@ internal partial class ContinuationTokenRequestQueryResponseBodyCollectionResult
         /// <returns> The raw pages of the collection. </returns>
         public override IEnumerable<ClientResult> GetRawPages()
         {
-            PipelineMessage message = _client.CreateRequestQueryResponseBodyRequest(_foo, _token, _bar, _options);
+            PipelineMessage message = _client.CreateRequestQueryResponseBodyRequest(_token, _foo, _bar, _options);
             string nextToken = null;
             while (true)
             {
@@ -190,7 +190,7 @@ internal partial class ContinuationTokenRequestQueryResponseBodyCollectionResult
                 {
                     yield break;
                 }
-                message = _client.CreateRequestQueryResponseBodyRequest(_foo, nextToken, _bar, _options);
+                message = _client.CreateRequestQueryResponseBodyRequest(nextToken, _foo, _bar, _options);
             }
         }
 
@@ -219,28 +219,28 @@ continuation-token paging with additional parameters.
 internal partial class ContinuationTokenRequestQueryResponseBodyCollectionResultOfT : CollectionResult<Pet>
     {
         private readonly ContinuationToken _client;
-        private readonly string _foo;
         private readonly string _token;
+        private readonly string _foo;
         private readonly string _bar;
         private readonly RequestOptions _options;
 
         /// <summary> Initializes a new instance of ContinuationTokenRequestQueryResponseBodyCollectionResultOfT, which is used to iterate over the pages of a collection. </summary>
         /// <param name="client"> The ContinuationToken client used to send requests. </param>
-        /// <param name="foo"></param>
         /// <param name="token"></param>
+        /// <param name="foo"></param>
         /// <param name="bar"></param>
         /// <param name="options"> The request options, which can override default behaviors of the client pipeline on a per-call basis. </param>
         public ContinuationTokenRequestQueryResponseBodyCollectionResultOfT(
             ContinuationToken client,
-            string foo,
             string token,
+            string foo,
             string bar,
             RequestOptions options
         )
         {
             _client = client;
-            _foo = foo;
             _token = token;
+            _foo = foo;
             _bar = bar;
             _options = options;
         }
@@ -249,7 +249,7 @@ internal partial class ContinuationTokenRequestQueryResponseBodyCollectionResult
         /// <returns> The raw pages of the collection. </returns>
         public override IEnumerable<ClientResult> GetRawPages()
         {
-            PipelineMessage message = _client.CreateRequestQueryResponseBodyRequest(_foo, _token, _bar, _options);
+            PipelineMessage message = _client.CreateRequestQueryResponseBodyRequest(_token, _foo, _bar, _options);
             string nextToken = null;
             while (true)
             {
@@ -261,7 +261,7 @@ internal partial class ContinuationTokenRequestQueryResponseBodyCollectionResult
                 {
                     yield break;
                 }
-                message = _client.CreateRequestQueryResponseBodyRequest(_foo, nextToken, _bar, _options);
+                message = _client.CreateRequestQueryResponseBodyRequest(nextToken, _foo, _bar, _options);
             }
         }
 

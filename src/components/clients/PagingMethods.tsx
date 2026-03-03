@@ -29,6 +29,10 @@ import {
 import { SystemThreading } from "../../builtins/system-threading.js";
 import { cleanOperationName } from "../../utils/operation-naming.js";
 import {
+  getContinuationTokenParamName,
+  reorderTokenFirst,
+} from "../../utils/parameter-ordering.js";
+import {
   buildProtocolParams,
   buildXmlDoc as buildProtocolXmlDoc,
 } from "./ProtocolMethod.js";
@@ -119,6 +123,10 @@ export function PagingMethods(props: PagingMethodsProps) {
         const itemSegments = metadata.pageItemsSegments;
         let itemTypeExpr: Children | undefined;
 
+        // Identify the continuation token parameter name so it can be
+        // placed first in the method signature (matching legacy emitter).
+        const tokenParamName = getContinuationTokenParamName(metadata);
+
         if (itemSegments && itemSegments.length > 0) {
           const lastSegment = itemSegments[itemSegments.length - 1];
           const itemSdkType: SdkType =
@@ -142,6 +150,7 @@ export function PagingMethods(props: PagingMethodsProps) {
             accessProps,
             description,
             operation,
+            tokenParamName,
           ),
         );
 
@@ -156,6 +165,7 @@ export function PagingMethods(props: PagingMethodsProps) {
               description,
               operation,
               itemTypeExpr,
+              tokenParamName,
             ),
           );
         }
@@ -180,8 +190,12 @@ function renderProtocolPagingMethods(
   accessProps: { internal: true } | { public: true },
   description: string,
   operation: SdkHttpOperation,
+  tokenParamName: string | undefined,
 ): Children[] {
-  const params = buildProtocolParams(operation);
+  const params = reorderTokenFirst(
+    buildProtocolParams(operation),
+    tokenParamName,
+  );
   const hasOptionalParams = params.some((p) => p.optional);
   const requiredParams = params.filter((p) => !p.optional);
 
@@ -263,11 +277,13 @@ function renderConveniencePagingMethods(
   description: string,
   operation: SdkHttpOperation,
   itemTypeExpr: Children,
+  tokenParamName: string | undefined,
 ): Children[] {
   const { params } = buildConvenienceParams(operation);
+  const reorderedParams = reorderTokenFirst(params, tokenParamName);
 
   // Build constructor args: this, ...convertedParams, cancellationToken.ToRequestOptions()
-  const convertedArgs = params.map((p) => p.protocolCallArg);
+  const convertedArgs = reorderedParams.map((p) => p.protocolCallArg);
   const constructorArgs = [
     "this",
     ...convertedArgs,
@@ -276,7 +292,7 @@ function renderConveniencePagingMethods(
 
   // Build <Method> parameter props
   const methodParams = [
-    ...params.map((p) => ({
+    ...reorderedParams.map((p) => ({
       name: p.name,
       type: p.type,
       ...(p.optional ? { default: "default" } : {}),
@@ -288,7 +304,7 @@ function renderConveniencePagingMethods(
     },
   ];
 
-  const xmlDoc = buildConvenienceXmlDoc(description, params, []);
+  const xmlDoc = buildConvenienceXmlDoc(description, reorderedParams, []);
 
   // Return types with generic item type
   const syncReturn = code`${SystemClientModel.CollectionResult}<${itemTypeExpr}>`;
