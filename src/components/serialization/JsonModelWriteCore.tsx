@@ -62,7 +62,9 @@ import {
   isBaseDiscriminatorOverride,
   isDerivedDiscriminatedModel,
 } from "../models/ModelConstructors.js";
+import { isDynamicModel } from "../models/DynamicModel.js";
 import { WritePropertySerialization } from "./PropertySerializer.js";
+import { DynamicWritePropertySerialization } from "./DynamicPropertySerializer.js";
 
 /**
  * Props for the {@link JsonModelWriteCore} component.
@@ -107,6 +109,7 @@ export function JsonModelWriteCore(props: JsonModelWriteCoreProps) {
   const namePolicy = useCSharpNamePolicy();
   const modelName = namePolicy.getName(props.type.name, "class");
   const isDerived = shouldOverride(props.type);
+  const isDynamic = isDynamicModel(props.type);
 
   // For derived discriminated models, filter out base discriminator override
   // properties (e.g., kind: "eagle") — they're serialized by the base class's
@@ -127,10 +130,19 @@ export function JsonModelWriteCore(props: JsonModelWriteCoreProps) {
       {code`        throw new ${System.FormatException}($"The model {nameof(${modelName})} does not support writing '{format}' format.");`}
       {"\n    }"}
       {isDerived && "\n    base.JsonModelWriteCore(writer, options);"}
-      {serializableProperties.map((p) => (
-        <WritePropertySerialization property={p} />
-      ))}
-      {props.children}
+      {isDynamic &&
+        "\n#pragma warning disable SCME0001 // Type is for evaluation purposes only and is subject to change or removal in future updates."}
+      {isDynamic
+        ? serializableProperties.map((p) => (
+            <DynamicWritePropertySerialization property={p} />
+          ))
+        : serializableProperties.map((p) => (
+            <WritePropertySerialization property={p} />
+          ))}
+      {isDynamic ? null : props.children}
+      {isDynamic && "\n\n    Patch.WriteTo(writer);"}
+      {isDynamic &&
+        "\n#pragma warning restore SCME0001 // Type is for evaluation purposes only and is subject to change or removal in future updates."}
       {"\n}"}
     </>
   );

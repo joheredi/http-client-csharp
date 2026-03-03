@@ -3771,7 +3771,7 @@
           "title": "Implement patch-aware serialization",
           "description": "Generate serialization with Patch.Contains/IsRemoved checks per property, collection-level removal support, Patch.WriteTo flush. See MrwSerializationTypeDefinition.Dynamic.cs.",
           "phase": "phase-7",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "7.1.1",
             "2.2.1"

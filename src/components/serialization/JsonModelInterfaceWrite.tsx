@@ -31,6 +31,7 @@ import { code } from "@alloy-js/core";
 import type { SdkModelType } from "@azure-tools/typespec-client-generator-core";
 import { SystemClientModelPrimitives } from "../../builtins/system-client-model.js";
 import { SystemTextJson } from "../../builtins/system-text-json.js";
+import { isDynamicModel } from "../models/DynamicModel.js";
 
 /**
  * Props for the {@link JsonModelInterfaceWrite} component.
@@ -58,11 +59,22 @@ export interface JsonModelInterfaceWriteProps {
 export function JsonModelInterfaceWrite(props: JsonModelInterfaceWriteProps) {
   const namePolicy = useCSharpNamePolicy();
   const modelName = namePolicy.getName(props.type.name, "class");
+  const isDynamic = isDynamicModel(props.type);
 
   return (
     <>
       {code`void ${SystemClientModelPrimitives.IJsonModel}<${modelName}>.Write(${SystemTextJson.Utf8JsonWriter} writer, ${SystemClientModelPrimitives.ModelReaderWriterOptions} options)`}
       {"\n{\n"}
+      {isDynamic &&
+        "#pragma warning disable SCME0001 // Type is for evaluation purposes only and is subject to change or removal in future updates.\n"}
+      {isDynamic && '    if (Patch.Contains("$"u8))\n'}
+      {isDynamic && "    {\n"}
+      {isDynamic && '        writer.WriteRawValue(Patch.GetJson("$"u8));\n'}
+      {isDynamic && "        return;\n"}
+      {isDynamic && "    }\n"}
+      {isDynamic &&
+        "#pragma warning restore SCME0001 // Type is for evaluation purposes only and is subject to change or removal in future updates.\n"}
+      {isDynamic && "\n"}
       {"    writer.WriteStartObject();\n"}
       {"    JsonModelWriteCore(writer, options);\n"}
       {"    writer.WriteEndObject();\n"}

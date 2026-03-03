@@ -15,6 +15,7 @@ import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { efCsharpRefkey, unknownModelRefkey } from "../../utils/refkey.js";
 import { isModelAbstract } from "../models/ModelConstructors.js";
+import { isDynamicModel } from "../models/DynamicModel.js";
 
 /**
  * Props for the {@link ModelSerializationFile} component.
@@ -127,6 +128,12 @@ export function ModelSerializationFile(props: ModelSerializationFileProps) {
   // the second declaration with a "_2" suffix.
   const partialName = namekey(modelName, { ignoreNameConflict: true });
 
+  // Dynamic models (JSON Merge Patch) need System.Text for Encoding.UTF8.GetBytes()
+  // used in per-key dictionary patch checks.
+  const additionalUsings = isDynamicModel(props.type)
+    ? ["System.Text"]
+    : undefined;
+
   // Abstract base models with discriminated subtypes need the PersistableModelProxy
   // attribute to tell the framework which concrete type to instantiate when the
   // discriminator value is unrecognized during deserialization.
@@ -140,7 +147,10 @@ export function ModelSerializationFile(props: ModelSerializationFileProps) {
     : undefined;
 
   return (
-    <SourceFile path={`src/Generated/Models/${modelName}.Serialization.cs`}>
+    <SourceFile
+      path={`src/Generated/Models/${modelName}.Serialization.cs`}
+      using={additionalUsings}
+    >
       {header}
       {"\n\n"}
       <Namespace name={props.type.namespace}>

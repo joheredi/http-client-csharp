@@ -1767,7 +1767,26 @@ The legacy emitter generates `using (Stream dataStream = data.ToStream())` for t
 ## Design Decisions
 
 ### Dynamic model structure (Task 7.1.1)
+
 - **Approach chosen**: Separate `DynamicModel.tsx` component with `isDynamicModel()` helper and `DynamicModelMembers` component
 - **Why**: Separates dynamic model concerns from ModelFile.tsx, follows PRD suggestion, easier to test independently
 - **Rejected**: Inline all dynamic model logic in ModelFile.tsx — would increase complexity of an already-complex component
 - **Deferred**: Constructor modification and `_additionalBinaryDataProperties` replacement deferred to task 7.2.1, which updates the serialization code in tandem
+
+## Alloy Babel Plugin JSX Limitation
+The Alloy Babel JSX plugin (`@alloy-js/babel-plugin-jsx-dom-expressions`) crashes with `Cannot read properties of null (reading 'tagName')` when JSX fragments contain deeply nested conditional expressions with `code` template tags. Workaround: use string-array builders in helper functions and return simple JSX from the main component only. This was discovered during DynamicPropertySerializer implementation.
+
+## SourceFile `using` Prop for Explicit Imports
+The `@alloy-js/csharp` `SourceFile` component accepts a `using` prop (string array) for explicitly adding `using` directives without needing refkey references. Example: `<SourceFile path="..." using={["System.Text"]} />`. Use this when the import is needed but the type reference is embedded in preprocessor-conditional blocks or plain strings.
+
+## Dynamic Model Dictionary Serialization Pattern
+Dynamic model dictionaries use a `#if NET8_0_OR_GREATER` optimization for per-key patch checks: `Span<byte>` stackalloc for encoding dictionary keys to UTF-8. The variable naming follows: `buffer`/`bytesWritten`/`patchContains` at depth 0, `buffer0`/`bytesWritten0`/`patchContains0` at depth 1, etc. Inside `#if` blocks, use `global::System.Text.Encoding` (no import needed). Inside `#else` blocks, use `Encoding` (needs `using System.Text;`).
+
+## Dynamic Model List Serialization Pattern  
+Dynamic model lists use `for` loops with index-based access (not `foreach`) to enable per-element `Patch.IsRemoved` checks. Index variables: `i`, `i0`, `i1`, etc. Dynamic model items check `element.Patch.IsRemoved("$"u8)`, primitive items check `Patch.IsRemoved(Encoding.UTF8.GetBytes($"$.path[{i}]"))`. Each collection-level loop ends with `Patch.WriteTo(writer, path)` before `WriteEndArray()`/`WriteEndObject()`.
+
+## Design Decisions
+### Task 7.2.1: Patch-Aware Serialization
+**Chosen:** Separate `DynamicPropertySerializer.tsx` with string-based helpers
+**Rejected:** Adding `isDynamic` flag to existing `PropertySerializer.tsx` functions
+**Reason:** String-based approach avoids Alloy Babel plugin issues with nested JSX, keeps regular serialization clean, and enables easier testing. The existing PropertySerializer helpers (getWriteMethodInfo, buildGuardCondition, etc.) are reused via imports.

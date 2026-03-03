@@ -21,6 +21,8 @@ export type {
 } from "./DeserializeVariableDeclarations.js";
 export { DiscriminatorDeserialization } from "./DiscriminatorDeserialization.js";
 export type { DiscriminatorDeserializationProps } from "./DiscriminatorDeserialization.js";
+export { DynamicWritePropertySerialization } from "./DynamicPropertySerializer.js";
+export type { DynamicWritePropertySerializationProps } from "./DynamicPropertySerializer.js";
 export { JsonDeserialize } from "./JsonDeserialize.js";
 export type { JsonDeserializeProps } from "./JsonDeserialize.js";
 export { JsonModelCreateCore } from "./JsonModelCreateCore.js";

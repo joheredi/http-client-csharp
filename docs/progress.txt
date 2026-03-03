@@ -2868,3 +2868,35 @@ Key learnings:
 - The `Attribute` component strips the `Attribute` suffix from type names (e.g., `JsonIgnoreAttribute` → `[JsonIgnore]`)
 - The `Property` component from `@alloy-js/csharp` does NOT support `ref` return types or expression bodies — use `code` template for these
 - The `Field` component does NOT support `attributes` prop — use standalone `<Attribute>` above the `<Field>` to add attributes
+
+## Task 7.2.1: Implement patch-aware serialization — 2026-03-03
+
+**What was done:**
+- Created `src/components/serialization/DynamicPropertySerializer.tsx` with `DynamicWritePropertySerialization` component that generates patch-aware property serialization for dynamic (JSON Merge Patch) models
+- Modified `src/components/serialization/JsonModelInterfaceWrite.tsx` to add root-level `Patch.Contains("$"u8)` check in `IJsonModel.Write` for dynamic models, with SCME0001 pragma wrapping
+- Modified `src/components/serialization/JsonModelWriteCore.tsx` to use `DynamicWritePropertySerialization` for dynamic models, add `#pragma warning disable/restore SCME0001` wrapping, and `Patch.WriteTo(writer)` at end
+- Modified `src/components/serialization/ModelSerializationFile.tsx` to add `using System.Text;` import for dynamic models
+- Modified `src/emitter.tsx` to skip `AdditionalBinaryDataWrite` for dynamic models (replaced by `Patch.WriteTo`)
+- Created `src/builtins/system-text.ts` with `Encoding` library declaration for `System.Text` namespace
+- Updated `src/builtins/index.ts` and `src/components/serialization/index.ts` with new exports
+- Created `test/dynamic-model-serialization.test.ts` with 9 tests covering: root patch check, required property wrapping, optional property guard, Patch.WriteTo, no additionalBinaryData, regression for non-dynamic, model property, SCME0001 pragma, using System.Text import
+
+**Serialization patterns implemented:**
+- Simple required properties: `if (!Patch.Contains("$.name"u8)) { write }`
+- Optional properties: `if (guard && !Patch.Contains("$.name"u8)) { write }`
+- Required nullable: `!Patch.Contains` wrapper + `else { WriteNull }`
+- Model properties: `!Patch.Contains` wrapper with `WriteObjectValue`
+- Lists/Arrays: Two-branch pattern (Patch.Contains → raw value, else → `for` loop with per-element `Patch.IsRemoved` checks)
+- Dictionaries: `!Patch.Contains` wrapper + per-key `patchContains` checks with `#if NET8_0_OR_GREATER` `Span<byte>` stackalloc optimization
+- Nested collections: Recursive support for list-of-list, dict-of-dict, list-of-dict, dict-of-list
+- `Patch.WriteTo(writer, path)` after each collection serialization
+
+**Key design decisions:**
+- Created separate `DynamicPropertySerializer.tsx` using string-based helpers (not JSX) to avoid Alloy Babel plugin issues with deeply nested JSX fragments
+- The `using System.Text;` import is handled via `SourceFile`'s `using` prop in `ModelSerializationFile.tsx` instead of via refkey references
+- Reuses exported helpers from `PropertySerializer.tsx` (getWriteMethodInfo, buildGuardCondition, etc.)
+- Dynamic model items in lists use `element.Patch.IsRemoved("$"u8)`, primitive items use `Patch.IsRemoved(Encoding.UTF8.GetBytes(path))`
+
+**Known limitations:**
+- BinaryData/unknown type properties are not yet handled in serialization (pre-existing gap)
+- Deserialization changes (data parameter, JsonPatch construction, constructor changes) are separate from this task
