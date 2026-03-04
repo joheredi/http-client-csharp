@@ -30,15 +30,35 @@ export interface ApiKeyAuthInfo {
 }
 
 /**
+ * Information about a single OAuth2 flow extracted from TypeSpec.
+ *
+ * Each flow captures the scopes and optional URLs (authorization, token, refresh)
+ * defined on the TypeSpec OAuth2 flow model. These are used to generate the
+ * `_flows` dictionary entries with `GetTokenOptions` property name keys.
+ */
+export interface OAuth2FlowInfo {
+  /** The authorization scopes required by this flow. */
+  scopes: string[];
+  /** The authorization endpoint URL, if defined by the flow type. */
+  authorizationUrl?: string;
+  /** The token endpoint URL, if defined by the flow type. */
+  tokenUrl?: string;
+  /** The refresh token endpoint URL, if defined by the flow type. */
+  refreshUrl?: string;
+}
+
+/**
  * Information about OAuth2 authentication extracted from TCGC credential parameters.
  *
- * Used by ClientFile to generate the `_tokenProvider` and `AuthorizationScopes`
- * fields on root client classes.
+ * Used by ClientFile to generate the `_tokenProvider` and `_flows`
+ * fields on root client classes. Each flow entry becomes a
+ * `Dictionary<string, object>` in the `_flows` array with
+ * `GetTokenOptions` property name keys for scopes and URLs.
  */
 export interface OAuth2AuthInfo {
   kind: "oauth2";
-  /** The authorization scopes required by the service. */
-  scopes: string[];
+  /** The OAuth2 flows defined by the service, each with scopes and optional URLs. */
+  flows: OAuth2FlowInfo[];
 }
 
 /** Union type representing the supported authentication schemes. */
@@ -112,9 +132,10 @@ function extractAuthFromScheme(scheme: HttpAuth): AuthInfo | undefined {
     }
     case "oauth2": {
       const oauth2Scheme = scheme as Oauth2Auth<OAuth2Flow[]>;
-      const scopes: string[] = [];
-      // Collect scopes from all flows
+      const flows: OAuth2FlowInfo[] = [];
+      // Collect flow metadata from all OAuth2 flows
       for (const flow of oauth2Scheme.flows) {
+        const scopes: string[] = [];
         if (flow.scopes) {
           for (const scope of flow.scopes) {
             if (!scopes.includes(scope.value)) {
@@ -122,10 +143,21 @@ function extractAuthFromScheme(scheme: HttpAuth): AuthInfo | undefined {
             }
           }
         }
+        flows.push({
+          scopes,
+          authorizationUrl:
+            "authorizationUrl" in flow
+              ? (flow.authorizationUrl as string)
+              : undefined,
+          tokenUrl:
+            "tokenUrl" in flow ? (flow.tokenUrl as string) : undefined,
+          refreshUrl:
+            "refreshUrl" in flow ? (flow.refreshUrl as string) : undefined,
+        });
       }
       return {
         kind: "oauth2",
-        scopes,
+        flows,
       };
     }
     case "http": {
@@ -136,7 +168,7 @@ function extractAuthFromScheme(scheme: HttpAuth): AuthInfo | undefined {
       ) {
         return {
           kind: "oauth2",
-          scopes: [],
+          flows: [{ scopes: [] }],
         };
       }
       return undefined;

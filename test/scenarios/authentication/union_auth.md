@@ -41,7 +41,14 @@ public partial class UnionClient
         private readonly ApiKeyCredential _keyCredential;
         private const string AuthorizationHeader = "x-ms-api-key";
         private readonly AuthenticationTokenProvider _tokenProvider;
-        private static readonly string[] AuthorizationScopes = new string[] { "https://security.microsoft.com/.default" };
+        private readonly Dictionary<string, object>[] _flows = new Dictionary<string, object>[]
+        {
+        new Dictionary<string, object>
+        {
+        { GetTokenOptions.ScopesPropertyName, new string[] { "https://security.microsoft.com/.default" } },
+        { GetTokenOptions.AuthorizationUrlPropertyName, "https://login.microsoftonline.com/common/oauth2/authorize" }
+        }
+        };
 
         /// <summary> Initializes a new instance of UnionClient for mocking. </summary>
         protected UnionClient()

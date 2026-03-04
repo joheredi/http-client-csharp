@@ -331,6 +331,43 @@ export const SystemClientModelPrimitives = createLibrary(
     },
 
     /**
+     * Pipeline policy that authenticates requests using a bearer token
+     * obtained from an AuthenticationTokenProvider, with support for
+     * OAuth2 flow metadata via Dictionary<string, object>[] flows.
+     *
+     * Accepts the `_flows` field (Dictionary<string, object>[]) containing
+     * GetTokenOptions metadata (scopes, authorization URL, refresh URL, etc.).
+     * Used in the legacy emitter's OAuth2-authenticated client constructors.
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.primitives.bearertokenpolicy
+     */
+    BearerTokenPolicy: {
+      kind: "class",
+      members: {},
+    },
+
+    /**
+     * Options class for configuring token retrieval in OAuth2 authentication.
+     * Static string property names are used as dictionary keys in the `_flows`
+     * field to identify scopes, authorization URL, token URL, and refresh URL.
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.primitives.gettokenoptions
+     */
+    GetTokenOptions: {
+      kind: "class",
+      members: {
+        /** Key for the scopes array in the flows dictionary. */
+        ScopesPropertyName: { kind: "property" },
+        /** Key for the authorization URL in the flows dictionary. */
+        AuthorizationUrlPropertyName: { kind: "property" },
+        /** Key for the token URL in the flows dictionary. */
+        TokenUrlPropertyName: { kind: "property" },
+        /** Key for the refresh URL in the flows dictionary. */
+        RefreshUrlPropertyName: { kind: "property" },
+      },
+    },
+
+    /**
      * Flags enum that controls how the pipeline handles error responses.
      * Used with RequestOptions.ErrorOptions to suppress automatic exception
      * throwing on non-success status codes.

@@ -257,11 +257,12 @@ describe("ClientFile", () => {
    * Verifies that a root client with OAuth2 authentication generates the
    * correct token provider fields:
    * - `_tokenProvider` (AuthenticationTokenProvider) for managing tokens
-   * - `AuthorizationScopes` (static readonly string[]) for the required scopes
+   * - `_flows` (Dictionary<string, object>[]) for OAuth2 flow metadata
    *
    * This matches the legacy emitter's field pattern for OAuth2-authenticated
    * services. The `using System.ClientModel.Primitives;` directive must be
-   * auto-generated for the AuthenticationTokenProvider type reference.
+   * auto-generated for the AuthenticationTokenProvider and GetTokenOptions
+   * type references, and `using System.Collections.Generic;` for Dictionary.
    */
   it("generates OAuth2 auth fields for root client", async () => {
     const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
@@ -289,13 +290,18 @@ describe("ClientFile", () => {
       "private readonly AuthenticationTokenProvider _tokenProvider;",
     );
 
-    // Verify authorization scopes array
+    // Verify _flows dictionary field with GetTokenOptions metadata
     expect(clientFile).toContain(
-      "private static readonly string[] AuthorizationScopes = new string[]",
+      "private readonly Dictionary<string, object>[] _flows = new Dictionary<string, object>[]",
     );
+    expect(clientFile).toContain("GetTokenOptions.ScopesPropertyName");
+    expect(clientFile).toContain("GetTokenOptions.AuthorizationUrlPropertyName");
+    expect(clientFile).toContain("GetTokenOptions.RefreshUrlPropertyName");
+    expect(clientFile).toContain("GetTokenOptions.TokenUrlPropertyName");
 
-    // Verify using directive for System.ClientModel.Primitives
+    // Verify using directives
     expect(clientFile).toContain("using System.ClientModel.Primitives;");
+    expect(clientFile).toContain("using System.Collections.Generic;");
   });
 
   /**
@@ -618,15 +624,16 @@ describe("ClientFile", () => {
   /**
    * Verifies that a root client with OAuth2 authentication generates
    * constructors that include the token provider parameter and bearer
-   * token auth policy injection.
+   * token policy injection with the _flows dictionary.
    *
    * The constructor must:
    * - Include AuthenticationTokenProvider as a parameter named "tokenProvider"
    * - Validate the tokenProvider parameter
    * - Assign the token provider to _tokenProvider field
-   * - Add BearerTokenAuthenticationPolicy to the pipeline's per-retry policies
+   * - Add BearerTokenPolicy with _flows to the pipeline's per-retry policies
    *
-   * This ensures OAuth2 services can authenticate requests correctly.
+   * This ensures OAuth2 services can authenticate requests correctly
+   * using the full flows dictionary pattern matching the legacy emitter.
    */
   it("generates constructors with OAuth2 auth policy injection", async () => {
     const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
@@ -667,9 +674,9 @@ describe("ClientFile", () => {
     // Token provider field assignment
     expect(clientFile).toContain("_tokenProvider = tokenProvider;");
 
-    // Bearer token auth policy in pipeline creation
+    // Bearer token policy with _flows in pipeline creation
     expect(clientFile).toContain(
-      "new BearerTokenAuthenticationPolicy(_tokenProvider, AuthorizationScopes)",
+      "new BearerTokenPolicy(_tokenProvider, _flows)",
     );
   });
 

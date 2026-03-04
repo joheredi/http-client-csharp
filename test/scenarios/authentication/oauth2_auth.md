@@ -40,7 +40,14 @@ public partial class OAuth2Client
     {
         private readonly Uri _endpoint;
         private readonly AuthenticationTokenProvider _tokenProvider;
-        private static readonly string[] AuthorizationScopes = new string[] { "https://security.microsoft.com/.default" };
+        private readonly Dictionary<string, object>[] _flows = new Dictionary<string, object>[]
+        {
+        new Dictionary<string, object>
+        {
+        { GetTokenOptions.ScopesPropertyName, new string[] { "https://security.microsoft.com/.default" } },
+        { GetTokenOptions.AuthorizationUrlPropertyName, "https://login.microsoftonline.com/common/oauth2/authorize" }
+        }
+        };
 
         /// <summary> Initializes a new instance of OAuth2Client for mocking. </summary>
         protected OAuth2Client()
@@ -70,7 +77,7 @@ public partial class OAuth2Client
 
             _endpoint = endpoint;
             _tokenProvider = tokenProvider;
-            Pipeline = ClientPipeline.Create(options, Array.Empty<PipelinePolicy>(), new PipelinePolicy[] { new UserAgentPolicy(typeof(OAuth2Client).Assembly), new BearerTokenAuthenticationPolicy(_tokenProvider, AuthorizationScopes) }, Array.Empty<PipelinePolicy>());
+            Pipeline = ClientPipeline.Create(options, Array.Empty<PipelinePolicy>(), new PipelinePolicy[] { new UserAgentPolicy(typeof(OAuth2Client).Assembly), new BearerTokenPolicy(_tokenProvider, _flows) }, Array.Empty<PipelinePolicy>());
         }
 
         /// <summary> The HTTP pipeline for sending and receiving REST requests and responses. </summary>

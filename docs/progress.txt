@@ -4155,3 +4155,30 @@ Implemented literal type wrapper struct generation for optional/nullable constan
 - Model serialization code may need updates to handle wrapper struct types during serialization/deserialization (e.g., calling `.ToSerialSingle()` on the wrapper struct)
 - Model constructor parameter types may still use primitive types instead of wrapper struct types
 - The integration test (sample-typespec) should be checked to see if literal type files now match golden output
+
+## 2026-03-04 — Task 13.11: Fix OAuth2 authentication — use flows dictionary pattern (DONE)
+
+**What was done:**
+- Changed OAuth2 authentication from simple `AuthorizationScopes` (string[]) + `BearerTokenAuthenticationPolicy` 
+  to `_flows` (Dictionary<string, object>[]) + `BearerTokenPolicy` pattern matching the legacy emitter.
+- Added `BearerTokenPolicy` and `GetTokenOptions` to SystemClientModelPrimitives library declarations.
+- Updated `OAuth2AuthInfo` to capture full flow metadata (scopes, authorizationUrl, tokenUrl, refreshUrl) 
+  via new `OAuth2FlowInfo` interface.
+- Updated `ClientFile.tsx` to generate the `_flows` field with `GetTokenOptions` property name keys 
+  and `BearerTokenPolicy` in the pipeline.
+- Added `System.Collections.Generic` to SourceFile usings when OAuth2 auth is present.
+
+**Key patterns:**
+- Used JSX fragment `<>{parts}</>` with mixed string and `code` template children for multi-line 
+  dictionary initialization, instead of nesting `code` templates (nesting caused newlines to be lost).
+- The `code` template is used for entries that reference `SCP.GetTokenOptions` to get auto-import of 
+  `System.ClientModel.Primitives`, while plain strings handle newline/formatting.
+
+**Files changed:**
+- src/builtins/system-client-model.ts (added BearerTokenPolicy, GetTokenOptions)
+- src/utils/client-params.ts (added OAuth2FlowInfo, updated OAuth2AuthInfo)
+- src/components/clients/ClientFile.tsx (flows field, BearerTokenPolicy, System.Collections.Generic using)
+- test/scenarios/authentication/oauth2_auth.md, union_auth.md, noauth_union.md (updated expectations)
+- test/client-file.test.ts (updated unit test assertions)
+
+**Unblocks:** Task 13.12 (separate auth constructors per scheme)

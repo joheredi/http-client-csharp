@@ -152,12 +152,20 @@ export function ClientFile(props: ClientFileProps) {
 
   // Add System.Linq when convenience methods use .ToList() for collection params
   // in spread body constructions (e.g., IEnumerable<T> → IList<T> conversion).
-  const additionalUsings = clientNeedsLinq(client)
-    ? ["System.Linq"]
-    : undefined;
+  // Add System.Collections.Generic when OAuth2 auth requires Dictionary<string, object>[] _flows.
+  const additionalUsings: string[] = [];
+  if (clientNeedsLinq(client)) {
+    additionalUsings.push("System.Linq");
+  }
+  if (oauth2Auth) {
+    additionalUsings.push("System.Collections.Generic");
+  }
 
   return (
-    <SourceFile path={`src/Generated/${fileName}.cs`} using={additionalUsings}>
+    <SourceFile
+      path={`src/Generated/${fileName}.cs`}
+      using={additionalUsings.length > 0 ? additionalUsings : undefined}
+    >
       {header}
       {"\n\n"}
       <Namespace name={client.namespace}>
@@ -199,7 +207,7 @@ export function ClientFile(props: ClientFileProps) {
                 type={SystemClientModelPrimitives.AuthenticationTokenProvider}
               />
               {"\n"}
-              {`private static readonly string[] AuthorizationScopes = new string[] { ${oauth2Auth.scopes.map((s) => `"${s}"`).join(", ")} };`}
+              {buildFlowsFieldDeclaration(oauth2Auth)}
             </>
           )}
           {methodParams.map((param) => (
@@ -495,15 +503,75 @@ function buildPipelineCreateLine(
   }
 
   if (oauth2Auth) {
-    return code`Pipeline = ${SCP.ClientPipeline}.Create(options, Array.Empty<${SCP.PipelinePolicy}>(), new ${SCP.PipelinePolicy}[] { ${userAgent}, new ${SCP.BearerTokenAuthenticationPolicy}(_tokenProvider, AuthorizationScopes) }, Array.Empty<${SCP.PipelinePolicy}>());`;
+    return code`Pipeline = ${SCP.ClientPipeline}.Create(options, Array.Empty<${SCP.PipelinePolicy}>(), new ${SCP.PipelinePolicy}[] { ${userAgent}, new ${SCP.BearerTokenPolicy}(_tokenProvider, _flows) }, Array.Empty<${SCP.PipelinePolicy}>());`;
   }
 
   return code`Pipeline = ${SCP.ClientPipeline}.Create(options, Array.Empty<${SCP.PipelinePolicy}>(), new ${SCP.PipelinePolicy}[] { ${userAgent} }, Array.Empty<${SCP.PipelinePolicy}>());`;
 }
 
 /**
- * Props for the {@link SubClientFactoryMethods} component.
+ * Builds the `_flows` field declaration for OAuth2 authentication.
+ *
+ * Generates a `private readonly Dictionary<string, object>[]` field initialized
+ * with one dictionary per OAuth2 flow. Each dictionary contains `GetTokenOptions`
+ * property name keys mapping to scopes, authorization URL, token URL, and/or
+ * refresh URL as defined by the TypeSpec OAuth2 flow model.
+ *
+ * This matches the legacy emitter's `BuildTokenCredentialFlowsField` pattern
+ * from `ClientProvider.cs`.
+ *
+ * @param oauth2Auth - The extracted OAuth2 auth info with flow metadata.
+ * @returns JSX children rendering the complete `_flows` field declaration.
  */
+function buildFlowsFieldDeclaration(oauth2Auth: OAuth2AuthInfo): Children {
+  const SCP = SystemClientModelPrimitives;
+  const parts: Children[] = [];
+
+  parts.push(
+    code`private readonly Dictionary<string, object>[] _flows = new Dictionary<string, object>[] `,
+  );
+  parts.push("\n{\n");
+
+  for (let fi = 0; fi < oauth2Auth.flows.length; fi++) {
+    const flow = oauth2Auth.flows[fi];
+    parts.push("new Dictionary<string, object>\n{\n");
+
+    // Always add scopes entry
+    const scopesList = flow.scopes.map((s) => `"${s}"`).join(", ");
+    parts.push(
+      code`{ ${SCP.GetTokenOptions}.ScopesPropertyName, new string[] { ${scopesList} } }`,
+    );
+
+    // Conditionally add URL entries (only when present in the flow)
+    if (flow.authorizationUrl) {
+      parts.push(",\n");
+      parts.push(
+        code`{ ${SCP.GetTokenOptions}.AuthorizationUrlPropertyName, "${flow.authorizationUrl}" }`,
+      );
+    }
+    if (flow.tokenUrl) {
+      parts.push(",\n");
+      parts.push(
+        code`{ ${SCP.GetTokenOptions}.TokenUrlPropertyName, "${flow.tokenUrl}" }`,
+      );
+    }
+    if (flow.refreshUrl) {
+      parts.push(",\n");
+      parts.push(
+        code`{ ${SCP.GetTokenOptions}.RefreshUrlPropertyName, "${flow.refreshUrl}" }`,
+      );
+    }
+
+    parts.push("\n}");
+    if (fi < oauth2Auth.flows.length - 1) {
+      parts.push(",\n");
+    }
+  }
+
+  parts.push("\n};");
+
+  return <>{parts}</>;
+}
 interface SubClientFactoryMethodsProps {
   /** The child clients for which to generate factory accessor methods. */
   children: SdkClientType<SdkHttpOperation>[];

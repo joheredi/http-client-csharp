@@ -2535,3 +2535,20 @@ Not ALL constant types get wrapper structs. The rules are:
 3. Constant value type is NOT boolean (bool has only 2 values, no extensibility needed)
 
 Required non-nullable literals use raw primitive types with initializers (e.g., `public float Foo { get; } = 1.23F;`).
+
+## Design Decisions — Task 13.11: OAuth2 flows dictionary
+
+**Chosen approach:** Alloy library references + JSX fragment composition
+- Added `BearerTokenPolicy` and `GetTokenOptions` to SystemClientModelPrimitives library for auto-import
+- Used `<>{parts}</>` JSX fragment pattern to compose multi-line dictionary initialization
+- Each dictionary entry uses `code` template for `GetTokenOptions` references, plain strings for formatting
+
+**Rejected approach:** Nested `code` template composition
+- When nesting `code` template results inside outer `code` templates, `\n` newlines between entries 
+  were silently collapsed, producing all entries on a single line
+- Splitting into JSX children (mixed strings + code templates) fixed the newline issue
+
+**Gotcha: Nested code templates lose newlines**
+When building multi-line structures, do NOT use `code\`${codeNode1},\n${codeNode2}\`` — the newlines 
+between interpolated code nodes are lost. Instead, use JSX fragment with alternating string and code 
+children: `<>{"prefix"}{codeNode1}{",\n"}{codeNode2}{"suffix"}</>`.
