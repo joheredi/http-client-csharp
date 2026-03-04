@@ -1021,4 +1021,108 @@ describe("CollectionResultFile", () => {
     expect(content).toContain("else");
     expect(content).toContain("return null;");
   });
+
+  /**
+   * Verifies that when a client is named "ContinuationToken", the generated
+   * collection result files use the fully-qualified name
+   * `global::System.ClientModel.ContinuationToken` for the SCM type to avoid
+   * ambiguity with the client class of the same name. Without this, the C#
+   * compiler resolves `ContinuationToken` to the client class instead of the
+   * SCM ContinuationToken type, causing compile errors in overrides and static calls.
+   */
+  it("uses fully-qualified ContinuationToken when client is named ContinuationToken", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Pet {
+        id: string;
+        name: string;
+      }
+
+      @route("/continuation")
+      namespace ContinuationToken {
+        @route("/list")
+        @list
+        op listItems(@continuationToken @query token?: string): {
+          @pageItems pets: Pet[];
+          @continuationToken nextToken?: string;
+        };
+      }
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    // Find a collection result file with the ContinuationToken conflict
+    const fileName = Object.keys(outputs).find(
+      (k) =>
+        k.includes("CollectionResults/ContinuationToken") &&
+        k.includes("CollectionResult.cs") &&
+        !k.includes("Async") &&
+        !k.includes("OfT"),
+    );
+    expect(fileName).toBeDefined();
+    const content = outputs[fileName!];
+
+    // The class name should use immediate client name (not full hierarchy)
+    expect(content).toContain(
+      "internal partial class ContinuationTokenGetItems",
+    );
+
+    // The return type and static call must use global:: FQN
+    expect(content).toContain(
+      "public override global::System.ClientModel.ContinuationToken GetContinuationToken",
+    );
+    expect(content).toContain(
+      "global::System.ClientModel.ContinuationToken.FromBytes",
+    );
+
+    // The client field should still use the unqualified client class name
+    expect(content).toContain("private readonly ContinuationToken _client;");
+  });
+
+  /**
+   * Verifies that when a client is NOT named "ContinuationToken", the generated
+   * collection result files use the unqualified `ContinuationToken` name
+   * (via the normal Alloy refkey resolution with `using System.ClientModel;`).
+   */
+  it("uses unqualified ContinuationToken when client has no naming conflict", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Thing {
+        name: string;
+      }
+
+      model PageThing {
+        @pageItems items: Thing[];
+        @nextLink nextLink?: url;
+      }
+
+      @route("/things")
+      @list
+      @get
+      op listThings(): PageThing;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const fileName = Object.keys(outputs).find(
+      (k) =>
+        k.includes("CollectionResult.cs") &&
+        !k.includes("Async") &&
+        !k.includes("OfT"),
+    );
+    expect(fileName).toBeDefined();
+    const content = outputs[fileName!];
+
+    // Should use unqualified name (no conflict)
+    expect(content).toContain(
+      "public override ContinuationToken GetContinuationToken",
+    );
+    expect(content).not.toContain("global::System.ClientModel.ContinuationToken");
+  });
 });

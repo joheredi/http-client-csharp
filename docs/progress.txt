@@ -3637,3 +3637,27 @@ Also removed `<EnumMember>` component and replaced with raw text output, since:
 
 **Tests added**: 2 new tests for numeric-starting enum member names in declaration and serialization files.
 **All 65 test files pass (1227 passed, 128 skipped)**
+
+## Task 12.2.11 — Fix pageable collection result types with long names (2026-03-04)
+
+### What was done
+Fixed two bugs in `CollectionResultFile.tsx`:
+
+1. **Class name mismatch**: CollectionResultFile used `getClientFileName()` (full parent hierarchy like
+   `ServerDrivenPaginationContinuationToken`) while PagingMethods used `namePolicy.getName(client.name, "class")`
+   (immediate name like `ContinuationToken`). The `new` instantiation in PagingMethods didn't match the
+   class name in CollectionResultFile. Fixed by aligning CollectionResultFile to use immediate client name.
+
+2. **ContinuationToken type conflict**: When a client is named `ContinuationToken`, C# resolves the
+   unqualified `ContinuationToken` to the client class instead of `System.ClientModel.ContinuationToken`.
+   This causes compile errors in `GetContinuationToken()` return type and `ContinuationToken.FromBytes()`
+   static calls. Fixed by detecting the naming conflict and using `global::System.ClientModel.ContinuationToken`.
+
+### Files modified
+- `src/components/collection-results/CollectionResultFile.tsx` — shorter class names, FQN for ContinuationToken
+- `test/scenarios/paging/continuation_token_params.md` — updated expectations for FQN
+- `test/collection-results.test.ts` — added 2 tests for ContinuationToken conflict detection
+
+### Patterns
+- When a C# client class name collides with an SCM type name, use `global::` fully-qualified names
+- Collection result class names use immediate client name (matching PagingMethods), not full hierarchy

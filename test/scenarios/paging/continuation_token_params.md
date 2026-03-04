@@ -197,12 +197,12 @@ internal partial class ContinuationTokenRequestQueryResponseBodyCollectionResult
         /// <summary> Gets the continuation token from the specified page. </summary>
         /// <param name="page"></param>
         /// <returns> The continuation token for the specified page. </returns>
-        public override ContinuationToken GetContinuationToken(ClientResult page)
+        public override global::System.ClientModel.ContinuationToken GetContinuationToken(ClientResult page)
         {
             string nextPage = ((RequestQueryResponseBodyResponse)page).NextToken;
             if (!string.IsNullOrEmpty(nextPage))
             {
-                return ContinuationToken.FromBytes(BinaryData.FromString(nextPage));
+                return global::System.ClientModel.ContinuationToken.FromBytes(BinaryData.FromString(nextPage));
             }
             else
             {
@@ -268,12 +268,12 @@ internal partial class ContinuationTokenRequestQueryResponseBodyCollectionResult
         /// <summary> Gets the continuation token from the specified page. </summary>
         /// <param name="page"></param>
         /// <returns> The continuation token for the specified page. </returns>
-        public override ContinuationToken GetContinuationToken(ClientResult page)
+        public override global::System.ClientModel.ContinuationToken GetContinuationToken(ClientResult page)
         {
             string nextPage = ((RequestQueryResponseBodyResponse)page).NextToken;
             if (!string.IsNullOrEmpty(nextPage))
             {
-                return ContinuationToken.FromBytes(BinaryData.FromString(nextPage));
+                return global::System.ClientModel.ContinuationToken.FromBytes(BinaryData.FromString(nextPage));
             }
             else
             {

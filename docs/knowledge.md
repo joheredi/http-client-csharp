@@ -2240,3 +2240,18 @@ return namePolicy.getName(rawName, "enum-member");
 ```
 
 Also: the `EnumMember` Alloy component cannot be used for these names because it always applies `pascalCase` internally (via `CSharpSymbol` with `namePolicy`). Raw text output must be used instead. This is safe since no code uses `refkey()` for fixed enum member symbols.
+
+## ContinuationToken naming conflict in collection result files (Task 12.2.11)
+
+When a client is named `ContinuationToken` (e.g., in `Payload.Pageable.ServerDrivenPagination.ContinuationToken`),
+the unqualified `ContinuationToken` in C# resolves to the client class instead of `System.ClientModel.ContinuationToken`.
+This breaks:
+- `GetContinuationToken()` override return type (expects SCM ContinuationToken, gets client class)
+- `ContinuationToken.FromBytes()` static call (method doesn't exist on client class)
+
+**Fix**: CollectionResultFile.tsx detects `clientName === "ContinuationToken"` and uses
+`global::System.ClientModel.ContinuationToken` for the return type and static calls.
+
+**Also**: CollectionResultFile was using `getClientFileName()` (full parent chain) while PagingMethods
+used `namePolicy.getName(client.name, "class")` (immediate name). This caused class name mismatches
+between the `new` expression and the class declaration. Both now use immediate client name.

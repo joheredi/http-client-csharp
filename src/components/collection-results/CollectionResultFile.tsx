@@ -40,7 +40,6 @@ import {
 } from "../../builtins/system-client-model.js";
 import { SystemThreadingTasks } from "../../builtins/system-threading.js";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
-import { getClientFileName } from "../../utils/clients.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { cleanOperationName } from "../../utils/operation-naming.js";
 import { reorderTokenFirst } from "../../utils/parameter-ordering.js";
@@ -148,9 +147,10 @@ interface CollectionResultFileProps {
 function CollectionResultFile(props: CollectionResultFileProps) {
   const { client, method, options, isAsync, isConvenience } = props;
   const namePolicy = useCSharpNamePolicy();
-  const clientName = getClientFileName(client, (name) =>
-    namePolicy.getName(name, "class"),
-  );
+  // Use the immediate client name (not the full hierarchy) to match
+  // PagingMethods.tsx naming. Since collection result classes are internal
+  // and scoped to the client's own namespace, the parent names are redundant.
+  const clientName = namePolicy.getName(client.name, "class");
   const operationName = cleanOperationName(
     namePolicy.getName(method.name, "class"),
   );
@@ -160,6 +160,15 @@ function CollectionResultFile(props: CollectionResultFileProps) {
   let suffix = isAsync ? "AsyncCollectionResult" : "CollectionResult";
   if (isConvenience) suffix += "OfT";
   const className = `${clientName}${operationName}${suffix}`;
+
+  // When the client is named "ContinuationToken", the unqualified name
+  // collides with System.ClientModel.ContinuationToken (used as the return
+  // type of GetContinuationToken and in ContinuationToken.FromBytes calls).
+  // Use the fully-qualified name to avoid the ambiguity.
+  const scmContinuationToken: Children =
+    clientName === "ContinuationToken"
+      ? "global::System.ClientModel.ContinuationToken"
+      : SystemClientModel.ContinuationToken;
 
   // Determine base type reference (sync or async)
   const baseTypeRef = isAsync
@@ -325,15 +334,18 @@ function CollectionResultFile(props: CollectionResultFileProps) {
     ? buildNextLinkGetContinuationTokenBody(
         responseTypeExpr!,
         nextLinkPropertyPath!,
+        scmContinuationToken,
       )
     : hasContinuationToken
       ? isContinuationTokenHeader
         ? buildContinuationTokenHeaderGetContinuationTokenBody(
             continuationTokenHeaderName!,
+            scmContinuationToken,
           )
         : buildContinuationTokenBodyGetContinuationTokenBody(
             responseTypeExpr!,
             continuationTokenPropertyPath!,
+            scmContinuationToken,
           )
       : ["return null;"];
 
@@ -402,7 +414,7 @@ function CollectionResultFile(props: CollectionResultFileProps) {
             public
             override
             name="GetContinuationToken"
-            returns={SystemClientModel.ContinuationToken}
+            returns={scmContinuationToken}
             parameters={[
               {
                 name: "page",
@@ -583,6 +595,7 @@ function buildNextLinkGetRawPagesBody(
 function buildNextLinkGetContinuationTokenBody(
   responseTypeExpr: Children,
   nextLinkPropertyPath: string,
+  scmContinuationToken: Children,
 ): Children[] {
   return [
     code`${System.Uri} nextPage = ((${responseTypeExpr})page).${nextLinkPropertyPath};`,
@@ -591,7 +604,7 @@ function buildNextLinkGetContinuationTokenBody(
     "\n",
     "{",
     "\n",
-    code`    return ${SystemClientModel.ContinuationToken}.FromBytes(${System.BinaryData}.FromString(nextPage.IsAbsoluteUri ? nextPage.AbsoluteUri : nextPage.OriginalString));`,
+    code`    return ${scmContinuationToken}.FromBytes(${System.BinaryData}.FromString(nextPage.IsAbsoluteUri ? nextPage.AbsoluteUri : nextPage.OriginalString));`,
     "\n",
     "}",
     "\n",
@@ -770,6 +783,7 @@ function buildContinuationTokenHeaderGetRawPagesBody(
 function buildContinuationTokenBodyGetContinuationTokenBody(
   responseTypeExpr: Children,
   tokenPropertyPath: string,
+  scmContinuationToken: Children,
 ): Children[] {
   return [
     code`string nextPage = ((${responseTypeExpr})page).${tokenPropertyPath};`,
@@ -778,7 +792,7 @@ function buildContinuationTokenBodyGetContinuationTokenBody(
     "\n",
     "{",
     "\n",
-    code`    return ${SystemClientModel.ContinuationToken}.FromBytes(${System.BinaryData}.FromString(nextPage));`,
+    code`    return ${scmContinuationToken}.FromBytes(${System.BinaryData}.FromString(nextPage));`,
     "\n",
     "}",
     "\n",
@@ -803,13 +817,14 @@ function buildContinuationTokenBodyGetContinuationTokenBody(
  */
 function buildContinuationTokenHeaderGetContinuationTokenBody(
   headerName: string,
+  scmContinuationToken: Children,
 ): Children[] {
   return [
     `if (page.GetRawResponse().Headers.TryGetValue("${headerName}", out string value) && !string.IsNullOrEmpty(value))`,
     "\n",
     "{",
     "\n",
-    code`    return ${SystemClientModel.ContinuationToken}.FromBytes(${System.BinaryData}.FromString(value));`,
+    code`    return ${scmContinuationToken}.FromBytes(${System.BinaryData}.FromString(value));`,
     "\n",
     "}",
     "\n",
