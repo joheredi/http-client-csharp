@@ -97,38 +97,28 @@ describe(
     it.skipIf(!dotnetAvailable)("should build the test project", () => {
       const result = dotnetBuild();
       if (!result.success) {
-        // Log build errors but don't fail — some generated projects may have
-        // emitter bugs. The test runner will skip tests for uncompilable clients.
-        console.warn("dotnet build had errors (expected during development):");
         const errorLines = result.output
           .split("\n")
           .filter((l) => l.includes("error CS"))
           .slice(0, 20);
-        console.warn(errorLines.join("\n"));
-        if (errorLines.length > 20) {
-          console.warn(`... and more errors`);
-        }
+        const summary = errorLines.join("\n");
+        const suffix = errorLines.length >= 20 ? "\n... and more errors" : "";
+        expect.unreachable(
+          `dotnet build failed:\n${summary}${suffix}`,
+        );
       }
     });
 
     it.skipIf(!dotnetAvailable)(
       "should run Spector tests against the mock server",
       () => {
-        // First ensure build is attempted (even with errors)
-        dotnetBuild();
-
         const result = dotnetTest();
         console.log("\n=== Spector E2E Test Results ===");
         console.log(result.output);
 
-        if (!result.success) {
-          console.warn(
-            "Some Spector tests failed. This is expected during development.",
-          );
-          console.warn(
-            "Review the output above to see which tests passed/failed/skipped.",
-          );
-        }
+        expect(result.success, `dotnet test failed:\n${result.output}`).toBe(
+          true,
+        );
       },
     );
   },
