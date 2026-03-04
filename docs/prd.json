@@ -4947,7 +4947,7 @@
           "title": "Add missing XML documentation on client constructors and fields",
           "description": "Golden client files have XML doc comments on private fields, constructors, and factory methods that the new emitter omits:\n\n```csharp\n/// <summary> A credential used to authenticate to the service. </summary>\nprivate readonly ApiKeyCredential _keyCredential;\n\n/// <summary> A credential provider used to authenticate to the service. </summary>\nprivate readonly AuthenticationTokenProvider _tokenProvider;\n\n/// <summary> The OAuth2 flows supported by the service. </summary>\nprivate readonly Dictionary<string, object>[] _flows = ...;\n\n/// <exception cref=\"ArgumentNullException\"> <paramref name=\"endpoint\"/> or <paramref name=\"credential\"/> is null. </exception>\npublic SampleTypeSpecClient(Uri endpoint, ApiKeyCredential credential)\n```\n\nAffects: SampleTypeSpecClient.cs, all sub-client files (AnimalOperations.cs, etc.). When in doubt, the legacy output wins.",
           "phase": "phase-13",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],

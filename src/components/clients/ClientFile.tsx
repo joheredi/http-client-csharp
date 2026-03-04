@@ -181,6 +181,8 @@ export function ClientFile(props: ClientFileProps) {
           {apiKeyAuth && (
             <>
               {"\n"}
+              {`/// <summary> A credential used to authenticate to the service. </summary>`}
+              {"\n"}
               <Field
                 private
                 readonly
@@ -200,12 +202,16 @@ export function ClientFile(props: ClientFileProps) {
           {oauth2Auth && (
             <>
               {"\n"}
+              {`/// <summary> A credential provider used to authenticate to the service. </summary>`}
+              {"\n"}
               <Field
                 private
                 readonly
                 name="tokenProvider"
                 type={SystemClientModelPrimitives.AuthenticationTokenProvider}
               />
+              {"\n"}
+              {`/// <summary> The OAuth2 flows supported by the service. </summary>`}
               {"\n"}
               {buildFlowsFieldDeclaration(oauth2Auth)}
             </>
@@ -458,6 +464,14 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
         // Only the first auth scheme gets a secondary (convenience) constructor
         const isFirst = index === 0;
 
+        // Build exception doc tag listing all AssertNotNull'd parameters
+        const assertableParamNames = [
+          "endpoint",
+          ...(scheme.authParam ? [scheme.authParam.name] : []),
+          ...nonApiVersionParams.map((p) => p.name),
+        ];
+        const exceptionDoc = buildExceptionDoc(assertableParamNames);
+
         return (
           <>
             {isFirst && (
@@ -478,6 +492,12 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
                     {doc}
                   </>
                 ))}
+                {exceptionDoc && (
+                  <>
+                    {"\n"}
+                    {exceptionDoc}
+                  </>
+                )}
                 {"\n"}
                 <OverloadConstructor
                   public
@@ -504,6 +524,12 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
             ))}
             {"\n"}
             {`/// <param name="options"> The options for configuring the client. </param>`}
+            {exceptionDoc && (
+              <>
+                {"\n"}
+                {exceptionDoc}
+              </>
+            )}
             {"\n"}
             <OverloadConstructor public parameters={primaryParams}>
               {renderPrimaryBody(scheme)}
@@ -513,6 +539,27 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
       })}
     </>
   );
+}
+
+/**
+ * Builds an `<exception cref="ArgumentNullException">` XML doc tag listing the
+ * given parameter names. Returns an empty string if no names are provided.
+ *
+ * Each parameter is wrapped in `<paramref name="..." />` and joined with " or ".
+ * This matches the golden file pattern:
+ * ```xml
+ * /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> or <paramref name="credential"/> is null. </exception>
+ * ```
+ *
+ * @param paramNames - Names of parameters that are validated with Argument.AssertNotNull.
+ * @returns The formatted exception doc comment string, or empty string if no params.
+ */
+function buildExceptionDoc(paramNames: string[]): string {
+  if (paramNames.length === 0) return "";
+  const refs = paramNames
+    .map((n) => `<paramref name="${n}"/>`)
+    .join(" or ");
+  return `/// <exception cref="ArgumentNullException"> ${refs} is null. </exception>`;
 }
 
 /**

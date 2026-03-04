@@ -54,6 +54,7 @@ public partial class MultipleClient
 
         /// <summary> Initializes a new instance of MultipleClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
+        /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> is null. </exception>
         public MultipleClient(Uri endpoint) : this(endpoint, new MultipleClientOptions())
         {
         }
@@ -61,6 +62,7 @@ public partial class MultipleClient
         /// <summary> Initializes a new instance of MultipleClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
         /// <param name="options"> The options for configuring the client. </param>
+        /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> is null. </exception>
         public MultipleClient(Uri endpoint, MultipleClientOptions options)
         {
             Argument.AssertNotNull(endpoint, nameof(endpoint));

@@ -40,6 +40,7 @@ public partial class TestServiceClient
 
         /// <summary> Initializes a new instance of TestServiceClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
+        /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> is null. </exception>
         public TestServiceClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions())
         {
         }
@@ -47,6 +48,7 @@ public partial class TestServiceClient
         /// <summary> Initializes a new instance of TestServiceClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
         /// <param name="options"> The options for configuring the client. </param>
+        /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> is null. </exception>
         public TestServiceClient(Uri endpoint, ClientPipelineOptions options)
         {
             Argument.AssertNotNull(endpoint, nameof(endpoint));

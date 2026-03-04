@@ -4196,3 +4196,30 @@ Key changes:
 - **`test/client-file.test.ts`**: Added new test `generates separate constructors per auth scheme for multi-auth clients` that verifies each constructor body is independent (no cross-contamination of auth fields/policies).
 
 Pattern: `buildPipelineCreateLine` already handled individual auth schemes — the fix was in how `RootClientConstructors` composes the constructors.
+
+## Task 13.7: Add missing XML documentation on client constructors and fields (2026-03-04)
+
+### What was done
+- Added `/// <summary>` doc comments on auth credential fields in `ClientFile.tsx`:
+  - `_keyCredential`: "A credential used to authenticate to the service."
+  - `_tokenProvider`: "A credential provider used to authenticate to the service."
+  - `_flows`: "The OAuth2 flows supported by the service."
+- Added `/// <exception cref="ArgumentNullException">` tags on all root client public constructors
+  - Both secondary (convenience) and primary constructors get the tag
+  - Exception tag lists all `Argument.AssertNotNull`'d params joined with " or "
+  - Per auth scheme: API key uses "endpoint or credential", OAuth2 uses "endpoint or tokenProvider"
+  - No-auth uses just "endpoint"
+- Created `buildExceptionDoc()` helper function in `ClientFile.tsx`
+- Added 6 new unit tests in `client-file.test.ts` covering field docs and exception tags
+- Auto-updated 17 scenario baselines using `SCENARIOS_UPDATE=true`
+
+### Patterns used
+- Raw string XML doc comments (consistent with existing codebase pattern, NOT DocComment JSX component)
+- `buildExceptionDoc()` mirrors `buildConvenienceXmlDoc()` pattern from ConvenienceMethod.tsx
+- Exception doc only appears when there are assertable params (always true since endpoint is always present)
+
+### Notes for next person
+- `_endpoint` field intentionally has NO doc comment (matches golden files)
+- The `AuthorizationHeader` and `AuthorizationApiKeyPrefix` const fields have no doc comments (matches golden)
+- Sub-client constructors don't have exception tags (they don't call Argument.AssertNotNull)
+- All 1,411 tests pass (1,283 passed + 128 skipped)

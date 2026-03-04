@@ -50,6 +50,7 @@ public partial class BodyOptionalityClient
 
         /// <summary> Initializes a new instance of BodyOptionalityClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
+        /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> is null. </exception>
         public BodyOptionalityClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions())
         {
         }
@@ -57,6 +58,7 @@ public partial class BodyOptionalityClient
         /// <summary> Initializes a new instance of BodyOptionalityClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
         /// <param name="options"> The options for configuring the client. </param>
+        /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> is null. </exception>
         public BodyOptionalityClient(Uri endpoint, ClientPipelineOptions options)
         {
             Argument.AssertNotNull(endpoint, nameof(endpoint));

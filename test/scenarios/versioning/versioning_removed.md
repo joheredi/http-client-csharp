@@ -231,6 +231,7 @@ public partial class RemovedClient
 
         /// <summary> Initializes a new instance of RemovedClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
+        /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> is null. </exception>
         public RemovedClient(Uri endpoint) : this(endpoint, new RemovedClientOptions())
         {
         }
@@ -238,6 +239,7 @@ public partial class RemovedClient
         /// <summary> Initializes a new instance of RemovedClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
         /// <param name="options"> The options for configuring the client. </param>
+        /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> is null. </exception>
         public RemovedClient(Uri endpoint, RemovedClientOptions options)
         {
             Argument.AssertNotNull(endpoint, nameof(endpoint));

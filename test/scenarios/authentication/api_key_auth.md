@@ -32,6 +32,7 @@ accepting ApiKeyCredential, and both convenience and protocol methods.
 public partial class ApiKeyClient
     {
         private readonly Uri _endpoint;
+        /// <summary> A credential used to authenticate to the service. </summary>
         private readonly ApiKeyCredential _keyCredential;
         private const string AuthorizationHeader = "x-ms-api-key";
 
@@ -43,6 +44,7 @@ public partial class ApiKeyClient
         /// <summary> Initializes a new instance of ApiKeyClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
         /// <param name="credential"> A credential used to authenticate to the service. </param>
+        /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> or <paramref name="credential"/> is null. </exception>
         public ApiKeyClient(
             Uri endpoint,
             ApiKeyCredential credential
@@ -54,6 +56,7 @@ public partial class ApiKeyClient
         /// <param name="endpoint"> Service endpoint. </param>
         /// <param name="credential"> A credential used to authenticate to the service. </param>
         /// <param name="options"> The options for configuring the client. </param>
+        /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> or <paramref name="credential"/> is null. </exception>
         public ApiKeyClient(Uri endpoint, ApiKeyCredential credential, ClientPipelineOptions options)
         {
             Argument.AssertNotNull(endpoint, nameof(endpoint));

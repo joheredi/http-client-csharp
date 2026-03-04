@@ -38,9 +38,12 @@ with separate constructors per auth scheme.
 public partial class UnionClient
     {
         private readonly Uri _endpoint;
+        /// <summary> A credential used to authenticate to the service. </summary>
         private readonly ApiKeyCredential _keyCredential;
         private const string AuthorizationHeader = "x-ms-api-key";
+        /// <summary> A credential provider used to authenticate to the service. </summary>
         private readonly AuthenticationTokenProvider _tokenProvider;
+        /// <summary> The OAuth2 flows supported by the service. </summary>
         private readonly Dictionary<string, object>[] _flows = new Dictionary<string, object>[]
         {
         new Dictionary<string, object>
@@ -58,6 +61,7 @@ public partial class UnionClient
         /// <summary> Initializes a new instance of UnionClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
         /// <param name="credential"> A credential used to authenticate to the service. </param>
+        /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> or <paramref name="credential"/> is null. </exception>
         public UnionClient(
             Uri endpoint,
             ApiKeyCredential credential
@@ -69,6 +73,7 @@ public partial class UnionClient
         /// <param name="endpoint"> Service endpoint. </param>
         /// <param name="credential"> A credential used to authenticate to the service. </param>
         /// <param name="options"> The options for configuring the client. </param>
+        /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> or <paramref name="credential"/> is null. </exception>
         public UnionClient(Uri endpoint, ApiKeyCredential credential, ClientPipelineOptions options)
         {
             Argument.AssertNotNull(endpoint, nameof(endpoint));
@@ -85,6 +90,7 @@ public partial class UnionClient
         /// <param name="endpoint"> Service endpoint. </param>
         /// <param name="tokenProvider"> A token provider used to authenticate to the service. </param>
         /// <param name="options"> The options for configuring the client. </param>
+        /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> or <paramref name="tokenProvider"/> is null. </exception>
         public UnionClient(Uri endpoint, AuthenticationTokenProvider tokenProvider, ClientPipelineOptions options)
         {
             Argument.AssertNotNull(endpoint, nameof(endpoint));

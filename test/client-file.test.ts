@@ -1362,4 +1362,257 @@ describe("ClientFile", () => {
     expect(clientFile).toBeDefined();
     expect(clientFile).not.toContain("using System.Linq;");
   });
+
+  /**
+   * Verifies that the API key credential field has an XML doc comment matching
+   * the golden SampleTypeSpecClient.cs pattern.
+   *
+   * The golden file shows:
+   * ```csharp
+   * /// <summary> A credential used to authenticate to the service. </summary>
+   * private readonly ApiKeyCredential _keyCredential;
+   * ```
+   *
+   * This is important because SDK consumers reading the source code or
+   * IntelliSense should see documentation on credential fields explaining
+   * their purpose.
+   */
+  it("generates XML doc comment on API key credential field", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @useAuth(ApiKeyAuth<ApiKeyLocation.header, "x-api-key">)
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op testOp(): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Verify doc comment appears before the credential field
+    expect(clientFile).toContain(
+      "/// <summary> A credential used to authenticate to the service. </summary>",
+    );
+
+    // Verify ordering: doc comment immediately precedes the field
+    const docIdx = clientFile.indexOf(
+      "/// <summary> A credential used to authenticate to the service. </summary>",
+    );
+    const fieldIdx = clientFile.indexOf(
+      "private readonly ApiKeyCredential _keyCredential;",
+    );
+    expect(docIdx).toBeGreaterThan(-1);
+    expect(fieldIdx).toBeGreaterThan(-1);
+    expect(docIdx).toBeLessThan(fieldIdx);
+  });
+
+  /**
+   * Verifies that OAuth2 token provider and flows fields have XML doc comments
+   * matching the golden SampleTypeSpecClient.cs pattern.
+   *
+   * The golden file shows:
+   * ```csharp
+   * /// <summary> A credential provider used to authenticate to the service. </summary>
+   * private readonly AuthenticationTokenProvider _tokenProvider;
+   * /// <summary> The OAuth2 flows supported by the service. </summary>
+   * private readonly Dictionary<string, object>[] _flows = ...
+   * ```
+   *
+   * This ensures OAuth2 auth fields are properly documented for consumers.
+   */
+  it("generates XML doc comments on OAuth2 auth fields", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @useAuth(OAuth2Auth<[{
+        type: OAuth2FlowType.implicit,
+        authorizationUrl: "https://login.example.com/authorize",
+        refreshUrl: "https://login.example.com/refresh",
+        tokenUrl: "https://login.example.com/token"
+      }]>)
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op testOp(): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Verify token provider doc comment
+    expect(clientFile).toContain(
+      "/// <summary> A credential provider used to authenticate to the service. </summary>",
+    );
+
+    // Verify flows doc comment
+    expect(clientFile).toContain(
+      "/// <summary> The OAuth2 flows supported by the service. </summary>",
+    );
+
+    // Verify ordering: tokenProvider doc before field, flows doc before flows field
+    const tokenDocIdx = clientFile.indexOf(
+      "A credential provider used to authenticate",
+    );
+    const tokenFieldIdx = clientFile.indexOf(
+      "private readonly AuthenticationTokenProvider _tokenProvider;",
+    );
+    const flowsDocIdx = clientFile.indexOf(
+      "The OAuth2 flows supported by the service",
+    );
+    const flowsFieldIdx = clientFile.indexOf(
+      "private readonly Dictionary<string, object>[] _flows",
+    );
+
+    expect(tokenDocIdx).toBeLessThan(tokenFieldIdx);
+    expect(flowsDocIdx).toBeLessThan(flowsFieldIdx);
+    expect(tokenFieldIdx).toBeLessThan(flowsDocIdx);
+  });
+
+  /**
+   * Verifies that root client constructors include `<exception>` XML doc tags
+   * listing the parameters that are validated with Argument.AssertNotNull.
+   *
+   * The golden SampleTypeSpecClient.cs shows:
+   * ```csharp
+   * /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> or <paramref name="credential"/> is null. </exception>
+   * ```
+   *
+   * This is important because:
+   * - It documents the contract for consumers (which params must not be null)
+   * - It matches the legacy emitter's output exactly
+   * - IDE tooling surfaces these tags to help consumers avoid NullReferenceException
+   */
+  it("generates exception doc tags on root client constructors with API key auth", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @useAuth(ApiKeyAuth<ApiKeyLocation.header, "x-api-key">)
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op testOp(): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Both secondary and primary constructors should have exception tags
+    const exceptionTag =
+      '/// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> or <paramref name="credential"/> is null. </exception>';
+
+    // Should appear at least twice (once for secondary, once for primary constructor)
+    const firstIdx = clientFile.indexOf(exceptionTag);
+    const secondIdx = clientFile.indexOf(exceptionTag, firstIdx + 1);
+    expect(firstIdx).toBeGreaterThan(-1);
+    expect(secondIdx).toBeGreaterThan(-1);
+  });
+
+  /**
+   * Verifies that root client constructors with no auth still generate
+   * exception doc tags for the endpoint parameter.
+   *
+   * Even without auth, the endpoint is always validated with AssertNotNull,
+   * so the exception tag should document that.
+   */
+  it("generates exception doc tags on root client constructors without auth", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op testOp(): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Exception tag should list only endpoint when no auth
+    expect(clientFile).toContain(
+      '/// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> is null. </exception>',
+    );
+  });
+
+  /**
+   * Verifies that constructors with OAuth2 auth generate exception tags
+   * referencing the tokenProvider parameter.
+   *
+   * The golden pattern for OAuth2 constructors is:
+   * ```csharp
+   * /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> or <paramref name="tokenProvider"/> is null. </exception>
+   * ```
+   */
+  it("generates exception doc tags on OAuth2 constructors", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @useAuth(OAuth2Auth<[{
+        type: OAuth2FlowType.implicit,
+        authorizationUrl: "https://login.example.com/authorize",
+        scopes: ["read"]
+      }]>)
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op testOp(): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // OAuth2 constructor exception tag uses tokenProvider
+    expect(clientFile).toContain(
+      '/// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> or <paramref name="tokenProvider"/> is null. </exception>',
+    );
+  });
+
+  /**
+   * Verifies that multi-auth clients generate separate exception tags per
+   * auth scheme constructor, each listing only its own auth parameter.
+   *
+   * API key constructor: endpoint or credential
+   * OAuth2 constructor: endpoint or tokenProvider
+   */
+  it("generates per-auth-scheme exception doc tags on multi-auth clients", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @useAuth(ApiKeyAuth<ApiKeyLocation.header, "x-api-key"> | OAuth2Auth<[{
+        type: OAuth2FlowType.implicit,
+        authorizationUrl: "https://login.example.com/authorize",
+        scopes: ["read"]
+      }]>)
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op testOp(): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // API key constructors: endpoint or credential
+    expect(clientFile).toContain(
+      '<paramref name="endpoint"/> or <paramref name="credential"/> is null.',
+    );
+
+    // OAuth2 constructor: endpoint or tokenProvider
+    expect(clientFile).toContain(
+      '<paramref name="endpoint"/> or <paramref name="tokenProvider"/> is null.',
+    );
+  });
 });
