@@ -117,7 +117,7 @@ describe("DeserializeReturnStatement", () => {
     expect(diagnostics).toHaveLength(0);
 
     const dogFileKey = Object.keys(outputs).find((k) =>
-      k.includes("Dog.Serialization.cs"),
+      k.endsWith("/Dog.Serialization.cs"),
     );
     expect(dogFileKey).toBeDefined();
     const dogContent = outputs[dogFileKey!];
@@ -162,7 +162,7 @@ describe("DeserializeReturnStatement", () => {
     expect(diagnostics).toHaveLength(0);
 
     const petFileKey = Object.keys(outputs).find((k) =>
-      k.includes("Pet.Serialization.cs"),
+      k.endsWith("/Pet.Serialization.cs"),
     );
     expect(petFileKey).toBeDefined();
     const petContent = outputs[petFileKey!];

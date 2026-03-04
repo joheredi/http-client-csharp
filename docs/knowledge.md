@@ -2394,3 +2394,17 @@ The Spector golden file `DaysOfWeekEnum.cs` does NOT have an enum-level `/// <su
 
 ### Custom code namespace pattern
 When a user writes `[CodeGenType("ModelName")]` in a custom partial class with a different namespace, the generated model must adopt that namespace so both partial class halves can merge. This is how the legacy emitter supports placing models in sub-namespaces like `Models.Custom`.
+
+## Unknown Discriminator Serialization Patterns
+
+### Babel Plugin Crash: Large Conditional JSX Children
+When a ClassDeclaration has many `{condition && code\`...\`}` children (50+), the Alloy Babel JSX plugin may crash with "Cannot read properties of null (reading 'tagName')". Fix: build children imperatively with `const classBody: Children[] = []; classBody.push(...)` and render as `{classBody}`.
+
+### efCsharpRefkey Does NOT Work for Primitive Types
+`efCsharpRefkey(rawType)` only resolves types that have a ClassDeclaration/EnumDeclaration with a matching refkey. For primitive/scalar types (string, int, bool), it produces `<Unresolved Symbol>`. Always use `<TypeExpression type={rawType} />` for rendering C# types in generated code.
+
+### Test File Key Matching: Use endsWith with Slash
+Tests that use `k.includes("Model.Serialization.cs")` will also match `UnknownModel.Serialization.cs`. Fix: use `k.endsWith("/Model.Serialization.cs")` to ensure exact model name matching. Apply this pattern to any test checking discriminated base model files.
+
+### Unknown Model Interface Pattern
+Unknown discriminator serialization files implement `IJsonModel<BaseType>` (not `IJsonModel<UnknownType>`). All method signatures (IPersistableModel cast, nameof, Deserialize calls) reference the **base type name**, not the unknown type. Only the class name, DeserializeUnknown method, and constructor call reference the unknown name.

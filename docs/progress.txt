@@ -3898,3 +3898,28 @@ Component-level namespace override was chosen over emitter-level mutation becaus
 - `src/components/models/ModelFile.tsx` — Uses `effectiveNamespace` from custom code
 - `src/components/serialization/ModelSerializationFile.tsx` — Same namespace override logic
 - `test/custom-code.test.ts` — 4 new unit tests for `getCustomNamespace()`
+
+## 2026-03-04 — Task 13.21: Generate missing Unknown discriminator serialization files (complete)
+
+**What was done:**
+- Created `src/components/serialization/UnknownDiscriminatorModelSerializationFile.tsx` — a new component that generates `.Serialization.cs` files for Unknown discriminator variant models (e.g., `UnknownPet.Serialization.cs`)
+- Added the component to `src/emitter.tsx` alongside `UnknownDiscriminatorModelFile`
+- Fixed test file key matching in 4 test files to use `k.endsWith("/ModelName.Serialization.cs")` instead of `k.includes("ModelName.Serialization.cs")` to avoid matching Unknown variant files
+- Added 8 new unit tests covering: file generation, class declaration, deserialization constructor, PersistableModelCreateCore, JsonModelWriteCore, explicit interface methods, DeserializeUnknown method, and intermediate model casts
+
+**Key patterns used:**
+- Imperative array building for ClassDeclaration children to avoid Babel JSX plugin crashes with large conditional child lists
+- `namekey(unknownName, { ignoreNameConflict: true })` for partial class naming
+- `computeVariableInfos()` from DeserializeVariableDeclarations for variable ordering
+- `PropertyMatchingLoop` component reused for property matching in the Deserialize method
+- `TypeExpression` for rendering C# type names in variable declarations (efCsharpRefkey doesn't work for primitive types)
+- Sub-component `UnknownDeserializeVariables` to properly handle JSX rendering of TypeExpression within fragments
+
+**Design decisions:**
+- Standalone component (not modifying existing serialization components) because Unknown model serialization differs significantly: interfaces use BASE type, PersistableModelCreateCore calls base's Deserialize, JsonModelWriteCore only delegates to base
+- Discriminator variables initialized to `"unknown"` (not default) in the DeserializeUnknown method
+- Cast logic: root models (base=root) need no cast; intermediate models (base≠root) need `(UnknownXxx)` cast on interface Create methods
+
+**Notes for next iteration:**
+- XML serialization for Unknown models not yet implemented (only JSON) — may be needed for models with XML usage
+- The `endsWith("/Model.Serialization.cs")` fix should be applied to any future test that looks up discriminated base model serialization files

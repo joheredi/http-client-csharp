@@ -50,6 +50,7 @@ import {
 import { ModelFile } from "./components/models/ModelFile.js";
 import { UnknownDiscriminatorModelFile } from "./components/models/UnknownDiscriminatorModel.js";
 import { AdditionalBinaryDataRead } from "./components/serialization/AdditionalBinaryDataRead.js";
+import { UnknownDiscriminatorModelSerializationFile } from "./components/serialization/UnknownDiscriminatorModelSerializationFile.js";
 import { AdditionalBinaryDataWrite } from "./components/serialization/AdditionalBinaryDataWrite.js";
 import { DynamicPatchRead } from "./components/serialization/DynamicPatchRead.js";
 import {
@@ -250,6 +251,14 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
           .filter((m) => hasDiscriminatedSubtypes(m))
           .map((m) => (
             <UnknownDiscriminatorModelFile type={m} options={options} />
+          ))}
+        {models
+          .filter((m) => hasDiscriminatedSubtypes(m))
+          .map((m) => (
+            <UnknownDiscriminatorModelSerializationFile
+              type={m}
+              options={options}
+            />
           ))}
         {models.map((m) => {
           const supportsJson = (m.usage & UsageFlags.Json) !== 0;

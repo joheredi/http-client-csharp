@@ -203,7 +203,7 @@ describe("ModelSerializationFile", () => {
     expect(diagnostics).toHaveLength(0);
 
     const dogFileKey = Object.keys(outputs).find((k) =>
-      k.includes("Dog.Serialization.cs"),
+      k.endsWith("/Dog.Serialization.cs"),
     );
     expect(dogFileKey).toBeDefined();
     const dogContent = outputs[dogFileKey!];
@@ -244,7 +244,7 @@ describe("ModelSerializationFile", () => {
     expect(diagnostics).toHaveLength(0);
 
     const petFileKey = Object.keys(outputs).find((k) =>
-      k.includes("Pet.Serialization.cs"),
+      k.endsWith("/Pet.Serialization.cs"),
     );
     expect(petFileKey).toBeDefined();
     const petContent = outputs[petFileKey!];
@@ -294,13 +294,13 @@ describe("ModelSerializationFile", () => {
 
     // All three models should have serialization files
     expect(
-      serializationFiles.some((k) => k.includes("Pet.Serialization.cs")),
+      serializationFiles.some((k) => k.endsWith("/Pet.Serialization.cs")),
     ).toBe(true);
     expect(
-      serializationFiles.some((k) => k.includes("Dog.Serialization.cs")),
+      serializationFiles.some((k) => k.endsWith("/Dog.Serialization.cs")),
     ).toBe(true);
     expect(
-      serializationFiles.some((k) => k.includes("Cat.Serialization.cs")),
+      serializationFiles.some((k) => k.endsWith("/Cat.Serialization.cs")),
     ).toBe(true);
   });
 
@@ -432,7 +432,7 @@ describe("ModelSerializationFile", () => {
     expect(diagnostics).toHaveLength(0);
 
     const petFileKey = Object.keys(outputs).find((k) =>
-      k.includes("Pet.Serialization.cs"),
+      k.endsWith("/Pet.Serialization.cs"),
     );
     expect(petFileKey).toBeDefined();
     const petContent = outputs[petFileKey!];
@@ -477,7 +477,7 @@ describe("ModelSerializationFile", () => {
     `);
 
     const catFileKey = Object.keys(outputs).find((k) =>
-      k.includes("Cat.Serialization.cs"),
+      k.endsWith("/Cat.Serialization.cs"),
     );
     expect(catFileKey).toBeDefined();
     const catContent = outputs[catFileKey!];
@@ -670,7 +670,7 @@ describe("DeserializationConstructor", () => {
     expect(diagnostics).toHaveLength(0);
 
     const dogFileKey = Object.keys(outputs).find((k) =>
-      k.includes("Dog.Serialization.cs"),
+      k.endsWith("/Dog.Serialization.cs"),
     );
     const dogContent = outputs[dogFileKey!];
 
@@ -711,7 +711,7 @@ describe("DeserializationConstructor", () => {
     expect(diagnostics).toHaveLength(0);
 
     const dogFileKey = Object.keys(outputs).find((k) =>
-      k.includes("Dog.Serialization.cs"),
+      k.endsWith("/Dog.Serialization.cs"),
     );
     const dogContent = outputs[dogFileKey!];
 
@@ -751,7 +751,7 @@ describe("DeserializationConstructor", () => {
     expect(diagnostics).toHaveLength(0);
 
     const petFileKey = Object.keys(outputs).find((k) =>
-      k.includes("Pet.Serialization.cs"),
+      k.endsWith("/Pet.Serialization.cs"),
     );
     const petContent = outputs[petFileKey!];
 
@@ -921,7 +921,7 @@ describe("JsonModelWriteCore", () => {
     expect(diagnostics).toHaveLength(0);
 
     const dogFileKey = Object.keys(outputs).find((k) =>
-      k.includes("Dog.Serialization.cs"),
+      k.endsWith("/Dog.Serialization.cs"),
     );
     const dogContent = outputs[dogFileKey!];
 
@@ -961,7 +961,7 @@ describe("JsonModelWriteCore", () => {
     expect(diagnostics).toHaveLength(0);
 
     const dogFileKey = Object.keys(outputs).find((k) =>
-      k.includes("Dog.Serialization.cs"),
+      k.endsWith("/Dog.Serialization.cs"),
     );
     const dogContent = outputs[dogFileKey!];
 
@@ -1089,7 +1089,7 @@ describe("JsonModelWriteCore", () => {
 
     // Pet should reference IPersistableModel<Pet>
     const petFileKey = Object.keys(outputs).find((k) =>
-      k.includes("Pet.Serialization.cs"),
+      k.endsWith("/Pet.Serialization.cs"),
     );
     const petContent = outputs[petFileKey!];
     expect(petContent).toContain("(IPersistableModel<Pet>)this");
@@ -1097,7 +1097,7 @@ describe("JsonModelWriteCore", () => {
 
     // Dog should reference IPersistableModel<Dog>
     const dogFileKey = Object.keys(outputs).find((k) =>
-      k.includes("Dog.Serialization.cs"),
+      k.endsWith("/Dog.Serialization.cs"),
     );
     const dogContent = outputs[dogFileKey!];
     expect(dogContent).toContain("(IPersistableModel<Dog>)this");
@@ -1134,7 +1134,7 @@ describe("JsonModelWriteCore", () => {
     expect(diagnostics).toHaveLength(0);
 
     const petFileKey = Object.keys(outputs).find((k) =>
-      k.includes("Pet.Serialization.cs"),
+      k.endsWith("/Pet.Serialization.cs"),
     );
     const petContent = outputs[petFileKey!];
 
@@ -1176,7 +1176,7 @@ describe("JsonModelWriteCore", () => {
 
     // Animal (root) should be virtual
     const animalKey = Object.keys(outputs).find((k) =>
-      k.includes("Animal.Serialization.cs"),
+      k.endsWith("/Animal.Serialization.cs"),
     );
     const animalContent = outputs[animalKey!];
     expect(animalContent).toMatch(
@@ -1185,7 +1185,7 @@ describe("JsonModelWriteCore", () => {
 
     // Pet (derived) should be override with base call
     const petKey = Object.keys(outputs).find((k) =>
-      k.includes("Pet.Serialization.cs"),
+      k.endsWith("/Pet.Serialization.cs"),
     );
     const petContent = outputs[petKey!];
     expect(petContent).toMatch(
@@ -1477,7 +1477,7 @@ describe("PropertySerialization", () => {
 
     // Dog should serialize its own property (breed) but NOT the base discriminator override (kind: "dog")
     const dogFileKey = Object.keys(outputs).find((k) =>
-      k.includes("Dog.Serialization.cs"),
+      k.endsWith("/Dog.Serialization.cs"),
     );
     const dogContent = outputs[dogFileKey!];
 
@@ -1488,7 +1488,7 @@ describe("PropertySerialization", () => {
 
     // Pet (base) should serialize both kind and name
     const petFileKey = Object.keys(outputs).find((k) =>
-      k.includes("Pet.Serialization.cs"),
+      k.endsWith("/Pet.Serialization.cs"),
     );
     const petContent = outputs[petFileKey!];
 
@@ -3004,7 +3004,7 @@ describe("JsonDeserialize", () => {
 
     // Check base model
     const petFile = Object.keys(outputs).find((k) =>
-      k.includes("Pet.Serialization.cs"),
+      k.endsWith("/Pet.Serialization.cs"),
     );
     expect(petFile).toBeDefined();
     const petContent = outputs[petFile!];
@@ -3014,7 +3014,7 @@ describe("JsonDeserialize", () => {
 
     // Check derived model
     const dogFile = Object.keys(outputs).find((k) =>
-      k.includes("Dog.Serialization.cs"),
+      k.endsWith("/Dog.Serialization.cs"),
     );
     expect(dogFile).toBeDefined();
     const dogContent = outputs[dogFile!];
@@ -3139,7 +3139,7 @@ describe("JsonDeserialize", () => {
     expect(diagnostics).toHaveLength(0);
 
     const petFile = Object.keys(outputs).find((k) =>
-      k.includes("Pet.Serialization.cs"),
+      k.endsWith("/Pet.Serialization.cs"),
     );
     expect(petFile).toBeDefined();
     const petContent = outputs[petFile!];
@@ -3257,7 +3257,7 @@ describe("JsonDeserialize", () => {
     expect(diagnostics).toHaveLength(0);
 
     const dogFile = Object.keys(outputs).find((k) =>
-      k.includes("Dog.Serialization.cs"),
+      k.endsWith("/Dog.Serialization.cs"),
     );
     expect(dogFile).toBeDefined();
     const dogContent = outputs[dogFile!];
@@ -3407,7 +3407,7 @@ describe("DeserializeVariableDeclarations", () => {
     expect(diagnostics).toHaveLength(0);
 
     const dogFile = Object.keys(outputs).find((k) =>
-      k.includes("Dog.Serialization.cs"),
+      k.endsWith("/Dog.Serialization.cs"),
     );
     expect(dogFile).toBeDefined();
     const dogContent = outputs[dogFile!];
@@ -3457,7 +3457,7 @@ describe("DeserializeVariableDeclarations", () => {
     expect(diagnostics).toHaveLength(0);
 
     const petFile = Object.keys(outputs).find((k) =>
-      k.endsWith("Pet.Serialization.cs"),
+      k.endsWith("/Pet.Serialization.cs"),
     );
     expect(petFile).toBeDefined();
     const petContent = outputs[petFile!];
@@ -3547,7 +3547,7 @@ describe("DeserializeVariableDeclarations", () => {
     expect(diagnostics).toHaveLength(0);
 
     const dogFile = Object.keys(outputs).find((k) =>
-      k.includes("Dog.Serialization.cs"),
+      k.endsWith("/Dog.Serialization.cs"),
     );
     const dogContent = outputs[dogFile!];
 
@@ -4882,7 +4882,7 @@ describe("PropertyMatchingLoop", () => {
     expect(diagnostics).toHaveLength(0);
 
     const fileKey = Object.keys(outputs).find((k) =>
-      k.includes("Dog.Serialization.cs"),
+      k.endsWith("/Dog.Serialization.cs"),
     );
     expect(fileKey).toBeDefined();
     const content = outputs[fileKey!];
@@ -5047,7 +5047,7 @@ describe("PropertyMatchingLoop", () => {
 
     // Check the base model's serialization file
     const petKey = Object.keys(outputs).find((k) =>
-      k.includes("Pet.Serialization.cs"),
+      k.endsWith("/Pet.Serialization.cs"),
     );
     expect(petKey).toBeDefined();
     const petContent = outputs[petKey!];
@@ -6497,6 +6497,369 @@ describe("AdditionalBinaryDataRead", () => {
     // BinaryData.FromString preserves raw JSON text for round-trip fidelity
     expect(content).toMatch(
       /additionalBinaryDataProperties\.Add\(prop\.Name,\s*BinaryData\.FromString\(prop\.Value\.GetRawText\(\)\)\)/,
+    );
+  });
+});
+
+/**
+ * Tests for the UnknownDiscriminatorModelSerializationFile component.
+ *
+ * These tests verify that the emitter generates `.Serialization.cs` partial class
+ * files for Unknown discriminator variants (e.g., `UnknownPet.Serialization.cs`).
+ * These files are critical for polymorphic deserialization: when a discriminator
+ * value is not recognized, the Unknown variant must be able to serialize/deserialize
+ * the payload for round-trip fidelity.
+ *
+ * The tests validate:
+ * - File generation at the correct path
+ * - Class declaration with base type and IJsonModel<BaseType> interface
+ * - Override methods (PersistableModelCreateCore, JsonModelWriteCore, etc.)
+ * - Explicit interface implementations for IPersistableModel<BaseType>
+ * - The DeserializeUnknownXxx static method with "unknown" discriminator init
+ * - Cast behavior for intermediate vs root base models
+ */
+describe("UnknownDiscriminatorModelSerializationFile", () => {
+  /**
+   * Validates that an Unknown discriminator serialization file is generated
+   * at the correct path for each abstract discriminated base model.
+   */
+  it("generates serialization file for unknown discriminator model", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Dog extends Pet {
+        kind: "dog";
+        breed: string;
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("UnknownPet.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+  });
+
+  /**
+   * Validates the class declaration inherits from the base type and
+   * implements IJsonModel<BaseType> (not IJsonModel<UnknownBaseType>).
+   */
+  it("declares class with base type and IJsonModel interface", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Dog extends Pet {
+        kind: "dog";
+        breed: string;
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("UnknownPet.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Must inherit from base and implement IJsonModel<BaseType>
+    expect(content).toMatch(
+      /internal\s+partial\s+class\s+UnknownPet\s*:\s*Pet\s*,\s*IJsonModel<Pet>/,
+    );
+  });
+
+  /**
+   * Validates that the deserialization constructor is generated with
+   * the correct XML doc comment referencing the Unknown type.
+   */
+  it("generates deserialization constructor", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Dog extends Pet {
+        kind: "dog";
+        breed: string;
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("UnknownPet.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain(
+      '/// <summary> Initializes a new instance of <see cref="UnknownPet"/> for deserialization. </summary>',
+    );
+    expect(content).toContain("internal UnknownPet()");
+  });
+
+  /**
+   * Validates that PersistableModelCreateCore uses the base type name for
+   * IPersistableModel cast and Deserialize method call. The return type
+   * must be the root model type (for override compatibility).
+   */
+  it("generates PersistableModelCreateCore calling base Deserialize", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Dog extends Pet {
+        kind: "dog";
+        breed: string;
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("UnknownPet.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Must override and return root type (Pet is root here)
+    expect(content).toContain(
+      "protected override Pet PersistableModelCreateCore(BinaryData data, ModelReaderWriterOptions options)",
+    );
+    // Must use base type for IPersistableModel cast
+    expect(content).toContain("((IPersistableModel<Pet>)this)");
+    // Must call base type's Deserialize, not UnknownPet's
+    expect(content).toContain(
+      "return DeserializePet(document.RootElement, options);",
+    );
+  });
+
+  /**
+   * Validates that JsonModelWriteCore just delegates to base without
+   * serializing any own properties (Unknown model has no own props).
+   */
+  it("generates JsonModelWriteCore that delegates to base", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Dog extends Pet {
+        kind: "dog";
+        breed: string;
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("UnknownPet.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    expect(content).toContain(
+      "protected override void JsonModelWriteCore(Utf8JsonWriter writer, ModelReaderWriterOptions options)",
+    );
+    expect(content).toContain("base.JsonModelWriteCore(writer, options);");
+  });
+
+  /**
+   * Validates that the explicit interface implementations use the base type
+   * (e.g., IPersistableModel<Pet>) not the Unknown type.
+   */
+  it("generates explicit interface methods for base type", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Dog extends Pet {
+        kind: "dog";
+        breed: string;
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("UnknownPet.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Interface methods should be for Pet, not UnknownPet
+    expect(content).toContain("BinaryData IPersistableModel<Pet>.Write(");
+    expect(content).toContain("Pet IPersistableModel<Pet>.Create(");
+    expect(content).toContain(
+      "string IPersistableModel<Pet>.GetFormatFromOptions(",
+    );
+    expect(content).toContain("void IJsonModel<Pet>.Write(");
+    expect(content).toContain("Pet IJsonModel<Pet>.Create(");
+  });
+
+  /**
+   * Validates that the DeserializeUnknownXxx method initializes the
+   * discriminator variable to "unknown" instead of a specific value.
+   */
+  it("generates DeserializeUnknown method with unknown discriminator init", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Dog extends Pet {
+        kind: "dog";
+        breed: string;
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("UnknownPet.Serialization.cs"),
+    );
+    const content = outputs[fileKey!];
+
+    // Method signature returns the Unknown type
+    expect(content).toContain(
+      "internal static UnknownPet DeserializeUnknownPet(JsonElement element, ModelReaderWriterOptions options)",
+    );
+    // Discriminator must be "unknown"
+    expect(content).toContain('string kind = "unknown";');
+    // Other properties use default
+    expect(content).toContain("string name = default;");
+    // Must have property matching loop
+    expect(content).toContain('if (prop.NameEquals("kind"u8))');
+    expect(content).toContain('if (prop.NameEquals("name"u8))');
+    // Must return new UnknownPet(...)
+    expect(content).toContain("return new UnknownPet(");
+  });
+
+  /**
+   * For intermediate models (not the root), the explicit interface Create
+   * methods need a cast because PersistableModelCreateCore returns the root
+   * type, but the interface expects the intermediate type.
+   */
+  it("adds cast for intermediate base models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Fish {
+        kind: string;
+        age: int32;
+      }
+
+      @discriminator("sharktype")
+      model Shark extends Fish {
+        kind: "shark";
+        sharktype: string;
+      }
+
+      model SawShark extends Shark {
+        sharktype: "sawshark";
+      }
+
+      @route("/test")
+      op test(): Fish;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("UnknownShark.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+    const content = outputs[fileKey!];
+
+    // Return type should be root (Fish), not intermediate (Shark)
+    expect(content).toContain(
+      "protected override Fish PersistableModelCreateCore(",
+    );
+
+    // IPersistableModel<Shark>.Create needs cast to UnknownShark
+    expect(content).toContain(
+      "(UnknownShark)PersistableModelCreateCore(data, options)",
+    );
+
+    // IJsonModel<Shark>.Create needs cast to UnknownShark
+    expect(content).toContain(
+      "(UnknownShark)JsonModelCreateCore(ref reader, options)",
     );
   });
 });

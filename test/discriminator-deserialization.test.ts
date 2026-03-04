@@ -64,7 +64,7 @@ describe("DiscriminatorDeserialization", () => {
     expect(diagnostics).toHaveLength(0);
 
     const petFile = Object.keys(outputs).find((k) =>
-      k.includes("Pet.Serialization.cs"),
+      k.endsWith("/Pet.Serialization.cs"),
     );
     expect(petFile).toBeDefined();
     const petContent = outputs[petFile!];
@@ -148,7 +148,7 @@ describe("DiscriminatorDeserialization", () => {
     expect(diagnostics).toHaveLength(0);
 
     const catFile = Object.keys(outputs).find((k) =>
-      k.includes("Cat.Serialization.cs"),
+      k.endsWith("/Cat.Serialization.cs"),
     );
     expect(catFile).toBeDefined();
     const catContent = outputs[catFile!];
@@ -218,7 +218,7 @@ describe("DiscriminatorDeserialization", () => {
     expect(diagnostics).toHaveLength(0);
 
     const fishFile = Object.keys(outputs).find((k) =>
-      k.includes("Fish.Serialization.cs"),
+      k.endsWith("/Fish.Serialization.cs"),
     );
     expect(fishFile).toBeDefined();
     const fishContent = outputs[fishFile!];
@@ -296,7 +296,7 @@ describe("DiscriminatorDeserialization", () => {
     expect(diagnostics).toHaveLength(0);
 
     const sharkFile = Object.keys(outputs).find((k) =>
-      k.includes("Shark.Serialization.cs"),
+      k.endsWith("/Shark.Serialization.cs"),
     );
     expect(sharkFile).toBeDefined();
     const sharkContent = outputs[sharkFile!];

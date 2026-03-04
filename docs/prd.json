@@ -5274,7 +5274,7 @@
           "title": "Generate missing Unknown discriminator serialization files",
           "description": "The new emitter generates Unknown discriminator model declarations (UnknownAnimal.cs, UnknownPet.cs, UnknownPlant.cs) but does NOT generate their serialization files:\n\n- Models/UnknownAnimal.Serialization.cs\n- Models/UnknownPet.Serialization.cs\n- Models/UnknownPlant.Serialization.cs\n\nThese serialization files implement IJsonModel<BaseType> for the unknown variant:\n```csharp\ninternal partial class UnknownAnimal : Animal, IJsonModel<Animal>\n{\n    protected override Animal PersistableModelCreateCore(...)\n    {\n        // Delegates to DeserializeAnimal()\n    }\n    // IPersistableModel interface methods with casts:\n    // (UnknownAnimal)PersistableModelCreateCore(...)\n}\n```\n\nUnknownPlant also supports XML serialization (both J and X format cases). The serialization code follows the same pattern as base model serialization but overrides CreateCore/WriteCore. When in doubt, the legacy output wins.",
           "phase": "phase-13",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],
