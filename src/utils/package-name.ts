@@ -1,4 +1,7 @@
-import type { SdkContext } from "@azure-tools/typespec-client-generator-core";
+import type {
+  SdkContext,
+  SdkModelType,
+} from "@azure-tools/typespec-client-generator-core";
 
 /**
  * C# reserved words and common type names that conflict when used as namespace segments.
@@ -111,4 +114,60 @@ export function resolveRootNamespace(sdkContext: SdkContext): string {
   }
 
   return "UnknownPackage";
+}
+
+/**
+ * Ensures all models have non-empty namespace strings.
+ *
+ * TCGC sometimes returns an empty `namespace` for anonymous request models
+ * synthesized from spread operations with mixed HTTP decorators (e.g., when
+ * an operation combines `@path`, `@header`, and bare properties). The
+ * `crossLanguageDefinitionId` for these models follows the pattern
+ * `{namespace}.{operationName}.{typeSuffix}.anonymous`, from which the
+ * namespace can be reliably extracted.
+ *
+ * When extraction fails, falls back to the root namespace so generated files
+ * always land in a valid C# namespace.
+ *
+ * @param models - All SDK model types from the TCGC package (mutated in place).
+ * @param rootNamespace - The root C# namespace used as a fallback.
+ */
+export function ensureModelNamespaces(
+  models: SdkModelType[],
+  rootNamespace: string,
+): void {
+  for (const model of models) {
+    if (!model.namespace) {
+      model.namespace = deriveNamespaceFromCrossLanguageId(
+        model.crossLanguageDefinitionId,
+        rootNamespace,
+      );
+    }
+  }
+}
+
+/**
+ * Derives a C# namespace from a TCGC cross-language definition ID.
+ *
+ * Anonymous request/response models have IDs like
+ * `Parameters.Spread.Model.spreadCompositeRequestMix.Request.anonymous`.
+ * The namespace is everything before the operation-name segment — i.e.,
+ * the ID minus the last three dot-separated parts.
+ *
+ * @param crossLanguageDefinitionId - The model's TCGC cross-language ID.
+ * @param rootNamespace - Fallback when the ID cannot be parsed.
+ * @returns A valid C# namespace string.
+ */
+function deriveNamespaceFromCrossLanguageId(
+  crossLanguageDefinitionId: string,
+  rootNamespace: string,
+): string {
+  const parts = crossLanguageDefinitionId.split(".");
+
+  // Pattern: {namespace segments}.{operationName}.{Request|Response}.anonymous
+  if (parts.length >= 4 && parts[parts.length - 1] === "anonymous") {
+    return parts.slice(0, -3).join(".");
+  }
+
+  return rootNamespace;
 }

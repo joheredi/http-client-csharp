@@ -4638,7 +4638,7 @@
           "title": "Fix spread parameter request model generation",
           "description": "The `parameters/spread` spec uses TypeSpec spread syntax (`...Model`) to flatten model properties into operation parameters. The emitter generates request model types (e.g., `SpreadAsRequestParameterRequest`, `SpreadCompositeRequestMixRequest`) and their serialization files, but these contain syntax errors.\n\nThe generated code has issues with:\n- Incorrect model property declarations\n- Malformed serialization code for spread parameters\n- Incorrect model factory entries\n\nThe legacy emitter handles spread by creating request parameter models that bundle the spread properties. Compare the legacy output in `submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/parameters/spread/src/Generated/` with the new emitter's output.\n\nTo reproduce: `dotnet build temp/e2e/Spector/http/parameters/spread/src/Parameters.Spread.csproj`",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],
@@ -4745,6 +4745,27 @@
           },
           "acceptance_criteria": [
             "CodeGenSuppressAttribute.cs generates valid C# in all projects"
+          ]
+        },
+        {
+          "id": "12.2.13",
+          "title": "Fix sub-client class/namespace naming conflict",
+          "description": "Sub-client classes named Model and Alias conflict with their own namespace (Parameters.Spread.Model vs class Model). The legacy emitter uses underscore prefix (_Model, _Alias) for sub-client namespaces to avoid this. The new emitter omits the underscore, causing CS0118 errors. This affects parameters/spread and potentially other specs with sub-clients whose names match namespace segments.",
+          "phase": "phase-12",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "create": [],
+            "modify": [
+              "src/components/clients/"
+            ],
+            "reference": [
+              "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/parameters/spread/src/Generated/"
+            ]
+          },
+          "acceptance_criteria": [
+            "Sub-client namespaces use underscore prefix like legacy emitter",
+            "parameters/spread project compiles with dotnet build"
           ]
         }
       ]

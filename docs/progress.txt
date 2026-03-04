@@ -3576,3 +3576,27 @@ When TypeSpec `@doc` decorators contain multiline text (using triple-quoted stri
 - convenience-method.test.ts: Verifies repeatability headers excluded from convenience methods
 - protocol-method.test.ts: Verifies repeatability headers excluded from protocol methods
 - rest-client.test.ts: Verifies auto-population in request creation and using System; directive
+
+---
+Date: 2026-03-04
+Task: 12.2.9 — Fix spread parameter request model generation (done)
+
+### What was done
+Fixed TCGC empty namespace bug for anonymous spread request models. Added `ensureModelNamespaces()` utility in `src/utils/package-name.ts` that derives namespaces from `crossLanguageDefinitionId` when TCGC provides empty strings. Called centrally in `emitter.tsx` after model filtering. This fixes:
+1. `namespace  {` (empty namespace) in request model files like SpreadAsRequestParameterRequest.cs
+2. `using ;` (empty using) in client files referencing those models
+3. Stale `Parameters.SpreadModelFactory.cs` file (was caused by a previous bug, already fixed; cleaning regeneration removes it)
+
+### Files modified
+- `src/utils/package-name.ts` — Added `ensureModelNamespaces()` and `deriveNamespaceFromCrossLanguageId()`
+- `src/emitter.tsx` — Import and call `ensureModelNamespaces()` after model filtering
+- `test/package-name.test.ts` — Added 4 unit tests for namespace derivation
+
+### Known remaining issue
+The `parameters/spread` project still doesn't compile due to a separate sub-client class/namespace naming conflict (`Model` class vs `Parameters.Spread.Model` namespace). Legacy emitter uses `_Model`/`_Alias` prefixes. Created task 12.2.13 to track this.
+
+### Patterns used
+- Centralized model data patching in emitter.tsx (same pattern as `applyUnreferencedTypeHandling`)
+- Namespace extraction from TCGC crossLanguageDefinitionId: remove last 3 segments for `.Request.anonymous` pattern
+
+### Test count: 1,213 pass (was 1,209) / 128 skipped / 0 failed

@@ -4,6 +4,7 @@ import {
   getInvalidNamespaceSegments,
   resolveRootNamespace,
   resolvePackageName,
+  ensureModelNamespaces,
 } from "../src/utils/package-name.js";
 
 /**
@@ -227,4 +228,82 @@ function createMockSdkContext(opts: {
       crossLanguagePackageId: opts.crossLanguagePackageId ?? undefined,
     },
   };
+}
+
+/**
+ * Tests for ensureModelNamespaces (task 12.2.9).
+ *
+ * TCGC sometimes provides empty namespace strings for anonymous request models
+ * synthesized from spread operations with mixed HTTP decorators (e.g., when
+ * an operation combines @path, @header, and bare properties). These tests verify
+ * that the namespace is correctly derived from crossLanguageDefinitionId.
+ *
+ * Without this fix, ModelFile generates `namespace  {` (empty namespace) and
+ * client files get `using ;` (empty using), both of which are invalid C#.
+ */
+describe("ensureModelNamespaces", () => {
+  /**
+   * Anonymous request models from spread operations have IDs like
+   * `Parameters.Spread.Model.spreadCompositeRequestMix.Request.anonymous`.
+   * The namespace should be derived by removing the last 3 segments.
+   */
+  it("derives namespace from crossLanguageDefinitionId for models with empty namespace", () => {
+    const models = [
+      createMockModel("SpreadCompositeRequestMixRequest", "", "Parameters.Spread.Model.spreadCompositeRequestMix.Request.anonymous"),
+      createMockModel("SpreadAsRequestParameterRequest", "", "Parameters.Spread.Alias.spreadAsRequestParameter.Request.anonymous"),
+    ];
+
+    ensureModelNamespaces(models as any, "Parameters.Spread");
+
+    expect(models[0].namespace).toBe("Parameters.Spread.Model");
+    expect(models[1].namespace).toBe("Parameters.Spread.Alias");
+  });
+
+  /**
+   * Models that already have a valid namespace should not be modified.
+   * This ensures the fix only targets models with empty namespaces.
+   */
+  it("does not modify models with existing namespace", () => {
+    const models = [
+      createMockModel("BodyParameter", "Parameters.Spread.Model", "Parameters.Spread.Model.BodyParameter"),
+      createMockModel("SimpleRequest", "Parameters.Basic.ImplicitBody", "Parameters.Basic.ImplicitBody.simple.Request.anonymous"),
+    ];
+
+    ensureModelNamespaces(models as any, "Parameters.Spread");
+
+    expect(models[0].namespace).toBe("Parameters.Spread.Model");
+    expect(models[1].namespace).toBe("Parameters.Basic.ImplicitBody");
+  });
+
+  /**
+   * When crossLanguageDefinitionId doesn't match the anonymous pattern
+   * (no "anonymous" suffix), fall back to the root namespace.
+   */
+  it("falls back to root namespace when crossLanguageDefinitionId is not anonymous", () => {
+    const models = [
+      createMockModel("SomeModel", "", "SomeModel"),
+    ];
+
+    ensureModelNamespaces(models as any, "MyService");
+
+    expect(models[0].namespace).toBe("MyService");
+  });
+
+  /**
+   * Response anonymous models also follow the same pattern and should
+   * have their namespace derived correctly.
+   */
+  it("handles anonymous response models", () => {
+    const models = [
+      createMockModel("SomeResponse", "", "TestService.ContinuationToken.requestQueryResponseBody.Response.anonymous"),
+    ];
+
+    ensureModelNamespaces(models as any, "TestService");
+
+    expect(models[0].namespace).toBe("TestService.ContinuationToken");
+  });
+});
+
+function createMockModel(name: string, namespace: string, crossLanguageDefinitionId: string) {
+  return { name, namespace, crossLanguageDefinitionId };
 }

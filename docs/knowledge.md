@@ -2202,3 +2202,9 @@ Deeply nested operation groups in TypeSpec use `namespace` nesting, not nested `
 
 ### Alloy naming policy and acronyms
 When Alloy's naming policy applies camelCase to a parameter name like `repeatabilityRequestID`, it normalizes `ID` to `Id`. But raw string references in method bodies use the original TCGC name. This causes CS0103 errors for any parameter with acronyms (ID, URL, etc.). Special headers bypass this issue by being excluded entirely, but other parameters with acronyms could hit this bug.
+
+### TCGC empty namespace for anonymous spread request models
+TCGC sometimes returns empty `namespace` strings for anonymous request models synthesized from spread operations with mixed HTTP decorators (e.g., `@path` + `@header` + bare properties). The `crossLanguageDefinitionId` contains the correct namespace: `{namespace}.{operationName}.Request.anonymous`. Fix applied in `ensureModelNamespaces()` in `src/utils/package-name.ts` which derives the namespace by removing the last 3 segments from the ID. Called centrally in `emitter.tsx` after model filtering.
+
+### Sub-client class/namespace naming conflict
+Sub-client classes like `Model` and `Alias` conflict with their own namespaces (`Parameters.Spread.Model` vs class `Model`). The legacy emitter uses underscore prefix (`_Model`, `_Alias`) for sub-client namespaces. The new emitter omits the underscore, causing CS0118 errors. Tracked as task 12.2.13.

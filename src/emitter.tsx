@@ -73,6 +73,7 @@ import { scanCustomCode } from "./utils/custom-code-scanner.js";
 import {
   resolvePackageName,
   resolveRootNamespace,
+  ensureModelNamespaces,
 } from "./utils/package-name.js";
 import { applyUnreferencedTypeHandling } from "./utils/unreferenced-types.js";
 
@@ -131,6 +132,11 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
   // share the same namespace as client code (important for versioned projects
   // where package-name includes a version suffix that clients don't use).
   const rootNamespace = resolveRootNamespace(sdkContext);
+
+  // Fix models with empty namespace strings from TCGC. Some anonymous request
+  // models (from spread operations with mixed HTTP decorators) get empty
+  // namespaces. Derive from crossLanguageDefinitionId or fall back to root.
+  ensureModelNamespaces(models, rootNamespace);
 
   // Determine whether to generate project scaffolding (.csproj, .sln).
   // Skip if the .csproj already exists and user hasn't set new-project: true.
