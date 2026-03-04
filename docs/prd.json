@@ -4752,7 +4752,7 @@
           "title": "Fix sub-client class/namespace naming conflict",
           "description": "Sub-client classes named Model and Alias conflict with their own namespace (Parameters.Spread.Model vs class Model). The legacy emitter uses underscore prefix (_Model, _Alias) for sub-client namespaces to avoid this. The new emitter omits the underscore, causing CS0118 errors. This affects parameters/spread and potentially other specs with sub-clients whose names match namespace segments.",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],

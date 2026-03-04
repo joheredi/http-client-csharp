@@ -1,5 +1,8 @@
 import type {
+  SdkClientType,
   SdkContext,
+  SdkEnumType,
+  SdkHttpOperation,
   SdkModelType,
 } from "@azure-tools/typespec-client-generator-core";
 
@@ -170,4 +173,106 @@ function deriveNamespaceFromCrossLanguageId(
   }
 
   return rootNamespace;
+}
+
+/**
+ * Collects namespace segments that must be prefixed with `_` to avoid C# naming conflicts.
+ *
+ * In C#, a type cannot share its name with a containing namespace segment (CS0118).
+ * When a sub-client's name matches the last segment of its namespace (e.g., client
+ * "Model" in namespace "Parameters.Spread.Model"), the segment is invalid and must
+ * be prefixed.
+ *
+ * This combines:
+ * 1. Static reserved words ("Type", "Array", "Enum") that always conflict
+ * 2. Dynamic client names where `lastSegment(client.namespace) === client.name`
+ *
+ * Mirrors the legacy emitter's `TypeSpecSerialization.AddInvalidNamespaceSegment`
+ * + `InputNamespace._knownInvalidNamespaceSegments` logic.
+ *
+ * @param allClients - All clients (root + sub-clients) from the SDK package.
+ * @returns A set of segment strings that must be prefixed with `_` in namespaces.
+ */
+export function collectInvalidNamespaceSegments(
+  allClients: SdkClientType<SdkHttpOperation>[],
+): Set<string> {
+  const invalid = new Set(INVALID_NAMESPACE_SEGMENTS);
+  for (const client of allClients) {
+    if (!client.namespace) continue;
+    const lastSegment = client.namespace.split(".").pop();
+    if (lastSegment && lastSegment === client.name) {
+      invalid.add(lastSegment);
+    }
+  }
+  return invalid;
+}
+
+/**
+ * Transforms a namespace string by prefixing invalid segments with `_`.
+ *
+ * Each dot-separated segment of the namespace is checked against the set of
+ * invalid segments. Matching segments are prefixed with `_` to avoid CS0118
+ * errors where a type name matches its containing namespace.
+ *
+ * @example
+ * cleanNamespace("Parameters.Spread.Model", new Set(["Model"]));
+ * // Returns "Parameters.Spread._Model"
+ *
+ * @param ns - A dot-separated C# namespace string.
+ * @param invalidSegments - Set of segment strings that need `_` prefix.
+ * @returns The cleaned namespace with conflicting segments prefixed.
+ */
+export function cleanNamespace(
+  ns: string,
+  invalidSegments: Set<string>,
+): string {
+  if (!ns) return ns;
+  return ns
+    .split(".")
+    .map((seg) => (invalidSegments.has(seg) ? `_${seg}` : seg))
+    .join(".");
+}
+
+/**
+ * Applies namespace cleaning to all clients, models, and enums in the SDK package.
+ *
+ * This mutates the `.namespace` property of each object in place, prefixing
+ * segments that conflict with client class names or C# reserved words.
+ * This must be called after {@link ensureModelNamespaces} so that all models
+ * have valid namespace strings before cleaning.
+ *
+ * Mirrors the legacy emitter's `GetCleanNameSpace` transformation applied
+ * during code generation.
+ *
+ * @param allClients - All clients (root + sub-clients) from the SDK package.
+ * @param models - All model types from the SDK package (mutated in place).
+ * @param enums - All enum types from the SDK package (mutated in place).
+ */
+export function cleanAllNamespaces(
+  allClients: SdkClientType<SdkHttpOperation>[],
+  models: SdkModelType[],
+  enums: SdkEnumType[],
+): void {
+  const invalidSegments = collectInvalidNamespaceSegments(allClients);
+
+  // Only apply if there are dynamic conflicts beyond the static reserved words.
+  // Static reserved words (Type, Array, Enum) are always in the set, but if
+  // no client names conflict, we still need to clean those from all namespaces.
+  for (const client of allClients) {
+    if (client.namespace) {
+      client.namespace = cleanNamespace(client.namespace, invalidSegments);
+    }
+  }
+
+  for (const model of models) {
+    if (model.namespace) {
+      model.namespace = cleanNamespace(model.namespace, invalidSegments);
+    }
+  }
+
+  for (const enumType of enums) {
+    if (enumType.namespace) {
+      enumType.namespace = cleanNamespace(enumType.namespace, invalidSegments);
+    }
+  }
 }

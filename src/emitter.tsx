@@ -74,6 +74,7 @@ import {
   resolvePackageName,
   resolveRootNamespace,
   ensureModelNamespaces,
+  cleanAllNamespaces,
 } from "./utils/package-name.js";
 import { applyUnreferencedTypeHandling } from "./utils/unreferenced-types.js";
 
@@ -138,6 +139,12 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
   // namespaces. Derive from crossLanguageDefinitionId or fall back to root.
   ensureModelNamespaces(models, rootNamespace);
 
+  // Clean namespace segments that conflict with client class names or C#
+  // reserved words (Type, Array, Enum). Adds underscore prefix to conflicting
+  // segments to prevent CS0118 errors (e.g., "Parameters.Spread.Model" →
+  // "Parameters.Spread._Model" when there is a client class named "Model").
+  cleanAllNamespaces(allClients, models, enums);
+
   // Determine whether to generate project scaffolding (.csproj, .sln).
   // Skip if the .csproj already exists and user hasn't set new-project: true.
   const csprojPath = resolvePath(
@@ -189,7 +196,10 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
         packageName={rootNamespace}
         options={options}
       />
-      <Utf8JsonBinaryContentFile packageName={rootNamespace} options={options} />
+      <Utf8JsonBinaryContentFile
+        packageName={rootNamespace}
+        options={options}
+      />
       <BinaryContentHelperFile packageName={rootNamespace} options={options} />
       <MultiPartFormDataBinaryContentFile packageName={rootNamespace} />
       <PipelineRequestHeadersExtensionsFile

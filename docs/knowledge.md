@@ -2186,14 +2186,17 @@ When `package-name` includes a version suffix (e.g., `Versioning.Foo.V2`), `reso
 ## Design Decisions
 
 ### Hierarchical Client Filenames (Task 12.2.6)
+
 **Chosen approach:** Walk up `client.parent` chain and concatenate all non-root ancestor class names for the filename. Root clients keep their short name.
 **Why:** Matches the legacy emitter's convention (e.g., `PathParametersLabelExpansionStandard.cs`). Prevents filename collisions when multiple sub-clients share the same short name at different hierarchy levels.
 **Rejected:** Only using hierarchical names when a collision is detected — too fragile and unpredictable. Using directory nesting to match namespaces — doesn't match legacy convention and changes the output structure.
 
 ### TypeSpec Nesting for Sub-Clients
+
 Deeply nested operation groups in TypeSpec use `namespace` nesting, not nested `interface`. The `interface` keyword creates a single-level operation group. Always use `namespace` when defining 3+ level deep hierarchies in test TypeSpec code.
 
 ### Special Header Handling (Task 12.2.7)
+
 **Chosen approach:** Filter out repeatability headers by serialized name (case-insensitive) from all method signatures and auto-populate them in request creation with `Guid.NewGuid().ToString()` and `DateTimeOffset.Now.ToString("R")`.
 **Why:** Matches the legacy emitter's `TryGetSpecialHeaderParam` behaviour exactly. These are OASIS repeatability spec headers that should never be user-facing parameters.
 **Rejected:** Fixing only the naming inconsistency (ID vs Id) — would make the code compile but produce wrong API surface vs legacy. Also considered a shared utility function for `isSpecialHeaderParam` — followed existing convention of duplicating across the 3 client files (like `isImplicitContentTypeHeader`).
@@ -2201,10 +2204,21 @@ Deeply nested operation groups in TypeSpec use `namespace` nesting, not nested `
 ## Gotchas
 
 ### Alloy naming policy and acronyms
+
 When Alloy's naming policy applies camelCase to a parameter name like `repeatabilityRequestID`, it normalizes `ID` to `Id`. But raw string references in method bodies use the original TCGC name. This causes CS0103 errors for any parameter with acronyms (ID, URL, etc.). Special headers bypass this issue by being excluded entirely, but other parameters with acronyms could hit this bug.
 
 ### TCGC empty namespace for anonymous spread request models
+
 TCGC sometimes returns empty `namespace` strings for anonymous request models synthesized from spread operations with mixed HTTP decorators (e.g., `@path` + `@header` + bare properties). The `crossLanguageDefinitionId` contains the correct namespace: `{namespace}.{operationName}.Request.anonymous`. Fix applied in `ensureModelNamespaces()` in `src/utils/package-name.ts` which derives the namespace by removing the last 3 segments from the ID. Called centrally in `emitter.tsx` after model filtering.
 
 ### Sub-client class/namespace naming conflict
+
 Sub-client classes like `Model` and `Alias` conflict with their own namespaces (`Parameters.Spread.Model` vs class `Model`). The legacy emitter uses underscore prefix (`_Model`, `_Alias`) for sub-client namespaces. The new emitter omits the underscore, causing CS0118 errors. Tracked as task 12.2.13.
+
+## Design Decisions
+
+### Sub-client namespace cleaning (task 12.2.13)
+**Approach chosen**: Centralized pre-render mutation in `emitter.tsx` via `cleanAllNamespaces()`.
+**Why**: Consistent with existing `ensureModelNamespaces()` pattern. Avoids changing every component that reads `.namespace`.
+**Rejected**: Context-based approach (over-engineered), per-component transformation (too many files).
+**Key insight**: The legacy emitter's `GetCleanNameSpace` prefixes ALL segments of ANY namespace that match a client name or reserved word (Type, Array, Enum). The invalid segments are collected globally from all clients, then applied to all clients, models, and enums.
