@@ -3693,3 +3693,21 @@ has a `header` prop fix but it's not in the published package.
 - Post-processing approach allows the fix to work without modifying the Alloy package
 - The reorderFileHeader function is idempotent — files already in correct order are unchanged
 - When @alloy-js/csharp adds the `header` prop support, this post-processing can be removed
+
+## Task 13.2 — Fix namespace brace style: Allman (next-line) instead of K&R (same-line) (2026-03-04)
+
+**What was done:**
+Fixed namespace brace style in all generated C# files from K&R (`namespace Foo {`) to Allman (`namespace Foo\n{`). The Alloy C# `Namespace` component renders K&R by default. Applied a post-processing step to convert after rendering, matching the pattern established by `reorderFileHeader`.
+
+**Approach:** Post-processing — `fixNamespaceBraceStyle()` uses a regex to find `namespace <name> {` on the same line and split into two lines. Uses `[ \t]*` (not `\s*`) to capture only horizontal whitespace, avoiding the bug where `\s*` captures newlines in multiline regex mode causing duplicate blank lines.
+
+**Files created:**
+- `src/utils/namespace-brace-style.ts` — `fixNamespaceBraceStyle()` and `fixAllNamespaceBraceStyles()` functions
+- `test/namespace-brace-style.test.ts` — 8 unit tests covering simple, dotted, full-file, idempotent, comment-safe, and class-brace-safe cases
+
+**Files modified:**
+- `src/emitter.tsx` — added `fixAllNamespaceBraceStyles(tree)` to the post-processing pipeline
+- `src/utils/reorder-header.ts` — updated docstring example to show Allman style
+- `test/scenarios/enums/extensible_enum.md` — updated expected output to Allman style
+
+**Key gotcha:** In JavaScript multiline regex, `\s*` matches newlines. When the regex `^(\s*)(namespace...)` is used with the `m` flag, `(\s*)` can capture `\n` from a blank line before the namespace keyword, causing the replacement `$1$2\n$1{` to insert a duplicate blank line. Always use `[ \t]*` for horizontal-whitespace-only matching in multiline regexes.

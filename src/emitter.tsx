@@ -84,6 +84,7 @@ import {
   cleanAllNamespaces,
 } from "./utils/package-name.js";
 import { applyUnreferencedTypeHandling } from "./utils/unreferenced-types.js";
+import { fixAllNamespaceBraceStyles } from "./utils/namespace-brace-style.js";
 import { reorderAllFileHeaders } from "./utils/reorder-header.js";
 
 /**
@@ -331,6 +332,7 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
   // then write files to disk.
   const tree = await renderAsync(output);
   reorderAllFileHeaders(tree);
+  fixAllNamespaceBraceStyles(tree);
   await writeOutputDirectory(context.program, tree, context.emitterOutputDir);
 }
 
@@ -349,7 +351,11 @@ async function writeOutputDirectory(
   for (const item of dir.contents) {
     if ("contents" in item) {
       if (Array.isArray(item.contents)) {
-        await writeOutputDirectory(program, item as OutputDirectory, emitterOutputDir);
+        await writeOutputDirectory(
+          program,
+          item as OutputDirectory,
+          emitterOutputDir,
+        );
       } else {
         await emitFile(program, {
           content: (item as { contents: string }).contents,

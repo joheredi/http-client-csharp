@@ -17,7 +17,8 @@
  * using System;
  * using System.Collections.Generic;
  *
- * namespace MyService {
+ * namespace MyService
+ * {
  *     ...
  * }
  * ```
@@ -130,9 +131,7 @@ export function reorderAllFileHeaders(
     if ("contents" in item) {
       if (Array.isArray(item.contents)) {
         // Subdirectory — recurse
-        reorderAllFileHeaders(
-          item as import("@alloy-js/core").OutputDirectory,
-        );
+        reorderAllFileHeaders(item as import("@alloy-js/core").OutputDirectory);
       } else if (
         typeof item.contents === "string" &&
         item.path.endsWith(".cs")

@@ -2218,6 +2218,7 @@ Sub-client classes like `Model` and `Alias` conflict with their own namespaces (
 ## Design Decisions
 
 ### Sub-client namespace cleaning (task 12.2.13)
+
 **Approach chosen**: Centralized pre-render mutation in `emitter.tsx` via `cleanAllNamespaces()`.
 **Why**: Consistent with existing `ensureModelNamespaces()` pattern. Avoids changing every component that reads `.namespace`.
 **Rejected**: Context-based approach (over-engineered), per-component transformation (too many files).
@@ -2226,12 +2227,14 @@ Sub-client classes like `Model` and `Alias` conflict with their own namespaces (
 ## Gotcha: Alloy pascalCase cannot produce underscore-prefixed identifiers for numeric names
 
 **Pattern**: For enum member names starting with digits (e.g., "1.25", "1"), `change-case` v5's `pascalCase` does NOT produce valid C# identifiers:
+
 - `"1.25"` → `"1_25"` (adds `_` before second word starting with digit, not at front)
 - `"1"` → `"1"` (unchanged)
 
 The legacy emitter's `ToIdentifierName()` correctly produces `_125` and `_1`.
 
 **Fix**: Use `fixedEnumMemberName()` from `src/components/enums/FixedEnumFile.tsx`:
+
 ```typescript
 if (/^\d/.test(rawName)) {
   return `_${rawName.replace(/[^a-zA-Z0-9]/g, "")}`;
@@ -2246,6 +2249,7 @@ Also: the `EnumMember` Alloy component cannot be used for these names because it
 When a client is named `ContinuationToken` (e.g., in `Payload.Pageable.ServerDrivenPagination.ContinuationToken`),
 the unqualified `ContinuationToken` in C# resolves to the client class instead of `System.ClientModel.ContinuationToken`.
 This breaks:
+
 - `GetContinuationToken()` override return type (expects SCM ContinuationToken, gets client class)
 - `ContinuationToken.FromBytes()` static call (method doesn't exist on client class)
 
@@ -2259,21 +2263,41 @@ between the `new` expression and the class declaration. Both now use immediate c
 ## File Header Ordering (Task 13.1)
 
 ### Problem
+
 The `@alloy-js/csharp@0.22.0` `SourceFile` component renders auto-detected `using` directives before children content. The license header injected as children ends up after usings.
 
 ### Solution
+
 Post-process rendered output in `$onEmit` via `reorderFileHeader()` in `src/utils/reorder-header.ts`. The function detects when usings precede the header block and reorders them.
 
 ### Why Not a Custom SourceFile Component
+
 The internal symbols `NamespaceScopes`, `useNamespaceContext`, and `getGlobalNamespace` from `@alloy-js/csharp` are NOT exported. These are essential for proper namespace scope management that enables refkey resolution. Without them, creating a custom SourceFile wrapper causes `<Unresolved Symbol: refkey[...]>` errors because the binder can't navigate the scope hierarchy.
 
 ### Removal Condition
+
 The submodule `@alloy-js/csharp` source already has a `header` prop on the C# SourceFile that passes through to CoreSourceFile. When this is published, the post-processing can be replaced by passing the header as a prop.
 
 ## Design Decisions
 
 ### Header Reordering via Post-Processing (Task 13.1)
+
 **Chosen**: Post-process rendered output to reorder header before usings.
 **Rejected**: Custom CSharpFile component wrapping CoreSourceFile — internal @alloy-js/csharp symbols not exported, causing refkey resolution failure.
 **Rejected**: Patching @alloy-js/csharp package — fragile, gets overwritten on install.
 **Why**: Post-processing is the only approach that works with the installed package version while preserving all Alloy features (auto-usings, namespace management, refkey resolution).
+
+### Multiline regex `\s*` captures newlines — use `[ \t]*` for horizontal whitespace
+
+When using JavaScript regex with the `m` (multiline) flag, `\s*` matches newlines (`\n`). If the regex `^(\s*)` is used to capture leading indentation, it may capture newlines from preceding blank lines, causing duplicate blank lines in replacements. Always use `[ \t]*` instead of `\s*` when you only want horizontal whitespace (spaces and tabs).
+
+### Post-processing pipeline order in emitter.tsx
+
+The post-processing pipeline in `src/emitter.tsx` runs in this order:
+
+1. `renderAsync(output)` — renders JSX to OutputDirectory tree
+2. `reorderAllFileHeaders(tree)` — moves license header before usings
+3. `fixAllNamespaceBraceStyles(tree)` — converts K&R to Allman namespace braces
+4. `writeOutputDirectory(...)` — writes files to disk
+
+New post-processing steps should be added between steps 2 and 4.
