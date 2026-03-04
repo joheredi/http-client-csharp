@@ -92,6 +92,26 @@ Should generate SimpleXmlModel serialization with XML-specific methods (IPersist
 ```csharp src/Generated/Models/SimpleXmlModel.Serialization.cs class SimpleXmlModel
 public partial class SimpleXmlModel : IPersistableModel<SimpleXmlModel>
     {
+        /// <summary> Initializes a new instance of <see cref="SimpleXmlModel"/> for deserialization. </summary>
+        internal SimpleXmlModel()
+        {
+        }
+
+        protected virtual SimpleXmlModel PersistableModelCreateCore(BinaryData data, ModelReaderWriterOptions options)
+        {
+            string format = options.Format == "W" ? ((IPersistableModel<SimpleXmlModel>)this).GetFormatFromOptions(options) : options.Format;
+            switch (format)
+            {
+                case "X":
+                    using (Stream dataStream = data.ToStream())
+                    {
+                        return DeserializeSimpleXmlModel(XElement.Load(dataStream, LoadOptions.PreserveWhitespace), options);
+                    }
+                default:
+                    throw new FormatException($"The model {nameof(SimpleXmlModel)} does not support reading '{options.Format}' format.");
+            }
+        }
+
         protected virtual BinaryData PersistableModelWriteCore(ModelReaderWriterOptions options)
         {
             string format = options.Format == "W" ? ((IPersistableModel<SimpleXmlModel>)this).GetFormatFromOptions(options) : options.Format;
@@ -118,31 +138,11 @@ public partial class SimpleXmlModel : IPersistableModel<SimpleXmlModel>
             }
         }
 
-        protected virtual SimpleXmlModel PersistableModelCreateCore(BinaryData data, ModelReaderWriterOptions options)
-        {
-            string format = options.Format == "W" ? ((IPersistableModel<SimpleXmlModel>)this).GetFormatFromOptions(options) : options.Format;
-            switch (format)
-            {
-                case "X":
-                    using (Stream dataStream = data.ToStream())
-                    {
-                        return DeserializeSimpleXmlModel(XElement.Load(dataStream, LoadOptions.PreserveWhitespace), options);
-                    }
-                default:
-                    throw new FormatException($"The model {nameof(SimpleXmlModel)} does not support reading '{options.Format}' format.");
-            }
-        }
-
         BinaryData IPersistableModel<SimpleXmlModel>.Write(ModelReaderWriterOptions options) => PersistableModelWriteCore(options);
 
         SimpleXmlModel IPersistableModel<SimpleXmlModel>.Create(BinaryData data, ModelReaderWriterOptions options) => PersistableModelCreateCore(data, options);
 
         string IPersistableModel<SimpleXmlModel>.GetFormatFromOptions(ModelReaderWriterOptions options) => "X";
-
-        /// <summary> Initializes a new instance of <see cref="SimpleXmlModel"/> for deserialization. </summary>
-        internal SimpleXmlModel()
-        {
-        }
 
         public static implicit operator BinaryContent(SimpleXmlModel simpleXmlModel)
         {
@@ -268,6 +268,26 @@ Should generate XmlModelWithOptionalField serialization with Optional.IsDefined 
 ```csharp src/Generated/Models/XmlModelWithOptionalField.Serialization.cs class XmlModelWithOptionalField
 public partial class XmlModelWithOptionalField : IPersistableModel<XmlModelWithOptionalField>
     {
+        /// <summary> Initializes a new instance of <see cref="XmlModelWithOptionalField"/> for deserialization. </summary>
+        internal XmlModelWithOptionalField()
+        {
+        }
+
+        protected virtual XmlModelWithOptionalField PersistableModelCreateCore(BinaryData data, ModelReaderWriterOptions options)
+        {
+            string format = options.Format == "W" ? ((IPersistableModel<XmlModelWithOptionalField>)this).GetFormatFromOptions(options) : options.Format;
+            switch (format)
+            {
+                case "X":
+                    using (Stream dataStream = data.ToStream())
+                    {
+                        return DeserializeXmlModelWithOptionalField(XElement.Load(dataStream, LoadOptions.PreserveWhitespace), options);
+                    }
+                default:
+                    throw new FormatException($"The model {nameof(XmlModelWithOptionalField)} does not support reading '{options.Format}' format.");
+            }
+        }
+
         protected virtual BinaryData PersistableModelWriteCore(ModelReaderWriterOptions options)
         {
             string format = options.Format == "W" ? ((IPersistableModel<XmlModelWithOptionalField>)this).GetFormatFromOptions(options) : options.Format;
@@ -294,31 +314,11 @@ public partial class XmlModelWithOptionalField : IPersistableModel<XmlModelWithO
             }
         }
 
-        protected virtual XmlModelWithOptionalField PersistableModelCreateCore(BinaryData data, ModelReaderWriterOptions options)
-        {
-            string format = options.Format == "W" ? ((IPersistableModel<XmlModelWithOptionalField>)this).GetFormatFromOptions(options) : options.Format;
-            switch (format)
-            {
-                case "X":
-                    using (Stream dataStream = data.ToStream())
-                    {
-                        return DeserializeXmlModelWithOptionalField(XElement.Load(dataStream, LoadOptions.PreserveWhitespace), options);
-                    }
-                default:
-                    throw new FormatException($"The model {nameof(XmlModelWithOptionalField)} does not support reading '{options.Format}' format.");
-            }
-        }
-
         BinaryData IPersistableModel<XmlModelWithOptionalField>.Write(ModelReaderWriterOptions options) => PersistableModelWriteCore(options);
 
         XmlModelWithOptionalField IPersistableModel<XmlModelWithOptionalField>.Create(BinaryData data, ModelReaderWriterOptions options) => PersistableModelCreateCore(data, options);
 
         string IPersistableModel<XmlModelWithOptionalField>.GetFormatFromOptions(ModelReaderWriterOptions options) => "X";
-
-        /// <summary> Initializes a new instance of <see cref="XmlModelWithOptionalField"/> for deserialization. </summary>
-        internal XmlModelWithOptionalField()
-        {
-        }
 
         public static implicit operator BinaryContent(XmlModelWithOptionalField xmlModelWithOptionalField)
         {
@@ -430,6 +430,93 @@ Should generate DualFormatModel serialization with both JSON and XML format supp
 ```csharp src/Generated/Models/DualFormatModel.Serialization.cs class DualFormatModel
 public partial class DualFormatModel : IJsonModel<DualFormatModel>
     {
+        /// <summary> Initializes a new instance of <see cref="DualFormatModel"/> for deserialization. </summary>
+        internal DualFormatModel()
+        {
+        }
+
+        protected virtual DualFormatModel PersistableModelCreateCore(BinaryData data, ModelReaderWriterOptions options)
+        {
+            string format = options.Format == "W" ? ((IPersistableModel<DualFormatModel>)this).GetFormatFromOptions(options) : options.Format;
+            switch (format)
+            {
+                case "J":
+                    using (JsonDocument document = JsonDocument.Parse(data))
+                    {
+                        return DeserializeDualFormatModel(document.RootElement, options);
+                    }
+                case "X":
+                    using (Stream dataStream = data.ToStream())
+                    {
+                        return DeserializeDualFormatModel(XElement.Load(dataStream, LoadOptions.PreserveWhitespace), options);
+                    }
+                default:
+                    throw new FormatException($"The model {nameof(DualFormatModel)} does not support reading '{options.Format}' format.");
+            }
+        }
+
+        protected virtual BinaryData PersistableModelWriteCore(ModelReaderWriterOptions options)
+        {
+            string format = options.Format == "W" ? ((IPersistableModel<DualFormatModel>)this).GetFormatFromOptions(options) : options.Format;
+            switch (format)
+            {
+                case "J":
+                    return ModelReaderWriter.Write(this, options, TestNamespaceContext.Default);
+                case "X":
+                    using (MemoryStream stream = new MemoryStream(256))
+                    {
+                        using (XmlWriter writer = XmlWriter.Create(stream, ModelSerializationExtensions.XmlWriterSettings))
+                        {
+                            WriteXml(writer, options, "DualFormatModel");
+                        }
+                        if (stream.Position > int.MaxValue)
+                        {
+                            return BinaryData.FromStream(stream);
+                        }
+                        else
+                        {
+                            return new BinaryData(stream.GetBuffer().AsMemory(0, (int)stream.Position));
+                        }
+                    }
+                default:
+                    throw new FormatException($"The model {nameof(DualFormatModel)} does not support writing '{options.Format}' format.");
+            }
+        }
+
+        BinaryData IPersistableModel<DualFormatModel>.Write(ModelReaderWriterOptions options) => PersistableModelWriteCore(options);
+
+        DualFormatModel IPersistableModel<DualFormatModel>.Create(BinaryData data, ModelReaderWriterOptions options) => PersistableModelCreateCore(data, options);
+
+        string IPersistableModel<DualFormatModel>.GetFormatFromOptions(ModelReaderWriterOptions options) => "J";
+
+        public static implicit operator BinaryContent(DualFormatModel dualFormatModel)
+        {
+            if (dualFormatModel == null)
+            {
+                return null;
+            }
+            return BinaryContent.Create(dualFormatModel, ModelSerializationExtensions.WireOptions);
+        }
+
+        public static explicit operator DualFormatModel(ClientResult result)
+        {
+            using PipelineResponse response = result.GetRawResponse();
+
+            if ((response.Headers.TryGetValue("Content-Type", out string value) && value.StartsWith("application/json", StringComparison.OrdinalIgnoreCase)))
+            {
+                using JsonDocument document = JsonDocument.Parse(response.Content, ModelSerializationExtensions.JsonDocumentOptions);
+                return DualFormatModel.DeserializeDualFormatModel(document.RootElement, ModelSerializationExtensions.WireOptions);
+            }
+
+            using Stream stream = response.ContentStream;
+            if ((stream == null))
+            {
+                return default;
+            }
+
+            return DualFormatModel.DeserializeDualFormatModel(XElement.Load(stream, LoadOptions.PreserveWhitespace), ModelSerializationExtensions.WireOptions);
+        }
+
         void IJsonModel<DualFormatModel>.Write(Utf8JsonWriter writer, ModelReaderWriterOptions options)
         {
             writer.WriteStartObject();
@@ -463,60 +550,6 @@ public partial class DualFormatModel : IJsonModel<DualFormatModel>
             }
         }
 
-        protected virtual BinaryData PersistableModelWriteCore(ModelReaderWriterOptions options)
-        {
-            string format = options.Format == "W" ? ((IPersistableModel<DualFormatModel>)this).GetFormatFromOptions(options) : options.Format;
-            switch (format)
-            {
-                case "J":
-                    return ModelReaderWriter.Write(this, options, TestNamespaceContext.Default);
-                case "X":
-                    using (MemoryStream stream = new MemoryStream(256))
-                    {
-                        using (XmlWriter writer = XmlWriter.Create(stream, ModelSerializationExtensions.XmlWriterSettings))
-                        {
-                            WriteXml(writer, options, "DualFormatModel");
-                        }
-                        if (stream.Position > int.MaxValue)
-                        {
-                            return BinaryData.FromStream(stream);
-                        }
-                        else
-                        {
-                            return new BinaryData(stream.GetBuffer().AsMemory(0, (int)stream.Position));
-                        }
-                    }
-                default:
-                    throw new FormatException($"The model {nameof(DualFormatModel)} does not support writing '{options.Format}' format.");
-            }
-        }
-
-        protected virtual DualFormatModel PersistableModelCreateCore(BinaryData data, ModelReaderWriterOptions options)
-        {
-            string format = options.Format == "W" ? ((IPersistableModel<DualFormatModel>)this).GetFormatFromOptions(options) : options.Format;
-            switch (format)
-            {
-                case "J":
-                    using (JsonDocument document = JsonDocument.Parse(data))
-                    {
-                        return DeserializeDualFormatModel(document.RootElement, options);
-                    }
-                case "X":
-                    using (Stream dataStream = data.ToStream())
-                    {
-                        return DeserializeDualFormatModel(XElement.Load(dataStream, LoadOptions.PreserveWhitespace), options);
-                    }
-                default:
-                    throw new FormatException($"The model {nameof(DualFormatModel)} does not support reading '{options.Format}' format.");
-            }
-        }
-
-        BinaryData IPersistableModel<DualFormatModel>.Write(ModelReaderWriterOptions options) => PersistableModelWriteCore(options);
-
-        DualFormatModel IPersistableModel<DualFormatModel>.Create(BinaryData data, ModelReaderWriterOptions options) => PersistableModelCreateCore(data, options);
-
-        string IPersistableModel<DualFormatModel>.GetFormatFromOptions(ModelReaderWriterOptions options) => "J";
-
         DualFormatModel IJsonModel<DualFormatModel>.Create(ref Utf8JsonReader reader, ModelReaderWriterOptions options) => JsonModelCreateCore(ref reader, options);
 
         protected virtual DualFormatModel JsonModelCreateCore(ref Utf8JsonReader reader, ModelReaderWriterOptions options)
@@ -528,11 +561,6 @@ public partial class DualFormatModel : IJsonModel<DualFormatModel>
             }
             using JsonDocument document = JsonDocument.ParseValue(ref reader);
             return DeserializeDualFormatModel(document.RootElement, options);
-        }
-
-        /// <summary> Initializes a new instance of <see cref="DualFormatModel"/> for deserialization. </summary>
-        internal DualFormatModel()
-        {
         }
 
         internal static DualFormatModel DeserializeDualFormatModel(JsonElement element, ModelReaderWriterOptions options)
@@ -555,34 +583,6 @@ public partial class DualFormatModel : IJsonModel<DualFormatModel>
                 }
             }
             return new DualFormatModel(title, additionalBinaryDataProperties);
-        }
-
-        public static implicit operator BinaryContent(DualFormatModel dualFormatModel)
-        {
-            if (dualFormatModel == null)
-            {
-                return null;
-            }
-            return BinaryContent.Create(dualFormatModel, ModelSerializationExtensions.WireOptions);
-        }
-
-        public static explicit operator DualFormatModel(ClientResult result)
-        {
-            using PipelineResponse response = result.GetRawResponse();
-
-            if ((response.Headers.TryGetValue("Content-Type", out string value) && value.StartsWith("application/json", StringComparison.OrdinalIgnoreCase)))
-            {
-                using JsonDocument document = JsonDocument.Parse(response.Content, ModelSerializationExtensions.JsonDocumentOptions);
-                return DualFormatModel.DeserializeDualFormatModel(document.RootElement, ModelSerializationExtensions.WireOptions);
-            }
-
-            using Stream stream = response.ContentStream;
-            if ((stream == null))
-            {
-                return default;
-            }
-
-            return DualFormatModel.DeserializeDualFormatModel(XElement.Load(stream, LoadOptions.PreserveWhitespace), ModelSerializationExtensions.WireOptions);
         }
 
         internal BinaryContent ToBinaryContent(string format)

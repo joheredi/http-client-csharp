@@ -2479,3 +2479,11 @@ beyond just the `.ToList()` conversion. The `.ToList()` works with both construc
 
 ### Scenario tests and doc comments
 - Tree-sitter extraction of `class X` in scenario tests does NOT include leading doc comments (`///`). So adding doc comments to a class doesn't break scenario tests that extract the class body. No need to update scenario test markdown files.
+
+## Design Decisions
+
+### Serialization method ordering (Task 13.18)
+**Chosen approach:** Reorder JSX children in emitter.tsx to match golden file layout.
+**Why:** The golden files (Friend.Serialization.cs, Animal.Serialization.cs) are the ground truth. The ordering is: DeserializationConstructor → PersistableModelCreateCore → PersistableModelWriteCore → PersistableModelInterfaceMethods → Cast operators (ImplicitBinaryContent, ExplicitClientResult) → IJsonModel.Write → JsonModelWriteCore → IJsonModel.Create → JsonModelCreateCore → DeserializeXxx → XML methods.
+**Rejected:** Reordering within individual components — the ordering is controlled entirely by children order in emitter.tsx, not by the components themselves.
+**Gotcha:** When tests use `content.indexOf("DeserializeXxx")`, the first match may be a call-site reference inside PersistableModelCreateCore (which calls DeserializeXxx), not the method declaration. Use the method signature (e.g., `static Widget DeserializeWidget(`) to find the declaration.

@@ -3050,9 +3050,11 @@ describe("JsonDeserialize", () => {
     );
     const content = outputs[fileKey!];
 
-    // The deserialization method should appear after the write core method
+    // The deserialization method declaration should appear after JsonModelWriteCore.
+    // Use the method declaration signature to avoid matching call-site references
+    // inside PersistableModelCreateCore/JsonModelCreateCore which appear earlier.
     const writeIndex = content.indexOf("JsonModelWriteCore");
-    const deserializeIndex = content.indexOf("DeserializeWidget");
+    const deserializeIndex = content.indexOf("static Widget DeserializeWidget(");
     expect(writeIndex).toBeGreaterThan(-1);
     expect(deserializeIndex).toBeGreaterThan(-1);
     expect(deserializeIndex).toBeGreaterThan(writeIndex);

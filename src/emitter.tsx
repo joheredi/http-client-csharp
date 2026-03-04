@@ -261,6 +261,21 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
           const supportsXml = (m.usage & UsageFlags.Xml) !== 0;
           return (
             <ModelSerializationFile type={m} options={options}>
+              {supportsJson && <DeserializationConstructor type={m} />}
+              {!supportsJson && supportsXml && (
+                <DeserializationConstructor type={m} />
+              )}
+              {"\n\n"}
+              <PersistableModelCreateCore type={m} />
+              {"\n\n"}
+              <PersistableModelWriteCore type={m} />
+              {"\n\n"}
+              <PersistableModelInterfaceMethods type={m} />
+              {"\n\n"}
+              <ImplicitBinaryContentOperator type={m} />
+              {"\n\n"}
+              <ExplicitClientResultOperator type={m} />
+              {supportsJson && "\n\n"}
               {supportsJson && <JsonModelInterfaceWrite type={m} />}
               {supportsJson && "\n\n"}
               {supportsJson && (
@@ -271,21 +286,9 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
                 </JsonModelWriteCore>
               )}
               {supportsJson && "\n\n"}
-              <PersistableModelWriteCore type={m} />
-              {"\n\n"}
-              <PersistableModelCreateCore type={m} />
-              {"\n\n"}
-              <PersistableModelInterfaceMethods type={m} />
-              {supportsJson && "\n\n"}
               {supportsJson && <JsonModelInterfaceCreate type={m} />}
               {supportsJson && "\n\n"}
               {supportsJson && <JsonModelCreateCore type={m} />}
-              {supportsJson && "\n\n"}
-              {supportsJson && <DeserializationConstructor type={m} />}
-              {!supportsJson && supportsXml && "\n\n"}
-              {!supportsJson && supportsXml && (
-                <DeserializationConstructor type={m} />
-              )}
               {supportsJson && "\n\n"}
               {supportsJson && (
                 <JsonDeserialize type={m}>
@@ -300,10 +303,6 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
                   <DeserializeReturnStatement type={m} />
                 </JsonDeserialize>
               )}
-              {"\n\n"}
-              <ImplicitBinaryContentOperator type={m} />
-              {"\n\n"}
-              <ExplicitClientResultOperator type={m} />
               {supportsJson && supportsXml && "\n\n"}
               {supportsJson && supportsXml && <ToBinaryContent type={m} />}
               {supportsXml && "\n\n"}

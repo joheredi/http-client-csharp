@@ -5202,7 +5202,7 @@
           "title": "Fix serialization method ordering to match golden file layout",
           "description": "The golden serialization files have a specific method ordering that differs from the new emitter:\n\nGolden order:\n1. Deserialization constructor (internal parameterless)\n2. PersistableModelCreateCore\n3. PersistableModelWriteCore\n4. IPersistableModel interface methods (Write, Create, GetFormatFromOptions)\n5. IJsonModel.Write / JsonModelWriteCore\n6. IJsonModel.Create / JsonModelCreateCore\n7. DeserializeXxx static method\n8. Cast operators (implicit BinaryContent, explicit Model)\n\nNew emitter order:\n1. IJsonModel.Write\n2. JsonModelWriteCore\n3. PersistableModelWriteCore\n4. (different ordering throughout)\n\nThe layout should match the golden file ordering for consistency. When in doubt, the legacy output wins.",
           "phase": "phase-13",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],

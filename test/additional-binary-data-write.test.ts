@@ -277,9 +277,9 @@ describe("AdditionalBinaryDataWrite", () => {
     );
     expect(additionalDataBlock).toBeGreaterThan(methodStart);
 
-    // The additional data block should be before PersistableModelWriteCore
-    // (the next method after JsonModelWriteCore)
-    const nextMethod = content.indexOf("PersistableModelWriteCore");
+    // The additional data block should be before JsonModelCreateCore
+    // (the next protected method after JsonModelWriteCore in golden ordering)
+    const nextMethod = content.indexOf("JsonModelCreateCore");
     expect(additionalDataBlock).toBeLessThan(nextMethod);
   });
 
