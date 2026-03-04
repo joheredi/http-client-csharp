@@ -63,6 +63,10 @@ export function JsonModelInterfaceWrite(props: JsonModelInterfaceWriteProps) {
 
   return (
     <>
+      {`/// <param name="writer"> The JSON writer. </param>`}
+      {"\n"}
+      {`/// <param name="options"> The client options for reading and writing models. </param>`}
+      {"\n"}
       {code`void ${SystemClientModelPrimitives.IJsonModel}<${modelName}>.Write(${SystemTextJson.Utf8JsonWriter} writer, ${SystemClientModelPrimitives.ModelReaderWriterOptions} options)`}
       {"\n{\n"}
       {isDynamic &&

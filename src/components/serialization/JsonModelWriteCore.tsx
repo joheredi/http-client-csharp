@@ -121,6 +121,10 @@ export function JsonModelWriteCore(props: JsonModelWriteCoreProps) {
 
   return (
     <>
+      {`/// <param name="writer"> The JSON writer. </param>`}
+      {"\n"}
+      {`/// <param name="options"> The client options for reading and writing models. </param>`}
+      {"\n"}
       {code`protected ${isDerived ? "override" : "virtual"} void JsonModelWriteCore(${SystemTextJson.Utf8JsonWriter} writer, ${SystemClientModelPrimitives.ModelReaderWriterOptions} options)`}
       {"\n{\n"}
       {code`    string format = options.Format == "W" ? ((${SystemClientModelPrimitives.IPersistableModel}<${modelName}>)this).GetFormatFromOptions(options) : options.Format;`}

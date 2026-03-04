@@ -71,6 +71,10 @@ export function JsonModelInterfaceCreate(props: JsonModelInterfaceCreateProps) {
 
   return (
     <>
+      {`/// <param name="reader"> The JSON reader. </param>`}
+      {"\n"}
+      {`/// <param name="options"> The client options for reading and writing models. </param>`}
+      {"\n"}
       {code`${modelName} ${SystemClientModelPrimitives.IJsonModel}<${modelName}>.Create(ref ${SystemTextJson.Utf8JsonReader} reader, ${SystemClientModelPrimitives.ModelReaderWriterOptions} options) => ${createExpression};`}
     </>
   );

@@ -3054,7 +3054,9 @@ describe("JsonDeserialize", () => {
     // Use the method declaration signature to avoid matching call-site references
     // inside PersistableModelCreateCore/JsonModelCreateCore which appear earlier.
     const writeIndex = content.indexOf("JsonModelWriteCore");
-    const deserializeIndex = content.indexOf("static Widget DeserializeWidget(");
+    const deserializeIndex = content.indexOf(
+      "static Widget DeserializeWidget(",
+    );
     expect(writeIndex).toBeGreaterThan(-1);
     expect(deserializeIndex).toBeGreaterThan(-1);
     expect(deserializeIndex).toBeGreaterThan(writeIndex);

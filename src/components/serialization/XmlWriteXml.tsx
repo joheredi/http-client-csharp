@@ -72,6 +72,12 @@ export function XmlWriteXml(props: XmlWriteXmlProps) {
 
   return (
     <>
+      {`/// <param name="writer"> The XML writer. </param>`}
+      {"\n"}
+      {`/// <param name="options"> The client options for reading and writing models. </param>`}
+      {"\n"}
+      {`/// <param name="nameHint"> An optional name hint. </param>`}
+      {"\n"}
       {code`private void WriteXml(${SystemXml.XmlWriter} writer, ${SystemClientModelPrimitives.ModelReaderWriterOptions} options, string nameHint)`}
       {"\n{"}
       {"\n    if (nameHint != null)"}

@@ -858,6 +858,10 @@ export function XmlModelWriteCore(props: XmlModelWriteCoreProps) {
 
   return (
     <>
+      {`/// <param name="writer"> The XML writer. </param>`}
+      {"\n"}
+      {`/// <param name="options"> The client options for reading and writing models. </param>`}
+      {"\n"}
       {code`protected ${isDerived ? "override" : "virtual"} void XmlModelWriteCore(${SystemXml.XmlWriter} writer, ${SystemClientModelPrimitives.ModelReaderWriterOptions} options)`}
       {"\n{\n"}
       {code`    string format = options.Format == "W" ? ((${SystemClientModelPrimitives.IPersistableModel}<${modelName}>)this).GetFormatFromOptions(options) : options.Format;`}

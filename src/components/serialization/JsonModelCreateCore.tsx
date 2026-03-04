@@ -105,6 +105,10 @@ export function JsonModelCreateCore(props: JsonModelCreateCoreProps) {
 
   return (
     <>
+      {`/// <param name="reader"> The JSON reader. </param>`}
+      {"\n"}
+      {`/// <param name="options"> The client options for reading and writing models. </param>`}
+      {"\n"}
       {code`protected ${isDerived ? "override" : "virtual"} ${returnTypeName} JsonModelCreateCore(ref ${SystemTextJson.Utf8JsonReader} reader, ${SystemClientModelPrimitives.ModelReaderWriterOptions} options)`}
       {"\n{\n"}
       {code`    string format = options.Format == "W" ? ((${SystemClientModelPrimitives.IPersistableModel}<${modelName}>)this).GetFormatFromOptions(options) : options.Format;`}

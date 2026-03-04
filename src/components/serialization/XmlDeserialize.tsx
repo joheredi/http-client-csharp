@@ -1024,6 +1024,10 @@ export function XmlDeserialize(props: XmlDeserializeProps) {
 
   return (
     <>
+      {`/// <param name="element"> The xml element to deserialize. </param>`}
+      {"\n"}
+      {`/// <param name="options"> The client options for reading and writing models. </param>`}
+      {"\n"}
       {code`internal static ${modelName} Deserialize${modelName}(${SystemXmlLinq.XElement} element, ${SystemClientModelPrimitives.ModelReaderWriterOptions} options)`}
       {"\n{"}
       {"\n    if (element == null)"}

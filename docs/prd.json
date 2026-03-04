@@ -4925,7 +4925,7 @@
           "title": "Add missing XML documentation on serialization methods and interface implementations",
           "description": "Golden serialization files have XML doc comments on serialization methods that the new emitter omits:\n\n```csharp\n/// <summary> Initializes a new instance of <see cref=\"Friend\"/> for deserialization. </summary>\ninternal Friend()\n\n/// <param name=\"data\"> The data to parse. </param>\n/// <param name=\"options\"> The client options for reading and writing models. </param>\nprotected virtual Friend PersistableModelCreateCore(...)\n\n/// <param name=\"friend\"> The <see cref=\"Friend\"/> to serialize into <see cref=\"BinaryContent\"/>. </param>\npublic static implicit operator BinaryContent(Friend friend)\n```\n\nAffects: PersistableModelCreateCore, PersistableModelWriteCore, interface methods (IPersistableModel.Write/Create/GetFormatFromOptions), cast operators, and the deserialization constructor. When in doubt, the legacy output wins.",
           "phase": "phase-13",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],

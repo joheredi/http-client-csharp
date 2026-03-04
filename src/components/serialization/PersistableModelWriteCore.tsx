@@ -162,6 +162,8 @@ export function PersistableModelWriteCore(
 
   return (
     <>
+      {`/// <param name="options"> The client options for reading and writing models. </param>`}
+      {"\n"}
       {code`protected ${isDerived ? "override" : "virtual"} ${System.BinaryData} PersistableModelWriteCore(${SystemClientModelPrimitives.ModelReaderWriterOptions} options)`}
       {"\n{\n"}
       {code`    string format = options.Format == "W" ? ((${SystemClientModelPrimitives.IPersistableModel}<${modelName}>)this).GetFormatFromOptions(options) : options.Format;`}

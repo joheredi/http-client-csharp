@@ -97,6 +97,8 @@ public partial class SimpleXmlModel : IPersistableModel<SimpleXmlModel>
         {
         }
 
+        /// <param name="data"> The data to parse. </param>
+        /// <param name="options"> The client options for reading and writing models. </param>
         protected virtual SimpleXmlModel PersistableModelCreateCore(BinaryData data, ModelReaderWriterOptions options)
         {
             string format = options.Format == "W" ? ((IPersistableModel<SimpleXmlModel>)this).GetFormatFromOptions(options) : options.Format;
@@ -112,6 +114,7 @@ public partial class SimpleXmlModel : IPersistableModel<SimpleXmlModel>
             }
         }
 
+        /// <param name="options"> The client options for reading and writing models. </param>
         protected virtual BinaryData PersistableModelWriteCore(ModelReaderWriterOptions options)
         {
             string format = options.Format == "W" ? ((IPersistableModel<SimpleXmlModel>)this).GetFormatFromOptions(options) : options.Format;
@@ -138,12 +141,17 @@ public partial class SimpleXmlModel : IPersistableModel<SimpleXmlModel>
             }
         }
 
+        /// <param name="options"> The client options for reading and writing models. </param>
         BinaryData IPersistableModel<SimpleXmlModel>.Write(ModelReaderWriterOptions options) => PersistableModelWriteCore(options);
 
+        /// <param name="data"> The data to parse. </param>
+        /// <param name="options"> The client options for reading and writing models. </param>
         SimpleXmlModel IPersistableModel<SimpleXmlModel>.Create(BinaryData data, ModelReaderWriterOptions options) => PersistableModelCreateCore(data, options);
 
+        /// <param name="options"> The client options for reading and writing models. </param>
         string IPersistableModel<SimpleXmlModel>.GetFormatFromOptions(ModelReaderWriterOptions options) => "X";
 
+        /// <param name="simpleXmlModel"> The <see cref="SimpleXmlModel"/> to serialize into <see cref="BinaryContent"/>. </param>
         public static implicit operator BinaryContent(SimpleXmlModel simpleXmlModel)
         {
             if (simpleXmlModel == null)
@@ -153,6 +161,7 @@ public partial class SimpleXmlModel : IPersistableModel<SimpleXmlModel>
             return BinaryContent.Create(simpleXmlModel, ModelSerializationExtensions.WireOptions);
         }
 
+        /// <param name="result"> The <see cref="ClientResult"/> to deserialize the <see cref="SimpleXmlModel"/> from. </param>
         public static explicit operator SimpleXmlModel(ClientResult result)
         {
             using PipelineResponse response = result.GetRawResponse();
@@ -165,6 +174,9 @@ public partial class SimpleXmlModel : IPersistableModel<SimpleXmlModel>
             return SimpleXmlModel.DeserializeSimpleXmlModel(XElement.Load(stream, LoadOptions.PreserveWhitespace), ModelSerializationExtensions.WireOptions);
         }
 
+        /// <param name="writer"> The XML writer. </param>
+        /// <param name="options"> The client options for reading and writing models. </param>
+        /// <param name="nameHint"> An optional name hint. </param>
         private void WriteXml(XmlWriter writer, ModelReaderWriterOptions options, string nameHint)
         {
             if (nameHint != null)
@@ -180,6 +192,8 @@ public partial class SimpleXmlModel : IPersistableModel<SimpleXmlModel>
             }
         }
 
+        /// <param name="writer"> The XML writer. </param>
+        /// <param name="options"> The client options for reading and writing models. </param>
         protected virtual void XmlModelWriteCore(XmlWriter writer, ModelReaderWriterOptions options)
         {
             string format = options.Format == "W" ? ((IPersistableModel<SimpleXmlModel>)this).GetFormatFromOptions(options) : options.Format;
@@ -196,6 +210,8 @@ public partial class SimpleXmlModel : IPersistableModel<SimpleXmlModel>
             writer.WriteEndElement();
         }
 
+        /// <param name="element"> The xml element to deserialize. </param>
+        /// <param name="options"> The client options for reading and writing models. </param>
         internal static SimpleXmlModel DeserializeSimpleXmlModel(XElement element, ModelReaderWriterOptions options)
         {
             if (element == null)
@@ -273,6 +289,8 @@ public partial class XmlModelWithOptionalField : IPersistableModel<XmlModelWithO
         {
         }
 
+        /// <param name="data"> The data to parse. </param>
+        /// <param name="options"> The client options for reading and writing models. </param>
         protected virtual XmlModelWithOptionalField PersistableModelCreateCore(BinaryData data, ModelReaderWriterOptions options)
         {
             string format = options.Format == "W" ? ((IPersistableModel<XmlModelWithOptionalField>)this).GetFormatFromOptions(options) : options.Format;
@@ -288,6 +306,7 @@ public partial class XmlModelWithOptionalField : IPersistableModel<XmlModelWithO
             }
         }
 
+        /// <param name="options"> The client options for reading and writing models. </param>
         protected virtual BinaryData PersistableModelWriteCore(ModelReaderWriterOptions options)
         {
             string format = options.Format == "W" ? ((IPersistableModel<XmlModelWithOptionalField>)this).GetFormatFromOptions(options) : options.Format;
@@ -314,12 +333,17 @@ public partial class XmlModelWithOptionalField : IPersistableModel<XmlModelWithO
             }
         }
 
+        /// <param name="options"> The client options for reading and writing models. </param>
         BinaryData IPersistableModel<XmlModelWithOptionalField>.Write(ModelReaderWriterOptions options) => PersistableModelWriteCore(options);
 
+        /// <param name="data"> The data to parse. </param>
+        /// <param name="options"> The client options for reading and writing models. </param>
         XmlModelWithOptionalField IPersistableModel<XmlModelWithOptionalField>.Create(BinaryData data, ModelReaderWriterOptions options) => PersistableModelCreateCore(data, options);
 
+        /// <param name="options"> The client options for reading and writing models. </param>
         string IPersistableModel<XmlModelWithOptionalField>.GetFormatFromOptions(ModelReaderWriterOptions options) => "X";
 
+        /// <param name="xmlModelWithOptionalField"> The <see cref="XmlModelWithOptionalField"/> to serialize into <see cref="BinaryContent"/>. </param>
         public static implicit operator BinaryContent(XmlModelWithOptionalField xmlModelWithOptionalField)
         {
             if (xmlModelWithOptionalField == null)
@@ -331,6 +355,9 @@ public partial class XmlModelWithOptionalField : IPersistableModel<XmlModelWithO
 
 
 
+        /// <param name="writer"> The XML writer. </param>
+        /// <param name="options"> The client options for reading and writing models. </param>
+        /// <param name="nameHint"> An optional name hint. </param>
         private void WriteXml(XmlWriter writer, ModelReaderWriterOptions options, string nameHint)
         {
             if (nameHint != null)
@@ -346,6 +373,8 @@ public partial class XmlModelWithOptionalField : IPersistableModel<XmlModelWithO
             }
         }
 
+        /// <param name="writer"> The XML writer. </param>
+        /// <param name="options"> The client options for reading and writing models. </param>
         protected virtual void XmlModelWriteCore(XmlWriter writer, ModelReaderWriterOptions options)
         {
             string format = options.Format == "W" ? ((IPersistableModel<XmlModelWithOptionalField>)this).GetFormatFromOptions(options) : options.Format;
@@ -365,6 +394,8 @@ public partial class XmlModelWithOptionalField : IPersistableModel<XmlModelWithO
             }
         }
 
+        /// <param name="element"> The xml element to deserialize. </param>
+        /// <param name="options"> The client options for reading and writing models. </param>
         internal static XmlModelWithOptionalField DeserializeXmlModelWithOptionalField(XElement element, ModelReaderWriterOptions options)
         {
             if (element == null)
@@ -435,6 +466,8 @@ public partial class DualFormatModel : IJsonModel<DualFormatModel>
         {
         }
 
+        /// <param name="data"> The data to parse. </param>
+        /// <param name="options"> The client options for reading and writing models. </param>
         protected virtual DualFormatModel PersistableModelCreateCore(BinaryData data, ModelReaderWriterOptions options)
         {
             string format = options.Format == "W" ? ((IPersistableModel<DualFormatModel>)this).GetFormatFromOptions(options) : options.Format;
@@ -455,6 +488,7 @@ public partial class DualFormatModel : IJsonModel<DualFormatModel>
             }
         }
 
+        /// <param name="options"> The client options for reading and writing models. </param>
         protected virtual BinaryData PersistableModelWriteCore(ModelReaderWriterOptions options)
         {
             string format = options.Format == "W" ? ((IPersistableModel<DualFormatModel>)this).GetFormatFromOptions(options) : options.Format;
@@ -483,12 +517,17 @@ public partial class DualFormatModel : IJsonModel<DualFormatModel>
             }
         }
 
+        /// <param name="options"> The client options for reading and writing models. </param>
         BinaryData IPersistableModel<DualFormatModel>.Write(ModelReaderWriterOptions options) => PersistableModelWriteCore(options);
 
+        /// <param name="data"> The data to parse. </param>
+        /// <param name="options"> The client options for reading and writing models. </param>
         DualFormatModel IPersistableModel<DualFormatModel>.Create(BinaryData data, ModelReaderWriterOptions options) => PersistableModelCreateCore(data, options);
 
+        /// <param name="options"> The client options for reading and writing models. </param>
         string IPersistableModel<DualFormatModel>.GetFormatFromOptions(ModelReaderWriterOptions options) => "J";
 
+        /// <param name="dualFormatModel"> The <see cref="DualFormatModel"/> to serialize into <see cref="BinaryContent"/>. </param>
         public static implicit operator BinaryContent(DualFormatModel dualFormatModel)
         {
             if (dualFormatModel == null)
@@ -498,6 +537,7 @@ public partial class DualFormatModel : IJsonModel<DualFormatModel>
             return BinaryContent.Create(dualFormatModel, ModelSerializationExtensions.WireOptions);
         }
 
+        /// <param name="result"> The <see cref="ClientResult"/> to deserialize the <see cref="DualFormatModel"/> from. </param>
         public static explicit operator DualFormatModel(ClientResult result)
         {
             using PipelineResponse response = result.GetRawResponse();
@@ -517,6 +557,8 @@ public partial class DualFormatModel : IJsonModel<DualFormatModel>
             return DualFormatModel.DeserializeDualFormatModel(XElement.Load(stream, LoadOptions.PreserveWhitespace), ModelSerializationExtensions.WireOptions);
         }
 
+        /// <param name="writer"> The JSON writer. </param>
+        /// <param name="options"> The client options for reading and writing models. </param>
         void IJsonModel<DualFormatModel>.Write(Utf8JsonWriter writer, ModelReaderWriterOptions options)
         {
             writer.WriteStartObject();
@@ -524,6 +566,8 @@ public partial class DualFormatModel : IJsonModel<DualFormatModel>
             writer.WriteEndObject();
         }
 
+        /// <param name="writer"> The JSON writer. </param>
+        /// <param name="options"> The client options for reading and writing models. </param>
         protected virtual void JsonModelWriteCore(Utf8JsonWriter writer, ModelReaderWriterOptions options)
         {
             string format = options.Format == "W" ? ((IPersistableModel<DualFormatModel>)this).GetFormatFromOptions(options) : options.Format;
@@ -550,8 +594,12 @@ public partial class DualFormatModel : IJsonModel<DualFormatModel>
             }
         }
 
+        /// <param name="reader"> The JSON reader. </param>
+        /// <param name="options"> The client options for reading and writing models. </param>
         DualFormatModel IJsonModel<DualFormatModel>.Create(ref Utf8JsonReader reader, ModelReaderWriterOptions options) => JsonModelCreateCore(ref reader, options);
 
+        /// <param name="reader"> The JSON reader. </param>
+        /// <param name="options"> The client options for reading and writing models. </param>
         protected virtual DualFormatModel JsonModelCreateCore(ref Utf8JsonReader reader, ModelReaderWriterOptions options)
         {
             string format = options.Format == "W" ? ((IPersistableModel<DualFormatModel>)this).GetFormatFromOptions(options) : options.Format;
@@ -563,6 +611,8 @@ public partial class DualFormatModel : IJsonModel<DualFormatModel>
             return DeserializeDualFormatModel(document.RootElement, options);
         }
 
+        /// <param name="element"> The JSON element to deserialize. </param>
+        /// <param name="options"> The client options for reading and writing models. </param>
         internal static DualFormatModel DeserializeDualFormatModel(JsonElement element, ModelReaderWriterOptions options)
         {
             if (element.ValueKind == JsonValueKind.Null)
@@ -585,12 +635,17 @@ public partial class DualFormatModel : IJsonModel<DualFormatModel>
             return new DualFormatModel(title, additionalBinaryDataProperties);
         }
 
+        /// <summary> Converts the model to BinaryContent using the specified format. </summary>
+        /// <param name="format"> The format to use for serialization. </param>
         internal BinaryContent ToBinaryContent(string format)
         {
         ModelReaderWriterOptions options = new ModelReaderWriterOptions(format);
             return BinaryContent.Create(this, options);
         }
 
+        /// <param name="writer"> The XML writer. </param>
+        /// <param name="options"> The client options for reading and writing models. </param>
+        /// <param name="nameHint"> An optional name hint. </param>
         private void WriteXml(XmlWriter writer, ModelReaderWriterOptions options, string nameHint)
         {
             if (nameHint != null)
@@ -606,6 +661,8 @@ public partial class DualFormatModel : IJsonModel<DualFormatModel>
             }
         }
 
+        /// <param name="writer"> The XML writer. </param>
+        /// <param name="options"> The client options for reading and writing models. </param>
         protected virtual void XmlModelWriteCore(XmlWriter writer, ModelReaderWriterOptions options)
         {
             string format = options.Format == "W" ? ((IPersistableModel<DualFormatModel>)this).GetFormatFromOptions(options) : options.Format;
@@ -619,6 +676,8 @@ public partial class DualFormatModel : IJsonModel<DualFormatModel>
             writer.WriteEndElement();
         }
 
+        /// <param name="element"> The xml element to deserialize. </param>
+        /// <param name="options"> The client options for reading and writing models. </param>
         internal static DualFormatModel DeserializeDualFormatModel(XElement element, ModelReaderWriterOptions options)
         {
             if (element == null)

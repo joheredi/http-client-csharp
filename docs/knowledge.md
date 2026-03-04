@@ -2467,6 +2467,7 @@ beyond just the `.ToList()` conversion. The `.ToList()` works with both construc
 ## Design Decisions
 
 ### Task 13.5: Abstract model class doc comments
+
 - **Approach chosen**: Add `doc` prop to `ClassDeclaration` only for abstract base models (not all models), using `buildAbstractModelDoc()` helper
 - **Why**: Minimizes change scope; only abstract models need the derived class references. Non-abstract model docs are a separate concern.
 - **Rejected**: Adding doc to all models in this task (too broad, would change output for ~all model files and require many test updates)
@@ -2474,16 +2475,33 @@ beyond just the `.ToList()` conversion. The `.ToList()` works with both construc
 ## Gotchas
 
 ### CSharpNamePolicy type does not exist
+
 - `@alloy-js/csharp` does NOT export a `CSharpNamePolicy` type. The correct type for the name policy is `NamePolicy<CSharpElements>` where `NamePolicy` comes from `@alloy-js/core` and `CSharpElements` comes from `@alloy-js/csharp`.
 - `useCSharpNamePolicy()` returns `NamePolicy<CSharpElements>`.
 
 ### Scenario tests and doc comments
+
 - Tree-sitter extraction of `class X` in scenario tests does NOT include leading doc comments (`///`). So adding doc comments to a class doesn't break scenario tests that extract the class body. No need to update scenario test markdown files.
 
 ## Design Decisions
 
 ### Serialization method ordering (Task 13.18)
+
 **Chosen approach:** Reorder JSX children in emitter.tsx to match golden file layout.
 **Why:** The golden files (Friend.Serialization.cs, Animal.Serialization.cs) are the ground truth. The ordering is: DeserializationConstructor → PersistableModelCreateCore → PersistableModelWriteCore → PersistableModelInterfaceMethods → Cast operators (ImplicitBinaryContent, ExplicitClientResult) → IJsonModel.Write → JsonModelWriteCore → IJsonModel.Create → JsonModelCreateCore → DeserializeXxx → XML methods.
 **Rejected:** Reordering within individual components — the ordering is controlled entirely by children order in emitter.tsx, not by the components themselves.
 **Gotcha:** When tests use `content.indexOf("DeserializeXxx")`, the first match may be a call-site reference inside PersistableModelCreateCore (which calls DeserializeXxx), not the method declaration. Use the method signature (e.g., `static Widget DeserializeWidget(`) to find the declaration.
+
+### XML doc comment text for XML vs JSON deserialization methods
+The golden files use different text for the `element` parameter doc comment:
+- JSON Deserialize: `/// <param name="element"> The JSON element to deserialize. </param>`
+- XML Deserialize: `/// <param name="element"> The xml element to deserialize. </param>` (note lowercase "xml")
+
+This was confirmed in `XmlItem.Serialization.cs` golden file. The `XmlDeserialize.tsx` component must use "xml" (lowercase) not "JSON".
+
+### Task 13.6 Design Decision: Serialization method XML doc comments
+**Chosen approach**: String-based `///` doc comments added inline before each method signature in each component file. This follows the established pattern from `DeserializationConstructor.tsx` and prior tasks (13.3, 13.5).
+
+**Rejected approach**: JSX DocComment components from `@alloy-js/csharp` — would require refactoring all serialization components. Knowledge.md gotcha notes raw strings are preferred for doc comments to match legacy formatting exactly.
+
+**Coverage**: All serialization methods including PersistableModel, IJsonModel, IPersistableModel, cast operators, DeserializeXxx, WriteXml, XmlModelWriteCore, ToBinaryContent, and UnknownDiscriminator variants.

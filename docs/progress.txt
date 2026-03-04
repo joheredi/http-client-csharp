@@ -4088,3 +4088,44 @@ Chose to add doc comments ONLY to abstract base model classes (not all models) t
 - Regenerated XML scenario expectations with SCENARIOS_UPDATE=true
 - UnknownDiscriminatorModelSerializationFile already had correct ordering, no changes needed
 - All 1270 tests pass, build succeeds
+
+## Task 13.6: Add missing XML documentation on serialization methods and interface implementations (DONE)
+**Date**: 2026-03-04
+
+**What was done**: Added `/// <param>` and `/// <summary>` XML doc comments to ALL serialization methods and operators to match the golden output files. This covers:
+- PersistableModelCreateCore (data + options params)
+- PersistableModelWriteCore (options param)
+- IPersistableModel<T>.Write/Create/GetFormatFromOptions (param docs)
+- ImplicitBinaryContentOperator (model param with see cref)
+- ExplicitClientResultOperator (result param with see cref)
+- IJsonModel<T>.Write (writer + options params)
+- JsonModelWriteCore (writer + options params)
+- IJsonModel<T>.Create (reader + options params)
+- JsonModelCreateCore (reader + options params)
+- JsonDeserialize (element + options params; dynamic models also get data param)
+- XmlDeserialize (element as "xml element" not "JSON element" + options)
+- XmlModelWriteCore (writer + options)
+- WriteXml (writer + options + nameHint)
+- ToBinaryContent (summary + format param)
+- All methods in UnknownDiscriminatorModelSerializationFile
+
+**Files modified**: 
+- src/components/serialization/PersistableModelCreateCore.tsx
+- src/components/serialization/PersistableModelWriteCore.tsx
+- src/components/serialization/PersistableModelInterfaceMethods.tsx
+- src/components/serialization/CastOperators.tsx
+- src/components/serialization/JsonModelInterfaceWrite.tsx
+- src/components/serialization/JsonModelWriteCore.tsx
+- src/components/serialization/JsonModelInterfaceCreate.tsx
+- src/components/serialization/JsonModelCreateCore.tsx
+- src/components/serialization/JsonDeserialize.tsx
+- src/components/serialization/XmlDeserialize.tsx
+- src/components/serialization/XmlModelWriteCore.tsx
+- src/components/serialization/XmlWriteXml.tsx
+- src/components/serialization/ToBinaryContent.tsx
+- src/components/serialization/UnknownDiscriminatorModelSerializationFile.tsx
+- test/scenarios/serialization/xml_serialization.md (updated test expectations)
+
+**Pattern used**: String-based `///` doc comments (established pattern from DeserializationConstructor.tsx), not JSX DocComment components. Consistent with prior tasks 13.3 and 13.5.
+
+**Key gotcha**: XML deserialize uses "The xml element" (lowercase) while JSON uses "The JSON element" (uppercase). The golden file `XmlItem.Serialization.cs` confirms this distinction.

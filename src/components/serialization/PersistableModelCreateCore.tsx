@@ -143,6 +143,10 @@ export function PersistableModelCreateCore(
 
   return (
     <>
+      {`/// <param name="data"> The data to parse. </param>`}
+      {"\n"}
+      {`/// <param name="options"> The client options for reading and writing models. </param>`}
+      {"\n"}
       {code`protected ${isDerived ? "override" : "virtual"} ${returnTypeName} PersistableModelCreateCore(${System.BinaryData} data, ${SystemClientModelPrimitives.ModelReaderWriterOptions} options)`}
       {"\n{\n"}
       {code`    string format = options.Format == "W" ? ((${SystemClientModelPrimitives.IPersistableModel}<${modelName}>)this).GetFormatFromOptions(options) : options.Format;`}

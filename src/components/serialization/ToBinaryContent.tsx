@@ -78,6 +78,10 @@ export function ToBinaryContent(props: ToBinaryContentProps) {
 
   return (
     <>
+      {`/// <summary> Converts the model to BinaryContent using the specified format. </summary>`}
+      {"\n"}
+      {`/// <param name="format"> The format to use for serialization. </param>`}
+      {"\n"}
       {code`internal ${SystemClientModel.BinaryContent} ToBinaryContent(string format)`}
       {"\n{"}
       {"\n"}

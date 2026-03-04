@@ -150,6 +150,10 @@ export function UnknownDiscriminatorModelSerializationFile(
   // 2. PersistableModelCreateCore
   classBody.push(
     "\n\n",
+    `/// <param name="data"> The data to parse. </param>`,
+    "\n",
+    `/// <param name="options"> The client options for reading and writing models. </param>`,
+    "\n",
     code`protected override ${rootName} PersistableModelCreateCore(${System.BinaryData} data, ${SystemClientModelPrimitives.ModelReaderWriterOptions} options)`,
     "\n{\n",
     code`    string format = options.Format == "W" ? ((${SystemClientModelPrimitives.IPersistableModel}<${baseName}>)this).GetFormatFromOptions(options) : options.Format;`,
@@ -177,6 +181,8 @@ export function UnknownDiscriminatorModelSerializationFile(
   // 3. PersistableModelWriteCore
   classBody.push(
     "\n\n",
+    `/// <param name="options"> The client options for reading and writing models. </param>`,
+    "\n",
     code`protected override ${System.BinaryData} PersistableModelWriteCore(${SystemClientModelPrimitives.ModelReaderWriterOptions} options)`,
     "\n{\n",
     code`    string format = options.Format == "W" ? ((${SystemClientModelPrimitives.IPersistableModel}<${baseName}>)this).GetFormatFromOptions(options) : options.Format;`,
@@ -201,18 +207,26 @@ export function UnknownDiscriminatorModelSerializationFile(
   // 4. IPersistableModel<Base>.Write
   classBody.push(
     "\n\n",
+    `/// <param name="options"> The client options for reading and writing models. </param>`,
+    "\n",
     code`${System.BinaryData} ${SystemClientModelPrimitives.IPersistableModel}<${baseName}>.Write(${SystemClientModelPrimitives.ModelReaderWriterOptions} options) => PersistableModelWriteCore(options);`,
   );
 
   // 5. IPersistableModel<Base>.Create
   classBody.push(
     "\n\n",
+    `/// <param name="data"> The data to parse. </param>`,
+    "\n",
+    `/// <param name="options"> The client options for reading and writing models. </param>`,
+    "\n",
     code`${baseName} ${SystemClientModelPrimitives.IPersistableModel}<${baseName}>.Create(${System.BinaryData} data, ${SystemClientModelPrimitives.ModelReaderWriterOptions} options) => ${persistableCreateExpr};`,
   );
 
   // 6. IPersistableModel<Base>.GetFormatFromOptions
   classBody.push(
     "\n\n",
+    `/// <param name="options"> The client options for reading and writing models. </param>`,
+    "\n",
     code`string ${SystemClientModelPrimitives.IPersistableModel}<${baseName}>.GetFormatFromOptions(${SystemClientModelPrimitives.ModelReaderWriterOptions} options) => "${wireFormat}";`,
   );
 
@@ -220,6 +234,10 @@ export function UnknownDiscriminatorModelSerializationFile(
     // 7. IJsonModel<Base>.Write
     classBody.push(
       "\n\n",
+      `/// <param name="writer"> The JSON writer. </param>`,
+      "\n",
+      `/// <param name="options"> The client options for reading and writing models. </param>`,
+      "\n",
       code`void ${SystemClientModelPrimitives.IJsonModel}<${baseName}>.Write(${SystemTextJson.Utf8JsonWriter} writer, ${SystemClientModelPrimitives.ModelReaderWriterOptions} options)`,
       "\n{\n",
       "    writer.WriteStartObject();\n",
@@ -230,6 +248,10 @@ export function UnknownDiscriminatorModelSerializationFile(
     // 8. JsonModelWriteCore
     classBody.push(
       "\n\n",
+      `/// <param name="writer"> The JSON writer. </param>`,
+      "\n",
+      `/// <param name="options"> The client options for reading and writing models. </param>`,
+      "\n",
       code`protected override void JsonModelWriteCore(${SystemTextJson.Utf8JsonWriter} writer, ${SystemClientModelPrimitives.ModelReaderWriterOptions} options)`,
       "\n{\n",
       code`    string format = options.Format == "W" ? ((${SystemClientModelPrimitives.IPersistableModel}<${baseName}>)this).GetFormatFromOptions(options) : options.Format;`,
@@ -245,12 +267,20 @@ export function UnknownDiscriminatorModelSerializationFile(
     // 9. IJsonModel<Base>.Create
     classBody.push(
       "\n\n",
+      `/// <param name="reader"> The JSON reader. </param>`,
+      "\n",
+      `/// <param name="options"> The client options for reading and writing models. </param>`,
+      "\n",
       code`${baseName} ${SystemClientModelPrimitives.IJsonModel}<${baseName}>.Create(ref ${SystemTextJson.Utf8JsonReader} reader, ${SystemClientModelPrimitives.ModelReaderWriterOptions} options) => ${jsonCreateExpr};`,
     );
 
     // 10. JsonModelCreateCore
     classBody.push(
       "\n\n",
+      `/// <param name="reader"> The JSON reader. </param>`,
+      "\n",
+      `/// <param name="options"> The client options for reading and writing models. </param>`,
+      "\n",
       code`protected override ${rootName} JsonModelCreateCore(ref ${SystemTextJson.Utf8JsonReader} reader, ${SystemClientModelPrimitives.ModelReaderWriterOptions} options)`,
       "\n{\n",
       code`    string format = options.Format == "W" ? ((${SystemClientModelPrimitives.IPersistableModel}<${baseName}>)this).GetFormatFromOptions(options) : options.Format;`,
@@ -296,6 +326,12 @@ export function UnknownDiscriminatorModelSerializationFile(
         >
           {classBody}
           {supportsJson && "\n\n"}
+          {supportsJson &&
+            `/// <param name="element"> The JSON element to deserialize. </param>`}
+          {supportsJson && "\n"}
+          {supportsJson &&
+            `/// <param name="options"> The client options for reading and writing models. </param>`}
+          {supportsJson && "\n"}
           {supportsJson &&
             code`internal static ${unknownName} Deserialize${unknownName}(${SystemTextJson.JsonElement} element, ${SystemClientModelPrimitives.ModelReaderWriterOptions} options)`}
           {supportsJson && "\n{"}

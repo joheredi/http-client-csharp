@@ -93,6 +93,12 @@ export function JsonDeserialize(props: JsonDeserializeProps) {
 
   return (
     <>
+      {`/// <param name="element"> The JSON element to deserialize. </param>`}
+      {"\n"}
+      {isDynamic && `/// <param name="data"> The data to parse. </param>`}
+      {isDynamic && "\n"}
+      {`/// <param name="options"> The client options for reading and writing models. </param>`}
+      {"\n"}
       {methodSignature}
       {"\n{"}
       {"\n    if (element.ValueKind == JsonValueKind.Null)"}

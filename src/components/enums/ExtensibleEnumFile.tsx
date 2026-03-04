@@ -388,7 +388,9 @@ function EqualsTypeMethod(props: { enumName: string; isString: boolean }) {
     ? `string.Equals(_value, other._value, StringComparison.InvariantCultureIgnoreCase)`
     : `Equals(_value, other._value)`;
 
-  return <>{`/// <inheritdoc/>\npublic bool Equals(${enumName} other) => ${body};`}</>;
+  return (
+    <>{`/// <inheritdoc/>\npublic bool Equals(${enumName} other) => ${body};`}</>
+  );
 }
 
 /**
@@ -429,7 +431,9 @@ function ToStringMethod(props: { isString: boolean }) {
   const { isString } = props;
 
   if (isString) {
-    return <>{"/// <inheritdoc/>\npublic override string ToString() => _value;"}</>;
+    return (
+      <>{"/// <inheritdoc/>\npublic override string ToString() => _value;"}</>
+    );
   }
 
   return (

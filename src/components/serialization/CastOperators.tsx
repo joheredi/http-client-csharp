@@ -112,6 +112,8 @@ export function ImplicitBinaryContentOperator(
 
   return (
     <>
+      {`/// <param name="${paramName}"> The <see cref="${modelName}"/> to serialize into <see cref="BinaryContent"/>. </param>`}
+      {"\n"}
       {code`public static implicit operator ${SystemClientModel.BinaryContent}(${modelName} ${paramName})`}
       {"\n{"}
       {`\n    if (${paramName} == null)`}
@@ -268,6 +270,8 @@ export function ExplicitClientResultOperator(
 function renderJsonOnlyOperator(modelName: string) {
   return (
     <>
+      {`/// <param name="result"> The <see cref="ClientResult"/> to deserialize the <see cref="${modelName}"/> from. </param>`}
+      {"\n"}
       {code`public static explicit operator ${modelName}(${SystemClientModel.ClientResult} result)`}
       {"\n{"}
       {"\n    "}
@@ -292,6 +296,8 @@ function renderJsonOnlyOperator(modelName: string) {
 function renderXmlOnlyOperator(modelName: string) {
   return (
     <>
+      {`/// <param name="result"> The <see cref="ClientResult"/> to deserialize the <see cref="${modelName}"/> from. </param>`}
+      {"\n"}
       {code`public static explicit operator ${modelName}(${SystemClientModel.ClientResult} result)`}
       {"\n{"}
       {"\n    "}
@@ -325,6 +331,8 @@ function renderXmlOnlyOperator(modelName: string) {
 function renderDualFormatOperator(modelName: string) {
   return (
     <>
+      {`/// <param name="result"> The <see cref="ClientResult"/> to deserialize the <see cref="${modelName}"/> from. </param>`}
+      {"\n"}
       {code`public static explicit operator ${modelName}(${SystemClientModel.ClientResult} result)`}
       {"\n{"}
       {"\n    "}

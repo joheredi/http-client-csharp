@@ -71,10 +71,18 @@ export function PersistableModelInterfaceMethods(
 
   return (
     <>
+      {`/// <param name="options"> The client options for reading and writing models. </param>`}
+      {"\n"}
       {code`${System.BinaryData} ${SystemClientModelPrimitives.IPersistableModel}<${modelName}>.Write(${SystemClientModelPrimitives.ModelReaderWriterOptions} options) => PersistableModelWriteCore(options);`}
       {"\n\n"}
+      {`/// <param name="data"> The data to parse. </param>`}
+      {"\n"}
+      {`/// <param name="options"> The client options for reading and writing models. </param>`}
+      {"\n"}
       {code`${modelName} ${SystemClientModelPrimitives.IPersistableModel}<${modelName}>.Create(${System.BinaryData} data, ${SystemClientModelPrimitives.ModelReaderWriterOptions} options) => ${createExpression};`}
       {"\n\n"}
+      {`/// <param name="options"> The client options for reading and writing models. </param>`}
+      {"\n"}
       {code`string ${SystemClientModelPrimitives.IPersistableModel}<${modelName}>.GetFormatFromOptions(${SystemClientModelPrimitives.ModelReaderWriterOptions} options) => "${wireFormat}";`}
     </>
   );
