@@ -3498,3 +3498,21 @@ When TypeSpec `@doc` decorators contain multiline text (using triple-quoted stri
 **Notes for next iteration:**
 - Other components that use `namePolicy.getName(name, "parameter")` in raw strings may also need keyword escaping. The utility function is ready to be imported in those files.
 - 1192 tests passing (was 1183), lint clean
+
+## 2026-03-04 — Task 12.2.4: Fix parameter names containing dashes in generated C# code
+
+**What was done:**
+- Fixed `src/components/clients/RestClientFile.tsx` to apply the C# name policy (`camelCase`) to parameter names used in method body code (query params, path params, header params)
+- The `<Method>` component already applied the name policy to parameter names in method signatures, but the body code used `param.name` directly (which could contain dashes)
+- Added a `getParamName` callback (using `namePolicy.getName(name, "parameter")`) that is threaded from `CreateRequestMethod` through `buildRequestBody` to all body-building functions (`buildQueryParamStatement`, `buildPathParamStatement`, `buildHeaderParamStatement`, `getParamValueExpression`)
+- Added unit test in `test/rest-client.test.ts` for kebab-case parameter name handling
+
+**Key patterns:**
+- The `<Method>` component from `@alloy-js/csharp` applies the name policy to parameter names automatically, but raw body code strings must apply it manually
+- Wire names (serializedName) are preserved as-is in `AppendQuery()`/`Headers.Set()` calls
+- The name policy for parameters is `camelCase()` from `change-case`: `new-parameter` → `newParameter`
+
+**Notes for next iteration:**
+- The same pattern applies to `buildMethodParams` which also uses `p.name` for parameter declarations — but this is safe because the `<Method>` component applies the name policy to those names
+- 1193 tests passing (was 1192), lint clean
+- For onClient params, the field name is now `_${getParamName(param.name)}` which is more correct

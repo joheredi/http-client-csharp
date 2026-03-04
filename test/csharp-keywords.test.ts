@@ -106,7 +106,10 @@ describe("C# keyword escaping", () => {
       ];
 
       for (const keyword of reservedKeywords) {
-        expect(isCSharpKeyword(keyword), `"${keyword}" should be a keyword`).toBe(true);
+        expect(
+          isCSharpKeyword(keyword),
+          `"${keyword}" should be a keyword`,
+        ).toBe(true);
       }
     });
 
@@ -144,7 +147,10 @@ describe("C# keyword escaping", () => {
       ];
 
       for (const keyword of contextualKeywords) {
-        expect(isCSharpKeyword(keyword), `"${keyword}" should be a keyword`).toBe(true);
+        expect(
+          isCSharpKeyword(keyword),
+          `"${keyword}" should be a keyword`,
+        ).toBe(true);
       }
     });
 
@@ -179,7 +185,9 @@ describe("C# keyword escaping", () => {
       ];
 
       for (const name of nonKeywords) {
-        expect(isCSharpKeyword(name), `"${name}" should not be a keyword`).toBe(false);
+        expect(isCSharpKeyword(name), `"${name}" should not be a keyword`).toBe(
+          false,
+        );
       }
     });
   });

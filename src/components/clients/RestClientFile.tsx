@@ -278,6 +278,12 @@ function CreateRequestMethod(props: CreateRequestMethodProps) {
     methodParams = reorderTokenFirst(methodParams, tokenParamName);
   }
 
+  // Build a function that converts TypeSpec parameter names to valid C#
+  // identifiers using the name policy (e.g., "new-parameter" → "newParameter").
+  // This must match the transformation applied by the <Method> component to
+  // parameter declarations, so that body code references match the signature.
+  const getParamName = (name: string) => namePolicy.getName(name, "parameter");
+
   // Build method body
   const body = buildRequestBody(
     operation,
@@ -287,6 +293,7 @@ function CreateRequestMethod(props: CreateRequestMethodProps) {
     bodyParam,
     httpVerb,
     classifierRef,
+    getParamName,
   );
 
   return (
@@ -668,6 +675,7 @@ function getAcceptHeaderValue(responses: SdkHttpResponse[]): string | null {
  */
 function getParamValueExpression(
   param: SdkPathParameter | SdkQueryParameter | SdkHeaderParameter,
+  getParamName: (name: string) => string,
   nameOverride?: string,
 ): string {
   if (isConstantType(param.type)) {
@@ -675,7 +683,7 @@ function getParamValueExpression(
   }
 
   const type = unwrapType(param.type);
-  const name = nameOverride ?? param.name;
+  const name = nameOverride ?? getParamName(param.name);
 
   // String → use directly
   if (type.kind === "string") {
@@ -813,9 +821,12 @@ function isExplodedQueryParam(param: SdkQueryParameter): boolean {
  * For collection parameters with delimiter (CSV/SSV/pipes):
  *   `uri.AppendQueryDelimited("name", values, ",", true);`
  */
-function buildQueryParamStatement(param: SdkQueryParameter): string {
+function buildQueryParamStatement(
+  param: SdkQueryParameter,
+  getParamName: (name: string) => string,
+): string {
   const serializedName = param.serializedName;
-  const name = param.name;
+  const name = getParamName(param.name);
 
   if (isConstantType(param.type)) {
     const valueExpr = getConstantValueExpression(param.type);
@@ -848,7 +859,7 @@ function buildQueryParamStatement(param: SdkQueryParameter): string {
   }
 
   // Scalar parameter
-  const valueExpr = getParamValueExpression(param);
+  const valueExpr = getParamValueExpression(param, getParamName);
   if (param.optional) {
     return `if (${name} != null)\n{\n    uri.AppendQuery("${serializedName}", ${valueExpr}, true);\n}`;
   }
@@ -866,12 +877,17 @@ function buildQueryParamStatement(param: SdkQueryParameter): string {
  * For collection parameters:
  *   `uri.AppendPathDelimited(values, ",", escape);`
  */
-function buildPathParamStatement(param: SdkPathParameter): string {
+function buildPathParamStatement(
+  param: SdkPathParameter,
+  getParamName: (name: string) => string,
+): string {
   // allowReserved means reserved characters should NOT be escaped
   const escape = !param.allowReserved;
 
   // onClient params (e.g., api-version) are stored as client fields (_name)
-  const effectiveName = param.onClient ? `_${param.name}` : param.name;
+  const effectiveName = param.onClient
+    ? `_${getParamName(param.name)}`
+    : getParamName(param.name);
 
   if (isCollectionType(param.type)) {
     // Collection path parameter: use delimited serialization
@@ -880,7 +896,11 @@ function buildPathParamStatement(param: SdkPathParameter): string {
   }
 
   // Scalar path parameter
-  const valueExpr = getParamValueExpression(param, param.onClient ? effectiveName : undefined);
+  const valueExpr = getParamValueExpression(
+    param,
+    getParamName,
+    param.onClient ? effectiveName : undefined,
+  );
   return `uri.AppendPath(${valueExpr}, ${escape});`;
 }
 
@@ -894,9 +914,12 @@ function buildPathParamStatement(param: SdkPathParameter): string {
  * For collection parameters:
  *   `request.Headers.Set("name", string.Join(",", values));`
  */
-function buildHeaderParamStatement(param: SdkHeaderParameter): string {
+function buildHeaderParamStatement(
+  param: SdkHeaderParameter,
+  getParamName: (name: string) => string,
+): string {
   const serializedName = param.serializedName;
-  const name = param.name;
+  const name = getParamName(param.name);
 
   if (isConstantType(param.type)) {
     const valueExpr = getConstantValueExpression(param.type);
@@ -923,7 +946,7 @@ function buildHeaderParamStatement(param: SdkHeaderParameter): string {
   }
 
   // Scalar header
-  const valueExpr = getParamValueExpression(param);
+  const valueExpr = getParamValueExpression(param, getParamName);
   if (param.optional) {
     return `if (${name} != null)\n{\n    request.Headers.Set("${serializedName}", ${valueExpr});\n}`;
   }
@@ -950,6 +973,7 @@ function buildRequestBody(
   bodyParam: SdkBodyParameter | undefined,
   httpVerb: string,
   classifierRef: string,
+  getParamName: (name: string) => string,
 ): Children {
   const SCP = SystemClientModelPrimitives;
   const parts: Children[] = [];
@@ -964,13 +988,13 @@ function buildRequestBody(
     if (segment.kind === "literal") {
       parts.push(`\nuri.AppendPath("${segment.value}", false);`);
     } else {
-      parts.push(`\n${buildPathParamStatement(segment.param)}`);
+      parts.push(`\n${buildPathParamStatement(segment.param, getParamName)}`);
     }
   }
 
   // 3. Query parameters
   for (const param of queryParams) {
-    parts.push(`\n${buildQueryParamStatement(param)}`);
+    parts.push(`\n${buildQueryParamStatement(param, getParamName)}`);
   }
 
   // 4. Create PipelineMessage
@@ -988,7 +1012,7 @@ function buildRequestBody(
 
   for (const param of headerParams) {
     if (isImplicitContentTypeHeader(param)) continue;
-    parts.push(`\n${buildHeaderParamStatement(param)}`);
+    parts.push(`\n${buildHeaderParamStatement(param, getParamName)}`);
   }
 
   // Content-Type header (derived from body's defaultContentType)

@@ -1,11 +1,20 @@
 import { type Children } from "@alloy-js/core";
 import { Reference } from "@alloy-js/csharp";
-import type { IntrinsicType, Scalar, Type, Union, UnionVariant } from "@typespec/compiler";
+import type {
+  IntrinsicType,
+  Scalar,
+  Type,
+  Union,
+  UnionVariant,
+} from "@typespec/compiler";
 import {
   Experimental_ComponentOverrides,
   Experimental_ComponentOverridesConfig,
 } from "@typespec/emitter-framework";
-import { TypeExpression, intrinsicNameToCSharpType } from "@typespec/emitter-framework/csharp";
+import {
+  TypeExpression,
+  intrinsicNameToCSharpType,
+} from "@typespec/emitter-framework/csharp";
 import { System } from "../builtins/system.js";
 import { efCsharpRefkey } from "../utils/refkey.js";
 
@@ -185,7 +194,11 @@ function isMultiTypeUnion(union: Union): boolean {
   // Any other kind (Model, Union, Tuple, etc.) cannot, so it's multi-type.
   // Example: Cat | Dog → all "Model" → multi-type → BinaryData.
   const singleKind = [...baseKinds][0];
-  return singleKind !== "string" && singleKind !== "numeric" && singleKind !== "boolean";
+  return (
+    singleKind !== "string" &&
+    singleKind !== "numeric" &&
+    singleKind !== "boolean"
+  );
 }
 
 /**

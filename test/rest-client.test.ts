@@ -1110,4 +1110,58 @@ describe("RestClientFile", () => {
     // Should NOT have apiVersion as a method parameter
     expect(restClient).not.toContain("string apiVersion");
   });
+
+  /**
+   * Verifies that TypeSpec parameter names containing dashes (kebab-case) are
+   * converted to valid C# camelCase identifiers in the method body, while
+   * preserving the wire name for HTTP serialization.
+   *
+   * Without this fix, the emitter would generate invalid C#:
+   *   `if (new-parameter != null)` ← dash is subtraction operator
+   *
+   * The correct output uses the name-policy-transformed identifier:
+   *   `if (newParameter != null)`
+   *
+   * The wire name ("new-parameter") must be preserved in AppendQuery calls.
+   */
+  it("converts kebab-case parameter names to valid C# identifiers in body code", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Widget {
+        id: string;
+      }
+
+      @route("/search")
+      @get op search(
+        @query("new-parameter") newParameter?: string,
+        @query("sort-order") sortOrder: string
+      ): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const restClient = outputs["src/Generated/TestServiceClient.RestClient.cs"];
+    expect(restClient).toBeDefined();
+
+    // Method signature should use camelCase parameter names
+    expect(restClient).toContain("string sortOrder");
+    expect(restClient).toContain("string newParameter");
+
+    // Body code should use camelCase identifiers (NOT dashed wire names)
+    expect(restClient).toContain(
+      'uri.AppendQuery("sort-order", sortOrder, true)',
+    );
+    expect(restClient).toContain("if (newParameter != null)");
+    expect(restClient).toContain(
+      'uri.AppendQuery("new-parameter", newParameter, true)',
+    );
+
+    // Must NOT contain dashed names as C# identifiers
+    expect(restClient).not.toMatch(/if \(new-parameter/);
+    expect(restClient).not.toMatch(/if \(sort-order/);
+  });
 });
