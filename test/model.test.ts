@@ -2235,6 +2235,249 @@ describe("AbstractBaseModel", () => {
     expect(content).not.toMatch(/abstract/);
     expect(content).toMatch(/public\s+partial\s+class\s+Widget/);
   });
+
+  /**
+   * Validates that abstract base model classes include multi-line XML doc
+   * comments with a "Please note this is the abstract base class" note and
+   * `<see cref>` references to all public derived classes.
+   *
+   * This matches the legacy emitter's ModelProvider.BuildDescription() which
+   * appends derived class references for abstract models. Without this, users
+   * lose IDE-visible documentation about which concrete types are available.
+   *
+   * Tests the 2-class grammar: `<see cref="X"/> and <see cref="Y"/>.`
+   */
+  it("generates multi-line summary with derived class see-cref references", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @doc("Base animal with discriminator")
+      @discriminator("kind")
+      model Animal {
+        kind: string;
+        name: string;
+      }
+
+      model Cat extends Animal {
+        kind: "cat";
+        meow: boolean;
+      }
+
+      model Dog extends Animal {
+        kind: "dog";
+        bark: boolean;
+      }
+
+      @route("/test")
+      op test(): Animal;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const animalFile = Object.keys(outputs).find((k) =>
+      k.includes("/Animal.cs"),
+    );
+    expect(animalFile).toBeDefined();
+    const content = outputs[animalFile!];
+
+    // Multi-line summary with model description
+    expect(content).toContain("/// <summary>");
+    expect(content).toContain("/// Base animal with discriminator");
+    // Derived class references with <see cref> syntax
+    expect(content).toContain(
+      "/// Please note this is the abstract base class. The derived classes available for instantiation are:",
+    );
+    expect(content).toMatch(/<see cref="Cat"\/> and <see cref="Dog"\/>\./);
+    expect(content).toContain("/// </summary>");
+  });
+
+  /**
+   * Validates the single-derived-class grammar for abstract model docs.
+   *
+   * When there is only one public derived class, the format should be:
+   * `<see cref="X"/>.` (no "and" conjunction).
+   *
+   * This is important because the grammar rules differ by count and the
+   * legacy emitter handles 1, 2, and 3+ cases differently.
+   */
+  it("generates see-cref for single derived class without conjunction", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @doc("Base plant with discriminator")
+      @discriminator("species")
+      model Plant {
+        species: string;
+        height: int32;
+      }
+
+      model Tree extends Plant {
+        species: "tree";
+        rings: int32;
+      }
+
+      @route("/test")
+      op test(): Plant;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const plantFile = Object.keys(outputs).find((k) => k.includes("/Plant.cs"));
+    expect(plantFile).toBeDefined();
+    const content = outputs[plantFile!];
+
+    // Single derived class: no "and" conjunction
+    expect(content).toContain("/// <summary>");
+    expect(content).toContain("/// Base plant with discriminator");
+    expect(content).toContain(
+      'The derived classes available for instantiation are: <see cref="Tree"/>.',
+    );
+    // Must NOT contain "and" for single derived class
+    expect(content).not.toMatch(/and <see cref/);
+    expect(content).toContain("/// </summary>");
+  });
+
+  /**
+   * Validates the 3+-derived-class grammar with Oxford comma.
+   *
+   * When there are 3 or more public derived classes, the format uses commas
+   * between items and "and" before the last: `<see cref="X"/>, <see cref="Y"/>,
+   * and <see cref="Z"/>.`
+   *
+   * This tests the legacy emitter's addComma logic (count > 2).
+   */
+  it("generates comma-separated see-cref for three or more derived classes", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @doc("Base vehicle")
+      @discriminator("type")
+      model Vehicle {
+        type: string;
+        speed: int32;
+      }
+
+      model Car extends Vehicle {
+        type: "car";
+        doors: int32;
+      }
+
+      model Truck extends Vehicle {
+        type: "truck";
+        payload: int32;
+      }
+
+      model Bike extends Vehicle {
+        type: "bike";
+        gears: int32;
+      }
+
+      @route("/test")
+      op test(): Vehicle;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const vehicleFile = Object.keys(outputs).find((k) =>
+      k.includes("/Vehicle.cs"),
+    );
+    expect(vehicleFile).toBeDefined();
+    const content = outputs[vehicleFile!];
+
+    // 3+ derived classes: comma-separated with "and" before last
+    expect(content).toContain("/// <summary>");
+    expect(content).toContain("/// Base vehicle");
+    // Should have commas between items and "and" before last
+    expect(content).toMatch(/<see cref="[A-Za-z]+"\/>, /);
+    expect(content).toMatch(/and <see cref="[A-Za-z]+"\/>\./);
+    expect(content).toContain("/// </summary>");
+  });
+
+  /**
+   * Validates that the model description falls back to "The {ModelName}."
+   * when no @doc decorator is provided on the abstract base model.
+   *
+   * This matches the legacy emitter's fallback: `$"The {Name}."`.
+   */
+  it("falls back to default description when no @doc is provided", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Pet {
+        kind: string;
+        name: string;
+      }
+
+      model Cat extends Pet {
+        kind: "cat";
+        meow: boolean;
+      }
+
+      @route("/test")
+      op test(): Pet;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const petFile = Object.keys(outputs).find((k) => k.includes("/Pet.cs"));
+    expect(petFile).toBeDefined();
+    const content = outputs[petFile!];
+
+    // Default description when no @doc: "The {ModelName}."
+    expect(content).toContain("/// The Pet.");
+    expect(content).toContain(
+      "/// Please note this is the abstract base class.",
+    );
+  });
+
+  /**
+   * Validates that non-abstract models do NOT get the abstract base class
+   * doc comment. Only abstract discriminated base models should have the
+   * "Please note this is the abstract base class" text.
+   *
+   * This is a negative test ensuring regular models aren't affected.
+   */
+  it("does not add abstract base class doc to non-discriminated models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @doc("A simple widget")
+      model Widget {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const widgetFile = Object.keys(outputs).find((k) =>
+      k.includes("Widget.cs"),
+    );
+    expect(widgetFile).toBeDefined();
+    const content = outputs[widgetFile!];
+
+    // Non-abstract models should NOT have the abstract base class doc
+    expect(content).not.toContain("abstract base class");
+    expect(content).not.toContain("derived classes available");
+  });
 });
 
 /**

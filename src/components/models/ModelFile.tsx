@@ -1,4 +1,5 @@
 import {
+  type CSharpElements,
   ClassDeclaration,
   Namespace,
   SourceFile,
@@ -6,6 +7,7 @@ import {
   useCSharpNamePolicy,
 } from "@alloy-js/csharp";
 import { code, type Children, For } from "@alloy-js/core";
+import type { NamePolicy } from "@alloy-js/core";
 import type { SdkModelType } from "@azure-tools/typespec-client-generator-core";
 import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
 import { System } from "../../builtins/system.js";
@@ -15,6 +17,7 @@ import {
   useCustomCode,
 } from "../../contexts/custom-code-context.js";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
+import { ensureTrailingPeriod } from "../../utils/doc.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { isModelStruct } from "../../utils/model.js";
 import { efCsharpRefkey } from "../../utils/refkey.js";
@@ -78,6 +81,15 @@ export function ModelFile(props: ModelFileProps) {
   const isStruct = isModelStruct(props.type);
   // Structs cannot be abstract in C#; ignore the abstract flag for structs.
   const isAbstract = !isStruct && isModelAbstract(props.type);
+
+  // Build XML doc comment for the class declaration. Abstract base models
+  // include a "Please note" text with <see cref> references to derived classes.
+  const classDoc = buildAbstractModelDoc(
+    props.type,
+    modelName,
+    isAbstract,
+    namePolicy,
+  );
 
   // For derived discriminated models, filter out base discriminator override
   // properties (e.g., kind: "eagle") — they're inherited from the base class.
@@ -167,6 +179,7 @@ export function ModelFile(props: ModelFileProps) {
                 ? efCsharpRefkey(props.type.baseModel.__raw!)
                 : undefined
             }
+            doc={classDoc}
           >
             {members}
           </ClassDeclaration>
@@ -174,4 +187,85 @@ export function ModelFile(props: ModelFileProps) {
       </Namespace>
     </SourceFile>
   );
+}
+
+/**
+ * Builds the XML doc comment for an abstract base model class declaration.
+ *
+ * Abstract base models (discriminated union roots) get a multi-line summary
+ * that includes the model's description followed by a "Please note this is
+ * the abstract base class" note listing all public derived classes with
+ * `<see cref>` references. This matches the legacy emitter's ModelProvider
+ * BuildDescription() output.
+ *
+ * Non-abstract models return `undefined` — they do not get a class-level doc
+ * comment from this function.
+ *
+ * @returns The formatted doc string for the `doc` prop, or `undefined`.
+ *
+ * @example For Animal with derived Pet and Dog:
+ * ```xml
+ * <summary>
+ * Base animal with discriminator
+ * Please note this is the abstract base class. The derived classes available
+ * for instantiation are: <see cref="Pet"/> and <see cref="Dog"/>.
+ * </summary>
+ * ```
+ */
+function buildAbstractModelDoc(
+  model: SdkModelType,
+  modelName: string,
+  isAbstract: boolean,
+  namePolicy: NamePolicy<CSharpElements>,
+): string | undefined {
+  if (!isAbstract || !model.discriminatedSubtypes) {
+    return undefined;
+  }
+
+  const description = model.doc ?? model.summary ?? `The ${modelName}.`;
+
+  // Get public derived classes from discriminated subtypes.
+  // Internal models (e.g., Unknown* fallback variants) are excluded.
+  const publicDerived = Object.values(model.discriminatedSubtypes).filter(
+    (m) => m.access === "public",
+  );
+
+  if (publicDerived.length === 0) {
+    return `<summary> ${ensureTrailingPeriod(description)} </summary>`;
+  }
+
+  const derivedText = formatDerivedClassesText(publicDerived, namePolicy);
+  return `<summary>\n${description}\n${derivedText}\n</summary>`;
+}
+
+/**
+ * Formats the "Please note this is the abstract base class…" text with
+ * `<see cref>` references to all derived classes.
+ *
+ * Grammar rules match the legacy emitter's ModelProvider:
+ * - 1 class:   `<see cref="X"/>.`
+ * - 2 classes:  `<see cref="X"/> and <see cref="Y"/>.`
+ * - 3+ classes: `<see cref="X"/>, <see cref="Y"/>, and <see cref="Z"/>.`
+ */
+function formatDerivedClassesText(
+  derivedModels: SdkModelType[],
+  namePolicy: NamePolicy<CSharpElements>,
+): string {
+  const prefix =
+    "Please note this is the abstract base class. The derived classes available for instantiation are: ";
+  const addComma = derivedModels.length > 2;
+  let refs = "";
+
+  for (let i = 0; i < derivedModels.length; i++) {
+    const name = namePolicy.getName(derivedModels[i].name, "class");
+    const isLast = i === derivedModels.length - 1;
+
+    if (isLast) {
+      refs += `${i > 0 ? "and " : ""}<see cref="${name}"/>.`;
+    } else {
+      refs += `<see cref="${name}"/>${addComma ? ", " : " "}`;
+    }
+  }
+
+  return prefix + refs;
 }

@@ -4902,7 +4902,7 @@
           "title": "Add missing XML documentation on abstract base model classes",
           "description": "Golden abstract discriminated model classes have multi-line summary docs with derived class references:\n\n```csharp\n/// <summary>\n/// Base animal with discriminator\n/// Please note this is the abstract base class. The derived classes available for instantiation are: <see cref=\"Pet\"/> and <see cref=\"Dog\"/>.\n/// </summary>\npublic abstract partial class Animal\n```\n\nThe new emitter generates these classes without the detailed summary or `<see cref>` references to derived classes. This pattern applies to Animal.cs and Plant.cs base classes. When in doubt, the legacy output wins.",
           "phase": "phase-13",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],

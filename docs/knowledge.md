@@ -2388,40 +2388,49 @@ The Spector golden file `DaysOfWeekEnum.cs` does NOT have an enum-level `/// <su
 ## Design Decisions
 
 ### Custom namespace override: component-level vs emitter-level (Task 13.9)
+
 **Chosen**: Component-level override in ModelFile + ModelSerializationFile using `getCustomNamespace()`.
 **Rejected**: Emitter-level mutation of `model.namespace` after custom code scanning — would require replicating the C# name policy's PascalCase logic outside Alloy's component system.
 **Key insight**: The `CustomTypeInfo.namespace` field (already parsed by the scanner) is the source of truth for namespace overrides. The `getCustomNamespace()` function simply looks it up by the C# model name.
 
 ### Custom code namespace pattern
+
 When a user writes `[CodeGenType("ModelName")]` in a custom partial class with a different namespace, the generated model must adopt that namespace so both partial class halves can merge. This is how the legacy emitter supports placing models in sub-namespaces like `Models.Custom`.
 
 ## Unknown Discriminator Serialization Patterns
 
 ### Babel Plugin Crash: Large Conditional JSX Children
-When a ClassDeclaration has many `{condition && code\`...\`}` children (50+), the Alloy Babel JSX plugin may crash with "Cannot read properties of null (reading 'tagName')". Fix: build children imperatively with `const classBody: Children[] = []; classBody.push(...)` and render as `{classBody}`.
+
+When a ClassDeclaration has many `{condition && code\`...\`}`children (50+), the Alloy Babel JSX plugin may crash with "Cannot read properties of null (reading 'tagName')". Fix: build children imperatively with`const classBody: Children[] = []; classBody.push(...)`and render as`{classBody}`.
 
 ### efCsharpRefkey Does NOT Work for Primitive Types
+
 `efCsharpRefkey(rawType)` only resolves types that have a ClassDeclaration/EnumDeclaration with a matching refkey. For primitive/scalar types (string, int, bool), it produces `<Unresolved Symbol>`. Always use `<TypeExpression type={rawType} />` for rendering C# types in generated code.
 
 ### Test File Key Matching: Use endsWith with Slash
+
 Tests that use `k.includes("Model.Serialization.cs")` will also match `UnknownModel.Serialization.cs`. Fix: use `k.endsWith("/Model.Serialization.cs")` to ensure exact model name matching. Apply this pattern to any test checking discriminated base model files.
 
 ### Unknown Model Interface Pattern
+
 Unknown discriminator serialization files implement `IJsonModel<BaseType>` (not `IJsonModel<UnknownType>`). All method signatures (IPersistableModel cast, nameof, Deserialize calls) reference the **base type name**, not the unknown type. Only the class name, DeserializeUnknown method, and constructor call reference the unknown name.
 
 ## Design Decisions
 
 ### Task 13.10: Custom Code Rename Strategy
+
 **Chosen approach**: Mutate TCGC model `name` property early in `emitter.tsx` (before JSX rendering) when custom code declares `[CodeGenType("OriginalName")]` on a class with a different name.
 
 **Why**: ~20 components independently compute `modelName = namePolicy.getName(type.name, "class")`. Updating all of them would be error-prone. Instead, mutating `model.name` once at the source propagates the change to all consumers automatically via JS object references.
 
 **Rejected approaches**:
+
 1. **Utility function in each component** — Required changing 20+ files, each needing `useCustomCode()` + `getEffectiveModelName()`. Error-prone and verbose.
 2. **React context for effective model name** — Clean but still required 20+ file changes to use the new context hook.
 3. **Name policy wrapper** — Could have unintended side effects on non-model naming contexts.
 
 **Implementation notes**:
+
 - The custom code map is also updated to include an entry under the new name (for `isMemberSuppressed` and `getCustomNamespace` lookups).
 - TCGC names starting with uppercase are preserved by the C# name policy (`createHttpClientNamePolicy`), so `type.name` matches the custom code map key directly.
 - The mutation happens after `ensureModelNamespaces` and `cleanAllNamespaces` but before JSX rendering.
@@ -2437,6 +2446,7 @@ The `clientNeedsLinq()` function in `ConvenienceMethod.tsx` detects this conditi
 service method has a spread body with array-type corresponding method params.
 
 ### Spread body internal constructor gap
+
 The golden `SampleTypeSpecClient.cs` calls the **internal** constructor (all properties including
 literals, defaults, and additionalBinaryDataProperties). The new emitter calls the **public**
 constructor (only exposed params). This is a separate issue that causes more output differences
@@ -2445,6 +2455,7 @@ beyond just the `.ToList()` conversion. The `.ToList()` works with both construc
 ## Design Decisions
 
 ### Task 13.22: Infrastructure File Removal Strategy
+
 **Decision**: Remove BinaryContentHelper, Utf8JsonBinaryContent, and PipelineRequestHeadersExtensions from unconditional generation rather than implementing conditional generation.
 
 **Why**: The legacy emitter always registers these types but relies on a PostProcessor tree-shaker (reference graph traversal in PostProcessor.cs) to prune unreferenced types from output. The new Alloy-based emitter has no such tree-shaking step. Since no golden test project includes these files and no generated client code currently references them, the simplest correct approach is to not render them.
@@ -2452,3 +2463,19 @@ beyond just the `.ToList()` conversion. The `.ToList()` works with both construc
 **Rejected alternative**: Conditional generation based on usage detection (e.g., checking if any operation needs collection-to-BinaryContent conversion). This was rejected because: (1) we don't yet generate client method bodies that would reference these helpers, and (2) the exact conditions are complex and would be premature to implement.
 
 **Future note**: When client method body generation is implemented (operations that serialize collections/dictionaries to request bodies), these component files may need to be conditionally re-added. The .tsx source files are preserved in src/components/infrastructure/ for this purpose.
+
+## Design Decisions
+
+### Task 13.5: Abstract model class doc comments
+- **Approach chosen**: Add `doc` prop to `ClassDeclaration` only for abstract base models (not all models), using `buildAbstractModelDoc()` helper
+- **Why**: Minimizes change scope; only abstract models need the derived class references. Non-abstract model docs are a separate concern.
+- **Rejected**: Adding doc to all models in this task (too broad, would change output for ~all model files and require many test updates)
+
+## Gotchas
+
+### CSharpNamePolicy type does not exist
+- `@alloy-js/csharp` does NOT export a `CSharpNamePolicy` type. The correct type for the name policy is `NamePolicy<CSharpElements>` where `NamePolicy` comes from `@alloy-js/core` and `CSharpElements` comes from `@alloy-js/csharp`.
+- `useCSharpNamePolicy()` returns `NamePolicy<CSharpElements>`.
+
+### Scenario tests and doc comments
+- Tree-sitter extraction of `class X` in scenario tests does NOT include leading doc comments (`///`). So adding doc comments to a class doesn't break scenario tests that extract the class body. No need to update scenario test markdown files.

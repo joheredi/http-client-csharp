@@ -4048,3 +4048,33 @@ Design decision: Chose unconditional removal over conditional generation because
 
 ### Result
 - 1265 tests pass (1 new), 128 skipped, 66 test files
+
+## 2026-03-04 — Task 13.5: Add missing XML documentation on abstract base model classes (DONE)
+
+### What was done
+- Added multi-line `<summary>` XML doc comments to abstract base model class declarations
+- The doc includes the model's description (from `@doc`/`@summary`) or fallback "The {ModelName}."
+- For abstract models, appends "Please note this is the abstract base class. The derived classes available for instantiation are: <see cref="X"/>[, <see cref="Y"/>][, and <see cref="Z"/>]."
+- Grammar rules match legacy emitter's ModelProvider.BuildDescription():
+  - 1 class: `<see cref="X"/>.`
+  - 2 classes: `<see cref="X"/> and <see cref="Y"/>.`
+  - 3+ classes: `<see cref="X"/>, <see cref="Y"/>, and <see cref="Z"/>.`
+- Only public derived classes are listed (internal Unknown* variants excluded)
+
+### Files changed
+- `src/components/models/ModelFile.tsx` — Added `buildAbstractModelDoc()` and `formatDerivedClassesText()` helper functions; added `doc` prop to `ClassDeclaration` for abstract models; imported `CSharpElements`, `NamePolicy`, `ensureTrailingPeriod`
+- `test/model.test.ts` — Added 5 new tests: 2-class see-cref, single-class (no conjunction), 3+-class (comma-separated), fallback description, negative test for non-discriminated models
+
+### Patterns used
+- `ClassDeclaration` `doc` prop with `<summary>\n...\n</summary>` format for multi-line docs (same as ModelReaderWriterContextFile.tsx)
+- `NamePolicy<CSharpElements>` type from `@alloy-js/csharp` for name policy parameter typing
+- `model.discriminatedSubtypes` to get derived classes, filtered by `access === "public"`
+- `model.doc ?? model.summary` for description, consistent with ModelProperty.tsx pattern
+
+### Design decision
+Chose to add doc comments ONLY to abstract base model classes (not all models) to keep the change minimal and focused on the task. Non-abstract model class-level docs should be a separate task if needed. Used `NamePolicy<CSharpElements>` type instead of non-existent `CSharpNamePolicy` export.
+
+### Result
+- 1270 tests pass (5 new), 128 skipped, 66 test files
+- All 102 scenario tests continue to pass (tree-sitter class extraction doesn't include doc comments)
+- Build succeeds, lint has only pre-existing errors
