@@ -3661,3 +3661,35 @@ Fixed two bugs in `CollectionResultFile.tsx`:
 ### Patterns
 - When a C# client class name collides with an SCM type name, use `global::` fully-qualified names
 - Collection result class names use immediate client name (matching PagingMethods), not full hierarchy
+
+## Task 13.1 — Fix file header ordering: license before using directives (2026-03-04)
+
+### What was done
+Fixed the file header ordering so license/auto-generated header appears before `using` directives
+in all generated C# files. The Alloy C# `SourceFile` component (v0.22.0) renders auto-detected
+usings before children content. Since the header was injected as children, it ended up after usings.
+
+**Approach**: Post-processing — after Alloy renders the JSX tree, a `reorderFileHeader()` function
+detects files where `using` directives precede the header block (auto-generated + nullable disable)
+and reorders them. This was chosen over creating a custom SourceFile wrapper because the internal
+namespace scoping mechanisms of `@alloy-js/csharp` (NamespaceScopes, getGlobalNamespace) are not
+exported, making it impossible to fully replicate the C# SourceFile's behavior.
+
+### Files created
+- `src/utils/reorder-header.ts` — reorderFileHeader() and reorderAllFileHeaders() functions
+- `test/reorder-header.test.ts` — 5 unit tests + 3 integration tests
+
+### Files modified
+- `src/emitter.tsx` — replaced `writeOutput()` with custom render → reorder → write pipeline
+
+### Design Decision
+Rejected approach: Creating a custom CSharpFile component wrapping CoreSourceFile directly.
+Reason: The @alloy-js/csharp package (v0.22.0) doesn't export internal symbols needed for proper
+namespace scope management (NamespaceScopes, useNamespaceContext, getGlobalNamespace). Without
+these, refkey resolution fails because the scope hierarchy is incomplete. The submodule source
+has a `header` prop fix but it's not in the published package.
+
+### Patterns
+- Post-processing approach allows the fix to work without modifying the Alloy package
+- The reorderFileHeader function is idempotent — files already in correct order are unchanged
+- When @alloy-js/csharp adds the `header` prop support, this post-processing can be removed

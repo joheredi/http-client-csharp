@@ -2255,3 +2255,25 @@ This breaks:
 **Also**: CollectionResultFile was using `getClientFileName()` (full parent chain) while PagingMethods
 used `namePolicy.getName(client.name, "class")` (immediate name). This caused class name mismatches
 between the `new` expression and the class declaration. Both now use immediate client name.
+
+## File Header Ordering (Task 13.1)
+
+### Problem
+The `@alloy-js/csharp@0.22.0` `SourceFile` component renders auto-detected `using` directives before children content. The license header injected as children ends up after usings.
+
+### Solution
+Post-process rendered output in `$onEmit` via `reorderFileHeader()` in `src/utils/reorder-header.ts`. The function detects when usings precede the header block and reorders them.
+
+### Why Not a Custom SourceFile Component
+The internal symbols `NamespaceScopes`, `useNamespaceContext`, and `getGlobalNamespace` from `@alloy-js/csharp` are NOT exported. These are essential for proper namespace scope management that enables refkey resolution. Without them, creating a custom SourceFile wrapper causes `<Unresolved Symbol: refkey[...]>` errors because the binder can't navigate the scope hierarchy.
+
+### Removal Condition
+The submodule `@alloy-js/csharp` source already has a `header` prop on the C# SourceFile that passes through to CoreSourceFile. When this is published, the post-processing can be replaced by passing the header as a prop.
+
+## Design Decisions
+
+### Header Reordering via Post-Processing (Task 13.1)
+**Chosen**: Post-process rendered output to reorder header before usings.
+**Rejected**: Custom CSharpFile component wrapping CoreSourceFile — internal @alloy-js/csharp symbols not exported, causing refkey resolution failure.
+**Rejected**: Patching @alloy-js/csharp package — fragile, gets overwritten on install.
+**Why**: Post-processing is the only approach that works with the installed package version while preserving all Alloy features (auto-usings, namespace management, refkey resolution).

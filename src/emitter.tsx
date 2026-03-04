@@ -3,8 +3,15 @@ import {
   UsageFlags,
 } from "@azure-tools/typespec-client-generator-core";
 import { existsSync } from "fs";
-import { type EmitContext, resolvePath } from "@typespec/compiler";
-import { writeOutput } from "@typespec/emitter-framework";
+import {
+  type EmitContext,
+  type Program,
+  emitFile,
+  joinPaths,
+  resolvePath,
+} from "@typespec/compiler";
+import type { OutputDirectory } from "@alloy-js/core";
+import { renderAsync } from "@alloy-js/core";
 import { ClientOptionsFile } from "./components/client-options/ClientOptionsFile.js";
 import { ClientFile } from "./components/clients/ClientFile.js";
 import { RestClientFile } from "./components/clients/RestClientFile.js";
@@ -77,6 +84,7 @@ import {
   cleanAllNamespaces,
 } from "./utils/package-name.js";
 import { applyUnreferencedTypeHandling } from "./utils/unreferenced-types.js";
+import { reorderAllFileHeaders } from "./utils/reorder-header.js";
 
 /**
  * TypeSpec emitter entry point for the C# HTTP client generator.
@@ -317,5 +325,37 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
     </HttpClientCSharpOutput>
   );
 
-  await writeOutput(context.program, output, context.emitterOutputDir);
+  // Render the JSX tree to an output directory structure, post-process
+  // C# file headers to place the license/auto-generated header before
+  // using directives (the Alloy C# SourceFile renders usings first),
+  // then write files to disk.
+  const tree = await renderAsync(output);
+  reorderAllFileHeaders(tree);
+  await writeOutputDirectory(context.program, tree, context.emitterOutputDir);
+}
+
+/**
+ * Recursively writes an output directory tree to disk.
+ *
+ * This is a local implementation of the same logic used by
+ * `writeOutput` from `@typespec/emitter-framework`, allowing us to
+ * post-process the rendered tree before writing.
+ */
+async function writeOutputDirectory(
+  program: Program,
+  dir: OutputDirectory,
+  emitterOutputDir: string,
+): Promise<void> {
+  for (const item of dir.contents) {
+    if ("contents" in item) {
+      if (Array.isArray(item.contents)) {
+        await writeOutputDirectory(program, item as OutputDirectory, emitterOutputDir);
+      } else {
+        await emitFile(program, {
+          content: (item as { contents: string }).contents,
+          path: joinPaths(emitterOutputDir, item.path),
+        });
+      }
+    }
+  }
 }
