@@ -3711,3 +3711,10 @@ Fixed namespace brace style in all generated C# files from K&R (`namespace Foo {
 - `test/scenarios/enums/extensible_enum.md` — updated expected output to Allman style
 
 **Key gotcha:** In JavaScript multiline regex, `\s*` matches newlines. When the regex `^(\s*)(namespace...)` is used with the `m` flag, `(\s*)` can capture `\n` from a blank line before the namespace keyword, causing the replacement `$1$2\n$1{` to insert a duplicate blank line. Always use `[ \t]*` for horizontal-whitespace-only matching in multiline regexes.
+
+## 2026-03-04: Task 13.16 — Fix RestClient CreateRequest method line breaks
+- **Problem**: In `buildRequestBody()` in `RestClientFile.tsx`, statements using the `code` template literal with `\n` at the start had the newline swallowed by the Alloy framework, causing statements to concatenate on the same line (e.g., `uri.AppendPath(...);PipelineMessage message = ...`).
+- **Root Cause**: The `code` template tag from `@alloy-js/core` strips/ignores leading `\n` characters, unlike plain strings where `\n` works fine.
+- **Fix**: Separated `"\n"` into a standalone plain string pushed before the `code` template literal. Applied to 4 locations: PipelineMessage creation, PipelineRequest extraction, repeatability-request-id header, and repeatability-first-sent header.
+- **Pattern**: When using `code` template literals from Alloy with newlines, always push `"\n"` as a separate plain string argument rather than embedding it inside the template literal.
+- **Tests**: Added regression assertion in rest-client.test.ts to catch concatenated statements. All 1241 unit tests + 102 scenario tests pass.

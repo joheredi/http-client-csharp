@@ -1026,10 +1026,12 @@ function buildRequestBody(
   }
 
   // 4. Create PipelineMessage
+  // Note: \n must be a separate plain string — the code`` template tag strips leading \n.
   parts.push(
-    code`\n${SCP.PipelineMessage} message = Pipeline.CreateMessage(uri.ToUri(), "${httpVerb}", ${classifierRef});`,
+    "\n",
+    code`${SCP.PipelineMessage} message = Pipeline.CreateMessage(uri.ToUri(), "${httpVerb}", ${classifierRef});`,
   );
-  parts.push(code`\n${SCP.PipelineRequest} request = message.Request;`);
+  parts.push("\n", code`${SCP.PipelineRequest} request = message.Request;`);
 
   // 5. Headers — custom headers first
   // Check if Accept is a variable header param (content negotiation)
@@ -1053,11 +1055,13 @@ function buildRequestBody(
     const sn = param.serializedName.toLowerCase();
     if (sn === "repeatability-request-id") {
       parts.push(
-        code`\nrequest.Headers.Set("${param.serializedName}", ${System.Guid}.NewGuid().ToString());`,
+        "\n",
+        code`request.Headers.Set("${param.serializedName}", ${System.Guid}.NewGuid().ToString());`,
       );
     } else if (sn === "repeatability-first-sent") {
       parts.push(
-        code`\nrequest.Headers.Set("${param.serializedName}", ${System.DateTimeOffset}.Now.ToString("R"));`,
+        "\n",
+        code`request.Headers.Set("${param.serializedName}", ${System.DateTimeOffset}.Now.ToString("R"));`,
       );
     }
   }

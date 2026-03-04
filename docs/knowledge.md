@@ -2301,3 +2301,17 @@ The post-processing pipeline in `src/emitter.tsx` runs in this order:
 4. `writeOutputDirectory(...)` — writes files to disk
 
 New post-processing steps should be added between steps 2 and 4.
+
+## code`` template tag and newlines
+
+The `code` template tag from `@alloy-js/core` **strips leading `\n` characters**. When building statement lists with `code` template literals, never embed `\n` at the start of the template:
+
+```tsx
+// BAD — \n gets swallowed, statements concatenate on same line
+parts.push(code`\n${SCP.PipelineMessage} message = ...`);
+
+// GOOD — push \n as a separate plain string
+parts.push("\n", code`${SCP.PipelineMessage} message = ...`);
+```
+
+This applies anywhere `code` templates are used in `Children[]` arrays for statement-level code generation. Plain strings with `\n` work fine; the issue is specific to the `code` template tag.

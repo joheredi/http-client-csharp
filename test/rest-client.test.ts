@@ -72,6 +72,10 @@ describe("RestClientFile", () => {
     // Verify request variable declaration
     expect(restClient).toContain("PipelineRequest request = message.Request;");
 
+    // Regression: each statement must be on its own line (not concatenated)
+    expect(restClient).not.toContain("false);PipelineMessage");
+    expect(restClient).not.toContain(");PipelineRequest");
+
     // Verify no Accept header for void response
     expect(restClient).not.toContain("Accept");
 
