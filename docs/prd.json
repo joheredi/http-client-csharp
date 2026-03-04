@@ -5067,7 +5067,7 @@
           "title": "Fix client constructor pattern: separate auth constructors",
           "description": "The golden client has SEPARATE constructors for different auth types:\n1. `SampleTypeSpecClient(Uri endpoint, ApiKeyCredential credential)` \u2192 delegates to full constructor\n2. `SampleTypeSpecClient(Uri endpoint, ApiKeyCredential credential, SampleTypeSpecClientOptions options)` \u2192 full ApiKey constructor\n3. `SampleTypeSpecClient(Uri endpoint, AuthenticationTokenProvider tokenProvider, SampleTypeSpecClientOptions options)` \u2192 full OAuth2 constructor\n\nThe new emitter generates a COMBINED constructor taking both credentials:\n```csharp\npublic SampleTypeSpecClient(\n    Uri endpoint,\n    ApiKeyCredential credential,\n    AuthenticationTokenProvider tokenProvider\n) : this(endpoint, credential, tokenProvider, new SampleTypeSpecClientOptions()) {}\n\npublic SampleTypeSpecClient(\n    Uri endpoint,\n    ApiKeyCredential credential,\n    AuthenticationTokenProvider tokenProvider,\n    SampleTypeSpecClientOptions options\n)\n```\n\nThe legacy pattern generates one constructor per auth scheme. When in doubt, the legacy output wins.",
           "phase": "phase-13",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "13.11"
           ],

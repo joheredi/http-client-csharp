@@ -32,7 +32,7 @@ op validToken(): void;
 ## Clients
 
 Should generate a client class with both API key and OAuth2 authentication
-constructor overloads.
+with separate constructors per auth scheme.
 
 ```csharp src/Generated/UnionClient.cs class UnionClient
 public partial class UnionClient
@@ -58,37 +58,43 @@ public partial class UnionClient
         /// <summary> Initializes a new instance of UnionClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
         /// <param name="credential"> A credential used to authenticate to the service. </param>
-        /// <param name="tokenProvider"> A token provider used to authenticate to the service. </param>
         public UnionClient(
             Uri endpoint,
-            ApiKeyCredential credential,
-            AuthenticationTokenProvider tokenProvider
-        ) : this(endpoint, credential, tokenProvider, new ClientPipelineOptions())
+            ApiKeyCredential credential
+        ) : this(endpoint, credential, new ClientPipelineOptions())
         {
         }
 
         /// <summary> Initializes a new instance of UnionClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
         /// <param name="credential"> A credential used to authenticate to the service. </param>
-        /// <param name="tokenProvider"> A token provider used to authenticate to the service. </param>
         /// <param name="options"> The options for configuring the client. </param>
-        public UnionClient(
-            Uri endpoint,
-            ApiKeyCredential credential,
-            AuthenticationTokenProvider tokenProvider,
-            ClientPipelineOptions options
-        )
+        public UnionClient(Uri endpoint, ApiKeyCredential credential, ClientPipelineOptions options)
         {
             Argument.AssertNotNull(endpoint, nameof(endpoint));
             Argument.AssertNotNull(credential, nameof(credential));
-            Argument.AssertNotNull(tokenProvider, nameof(tokenProvider));
 
             options ??= new ClientPipelineOptions();
 
             _endpoint = endpoint;
             _keyCredential = credential;
-            _tokenProvider = tokenProvider;
             Pipeline = ClientPipeline.Create(options, Array.Empty<PipelinePolicy>(), new PipelinePolicy[] { new UserAgentPolicy(typeof(UnionClient).Assembly), ApiKeyAuthenticationPolicy.CreateHeaderApiKeyPolicy(_keyCredential, AuthorizationHeader) }, Array.Empty<PipelinePolicy>());
+        }
+
+        /// <summary> Initializes a new instance of UnionClient. </summary>
+        /// <param name="endpoint"> Service endpoint. </param>
+        /// <param name="tokenProvider"> A token provider used to authenticate to the service. </param>
+        /// <param name="options"> The options for configuring the client. </param>
+        public UnionClient(Uri endpoint, AuthenticationTokenProvider tokenProvider, ClientPipelineOptions options)
+        {
+            Argument.AssertNotNull(endpoint, nameof(endpoint));
+            Argument.AssertNotNull(tokenProvider, nameof(tokenProvider));
+
+            options ??= new ClientPipelineOptions();
+
+            _endpoint = endpoint;
+            _tokenProvider = tokenProvider;
+            Pipeline = ClientPipeline.Create(options, Array.Empty<PipelinePolicy>(), new PipelinePolicy[] { new UserAgentPolicy(typeof(UnionClient).Assembly), new BearerTokenPolicy(_tokenProvider, _flows) }, Array.Empty<PipelinePolicy>());
         }
 
         /// <summary> The HTTP pipeline for sending and receiving REST requests and responses. </summary>

@@ -4182,3 +4182,17 @@ Implemented literal type wrapper struct generation for optional/nullable constan
 - test/client-file.test.ts (updated unit test assertions)
 
 **Unblocks:** Task 13.12 (separate auth constructors per scheme)
+
+## 2026-03-04 — Task 13.12: Fix client constructor pattern — separate auth constructors (DONE)
+
+Refactored `RootClientConstructors` in `ClientFile.tsx` to generate separate constructors per auth scheme instead of a single combined constructor. The legacy emitter pattern generates:
+
+1. A short (convenience) constructor for the FIRST auth scheme only (delegates to full with default options)
+2. A full constructor per auth scheme, each with its own body: validates only its auth param, assigns only its auth field, creates pipeline with only its auth policy
+
+Key changes:
+- **`src/components/clients/ClientFile.tsx`**: Replaced the combined auth params list with a per-auth-scheme loop. Each auth scheme descriptor holds its param, doc, field assignment, and pipeline line. The first scheme gets short + full constructors; subsequent schemes get only the full constructor.
+- **`test/scenarios/authentication/union_auth.md`**: Updated expected output to show separate constructors (ApiKey short + full, OAuth2 full only) instead of combined constructors.
+- **`test/client-file.test.ts`**: Added new test `generates separate constructors per auth scheme for multi-auth clients` that verifies each constructor body is independent (no cross-contamination of auth fields/policies).
+
+Pattern: `buildPipelineCreateLine` already handled individual auth schemes — the fix was in how `RootClientConstructors` composes the constructors.

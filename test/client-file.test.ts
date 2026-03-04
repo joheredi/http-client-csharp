@@ -820,6 +820,100 @@ describe("ClientFile", () => {
   });
 
   /**
+   * Verifies that a root client with both API key and OAuth2 authentication
+   * generates SEPARATE constructors per auth scheme, matching the golden
+   * SampleTypeSpecClient.cs pattern.
+   *
+   * The legacy emitter generates:
+   * 1. A short (convenience) constructor for the FIRST auth scheme only
+   *    that delegates to the full constructor with default options.
+   * 2. A full constructor per auth scheme, each with its own body that
+   *    validates only its own auth param, assigns only its own field,
+   *    and creates a pipeline with only its own auth policy.
+   *
+   * This is critical for correctness because:
+   * - Each constructor creates a pipeline with the correct auth policy
+   * - Consumers pick the constructor matching their auth scheme
+   * - The combined pattern would force consumers to provide BOTH credentials
+   *   even when they only have one
+   */
+  it("generates separate constructors per auth scheme for multi-auth clients", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @useAuth(ApiKeyAuth<ApiKeyLocation.header, "x-api-key"> | OAuth2Auth<[{
+        type: OAuth2FlowType.implicit,
+        authorizationUrl: "https://login.example.com/authorize",
+        scopes: ["read"]
+      }]>)
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op testOp(): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Short (convenience) constructor for FIRST auth scheme (API key) only
+    expect(clientFile).toContain(
+      ": this(endpoint, credential, new ClientPipelineOptions())",
+    );
+
+    // Full API key constructor with credential + options
+    expect(clientFile).toContain(
+      "ApiKeyCredential credential, ClientPipelineOptions options)",
+    );
+
+    // Full OAuth2 constructor with tokenProvider + options
+    expect(clientFile).toContain(
+      "AuthenticationTokenProvider tokenProvider, ClientPipelineOptions options)",
+    );
+
+    // API key constructor body assigns only _keyCredential
+    // Find the API key constructor body and verify it doesn't assign _tokenProvider
+    const apiKeyCtorStart = clientFile.indexOf(
+      "ApiKeyCredential credential, ClientPipelineOptions options)",
+    );
+    const oauth2CtorStart = clientFile.indexOf(
+      "AuthenticationTokenProvider tokenProvider, ClientPipelineOptions options)",
+    );
+    expect(apiKeyCtorStart).toBeGreaterThan(-1);
+    expect(oauth2CtorStart).toBeGreaterThan(-1);
+
+    // API key constructor appears before OAuth2 constructor
+    expect(apiKeyCtorStart).toBeLessThan(oauth2CtorStart);
+
+    // Extract the API key constructor body (between apiKeyCtorStart and oauth2CtorStart)
+    const apiKeyBody = clientFile.substring(apiKeyCtorStart, oauth2CtorStart);
+    expect(apiKeyBody).toContain("_keyCredential = credential;");
+    expect(apiKeyBody).not.toContain("_tokenProvider");
+    expect(apiKeyBody).toContain(
+      "ApiKeyAuthenticationPolicy.CreateHeaderApiKeyPolicy",
+    );
+    expect(apiKeyBody).not.toContain("BearerTokenPolicy");
+
+    // Extract the OAuth2 constructor body (from oauth2CtorStart to end of class)
+    const oauth2Body = clientFile.substring(oauth2CtorStart);
+    expect(oauth2Body).toContain("_tokenProvider = tokenProvider;");
+    expect(oauth2Body).not.toContain("_keyCredential");
+    expect(oauth2Body).toContain("new BearerTokenPolicy(_tokenProvider, _flows)");
+    expect(oauth2Body).not.toContain("ApiKeyAuthenticationPolicy");
+
+    // Should NOT have a combined constructor with both credentials
+    expect(clientFile).not.toContain(
+      "ApiKeyCredential credential, AuthenticationTokenProvider tokenProvider",
+    );
+
+    // Should NOT have a short constructor for OAuth2 (only first auth gets short)
+    expect(clientFile).not.toContain(
+      ": this(endpoint, tokenProvider, new ClientPipelineOptions())",
+    );
+  });
+
+  /**
    * Verifies empty constructors use multiline brace style (Allman style) instead
    * of single-line `{ }` or `{}`. The golden files always use multiline empty
    * bodies for constructors:

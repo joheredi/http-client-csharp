@@ -2552,3 +2552,12 @@ Required non-nullable literals use raw primitive types with initializers (e.g., 
 When building multi-line structures, do NOT use `code\`${codeNode1},\n${codeNode2}\`` — the newlines 
 between interpolated code nodes are lost. Instead, use JSX fragment with alternating string and code 
 children: `<>{"prefix"}{codeNode1}{",\n"}{codeNode2}{"suffix"}</>`.
+
+## Design Decisions
+
+### Separate constructors per auth scheme (task 13.12)
+**Chosen approach**: Iterate over auth schemes in `RootClientConstructors`, generating independent constructors per scheme. Each full constructor validates/assigns only its own auth credential and creates a pipeline with only its auth policy.
+
+**Rejected approach**: Keep combined constructors but with separate pipeline creation. Rejected because the legacy golden files (SampleTypeSpecClient.cs) show fully independent constructors — consumers should only need to provide the credential for their chosen auth scheme, not all credentials.
+
+**Key insight**: Only the FIRST auth scheme gets a convenience (short) constructor without options. This matches SampleTypeSpecClient.cs where ApiKey gets short + full, but OAuth2 gets only the full constructor.

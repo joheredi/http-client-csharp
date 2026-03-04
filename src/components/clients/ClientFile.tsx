@@ -316,19 +316,20 @@ interface RootClientConstructorsProps {
 }
 
 /**
- * Generates the secondary (convenience) and primary constructors for a root client.
+ * Generates constructors for a root client, with separate constructors per auth scheme.
  *
- * The secondary constructor accepts endpoint and auth credential parameters,
- * then delegates to the primary constructor with a default options instance.
+ * The legacy emitter generates one constructor per auth scheme rather than a single
+ * combined constructor. For each auth scheme:
+ * - The **first** auth scheme gets a secondary (convenience) constructor without options
+ *   that delegates to its primary constructor with default options.
+ * - Every auth scheme gets a primary constructor with its own body that validates
+ *   parameters, assigns only its own auth credential field, and creates a pipeline
+ *   with only its own auth policy.
  *
- * The primary constructor performs:
- * - Argument validation via Argument.AssertNotNull
- * - Options null-coalescing to default instance
- * - Field assignments for endpoint, auth credentials, and method params
- * - Pipeline creation via ClientPipeline.Create with auth policies
- * - API version assignment from options.Version (if applicable)
+ * When there is no auth, a single secondary + primary pair is generated (no auth params).
  *
- * This matches the legacy emitter's ClientProvider.BuildConstructors pattern.
+ * This matches the golden SampleTypeSpecClient.cs pattern where ApiKey and OAuth2
+ * each have their own full constructor with independent pipeline creation.
  */
 function RootClientConstructors(props: RootClientConstructorsProps) {
   const {
@@ -341,22 +342,6 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
     hasApiVersions,
     optionsClassName,
   } = props;
-
-  // Build auth constructor parameters.
-  // API key auth uses "credential" param name; OAuth2 uses "tokenProvider".
-  const authParams: Array<{ name: string; type: Children }> = [];
-  if (apiKeyAuth) {
-    authParams.push({
-      name: "credential",
-      type: SystemClientModel.ApiKeyCredential,
-    });
-  }
-  if (oauth2Auth) {
-    authParams.push({
-      name: "tokenProvider",
-      type: SystemClientModelPrimitives.AuthenticationTokenProvider,
-    });
-  }
 
   // Non-API-version method params become constructor parameters
   const methodCtorParams = nonApiVersionParams.map((p) => ({
@@ -372,88 +357,68 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
         type: SystemClientModelPrimitives.ClientPipelineOptions,
       };
 
-  // Secondary constructor: endpoint, [auth], [method params] — no options
-  const secondaryParams = [endpointParam, ...authParams, ...methodCtorParams];
-  // Primary constructor: endpoint, [auth], [method params], options
-  const primaryParams = [...secondaryParams, optionsParam];
-
-  // Build `: this(...)` initializer for the secondary constructor.
-  // Passes all secondary params plus a default options instance.
-  const secondaryArgList = secondaryParams.map((p) => p.name).join(", ");
   const optionsDefault = hasApiVersions
     ? `new ${optionsClassName}()`
     : "new ClientPipelineOptions()";
-  const thisInitializer = `${secondaryArgList}, ${optionsDefault}`;
 
-  // Build the ClientPipeline.Create(...) expression for the primary body
-  const pipelineLine = buildPipelineCreateLine(client, apiKeyAuth, oauth2Auth);
-
-  // Build doc comment param lines for the auth parameters
-  const authDocParams = [
-    ...(apiKeyAuth
-      ? [
-          `/// <param name="credential"> A credential used to authenticate to the service. </param>`,
-        ]
-      : []),
-    ...(oauth2Auth
-      ? [
-          `/// <param name="tokenProvider"> A token provider used to authenticate to the service. </param>`,
-        ]
-      : []),
-  ];
   const methodDocParams = nonApiVersionParams.map(
     (p) =>
       `/// <param name="${p.name}"> ${formatDocLines(p.doc ?? p.summary ?? `The ${p.name}.`)} </param>`,
   );
 
-  return (
-    <>
-      {"\n\n"}
-      {`/// <summary> Initializes a new instance of ${className}. </summary>`}
-      {"\n"}
-      {`/// <param name="endpoint"> Service endpoint. </param>`}
-      {authDocParams.map((doc) => (
-        <>
-          {"\n"}
-          {doc}
-        </>
-      ))}
-      {methodDocParams.map((doc) => (
-        <>
-          {"\n"}
-          {doc}
-        </>
-      ))}
-      {"\n"}
-      <OverloadConstructor
-        public
-        parameters={secondaryParams}
-        thisInitializer={thisInitializer}
-      />
-      {"\n\n"}
-      {`/// <summary> Initializes a new instance of ${className}. </summary>`}
-      {"\n"}
-      {`/// <param name="endpoint"> Service endpoint. </param>`}
-      {authDocParams.map((doc) => (
-        <>
-          {"\n"}
-          {doc}
-        </>
-      ))}
-      {methodDocParams.map((doc) => (
-        <>
-          {"\n"}
-          {doc}
-        </>
-      ))}
-      {"\n"}
-      {`/// <param name="options"> The options for configuring the client. </param>`}
-      {"\n"}
-      <OverloadConstructor public parameters={primaryParams}>
+  // Build per-auth-scheme descriptors. Each descriptor has the auth param,
+  // its doc comment, field assignment, and pipeline creation line.
+  // When there is no auth at all, we use a single descriptor with no auth param.
+  interface AuthSchemeDescriptor {
+    authParam?: { name: string; type: Children };
+    authDoc?: string;
+    fieldAssignment?: string;
+    pipelineLine: Children;
+  }
+
+  const authSchemes: AuthSchemeDescriptor[] = [];
+
+  if (apiKeyAuth) {
+    authSchemes.push({
+      authParam: {
+        name: "credential",
+        type: SystemClientModel.ApiKeyCredential,
+      },
+      authDoc: `/// <param name="credential"> A credential used to authenticate to the service. </param>`,
+      fieldAssignment: `_keyCredential = credential;`,
+      pipelineLine: buildPipelineCreateLine(client, apiKeyAuth, undefined),
+    });
+  }
+
+  if (oauth2Auth) {
+    authSchemes.push({
+      authParam: {
+        name: "tokenProvider",
+        type: SystemClientModelPrimitives.AuthenticationTokenProvider,
+      },
+      authDoc: `/// <param name="tokenProvider"> A token provider used to authenticate to the service. </param>`,
+      fieldAssignment: `_tokenProvider = tokenProvider;`,
+      pipelineLine: buildPipelineCreateLine(client, undefined, oauth2Auth),
+    });
+  }
+
+  // If no auth schemes, generate a single pair with no auth parameters
+  if (authSchemes.length === 0) {
+    authSchemes.push({
+      pipelineLine: buildPipelineCreateLine(client, undefined, undefined),
+    });
+  }
+
+  /**
+   * Renders the primary (full) constructor body for a given auth scheme.
+   * Validates all parameters, assigns fields, creates pipeline, and assigns API version.
+   */
+  function renderPrimaryBody(scheme: AuthSchemeDescriptor): Children {
+    return (
+      <>
         {`Argument.AssertNotNull(endpoint, nameof(endpoint));`}
-        {authParams.map(
-          (p) => `\nArgument.AssertNotNull(${p.name}, nameof(${p.name}));`,
-        )}
+        {scheme.authParam &&
+          `\nArgument.AssertNotNull(${scheme.authParam.name}, nameof(${scheme.authParam.name}));`}
         {nonApiVersionParams.map(
           (p) => `\nArgument.AssertNotNull(${p.name}, nameof(${p.name}));`,
         )}
@@ -463,13 +428,89 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
           : code`options ??= new ${SystemClientModelPrimitives.ClientPipelineOptions}();`}
         {"\n\n"}
         {`_endpoint = endpoint;`}
-        {apiKeyAuth && `\n_keyCredential = credential;`}
-        {oauth2Auth && `\n_tokenProvider = tokenProvider;`}
+        {scheme.fieldAssignment && `\n${scheme.fieldAssignment}`}
         {nonApiVersionParams.map((p) => `\n_${p.name} = ${p.name};`)}
         {"\n"}
-        {pipelineLine}
+        {scheme.pipelineLine}
         {apiVersionParams.map((p) => `\n_${p.name} = options.Version;`)}
-      </OverloadConstructor>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {authSchemes.map((scheme, index) => {
+        const authParams = scheme.authParam ? [scheme.authParam] : [];
+        const authDocLines = scheme.authDoc ? [scheme.authDoc] : [];
+
+        const secondaryParams = [
+          endpointParam,
+          ...authParams,
+          ...methodCtorParams,
+        ];
+        const primaryParams = [...secondaryParams, optionsParam];
+
+        const secondaryArgList = secondaryParams
+          .map((p) => p.name)
+          .join(", ");
+        const thisInitializer = `${secondaryArgList}, ${optionsDefault}`;
+
+        // Only the first auth scheme gets a secondary (convenience) constructor
+        const isFirst = index === 0;
+
+        return (
+          <>
+            {isFirst && (
+              <>
+                {"\n\n"}
+                {`/// <summary> Initializes a new instance of ${className}. </summary>`}
+                {"\n"}
+                {`/// <param name="endpoint"> Service endpoint. </param>`}
+                {authDocLines.map((doc) => (
+                  <>
+                    {"\n"}
+                    {doc}
+                  </>
+                ))}
+                {methodDocParams.map((doc) => (
+                  <>
+                    {"\n"}
+                    {doc}
+                  </>
+                ))}
+                {"\n"}
+                <OverloadConstructor
+                  public
+                  parameters={secondaryParams}
+                  thisInitializer={thisInitializer}
+                />
+              </>
+            )}
+            {"\n\n"}
+            {`/// <summary> Initializes a new instance of ${className}. </summary>`}
+            {"\n"}
+            {`/// <param name="endpoint"> Service endpoint. </param>`}
+            {authDocLines.map((doc) => (
+              <>
+                {"\n"}
+                {doc}
+              </>
+            ))}
+            {methodDocParams.map((doc) => (
+              <>
+                {"\n"}
+                {doc}
+              </>
+            ))}
+            {"\n"}
+            {`/// <param name="options"> The options for configuring the client. </param>`}
+            {"\n"}
+            <OverloadConstructor public parameters={primaryParams}>
+              {renderPrimaryBody(scheme)}
+            </OverloadConstructor>
+          </>
+        );
+      })}
     </>
   );
 }
