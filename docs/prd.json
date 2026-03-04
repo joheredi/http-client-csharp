@@ -4827,7 +4827,7 @@
           "title": "Fix namespace/type name collision for sub-client operation groups",
           "description": "In azure/resource-manager/method-subscription-id, sub-client classes (MixedSubscriptionPlacement, TwoSubscriptionResourcesMethodLevel) have the same name as their containing namespace, causing CS0118 errors. The emitter imports the namespace via \"using\" and then tries to use the same name as a type. Need to ensure sub-client class names do not collide with namespace names, or use fully-qualified type references.",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

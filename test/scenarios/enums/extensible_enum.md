@@ -59,7 +59,7 @@ Should generate a readonly partial struct implementing IEquatable<T>.
 using System;
 using System.ComponentModel;
 
-namespace Type.Enum.Extensible
+namespace _Type._Enum.Extensible
 {
     /// <summary> Days of the week. </summary>
     public readonly partial struct DaysOfWeekExtensibleEnum : IEquatable<DaysOfWeekExtensibleEnum>

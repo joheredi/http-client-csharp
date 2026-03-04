@@ -4282,3 +4282,26 @@ Check the NuGet package XML docs: `grep "T:Full.Type.Name" ~/.nuget/packages/{pk
 - `test/scenarios/paging/server_driven_pagination.md` — removed `async` from expected output
 
 **Pattern**: Methods returning `AsyncCollectionResult`/`AsyncCollectionResult<T>` must NOT use `async` because they are not Task-based. The `async` keyword is only correct for methods returning `Task<T>` or `async IAsyncEnumerable<T>` (like the internal GetRawPagesAsync in CollectionResultFile.tsx which correctly uses it).
+
+## 2026-03-04 — Task 12.7: Fix namespace/type name collision for sub-client operation groups
+
+**What was done:**
+- Identified root cause: Alloy's C# naming policy applies `pascalCase()` to namespace segments,
+  which strips the leading `_` prefix that `cleanAllNamespaces()` adds to prevent CS0118 errors
+- Fixed `createHttpClientNamePolicy()` in `HttpClientCSharpOutput.tsx` to preserve underscore-
+  prefixed namespace segments by short-circuiting the name policy when `element === "namespace"`
+  and `name.startsWith("_")`
+- Updated test expectations in `client-file.test.ts` for deeply nested sub-client test to
+  expect underscore-prefixed namespace segments
+- Added new test "escapes sub-client namespace segments that collide with class names"
+- Updated `test/scenarios/enums/extensible_enum.md` via SCENARIOS_UPDATE=true to reflect
+  correct `_Type._Enum.Extensible` namespace output (matches legacy emitter behavior)
+- Verified fix against Azure ARM `method-subscription-id` spec: both `MixedSubscriptionPlacement`
+  and `TwoSubscriptionResourcesMethodLevel` now correctly use `_`-prefixed namespaces
+
+**Important for next iterations:**
+- The fix is centralized in the name policy — no per-component changes needed
+- Scenario tests using TypeSpec namespaces with `Type`, `Enum`, `Array` segments now correctly
+  generate underscore-prefixed C# namespaces matching the legacy emitter
+- The `cleanAllNamespaces()` function was always working correctly; the bug was in rendering
+- Other ARM specs in `.testignore` may now compile for the CS0118 issue (but other errors remain)

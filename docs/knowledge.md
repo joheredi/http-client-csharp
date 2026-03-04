@@ -2592,3 +2592,34 @@ All 9 ARM resource-manager specs emit successfully but fail C# compilation. Four
 **Chosen:** Move `AuthenticationTokenProvider` to the `SystemClientModel` library (`System.ClientModel` namespace).
 **Why:** The .NET type `System.ClientModel.AuthenticationTokenProvider` lives in `System.ClientModel`, verified via NuGet XML docs. Placing it in `SystemClientModelPrimitives` caused Alloy to generate only `using System.ClientModel.Primitives;`, missing the correct `using System.ClientModel;` directive.
 **Rejected:** Adding a manual `using System.ClientModel;` import via raw strings — this fights against Alloy's auto-import system and is fragile.
+
+## Namespace Escaping and Alloy Name Policy (Task 12.7)
+
+### Root Cause: Alloy C# name policy strips underscore prefix from namespace segments
+
+The `cleanAllNamespaces()` function correctly mutates `client.namespace` to add `_` prefixes
+to conflicting segments (e.g., `MixedSubscriptionPlacement` → `_MixedSubscriptionPlacement`).
+However, Alloy's `<Namespace>` component splits the namespace string on `.` and applies
+the C# naming policy to each segment. The standard `createCSharpNamePolicy()` uses
+`change-case`'s `pascalCase()` for the `"namespace"` element type. Since
+`pascalCase("_MixedSubscriptionPlacement")` strips the leading underscore and returns
+`"MixedSubscriptionPlacement"`, the namespace cleaning was silently undone at render time.
+
+### Fix: Custom name policy preserves underscore-prefixed namespace segments
+
+Added a check in `createHttpClientNamePolicy()` (HttpClientCSharpOutput.tsx):
+```typescript
+if (element === "namespace" && name.startsWith("_")) {
+  return name; // Preserve intentional underscore prefix
+}
+```
+
+This ensures the underscore prefix added by `cleanAllNamespaces()` survives Alloy's
+name policy transformation and appears in the generated C# output.
+
+### Impact on scenario tests
+
+Scenario tests with TypeSpec namespaces containing reserved words (`Type`, `Enum`, `Array`)
+now correctly show underscore-prefixed segments in the expected C# output
+(e.g., `_Type._Enum.Extensible` instead of `Type.Enum.Extensible`). This matches the
+legacy emitter's behavior documented in knowledge.md's "Namespace differences with legacy emitter".

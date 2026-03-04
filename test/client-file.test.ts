@@ -1260,9 +1260,10 @@ describe("ClientFile", () => {
     expect(nestedA).toBeDefined();
     expect(nestedB).toBeDefined();
 
-    // Each must be in its own namespace
-    expect(nestedA).toContain("namespace TestService.GroupA.Nested");
-    expect(nestedB).toContain("namespace TestService.GroupB.Nested");
+    // Each must be in its own namespace (underscore-prefixed because the client
+    // name matches the last namespace segment, which would cause CS0118)
+    expect(nestedA).toContain("namespace TestService._GroupA._Nested");
+    expect(nestedB).toContain("namespace TestService._GroupB._Nested");
 
     // Each must have the short class name (not the hierarchical filename)
     expect(nestedA).toContain("public partial class Nested");
@@ -1620,5 +1621,47 @@ describe("ClientFile", () => {
     expect(clientFile).toContain(
       '<paramref name="endpoint"/> or <paramref name="tokenProvider"/> is null.',
     );
+  });
+
+  /**
+   * Verifies that sub-client namespace segments matching the client class name
+   * are prefixed with `_` to avoid C# CS0118 namespace/type name collisions.
+   *
+   * When a sub-client is named `Model` in namespace `TestService.Model`, C#
+   * cannot distinguish between the namespace and the type when a `using`
+   * directive imports the namespace. The fix adds `_` prefix to the conflicting
+   * namespace segment, producing `TestService._Model`.
+   *
+   * This test is critical because:
+   * - Without the fix, Alloy's name policy strips the `_` via pascalCase()
+   * - The bug only manifests when a sub-client name equals its last namespace segment
+   * - Real-world ARM specs (e.g., method-subscription-id) hit this pattern
+   */
+  it("escapes sub-client namespace segments that collide with class names", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      namespace Model {
+        @route("/models")
+        @get op getModel(): void;
+      }
+    `);
+
+    // Filter out non-error diagnostics (warnings are OK)
+    const errors = diagnostics.filter((d) => d.severity === "error");
+    expect(errors).toHaveLength(0);
+
+    // The sub-client file should use the underscore-prefixed namespace
+    const subClientFile = outputs["src/Generated/Model.cs"];
+    expect(subClientFile).toBeDefined();
+
+    // Namespace must have underscore prefix to avoid CS0118
+    expect(subClientFile).toContain("namespace TestService._Model");
+
+    // Class name remains unchanged (no underscore prefix)
+    expect(subClientFile).toContain("public partial class Model");
   });
 });

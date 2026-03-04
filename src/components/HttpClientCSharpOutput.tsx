@@ -170,6 +170,14 @@ function createHttpClientNamePolicy() {
     if (typeContexts.has(element) && /^[A-Z]/.test(name)) {
       return name;
     }
+    // Preserve underscore-prefixed namespace segments. The cleanAllNamespaces()
+    // function adds `_` prefixes to namespace segments that conflict with C#
+    // type names (e.g., `_MixedSubscriptionPlacement`). The standard name policy
+    // applies pascalCase() which strips the leading underscore, re-introducing
+    // the CS0118 collision. Preserve these segments verbatim.
+    if (element === "namespace" && name.startsWith("_")) {
+      return name;
+    }
     return base.getName(name, element);
   });
 }
