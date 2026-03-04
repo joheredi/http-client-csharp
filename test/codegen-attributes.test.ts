@@ -22,6 +22,41 @@ import { HttpTester } from "./test-host.js";
  * @module
  */
 
+// --- Using directive ordering ---
+
+describe("CodeGen attribute files using directive ordering", () => {
+  /**
+   * Verifies that `using System;` appears AFTER the `#nullable disable` directive,
+   * not before the license header. This is critical because Alloy's SourceFile `using`
+   * prop renders using directives at the very top of the file. The fix is to manually
+   * place the using directive in the content after the header.
+   *
+   * When this test fails, it means the `using` prop was accidentally re-added to
+   * `<SourceFile>` in CodeGenAttributeFiles.tsx.
+   */
+  const attributeFiles = [
+    "CodeGenTypeAttribute",
+    "CodeGenMemberAttribute",
+    "CodeGenSuppressAttribute",
+    "CodeGenSerializationAttribute",
+  ];
+
+  for (const attr of attributeFiles) {
+    it(`${attr}.cs has using System after #nullable disable`, async () => {
+      const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+        @service
+        namespace TestService;
+      `);
+      const content = outputs[`src/Generated/Internal/${attr}.cs`];
+      const nullableIdx = content.indexOf("#nullable disable");
+      const usingIdx = content.indexOf("using System;");
+      expect(nullableIdx).toBeGreaterThan(-1);
+      expect(usingIdx).toBeGreaterThan(-1);
+      expect(usingIdx).toBeGreaterThan(nullableIdx);
+    });
+  }
+});
+
 // --- CodeGenTypeAttribute ---
 
 describe("CodeGenTypeAttributeFile", () => {

@@ -3410,3 +3410,25 @@ The crash had two root causes: (1) TypeExpression didn't handle `UnionVariant` t
 **Impact:** Fixed all unresolved refkey symbols in type/union spec: MixedTypesCases, MixedLiteralsCases, StringAndArrayCases, GetResponse5, SendRequest5, and the ModelFactory. Went from 65 unresolved symbols to 0 (excluding stale file from old naming).
 
 **Result:** 1168 tests pass (5 new), 128 skipped, 62 test files. Build and lint clean.
+
+## 2026-03-04: Task 12.2.13 — Fix CodeGen attribute files using directive ordering (complete)
+
+### What was done
+Fixed all four CodeGen attribute files (CodeGenTypeAttribute, CodeGenMemberAttribute, CodeGenSuppressAttribute, CodeGenSerializationAttribute) to place `using System;` after the `#nullable disable` directive instead of before the license header.
+
+### Root cause
+Alloy's `<SourceFile>` `using` prop renders using directives at the very top of the file, before any content including the license header. This is documented as gotcha #8 in knowledge.md.
+
+### Fix
+Removed `using={["System"]}` prop from all four `<SourceFile>` components in `CodeGenAttributeFiles.tsx` and manually placed `"using System;\n\n"` in the content after the header string. This ensures the ordering matches the legacy emitter: license header → `#nullable disable` → `using System;` → namespace.
+
+### Tests added
+4 new tests in `codegen-attributes.test.ts` verifying that `using System;` appears after `#nullable disable` for all four attribute files.
+
+### Patterns used
+- Manual using directive placement to work around Alloy SourceFile using-ordering behavior
+- Same pattern should be applied to other infrastructure files if their using ordering needs fixing
+
+### For next iterations
+- Other infrastructure files (Argument.cs, Optional.cs, etc.) have the same using-ordering issue but that's tracked separately
+- The namespace brace style (Egyptian vs Allman) is a different issue controlled by Alloy's renderer, not by individual components

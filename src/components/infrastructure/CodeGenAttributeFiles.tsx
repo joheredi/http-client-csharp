@@ -67,12 +67,9 @@ interface CodeGenFileProps {
  */
 function CodeGenTypeAttributeFile(props: CodeGenFileProps) {
   return (
-    <SourceFile
-      path="src/Generated/Internal/CodeGenTypeAttribute.cs"
-      using={["System"]}
-    >
+    <SourceFile path="src/Generated/Internal/CodeGenTypeAttribute.cs">
       {props.header}
-      {"\n\n"}
+      {"\n\nusing System;\n\n"}
       <Namespace name={CUSTOMIZATION_NAMESPACE}>
         <ClassDeclaration
           internal
@@ -111,12 +108,9 @@ function CodeGenTypeAttributeFile(props: CodeGenFileProps) {
  */
 function CodeGenMemberAttributeFile(props: CodeGenFileProps) {
   return (
-    <SourceFile
-      path="src/Generated/Internal/CodeGenMemberAttribute.cs"
-      using={["System"]}
-    >
+    <SourceFile path="src/Generated/Internal/CodeGenMemberAttribute.cs">
       {props.header}
-      {"\n\n"}
+      {"\n\nusing System;\n\n"}
       <Namespace name={CUSTOMIZATION_NAMESPACE}>
         <ClassDeclaration
           internal
@@ -149,12 +143,9 @@ function CodeGenMemberAttributeFile(props: CodeGenFileProps) {
  */
 function CodeGenSuppressAttributeFile(props: CodeGenFileProps) {
   return (
-    <SourceFile
-      path="src/Generated/Internal/CodeGenSuppressAttribute.cs"
-      using={["System"]}
-    >
+    <SourceFile path="src/Generated/Internal/CodeGenSuppressAttribute.cs">
       {props.header}
-      {"\n\n"}
+      {"\n\nusing System;\n\n"}
       <Namespace name={CUSTOMIZATION_NAMESPACE}>
         <ClassDeclaration
           internal
@@ -205,12 +196,9 @@ function CodeGenSuppressAttributeFile(props: CodeGenFileProps) {
  */
 function CodeGenSerializationAttributeFile(props: CodeGenFileProps) {
   return (
-    <SourceFile
-      path="src/Generated/Internal/CodeGenSerializationAttribute.cs"
-      using={["System"]}
-    >
+    <SourceFile path="src/Generated/Internal/CodeGenSerializationAttribute.cs">
       {props.header}
-      {"\n\n"}
+      {"\n\nusing System;\n\n"}
       <Namespace name={CUSTOMIZATION_NAMESPACE}>
         <ClassDeclaration
           internal
