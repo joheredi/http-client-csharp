@@ -23,7 +23,10 @@ import {
 } from "../../builtins/system-threading.js";
 import { System } from "../../builtins/system.js";
 import { isConvenienceParamValueType } from "../../utils/nullable.js";
-import { cleanOperationName } from "../../utils/operation-naming.js";
+import {
+  buildSiblingNameSet,
+  cleanOperationName,
+} from "../../utils/operation-naming.js";
 
 /**
  * Metadata for a convenience method parameter, including the type expression,
@@ -105,6 +108,9 @@ export interface ConvenienceMethodsProps {
 export function ConvenienceMethods(props: ConvenienceMethodsProps) {
   const { client } = props;
   const namePolicy = useCSharpNamePolicy();
+  const siblingNames = buildSiblingNameSet(client.methods, (n) =>
+    namePolicy.getName(n, "class"),
+  );
 
   const methods = client.methods.filter(
     (m): m is SdkServiceMethod<SdkHttpOperation> =>
@@ -123,6 +129,7 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
         const operation = method.operation;
         const methodName = cleanOperationName(
           namePolicy.getName(method.name, "class"),
+          siblingNames,
         );
         const access = method.access ?? "public";
         const description = method.doc ?? method.summary ?? "";

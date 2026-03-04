@@ -21,7 +21,10 @@ import { System } from "../../builtins/system.js";
 import { formatDocLines } from "../../utils/doc.js";
 import { SystemThreadingTasks } from "../../builtins/system-threading.js";
 import { isProtocolParamValueType } from "../../utils/nullable.js";
-import { cleanOperationName } from "../../utils/operation-naming.js";
+import {
+  buildSiblingNameSet,
+  cleanOperationName,
+} from "../../utils/operation-naming.js";
 
 /**
  * Metadata for a protocol method parameter, including optionality and type
@@ -96,6 +99,9 @@ export interface ProtocolMethodsProps {
 export function ProtocolMethods(props: ProtocolMethodsProps) {
   const { client } = props;
   const namePolicy = useCSharpNamePolicy();
+  const siblingNames = buildSiblingNameSet(client.methods, (n) =>
+    namePolicy.getName(n, "class"),
+  );
 
   const methods = client.methods.filter(
     (m): m is SdkServiceMethod<SdkHttpOperation> =>
@@ -113,6 +119,7 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
         const operation = method.operation;
         const methodName = cleanOperationName(
           namePolicy.getName(method.name, "class"),
+          siblingNames,
         );
         const access = method.access ?? "public";
         const description = method.doc ?? method.summary ?? "";

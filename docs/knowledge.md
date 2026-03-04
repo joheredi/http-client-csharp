@@ -2623,3 +2623,13 @@ Scenario tests with TypeSpec namespaces containing reserved words (`Type`, `Enum
 now correctly show underscore-prefixed segments in the expected C# output
 (e.g., `_Type._Enum.Extensible` instead of `Type.Enum.Extensible`). This matches the
 legacy emitter's behavior documented in knowledge.md's "Namespace differences with legacy emitter".
+
+### Task 12.8: Duplicate method overloads (CS0111) — Design Decision
+
+**Problem:** `cleanOperationName("ListByResourceGroup")` → `"GetByResourceGroup"` collides with an existing scalar `"GetByResourceGroup"` method on the same client (ARM Singleton pattern).
+
+**Approach chosen:** Extended `cleanOperationName()` with optional `siblingNames: Set<string>` parameter. The sibling set contains PascalCase method names (pre-cleaning) from `client.methods`. If the List→Get transformation would produce a name already in the set, the rename is skipped. This is computed per-client via `buildSiblingNameSet()`.
+
+**Why this approach:** Simple, non-breaking (existing behavior unchanged when `siblingNames` is omitted), O(1) per method call, and handles the specific conflict pattern without overengineering. The alternative of post-processing all names with a map was rejected as it would require shared state across independently rendered components.
+
+**Edge case not handled:** Two different `List*` methods both mapping to the same `Get*` name (e.g., `List` and `ListAll` both → `GetAll`) — this requires a second pass and is unlikely in practice. If encountered, add a post-processing deduplication step.

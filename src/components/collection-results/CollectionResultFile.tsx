@@ -41,7 +41,10 @@ import {
 import { SystemThreadingTasks } from "../../builtins/system-threading.js";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
-import { cleanOperationName } from "../../utils/operation-naming.js";
+import {
+  buildSiblingNameSet,
+  cleanOperationName,
+} from "../../utils/operation-naming.js";
 import { reorderTokenFirst } from "../../utils/parameter-ordering.js";
 import { buildProtocolParams } from "../clients/ProtocolMethod.js";
 
@@ -151,8 +154,12 @@ function CollectionResultFile(props: CollectionResultFileProps) {
   // PagingMethods.tsx naming. Since collection result classes are internal
   // and scoped to the client's own namespace, the parent names are redundant.
   const clientName = namePolicy.getName(client.name, "class");
+  const siblingNames = buildSiblingNameSet(client.methods, (n) =>
+    namePolicy.getName(n, "class"),
+  );
   const operationName = cleanOperationName(
     namePolicy.getName(method.name, "class"),
+    siblingNames,
   );
   const header = getLicenseHeader(options);
 

@@ -24,7 +24,5 @@ azure/resource-manager/method-subscription-id
 # non-Task return types in Operations.cs, LroPaging.cs)
 azure/resource-manager/operation-templates
 
-# CS0103/CS0191 (model errors) + CS1983 (async paging methods) +
-# CS0111 (duplicate GetByResourceGroup overloads in Singleton.cs — scalar
-# and paging methods have same parameter signatures but different return types)
+# CS0103/CS0191 (model errors) + CS1983 (async paging methods)
 azure/resource-manager/resources

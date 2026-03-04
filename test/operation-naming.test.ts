@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { cleanOperationName } from "../src/utils/operation-naming.js";
+import {
+  buildSiblingNameSet,
+  cleanOperationName,
+} from "../src/utils/operation-naming.js";
 import { HttpTester } from "./test-host.js";
 
 /**
@@ -268,5 +271,92 @@ describe("operation naming in emitted output", () => {
       "public virtual ClientResult Listen(RequestOptions options",
     );
     expect(clientFile).not.toContain("GetEn(");
+  });
+});
+
+describe("cleanOperationName with siblingNames (collision avoidance)", () => {
+  /**
+   * Validates that the List→Get transformation is skipped when the target
+   * name already exists among sibling methods. This is the primary fix for
+   * CS0111 (duplicate method overloads differing only in return type).
+   *
+   * The ARM Singleton pattern has both `getByResourceGroup` (scalar) and
+   * `listByResourceGroup` (paging). Without this check, both would map to
+   * `GetByResourceGroup`, causing a C# compilation error.
+   */
+  it("skips List→Get rename when target name already exists as sibling", () => {
+    const siblings = new Set(["GetByResourceGroup", "ListByResourceGroup"]);
+    // "ListByResourceGroup" would normally become "GetByResourceGroup",
+    // but since "GetByResourceGroup" already exists, keep the original.
+    expect(cleanOperationName("ListByResourceGroup", siblings)).toBe(
+      "ListByResourceGroup",
+    );
+    // "GetByResourceGroup" is not a List→Get transformation, so unchanged.
+    expect(cleanOperationName("GetByResourceGroup", siblings)).toBe(
+      "GetByResourceGroup",
+    );
+  });
+
+  /**
+   * Validates that the rename still applies when there is no collision.
+   * The siblingNames set only prevents renaming when the target name exists.
+   */
+  it("still applies List→Get rename when no collision exists", () => {
+    const siblings = new Set(["ListItems", "CreateItem", "DeleteItem"]);
+    expect(cleanOperationName("ListItems", siblings)).toBe("GetItems");
+  });
+
+  /**
+   * Validates the "List" → "GetAll" case with collision avoidance.
+   * If "GetAll" already exists as a sibling, "List" stays as "List".
+   */
+  it('skips "List" → "GetAll" when "GetAll" is a sibling', () => {
+    const siblings = new Set(["List", "GetAll"]);
+    expect(cleanOperationName("List", siblings)).toBe("List");
+    expect(cleanOperationName("GetAll", siblings)).toBe("GetAll");
+  });
+
+  /**
+   * When siblingNames is undefined (not provided), the function should
+   * behave exactly as before — always apply the transformation.
+   */
+  it("applies transformation when siblingNames is undefined", () => {
+    expect(cleanOperationName("ListByResourceGroup", undefined)).toBe(
+      "GetByResourceGroup",
+    );
+    expect(cleanOperationName("List", undefined)).toBe("GetAll");
+  });
+
+  /**
+   * Non-List names should never be affected by siblingNames.
+   */
+  it("does not affect non-List names regardless of siblingNames", () => {
+    const siblings = new Set(["GetItems", "CreateItem"]);
+    expect(cleanOperationName("GetItems", siblings)).toBe("GetItems");
+    expect(cleanOperationName("CreateItem", siblings)).toBe("CreateItem");
+  });
+});
+
+describe("buildSiblingNameSet", () => {
+  /**
+   * Validates that buildSiblingNameSet correctly builds a Set of PascalCase
+   * names from method descriptors, using the provided naming function.
+   */
+  it("builds a Set of transformed method names", () => {
+    const methods = [
+      { name: "getByResourceGroup" },
+      { name: "listByResourceGroup" },
+      { name: "createOrUpdate" },
+    ];
+    // Simulate PascalCase transformation
+    const getName = (n: string) => n.charAt(0).toUpperCase() + n.slice(1);
+    const result = buildSiblingNameSet(methods, getName);
+    expect(result).toEqual(
+      new Set([
+        "GetByResourceGroup",
+        "ListByResourceGroup",
+        "CreateOrUpdate",
+      ]),
+    );
   });
 });

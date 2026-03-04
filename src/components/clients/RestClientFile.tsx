@@ -32,7 +32,10 @@ import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getClientFileName } from "../../utils/clients.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { isProtocolParamValueType } from "../../utils/nullable.js";
-import { cleanOperationName } from "../../utils/operation-naming.js";
+import {
+  buildSiblingNameSet,
+  cleanOperationName,
+} from "../../utils/operation-naming.js";
 import {
   getContinuationTokenParamName,
   reorderTokenFirst,
@@ -115,6 +118,9 @@ export function RestClientFile(props: RestClientFileProps) {
   const fileName = getClientFileName(client, (name) =>
     namePolicy.getName(name, "class"),
   );
+  const siblingNames = buildSiblingNameSet(client.methods, (n) =>
+    namePolicy.getName(n, "class"),
+  );
 
   // Get service methods that have HTTP operations.
   // Filter to methods with an HTTP operation (basic, paging, lro, lropaging).
@@ -152,7 +158,11 @@ export function RestClientFile(props: RestClientFileProps) {
           {methods.map((method) => (
             <>
               {"\n\n"}
-              <CreateRequestMethod method={method} classifiers={classifiers} />
+              <CreateRequestMethod
+                method={method}
+                classifiers={classifiers}
+                siblingNames={siblingNames}
+              />
             </>
           ))}
         </ClassDeclaration>
@@ -217,6 +227,8 @@ function ClassifierDeclarations(props: ClassifierDeclarationsProps) {
 interface CreateRequestMethodProps {
   method: SdkServiceMethod<SdkHttpOperation>;
   classifiers: ClassifierInfo[];
+  /** PascalCase names of all sibling methods, used to avoid List→Get naming collisions. */
+  siblingNames: Set<string>;
 }
 
 /**
@@ -232,13 +244,14 @@ interface CreateRequestMethodProps {
  * 6. Return the configured message
  */
 function CreateRequestMethod(props: CreateRequestMethodProps) {
-  const { method } = props;
+  const { method, siblingNames } = props;
   const operation = method.operation;
   const namePolicy = useCSharpNamePolicy();
 
   // Method name: Create{PascalCaseName}Request
   const operationName = cleanOperationName(
     namePolicy.getName(method.name, "class"),
+    siblingNames,
   );
   const methodName = `Create${operationName}Request`;
 

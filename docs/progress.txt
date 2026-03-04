@@ -4305,3 +4305,23 @@ Check the NuGet package XML docs: `grep "T:Full.Type.Name" ~/.nuget/packages/{pk
   generate underscore-prefixed C# namespaces matching the legacy emitter
 - The `cleanAllNamespaces()` function was always working correctly; the bug was in rendering
 - Other ARM specs in `.testignore` may now compile for the CS0118 issue (but other errors remain)
+
+## 2026-03-04 — Task 12.8: Fix duplicate method overloads for scalar vs paging operations with same name
+
+**Problem:** In ARM Singleton resources, both `getByResourceGroup` (scalar) and `listByResourceGroup` (paging) exist. `cleanOperationName()` transforms `ListByResourceGroup` → `GetByResourceGroup`, colliding with the scalar method. C# CS0111 prevents overloads differing only in return type.
+
+**Solution:** Extended `cleanOperationName()` with optional `siblingNames` parameter. When a List→Get transformation would produce a name already present in the sibling set, the rename is skipped (method keeps its original PascalCase name). Created `buildSiblingNameSet()` helper to compute the sibling name set from `client.methods`.
+
+**Files modified:**
+- `src/utils/operation-naming.ts` — added `siblingNames` param to `cleanOperationName`, added `buildSiblingNameSet` helper
+- `src/components/clients/PagingMethods.tsx` — compute & pass siblingNames
+- `src/components/clients/ProtocolMethod.tsx` — compute & pass siblingNames
+- `src/components/clients/ConvenienceMethod.tsx` — compute & pass siblingNames
+- `src/components/clients/RestClientFile.tsx` — compute & pass siblingNames to CreateRequestMethod
+- `src/components/collection-results/CollectionResultFile.tsx` — compute & pass siblingNames
+- `test/operation-naming.test.ts` — added collision avoidance tests
+- `test/e2e/.testignore` — removed CS0111 from resources spec comment
+
+**Key pattern:** Sibling names are PascalCase names BEFORE cleaning, so pre-existing `GetXxx` names are visible as collision targets. The check is: if `cleanedName !== name && siblingNames.has(cleanedName)`, skip the rename.
+
+**All 1,290 tests pass, build succeeds.**

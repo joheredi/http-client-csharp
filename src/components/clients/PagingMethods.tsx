@@ -27,7 +27,10 @@ import {
   SystemClientModelPrimitives,
 } from "../../builtins/system-client-model.js";
 import { SystemThreading } from "../../builtins/system-threading.js";
-import { cleanOperationName } from "../../utils/operation-naming.js";
+import {
+  buildSiblingNameSet,
+  cleanOperationName,
+} from "../../utils/operation-naming.js";
 import {
   getContinuationTokenParamName,
   reorderTokenFirst,
@@ -92,6 +95,9 @@ export function PagingMethods(props: PagingMethodsProps) {
   const { client } = props;
   const namePolicy = useCSharpNamePolicy();
   const clientName = namePolicy.getName(client.name, "class");
+  const siblingNames = buildSiblingNameSet(client.methods, (n) =>
+    namePolicy.getName(n, "class"),
+  );
 
   const methods = client.methods.filter(
     (m): m is PagingLikeMethod<SdkHttpOperation> =>
@@ -106,6 +112,7 @@ export function PagingMethods(props: PagingMethodsProps) {
         const operation = method.operation;
         const methodName = cleanOperationName(
           namePolicy.getName(method.name, "class"),
+          siblingNames,
         );
         const access = method.access ?? "public";
         const description = method.doc ?? method.summary ?? "";

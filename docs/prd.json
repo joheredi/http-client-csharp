@@ -4840,7 +4840,7 @@
           "title": "Fix duplicate method overloads for scalar vs paging operations with same name",
           "description": "In azure/resource-manager/resources, the Singleton type generates both a scalar GetByResourceGroup (returning ClientResult<T>) and a paging GetByResourceGroup (returning CollectionResult<T>) with the same parameter signatures (string, CancellationToken). C# does not allow overloads that differ only in return type (CS0111). The emitter needs to disambiguate these methods, possibly by renaming the paging variant or merging them.",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [
