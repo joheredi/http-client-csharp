@@ -117,7 +117,9 @@ describe("PersistableModelWriteCore", () => {
     const content = outputs[fileKey!];
 
     expect(content).toContain('case "J":');
-    expect(content).toContain("return ModelReaderWriter.Write(this, options);");
+    expect(content).toContain(
+      "return ModelReaderWriter.Write(this, options, TestNamespaceContext.Default);",
+    );
   });
 
   /**

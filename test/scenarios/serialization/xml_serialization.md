@@ -444,7 +444,7 @@ public partial class DualFormatModel : IJsonModel<DualFormatModel>
             switch (format)
             {
                 case "J":
-                    return ModelReaderWriter.Write(this, options);
+                    return ModelReaderWriter.Write(this, options, TestNamespaceContext.Default);
                 case "X":
                     using (MemoryStream stream = new MemoryStream(256))
                     {

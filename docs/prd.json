@@ -5224,7 +5224,7 @@
           "title": "Pass ModelReaderWriterContext.Default to ModelReaderWriter.Write calls",
           "description": "Golden serialization files pass the context singleton to ModelReaderWriter.Write:\n\n```csharp\nreturn ModelReaderWriter.Write(this, options, SampleTypeSpecContext.Default);\n```\n\nThe new emitter omits the context parameter:\n\n```csharp\nreturn ModelReaderWriter.Write(this, options);\n```\n\nThis affects the PersistableModelWriteCore method in all serialization files. The context enables source-generated serialization in System.ClientModel. When in doubt, the legacy output wins.",
           "phase": "phase-13",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],

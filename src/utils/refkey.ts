@@ -51,6 +51,17 @@ export function efCsharpRefkey(rawType: Type): Refkey {
 const UNKNOWN_MODEL_PREFIX = Symbol.for("http-client-csharp:unknown-model");
 
 /**
+ * Well-known symbol prefix for the ModelReaderWriterContext-derived class refkey.
+ *
+ * There is exactly one context class per emitter run (e.g., `SampleTypeSpecContext`).
+ * Both the declaration (in ModelReaderWriterContextFile.tsx) and references from
+ * serialization code (PersistableModelWriteCore) use this constant to produce a
+ * matching refkey, enabling Alloy to resolve the reference and auto-generate
+ * `using` directives when the context class is in a different namespace.
+ */
+const MRW_CONTEXT_PREFIX = Symbol.for("http-client-csharp:mrw-context");
+
+/**
  * Creates a refkey for the Unknown discriminator variant of an abstract base model.
  *
  * Given the raw TypeSpec type of the abstract base model, produces a deterministic
@@ -90,4 +101,22 @@ export function declarationRefkeys(
     return [userRefkey, refkey(EF_CSHARP_PREFIX, rawType)];
   }
   return [userRefkey];
+}
+
+/**
+ * Creates the refkey for the single ModelReaderWriterContext-derived class
+ * generated per emitter run (e.g., `SampleTypeSpecContext`).
+ *
+ * This refkey is deterministic: every call returns the same value because the
+ * underlying symbol is created with `Symbol.for`. It is used in two places:
+ * - {@link ../components/infrastructure/ModelReaderWriterContextFile} assigns it
+ *   to the `ClassDeclaration` so the class is discoverable.
+ * - {@link ../components/serialization/PersistableModelWriteCore} references it
+ *   to emit `{ContextClass}.Default` as the third argument to
+ *   `ModelReaderWriter.Write`.
+ *
+ * @returns A stable refkey for the context class.
+ */
+export function modelReaderWriterContextRefkey(): Refkey {
+  return refkey(MRW_CONTEXT_PREFIX);
 }

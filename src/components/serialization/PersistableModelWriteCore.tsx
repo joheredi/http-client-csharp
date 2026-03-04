@@ -22,7 +22,7 @@
  *     switch (format)
  *     {
  *         case "J":
- *             return ModelReaderWriter.Write(this, options);
+ *             return ModelReaderWriter.Write(this, options, WidgetContext.Default);
  *         default:
  *             throw new FormatException($"The model {nameof(Widget)} does not support writing '{options.Format}' format.");
  *     }
@@ -37,7 +37,7 @@
  *     switch (format)
  *     {
  *         case "J":
- *             return ModelReaderWriter.Write(this, options);
+ *             return ModelReaderWriter.Write(this, options, DogContext.Default);
  *         default:
  *             throw new FormatException($"The model {nameof(Dog)} does not support writing '{options.Format}' format.");
  *     }
@@ -57,6 +57,7 @@ import { System } from "../../builtins/system.js";
 import { SystemIO } from "../../builtins/system-io.js";
 import { SystemXml } from "../../builtins/system-xml.js";
 import { SystemClientModelPrimitives } from "../../builtins/system-client-model.js";
+import { modelReaderWriterContextRefkey } from "../../utils/refkey.js";
 
 /**
  * Props for the {@link PersistableModelWriteCore} component.
@@ -126,7 +127,7 @@ export function PersistableModelWriteCore(
       <>
         {'\n        case "J":'}
         {"\n"}
-        {code`            return ${SystemClientModelPrimitives.ModelReaderWriter}.Write(this, options);`}
+        {code`            return ${SystemClientModelPrimitives.ModelReaderWriter}.Write(this, options, ${modelReaderWriterContextRefkey()}.Default);`}
       </>,
     );
   }
