@@ -680,11 +680,12 @@ describe("ModelProperty", () => {
     const content = outputs[modelFile!];
 
     // The _additionalBinaryDataProperties field has its own generated doc comment,
-    // but undocumented properties should not get doc comments. Split the output at
+    // and both constructors (public + serialization) get summary doc comments.
+    // But undocumented properties should not get doc comments. Split the output at
     // the properties section and verify no property-level doc comments appear.
-    // Count occurrences of doc comments — only the field should have one.
+    // Count occurrences of doc comments — field + 2 constructors = 3 summaries.
     const summaryMatches = content.match(/\/\/\/ <summary>/g) || [];
-    expect(summaryMatches).toHaveLength(1); // Only the field's doc comment
+    expect(summaryMatches).toHaveLength(3); // Field + public ctor + serialization ctor
     expect(content).toContain(
       "Keeps track of any properties unknown to the library",
     );
@@ -1390,6 +1391,214 @@ describe("ModelConstructors", () => {
     expect(assignIdx).toBeGreaterThan(-1);
     // Null checks come before assignments
     expect(nullCheckIdx).toBeLessThan(assignIdx);
+  });
+
+  /**
+   * Validates that the public constructor has an XML doc summary referencing
+   * the class name via `<see cref="ClassName"/>`. This matches the legacy
+   * emitter's golden output where every constructor has this standard summary.
+   *
+   * Why this matters:
+   * - IntelliSense and documentation tools display these summaries.
+   * - The `<see cref>` creates a navigable link to the class in IDEs.
+   * - Golden output consistency is a project requirement.
+   */
+  it("generates XML doc summary on public constructor", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        count: int32;
+      }
+
+      @route("/widgets")
+      op createWidget(@body body: Widget): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
+    const content = outputs[modelFile!];
+
+    // Public constructor has standard summary with see cref
+    expect(content).toContain(
+      '/// <summary> Initializes a new instance of <see cref="Widget"/>. </summary>',
+    );
+  });
+
+  /**
+   * Validates that constructor parameters with @doc get `<param>` XML doc tags
+   * with the documentation text. These tags appear in IntelliSense when hovering
+   * over constructor parameters.
+   *
+   * Why this matters:
+   * - Users see parameter descriptions in their IDE when calling the constructor.
+   * - The doc content comes from TypeSpec @doc decorators on properties.
+   * - Missing param docs make the generated SDK harder to use.
+   */
+  it("generates XML doc param tags for documented parameters", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        @doc("The display name of the widget.")
+        name: string;
+        @doc("Number of units available.")
+        count: int32;
+      }
+
+      @route("/widgets")
+      op createWidget(@body body: Widget): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
+    const content = outputs[modelFile!];
+
+    // Public constructor param docs
+    expect(content).toContain(
+      '/// <param name="name"> The display name of the widget. </param>',
+    );
+    expect(content).toContain(
+      '/// <param name="count"> Number of units available. </param>',
+    );
+  });
+
+  /**
+   * Validates that the public constructor has an `<exception>` doc tag listing
+   * all parameters that throw ArgumentNullException. This matches the legacy
+   * emitter's golden output and provides compile-time documentation about
+   * which parameters cannot be null.
+   *
+   * Why this matters:
+   * - Users see which parameters will throw before calling the constructor.
+   * - The `<paramref>` references are navigable links in IDEs.
+   * - Multiple null-checked params are joined with commas and "or".
+   */
+  it("generates ArgumentNullException doc for assertable parameters", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        @doc("Display name.")
+        name: string;
+        @doc("Total count.")
+        count: int32;
+        @doc("Description text.")
+        description: string;
+      }
+
+      @route("/widgets")
+      op createWidget(@body body: Widget): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
+    const content = outputs[modelFile!];
+
+    // Exception doc listing reference-type params that get null checks
+    // int (count) is a value type and is NOT listed
+    expect(content).toContain(
+      '/// <exception cref="ArgumentNullException"> <paramref name="name"/> or <paramref name="description"/> is null. </exception>',
+    );
+  });
+
+  /**
+   * Validates that the serialization (internal) constructor also gets XML doc
+   * comments including the `additionalBinaryDataProperties` parameter doc.
+   * This matches the legacy emitter's golden output.
+   *
+   * Why this matters:
+   * - Internal code benefits from doc comments for maintainability.
+   * - The additionalBinaryDataProperties parameter needs explanation.
+   * - Serialization constructors must not have exception docs (no validation).
+   */
+  it("generates XML docs on serialization constructor with additionalBinaryDataProperties", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        @doc("Widget name.")
+        name: string;
+      }
+
+      @route("/widgets")
+      op createWidget(@body body: Widget): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
+    const content = outputs[modelFile!];
+
+    // Serialization constructor has summary
+    const summaryCount =
+      content.match(
+        /Initializes a new instance of <see cref="Widget"\/>/g,
+      ) || [];
+    expect(summaryCount.length).toBeGreaterThanOrEqual(2); // Public + serialization
+
+    // additionalBinaryDataProperties param is documented
+    expect(content).toContain(
+      '/// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>',
+    );
+
+    // Serialization constructor should NOT have exception doc
+    // Find the internal constructor and check no exception doc appears between it and the next section
+    const lines = content.split("\n");
+    const internalCtorIdx = lines.findIndex(
+      (l: string) =>
+        l.includes("internal Widget(") &&
+        l.includes("additionalBinaryDataProperties"),
+    );
+    expect(internalCtorIdx).toBeGreaterThan(-1);
+
+    // Look backwards from internal ctor — should not find an exception doc before it
+    // (there might be one for the public ctor, but not for the serialization ctor)
+    let foundExceptionBeforeInternalCtor = false;
+    for (let i = internalCtorIdx - 1; i >= 0; i--) {
+      if (lines[i].includes("/// <exception")) {
+        // Check if this is between a summary and the internal ctor (i.e., belongs to the serialization ctor)
+        // vs belonging to the public constructor
+        const prevSummaryIdx = lines
+          .slice(0, i)
+          .reverse()
+          .findIndex((l: string) => l.includes("/// <summary>"));
+        if (prevSummaryIdx >= 0) {
+          // Check if there's an internal keyword between this summary and the exception
+          const betweenLines = lines.slice(i - prevSummaryIdx, internalCtorIdx);
+          if (
+            !betweenLines.some(
+              (l: string) =>
+                l.match(/public\s+\w+\(/) || l.match(/private\s+protected/),
+            )
+          ) {
+            foundExceptionBeforeInternalCtor = true;
+          }
+        }
+        break;
+      }
+      if (lines[i].includes("/// <summary>")) {
+        // Hit a summary before finding an exception — no exception for this ctor
+        break;
+      }
+    }
+    expect(foundExceptionBeforeInternalCtor).toBe(false);
   });
 });
 

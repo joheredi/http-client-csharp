@@ -219,6 +219,9 @@ public partial class PngImageAsJson
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
+        /// <summary> Initializes a new instance of <see cref="PngImageAsJson"/>. </summary>
+        /// <param name="content"></param>
+        /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         internal PngImageAsJson(BinaryData content)
         {
             Argument.AssertNotNull(content, nameof(content));
@@ -226,6 +229,10 @@ public partial class PngImageAsJson
             Content = content;
         }
 
+        /// <summary> Initializes a new instance of <see cref="PngImageAsJson"/>. </summary>
+        /// <param name="contentType"></param>
+        /// <param name="content"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal PngImageAsJson(
             string contentType,
             BinaryData content,

@@ -374,6 +374,9 @@ public partial class BodyModel
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
+        /// <summary> Initializes a new instance of <see cref="BodyModel"/>. </summary>
+        /// <param name="name"></param>
+        /// <exception cref="ArgumentNullException"> <paramref name="name"/> is null. </exception>
         public BodyModel(string name)
         {
             Argument.AssertNotNull(name, nameof(name));
@@ -381,6 +384,9 @@ public partial class BodyModel
             Name = name;
         }
 
+        /// <summary> Initializes a new instance of <see cref="BodyModel"/>. </summary>
+        /// <param name="name"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal BodyModel(string name, IDictionary<string, BinaryData> additionalBinaryDataProperties)
         {
             Name = name;

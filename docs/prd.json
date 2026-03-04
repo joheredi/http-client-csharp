@@ -4853,7 +4853,7 @@
           "title": "Add missing XML documentation comments on model constructors",
           "description": "Golden files have comprehensive XML doc comments on model constructors that the new emitter omits:\n\n```csharp\n/// <summary> Initializes a new instance of <see cref=\"Friend\"/>. </summary>\n/// <param name=\"name\"> name of the NotFriend. </param>\ninternal Friend(string name)\n```\n\nThe new emitter generates constructors without these `<summary>` and `<param>` tags. This affects all model files (Animal.cs, Friend.cs, Dog.cs, Thing.cs, RoundTripModel.cs, etc.). Both public constructors and internal deserialization constructors need these docs.\n\nAlso missing: `<exception cref=\"ArgumentNullException\">` documentation on constructors that validate parameters. When in doubt, the legacy output wins.",
           "phase": "phase-13",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],

@@ -59,6 +59,10 @@ public partial class SimpleXmlModel
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
+        /// <summary> Initializes a new instance of <see cref="SimpleXmlModel"/>. </summary>
+        /// <param name="name"></param>
+        /// <param name="age"></param>
+        /// <exception cref="ArgumentNullException"> <paramref name="name"/> is null. </exception>
         public SimpleXmlModel(string name, int age)
         {
             Argument.AssertNotNull(name, nameof(name));
@@ -67,6 +71,10 @@ public partial class SimpleXmlModel
             Age = age;
         }
 
+        /// <summary> Initializes a new instance of <see cref="SimpleXmlModel"/>. </summary>
+        /// <param name="name"></param>
+        /// <param name="age"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal SimpleXmlModel(string name, int age, IDictionary<string, BinaryData> additionalBinaryDataProperties)
         {
             Name = name;
@@ -225,6 +233,9 @@ public partial class XmlModelWithOptionalField
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
+        /// <summary> Initializes a new instance of <see cref="XmlModelWithOptionalField"/>. </summary>
+        /// <param name="item"></param>
+        /// <exception cref="ArgumentNullException"> <paramref name="item"/> is null. </exception>
         public XmlModelWithOptionalField(string item)
         {
             Argument.AssertNotNull(item, nameof(item));
@@ -232,6 +243,10 @@ public partial class XmlModelWithOptionalField
             Item = item;
         }
 
+        /// <summary> Initializes a new instance of <see cref="XmlModelWithOptionalField"/>. </summary>
+        /// <param name="item"></param>
+        /// <param name="value"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal XmlModelWithOptionalField(
             string item,
             int? value,
@@ -387,6 +402,9 @@ public partial class DualFormatModel
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
+        /// <summary> Initializes a new instance of <see cref="DualFormatModel"/>. </summary>
+        /// <param name="title"></param>
+        /// <exception cref="ArgumentNullException"> <paramref name="title"/> is null. </exception>
         public DualFormatModel(string title)
         {
             Argument.AssertNotNull(title, nameof(title));
@@ -394,6 +412,9 @@ public partial class DualFormatModel
             Title = title;
         }
 
+        /// <summary> Initializes a new instance of <see cref="DualFormatModel"/>. </summary>
+        /// <param name="title"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal DualFormatModel(string title, IDictionary<string, BinaryData> additionalBinaryDataProperties)
         {
             Title = title;

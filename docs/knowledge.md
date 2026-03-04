@@ -2366,3 +2366,17 @@ The `/// <summary>` doc comment on the fixed enum type declaration is conditiona
 ### Spector vs Local golden file discrepancy for enum summaries
 
 The Spector golden file `DaysOfWeekEnum.cs` does NOT have an enum-level `/// <summary>` comment, even though the TypeSpec source has `@doc("Days of the week")`. However, the Local/Sample-TypeSpec golden files (StringFixedEnum, FloatFixedEnum, IntFixedEnum) DO have the summary. The PRD task references Local goldens as the target. This discrepancy suggests the Spector golden files may not be fully regenerated or there's a configuration difference.
+
+### Constructor XML Doc Comments (Task 13.3)
+
+**Design Decision**: Used string-based doc comments (matching ConvenienceMethod.tsx pattern) instead of JSX DocComment components from `@alloy-js/csharp`. Rationale: output consistency with existing codebase patterns is higher priority than "idiomatic Alloy". The string approach gives precise control over formatting and is the established pattern in ClientFile.tsx and ConvenienceMethod.tsx.
+
+**Rejected approach**: Using `<DocComment>`, `<DocSummary>`, `<DocParam>` JSX components — would be more type-safe but deviates from established codebase patterns and risks rendering differences.
+
+**Key patterns**:
+- `buildConstructorXmlDoc(className, paramDocs, exceptionParamNames)` returns `string[]` rendered as JSX children before `<OverloadConstructor>`
+- `collectSerializationParamDocs()` recursively collects property docs from the model hierarchy, mirroring the parameter order of `computeSerializationCtorParams()`
+- `ParamDocInfo` interface decouples doc generation from `SdkModelPropertyType`, allowing documentation of synthetic params like `additionalBinaryDataProperties`
+- Scenario tests auto-update via `SCENARIOS_UPDATE=true pnpm test -- test/scenarios.test.ts`
+
+**Gotcha**: Parameters without TypeSpec `@doc` produce empty `<param>` tags: `/// <param name="x"></param>`. This may need refinement if legacy emitter always populates param descriptions from property summaries.

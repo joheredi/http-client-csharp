@@ -69,11 +69,16 @@ public partial class DefaultDurationProperty
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
+        /// <summary> Initializes a new instance of <see cref="DefaultDurationProperty"/>. </summary>
+        /// <param name="value"></param>
         public DefaultDurationProperty(TimeSpan value)
         {
             Value = value;
         }
 
+        /// <summary> Initializes a new instance of <see cref="DefaultDurationProperty"/>. </summary>
+        /// <param name="value"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal DefaultDurationProperty(TimeSpan value, IDictionary<string, BinaryData> additionalBinaryDataProperties)
         {
             Value = value;
@@ -90,11 +95,16 @@ public partial class ISO8601DurationProperty
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
+        /// <summary> Initializes a new instance of <see cref="ISO8601DurationProperty"/>. </summary>
+        /// <param name="value"></param>
         public ISO8601DurationProperty(TimeSpan value)
         {
             Value = value;
         }
 
+        /// <summary> Initializes a new instance of <see cref="ISO8601DurationProperty"/>. </summary>
+        /// <param name="value"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal ISO8601DurationProperty(TimeSpan value, IDictionary<string, BinaryData> additionalBinaryDataProperties)
         {
             Value = value;
@@ -111,11 +121,16 @@ public partial class Int32SecondsDurationProperty
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
+        /// <summary> Initializes a new instance of <see cref="Int32SecondsDurationProperty"/>. </summary>
+        /// <param name="value"></param>
         public Int32SecondsDurationProperty(TimeSpan value)
         {
             Value = value;
         }
 
+        /// <summary> Initializes a new instance of <see cref="Int32SecondsDurationProperty"/>. </summary>
+        /// <param name="value"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal Int32SecondsDurationProperty(
             TimeSpan value,
             IDictionary<string, BinaryData> additionalBinaryDataProperties
@@ -135,11 +150,16 @@ public partial class FloatSecondsDurationProperty
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
+        /// <summary> Initializes a new instance of <see cref="FloatSecondsDurationProperty"/>. </summary>
+        /// <param name="value"></param>
         public FloatSecondsDurationProperty(TimeSpan value)
         {
             Value = value;
         }
 
+        /// <summary> Initializes a new instance of <see cref="FloatSecondsDurationProperty"/>. </summary>
+        /// <param name="value"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal FloatSecondsDurationProperty(
             TimeSpan value,
             IDictionary<string, BinaryData> additionalBinaryDataProperties

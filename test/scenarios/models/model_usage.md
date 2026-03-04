@@ -47,6 +47,9 @@ public partial class InputRecord
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
+        /// <summary> Initializes a new instance of <see cref="InputRecord"/>. </summary>
+        /// <param name="requiredProp"></param>
+        /// <exception cref="ArgumentNullException"> <paramref name="requiredProp"/> is null. </exception>
         public InputRecord(string requiredProp)
         {
             Argument.AssertNotNull(requiredProp, nameof(requiredProp));
@@ -54,6 +57,9 @@ public partial class InputRecord
             RequiredProp = requiredProp;
         }
 
+        /// <summary> Initializes a new instance of <see cref="InputRecord"/>. </summary>
+        /// <param name="requiredProp"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal InputRecord(string requiredProp, IDictionary<string, BinaryData> additionalBinaryDataProperties)
         {
             RequiredProp = requiredProp;
@@ -72,6 +78,9 @@ public partial class OutputRecord
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
+        /// <summary> Initializes a new instance of <see cref="OutputRecord"/>. </summary>
+        /// <param name="requiredProp"></param>
+        /// <exception cref="ArgumentNullException"> <paramref name="requiredProp"/> is null. </exception>
         internal OutputRecord(string requiredProp)
         {
             Argument.AssertNotNull(requiredProp, nameof(requiredProp));
@@ -79,6 +88,9 @@ public partial class OutputRecord
             RequiredProp = requiredProp;
         }
 
+        /// <summary> Initializes a new instance of <see cref="OutputRecord"/>. </summary>
+        /// <param name="requiredProp"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal OutputRecord(string requiredProp, IDictionary<string, BinaryData> additionalBinaryDataProperties)
         {
             RequiredProp = requiredProp;
@@ -97,6 +109,9 @@ public partial class InputOutputRecord
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
+        /// <summary> Initializes a new instance of <see cref="InputOutputRecord"/>. </summary>
+        /// <param name="requiredProp"></param>
+        /// <exception cref="ArgumentNullException"> <paramref name="requiredProp"/> is null. </exception>
         public InputOutputRecord(string requiredProp)
         {
             Argument.AssertNotNull(requiredProp, nameof(requiredProp));
@@ -104,6 +119,9 @@ public partial class InputOutputRecord
             RequiredProp = requiredProp;
         }
 
+        /// <summary> Initializes a new instance of <see cref="InputOutputRecord"/>. </summary>
+        /// <param name="requiredProp"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal InputOutputRecord(string requiredProp, IDictionary<string, BinaryData> additionalBinaryDataProperties)
         {
             RequiredProp = requiredProp;

@@ -37,6 +37,9 @@ public partial class Resource
         public ref JsonPatch Patch => ref _patch;
         #pragma warning restore SCME0001
 
+        /// <summary> Initializes a new instance of <see cref="Resource"/>. </summary>
+        /// <param name="name"></param>
+        /// <exception cref="ArgumentNullException"> <paramref name="name"/> is null. </exception>
         public Resource(string name)
         {
             Argument.AssertNotNull(name, nameof(name));
@@ -44,6 +47,10 @@ public partial class Resource
             Name = name;
         }
 
+        /// <summary> Initializes a new instance of <see cref="Resource"/>. </summary>
+        /// <param name="name"></param>
+        /// <param name="description"></param>
+        /// <param name="patch"> Tracks changes to the model. </param>
         #pragma warning disable SCME0001 // Type is for evaluation purposes only and is subject to change or removal in future updates.
         internal Resource(string name, string? description, in JsonPatch patch)
         {

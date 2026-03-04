@@ -98,6 +98,11 @@ public partial class ModelV1
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
+        /// <summary> Initializes a new instance of <see cref="ModelV1"/>. </summary>
+        /// <param name="prop"></param>
+        /// <param name="enumProp"></param>
+        /// <param name="unionProp"></param>
+        /// <exception cref="ArgumentNullException"> <paramref name="prop"/> is null. </exception>
         public ModelV1(string prop, EnumV1 enumProp, BinaryData unionProp)
         {
             Argument.AssertNotNull(prop, nameof(prop));
@@ -107,6 +112,11 @@ public partial class ModelV1
             UnionProp = unionProp;
         }
 
+        /// <summary> Initializes a new instance of <see cref="ModelV1"/>. </summary>
+        /// <param name="prop"></param>
+        /// <param name="enumProp"></param>
+        /// <param name="unionProp"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal ModelV1(
             string prop,
             EnumV1 enumProp,
@@ -132,6 +142,11 @@ public partial class ModelV2
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
+        /// <summary> Initializes a new instance of <see cref="ModelV2"/>. </summary>
+        /// <param name="prop"></param>
+        /// <param name="enumProp"></param>
+        /// <param name="unionProp"></param>
+        /// <exception cref="ArgumentNullException"> <paramref name="prop"/> is null. </exception>
         public ModelV2(string prop, EnumV2 enumProp, BinaryData unionProp)
         {
             Argument.AssertNotNull(prop, nameof(prop));
@@ -141,6 +156,11 @@ public partial class ModelV2
             UnionProp = unionProp;
         }
 
+        /// <summary> Initializes a new instance of <see cref="ModelV2"/>. </summary>
+        /// <param name="prop"></param>
+        /// <param name="enumProp"></param>
+        /// <param name="unionProp"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal ModelV2(
             string prop,
             EnumV2 enumProp,

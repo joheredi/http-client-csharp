@@ -51,12 +51,19 @@ public abstract partial class Bird
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
+        /// <summary> Initializes a new instance of <see cref="Bird"/>. </summary>
+        /// <param name="kind"></param>
+        /// <param name="wingspan"></param>
         private protected Bird(string kind, int wingspan)
         {
             Kind = kind;
             Wingspan = wingspan;
         }
 
+        /// <summary> Initializes a new instance of <see cref="Bird"/>. </summary>
+        /// <param name="kind"></param>
+        /// <param name="wingspan"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal Bird(string kind, int wingspan, IDictionary<string, BinaryData> additionalBinaryDataProperties)
         {
             Kind = kind;
@@ -74,8 +81,14 @@ Should generate SeaGull as a derived class with fixed discriminator value
 ```csharp src/Generated/Models/SeaGull.cs class SeaGull
 public partial class SeaGull : Bird
     {
+        /// <summary> Initializes a new instance of <see cref="SeaGull"/>. </summary>
+        /// <param name="wingspan"></param>
         public SeaGull(int wingspan) : base("seagull", wingspan) {}
 
+        /// <summary> Initializes a new instance of <see cref="SeaGull"/>. </summary>
+        /// <param name="kind"></param>
+        /// <param name="wingspan"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal SeaGull(
             string kind,
             int wingspan,
@@ -89,8 +102,14 @@ Should generate Sparrow as a derived class with fixed discriminator value
 ```csharp src/Generated/Models/Sparrow.cs class Sparrow
 public partial class Sparrow : Bird
     {
+        /// <summary> Initializes a new instance of <see cref="Sparrow"/>. </summary>
+        /// <param name="wingspan"></param>
         public Sparrow(int wingspan) : base("sparrow", wingspan) {}
 
+        /// <summary> Initializes a new instance of <see cref="Sparrow"/>. </summary>
+        /// <param name="kind"></param>
+        /// <param name="wingspan"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal Sparrow(
             string kind,
             int wingspan,
@@ -104,8 +123,17 @@ Should generate Eagle with recursive Bird references (collections and dictionary
 ```csharp src/Generated/Models/Eagle.cs class Eagle
 public partial class Eagle : Bird
     {
+        /// <summary> Initializes a new instance of <see cref="Eagle"/>. </summary>
+        /// <param name="wingspan"></param>
         public Eagle(int wingspan) : base("eagle", wingspan) {}
 
+        /// <summary> Initializes a new instance of <see cref="Eagle"/>. </summary>
+        /// <param name="kind"></param>
+        /// <param name="wingspan"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
+        /// <param name="friends"></param>
+        /// <param name="hate"></param>
+        /// <param name="partner"></param>
         internal Eagle(
             string kind,
             int wingspan,

@@ -125,6 +125,11 @@ public partial class ModelV2
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
+        /// <summary> Initializes a new instance of <see cref="ModelV2"/>. </summary>
+        /// <param name="prop"></param>
+        /// <param name="enumProp"></param>
+        /// <param name="unionProp"></param>
+        /// <exception cref="ArgumentNullException"> <paramref name="prop"/> is null. </exception>
         public ModelV2(string prop, EnumV2 enumProp, BinaryData unionProp)
         {
             Argument.AssertNotNull(prop, nameof(prop));
@@ -134,6 +139,11 @@ public partial class ModelV2
             UnionProp = unionProp;
         }
 
+        /// <summary> Initializes a new instance of <see cref="ModelV2"/>. </summary>
+        /// <param name="prop"></param>
+        /// <param name="enumProp"></param>
+        /// <param name="unionProp"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal ModelV2(
             string prop,
             EnumV2 enumProp,
@@ -159,6 +169,10 @@ public partial class ModelV3
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
+        /// <summary> Initializes a new instance of <see cref="ModelV3"/>. </summary>
+        /// <param name="id"></param>
+        /// <param name="enumProp"></param>
+        /// <exception cref="ArgumentNullException"> <paramref name="id"/> is null. </exception>
         public ModelV3(string id, EnumV3 enumProp)
         {
             Argument.AssertNotNull(id, nameof(id));
@@ -167,6 +181,10 @@ public partial class ModelV3
             EnumProp = enumProp;
         }
 
+        /// <summary> Initializes a new instance of <see cref="ModelV3"/>. </summary>
+        /// <param name="id"></param>
+        /// <param name="enumProp"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal ModelV3(string id, EnumV3 enumProp, IDictionary<string, BinaryData> additionalBinaryDataProperties)
         {
             Id = id;

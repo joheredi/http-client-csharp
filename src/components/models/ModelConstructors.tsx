@@ -70,6 +70,7 @@ import {
   isPropertyReadOnly,
   propertyRequiresNullCheck,
 } from "../../utils/property.js";
+import { ensureTrailingPeriod, formatDocLines } from "../../utils/doc.js";
 import { efCsharpRefkey } from "../../utils/refkey.js";
 import { hasDynamicModelProperties, isDynamicModel } from "./DynamicModel.js";
 
@@ -700,6 +701,145 @@ export function ModelConstructors(props: ModelConstructorsProps) {
 }
 
 /**
+ * Lightweight parameter doc info, decoupled from SdkModelPropertyType so it
+ * can represent synthetic parameters like `additionalBinaryDataProperties`.
+ */
+interface ParamDocInfo {
+  /** The C# parameter name (already converted via namePolicy). */
+  name: string;
+  /** Raw doc text from TypeSpec, or undefined if no doc is available. */
+  doc?: string;
+}
+
+/**
+ * Converts SDK model properties to ParamDocInfo using the naming policy.
+ *
+ * @param params - SDK model properties to convert.
+ * @param namePolicy - C# naming policy for parameter name conversion.
+ */
+function toParamDocInfos(
+  params: SdkModelPropertyType[],
+  namePolicy: ReturnType<typeof useCSharpNamePolicy>,
+): ParamDocInfo[] {
+  return params.map((p) => ({
+    name: namePolicy.getName(p.name, "parameter"),
+    doc: p.doc ?? p.summary,
+  }));
+}
+
+/**
+ * Collects parameter doc info for a serialization constructor, recursively
+ * walking the base model hierarchy.
+ *
+ * Mirrors the parameter ordering of {@link computeSerializationCtorParams}:
+ * for derived models, base serialization params come first (including
+ * `additionalBinaryDataProperties` after the root's properties), then
+ * own (non-override) properties.
+ *
+ * @param model - The model whose serialization ctor params to document.
+ * @param namePolicy - C# naming policy for parameter name conversion.
+ * @returns Ordered array of ParamDocInfo matching the serialization ctor signature.
+ */
+function collectSerializationParamDocs(
+  model: SdkModelType,
+  namePolicy: ReturnType<typeof useCSharpNamePolicy>,
+): ParamDocInfo[] {
+  if (isDerivedDiscriminatedModel(model)) {
+    const baseDocs = collectSerializationParamDocs(model.baseModel!, namePolicy);
+    const ownProps = model.properties.filter(
+      (p) => !isBaseDiscriminatorOverride(p),
+    );
+    return [...baseDocs, ...toParamDocInfos(ownProps, namePolicy)];
+  }
+
+  // Root model: all properties + trailing additionalBinaryDataProperties or patch
+  const propDocs = toParamDocInfos(model.properties, namePolicy);
+  const isDynamic = isDynamicModel(model);
+  if (isDynamic) {
+    propDocs.push({
+      name: "patch",
+      doc: "Tracks changes to the model.",
+    });
+  } else {
+    propDocs.push({
+      name: ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME,
+      doc: "Keeps track of any properties unknown to the library.",
+    });
+  }
+  return propDocs;
+}
+
+/**
+ * Builds XML doc comment lines for a model constructor.
+ *
+ * Produces `/// <summary>`, `/// <param>`, and optionally `/// <exception>` lines
+ * matching the legacy emitter's golden output format.
+ *
+ * For the public/internal initialization constructor:
+ * - Summary: `Initializes a new instance of <see cref="ClassName"/>.`
+ * - Param docs from TypeSpec property `doc`/`summary`
+ * - Exception doc listing which params throw `ArgumentNullException`
+ *
+ * For the internal serialization constructor:
+ * - Same summary and param docs (including `additionalBinaryDataProperties`)
+ * - No exception doc (deserialization trusts caller values)
+ *
+ * @param className - The C# class name for `<see cref="..."/>`.
+ * @param paramDocs - Ordered parameter doc entries matching the constructor signature.
+ * @param exceptionParamNames - Parameter names that get `ArgumentNullException` docs.
+ * @returns Array of doc comment strings, formatted for JSX rendering.
+ */
+function buildConstructorXmlDoc(
+  className: string,
+  paramDocs: ParamDocInfo[],
+  exceptionParamNames: string[] = [],
+): string[] {
+  const lines: string[] = [];
+
+  // Summary line
+  lines.push(
+    `/// <summary> Initializes a new instance of <see cref="${className}"/>. </summary>`,
+  );
+
+  // Parameter docs — each property has a doc/summary from TypeSpec
+  for (const p of paramDocs) {
+    const docContent = p.doc
+      ? ` ${formatDocLines(ensureTrailingPeriod(p.doc))} `
+      : "";
+    lines.push(`/// <param name="${p.name}">${docContent}</param>`);
+  }
+
+  // Exception doc — only when there are assertable params
+  if (exceptionParamNames.length > 0) {
+    const refs = exceptionParamNames.map(
+      (name) => `<paramref name="${name}"/>`,
+    );
+    lines.push(
+      `/// <exception cref="ArgumentNullException"> ${joinWithOr(refs)} is null. </exception>`,
+    );
+  }
+
+  // First line has no leading \n; subsequent lines are prefixed with \n
+  return lines.map((line, i) => (i === 0 ? line : `\n${line}`));
+}
+
+/**
+ * Joins items with commas and "or" before the last item.
+ *
+ * Used for XML doc exception messages listing multiple parameter names.
+ *
+ * @example
+ * - 1 item: "A"
+ * - 2 items: "A or B"
+ * - 3+ items: "A, B or C"
+ */
+function joinWithOr(items: string[]): string {
+  if (items.length === 1) return items[0];
+  if (items.length === 2) return `${items[0]} or ${items[1]}`;
+  return items.slice(0, -1).join(", ") + " or " + items[items.length - 1];
+}
+
+/**
  * Generates constructors for non-derived (base or standalone) model classes.
  *
  * This is the original constructor generation logic for models that are NOT
@@ -745,6 +885,17 @@ function BaseModelConstructors(props: {
 
   const body = bodyParts.join("\n");
 
+  // === Doc comments for public constructor ===
+  const className = namePolicy.getName(type.name, "class");
+  const assertableParams = isModelAbstract(type)
+    ? []
+    : ctorParamProps.filter((p) => propertyRequiresNullCheck(p));
+  const publicCtorDoc = buildConstructorXmlDoc(
+    className,
+    toParamDocInfos(ctorParamProps, namePolicy),
+    assertableParams.map((p) => namePolicy.getName(p.name, "parameter")),
+  );
+
   // === Internal serialization constructor ===
   const isDynamic = isDynamicModel(type);
   const hasNestedDynamic =
@@ -763,12 +914,22 @@ function BaseModelConstructors(props: {
   );
   const serializationBody = serializationAssignments.join("\n");
 
+  // === Doc comments for serialization constructor ===
+  const serializationCtorDoc = buildConstructorXmlDoc(
+    className,
+    collectSerializationParamDocs(type, namePolicy),
+  );
+
   return (
     <>
+      {publicCtorDoc}
+      {"\n"}
       <OverloadConstructor {...accessModifiers} parameters={parameters}>
         {body}
       </OverloadConstructor>
       {"\n\n"}
+      {serializationCtorDoc}
+      {"\n"}
       {isDynamic &&
         "#pragma warning disable SCME0001 // Type is for evaluation purposes only and is subject to change or removal in future updates.\n"}
       <OverloadConstructor internal parameters={serializationParams}>
@@ -892,8 +1053,25 @@ function DerivedModelConstructors(props: {
   );
   const serializationBody = serializationAssignments.join("\n");
 
+  // === Doc comments ===
+  const className = namePolicy.getName(type.name, "class");
+  const assertableParams = allCtorParams
+    .filter((p) => propertyRequiresNullCheck(p))
+    .map((p) => namePolicy.getName(p.name, "parameter"));
+  const publicCtorDoc = buildConstructorXmlDoc(
+    className,
+    toParamDocInfos(allCtorParams, namePolicy),
+    assertableParams,
+  );
+  const serializationCtorDoc = buildConstructorXmlDoc(
+    className,
+    collectSerializationParamDocs(type, namePolicy),
+  );
+
   return (
     <>
+      {publicCtorDoc}
+      {"\n"}
       <OverloadConstructor
         {...accessModifiers}
         parameters={parameters}
@@ -902,6 +1080,8 @@ function DerivedModelConstructors(props: {
         {publicBody}
       </OverloadConstructor>
       {"\n\n"}
+      {serializationCtorDoc}
+      {"\n"}
       <OverloadConstructor
         internal
         parameters={serializationParams}

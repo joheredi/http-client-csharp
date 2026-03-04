@@ -89,11 +89,16 @@ public partial class DefaultDatetimeProperty
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
+        /// <summary> Initializes a new instance of <see cref="DefaultDatetimeProperty"/>. </summary>
+        /// <param name="value"></param>
         public DefaultDatetimeProperty(DateTimeOffset value)
         {
             Value = value;
         }
 
+        /// <summary> Initializes a new instance of <see cref="DefaultDatetimeProperty"/>. </summary>
+        /// <param name="value"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal DefaultDatetimeProperty(
             DateTimeOffset value,
             IDictionary<string, BinaryData> additionalBinaryDataProperties
@@ -113,11 +118,16 @@ public partial class Rfc3339DatetimeProperty
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
+        /// <summary> Initializes a new instance of <see cref="Rfc3339DatetimeProperty"/>. </summary>
+        /// <param name="value"></param>
         public Rfc3339DatetimeProperty(DateTimeOffset value)
         {
             Value = value;
         }
 
+        /// <summary> Initializes a new instance of <see cref="Rfc3339DatetimeProperty"/>. </summary>
+        /// <param name="value"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal Rfc3339DatetimeProperty(
             DateTimeOffset value,
             IDictionary<string, BinaryData> additionalBinaryDataProperties
@@ -137,11 +147,16 @@ public partial class Rfc7231DatetimeProperty
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
+        /// <summary> Initializes a new instance of <see cref="Rfc7231DatetimeProperty"/>. </summary>
+        /// <param name="value"></param>
         public Rfc7231DatetimeProperty(DateTimeOffset value)
         {
             Value = value;
         }
 
+        /// <summary> Initializes a new instance of <see cref="Rfc7231DatetimeProperty"/>. </summary>
+        /// <param name="value"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal Rfc7231DatetimeProperty(
             DateTimeOffset value,
             IDictionary<string, BinaryData> additionalBinaryDataProperties
@@ -161,11 +176,16 @@ public partial class UnixTimestampDatetimeProperty
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
+        /// <summary> Initializes a new instance of <see cref="UnixTimestampDatetimeProperty"/>. </summary>
+        /// <param name="value"></param>
         public UnixTimestampDatetimeProperty(DateTimeOffset value)
         {
             Value = value;
         }
 
+        /// <summary> Initializes a new instance of <see cref="UnixTimestampDatetimeProperty"/>. </summary>
+        /// <param name="value"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal UnixTimestampDatetimeProperty(
             DateTimeOffset value,
             IDictionary<string, BinaryData> additionalBinaryDataProperties
@@ -185,8 +205,13 @@ public partial class UnixTimestampArrayDatetimeProperty
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
+        /// <summary> Initializes a new instance of <see cref="UnixTimestampArrayDatetimeProperty"/>. </summary>
+        /// <param name="value"></param>
         public UnixTimestampArrayDatetimeProperty(IEnumerable<DateTimeOffset> value) {}
 
+        /// <summary> Initializes a new instance of <see cref="UnixTimestampArrayDatetimeProperty"/>. </summary>
+        /// <param name="value"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal UnixTimestampArrayDatetimeProperty(
             IList<DateTimeOffset> value,
             IDictionary<string, BinaryData> additionalBinaryDataProperties

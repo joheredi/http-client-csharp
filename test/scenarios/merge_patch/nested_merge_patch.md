@@ -41,6 +41,9 @@ public partial class Resource
         public ref JsonPatch Patch => ref _patch;
         #pragma warning restore SCME0001
 
+        /// <summary> Initializes a new instance of <see cref="Resource"/>. </summary>
+        /// <param name="name"></param>
+        /// <exception cref="ArgumentNullException"> <paramref name="name"/> is null. </exception>
         public Resource(string name)
         {
             Argument.AssertNotNull(name, nameof(name));
@@ -48,6 +51,11 @@ public partial class Resource
             Name = name;
         }
 
+        /// <summary> Initializes a new instance of <see cref="Resource"/>. </summary>
+        /// <param name="name"></param>
+        /// <param name="inner"></param>
+        /// <param name="children"></param>
+        /// <param name="patch"> Tracks changes to the model. </param>
         #pragma warning disable SCME0001 // Type is for evaluation purposes only and is subject to change or removal in future updates.
         internal Resource(string name, Inner? inner, IList<Resource> children, in JsonPatch patch)
         {
@@ -78,6 +86,9 @@ public partial class Inner
         public ref JsonPatch Patch => ref _patch;
         #pragma warning restore SCME0001
 
+        /// <summary> Initializes a new instance of <see cref="Inner"/>. </summary>
+        /// <param name="bar"></param>
+        /// <exception cref="ArgumentNullException"> <paramref name="bar"/> is null. </exception>
         public Inner(string bar)
         {
             Argument.AssertNotNull(bar, nameof(bar));
@@ -85,6 +96,9 @@ public partial class Inner
             Bar = bar;
         }
 
+        /// <summary> Initializes a new instance of <see cref="Inner"/>. </summary>
+        /// <param name="bar"></param>
+        /// <param name="patch"> Tracks changes to the model. </param>
         #pragma warning disable SCME0001 // Type is for evaluation purposes only and is subject to change or removal in future updates.
         internal Inner(string bar, in JsonPatch patch)
         {

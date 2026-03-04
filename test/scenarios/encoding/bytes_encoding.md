@@ -76,6 +76,9 @@ public partial class DefaultBytesProperty
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
+        /// <summary> Initializes a new instance of <see cref="DefaultBytesProperty"/>. </summary>
+        /// <param name="value"></param>
+        /// <exception cref="ArgumentNullException"> <paramref name="value"/> is null. </exception>
         public DefaultBytesProperty(BinaryData value)
         {
             Argument.AssertNotNull(value, nameof(value));
@@ -83,6 +86,9 @@ public partial class DefaultBytesProperty
             Value = value;
         }
 
+        /// <summary> Initializes a new instance of <see cref="DefaultBytesProperty"/>. </summary>
+        /// <param name="value"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal DefaultBytesProperty(BinaryData value, IDictionary<string, BinaryData> additionalBinaryDataProperties)
         {
             Value = value;
@@ -99,6 +105,9 @@ public partial class Base64BytesProperty
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
+        /// <summary> Initializes a new instance of <see cref="Base64BytesProperty"/>. </summary>
+        /// <param name="value"></param>
+        /// <exception cref="ArgumentNullException"> <paramref name="value"/> is null. </exception>
         public Base64BytesProperty(BinaryData value)
         {
             Argument.AssertNotNull(value, nameof(value));
@@ -106,6 +115,9 @@ public partial class Base64BytesProperty
             Value = value;
         }
 
+        /// <summary> Initializes a new instance of <see cref="Base64BytesProperty"/>. </summary>
+        /// <param name="value"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal Base64BytesProperty(BinaryData value, IDictionary<string, BinaryData> additionalBinaryDataProperties)
         {
             Value = value;
@@ -122,6 +134,9 @@ public partial class Base64urlBytesProperty
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
+        /// <summary> Initializes a new instance of <see cref="Base64urlBytesProperty"/>. </summary>
+        /// <param name="value"></param>
+        /// <exception cref="ArgumentNullException"> <paramref name="value"/> is null. </exception>
         public Base64urlBytesProperty(BinaryData value)
         {
             Argument.AssertNotNull(value, nameof(value));
@@ -129,6 +144,9 @@ public partial class Base64urlBytesProperty
             Value = value;
         }
 
+        /// <summary> Initializes a new instance of <see cref="Base64urlBytesProperty"/>. </summary>
+        /// <param name="value"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal Base64urlBytesProperty(
             BinaryData value,
             IDictionary<string, BinaryData> additionalBinaryDataProperties
@@ -148,8 +166,13 @@ public partial class Base64urlArrayBytesProperty
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
+        /// <summary> Initializes a new instance of <see cref="Base64urlArrayBytesProperty"/>. </summary>
+        /// <param name="value"></param>
         public Base64urlArrayBytesProperty(IEnumerable<BinaryData> value) {}
 
+        /// <summary> Initializes a new instance of <see cref="Base64urlArrayBytesProperty"/>. </summary>
+        /// <param name="value"></param>
+        /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
         internal Base64urlArrayBytesProperty(
             IList<BinaryData> value,
             IDictionary<string, BinaryData> additionalBinaryDataProperties
