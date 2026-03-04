@@ -208,7 +208,7 @@ export function ClientFile(props: ClientFileProps) {
                 private
                 readonly
                 name="tokenProvider"
-                type={SystemClientModelPrimitives.AuthenticationTokenProvider}
+                type={SystemClientModel.AuthenticationTokenProvider}
               />
               {"\n"}
               {`/// <summary> The OAuth2 flows supported by the service. </summary>`}
@@ -400,7 +400,7 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
     authSchemes.push({
       authParam: {
         name: "tokenProvider",
-        type: SystemClientModelPrimitives.AuthenticationTokenProvider,
+        type: SystemClientModel.AuthenticationTokenProvider,
       },
       authDoc: `/// <param name="tokenProvider"> A token provider used to authenticate to the service. </param>`,
       fieldAssignment: `_tokenProvider = tokenProvider;`,
@@ -456,9 +456,7 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
         ];
         const primaryParams = [...secondaryParams, optionsParam];
 
-        const secondaryArgList = secondaryParams
-          .map((p) => p.name)
-          .join(", ");
+        const secondaryArgList = secondaryParams.map((p) => p.name).join(", ");
         const thisInitializer = `${secondaryArgList}, ${optionsDefault}`;
 
         // Only the first auth scheme gets a secondary (convenience) constructor
@@ -556,9 +554,7 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
  */
 function buildExceptionDoc(paramNames: string[]): string {
   if (paramNames.length === 0) return "";
-  const refs = paramNames
-    .map((n) => `<paramref name="${n}"/>`)
-    .join(" or ");
+  const refs = paramNames.map((n) => `<paramref name="${n}"/>`).join(" or ");
   return `/// <exception cref="ArgumentNullException"> ${refs} is null. </exception>`;
 }
 

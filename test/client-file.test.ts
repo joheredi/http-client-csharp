@@ -260,9 +260,10 @@ describe("ClientFile", () => {
    * - `_flows` (Dictionary<string, object>[]) for OAuth2 flow metadata
    *
    * This matches the legacy emitter's field pattern for OAuth2-authenticated
-   * services. The `using System.ClientModel.Primitives;` directive must be
-   * auto-generated for the AuthenticationTokenProvider and GetTokenOptions
-   * type references, and `using System.Collections.Generic;` for Dictionary.
+   * services. The `using System.ClientModel;` directive must be auto-generated
+   * for the AuthenticationTokenProvider type, `using System.ClientModel.Primitives;`
+   * for GetTokenOptions and pipeline types, and `using System.Collections.Generic;`
+   * for Dictionary.
    */
   it("generates OAuth2 auth fields for root client", async () => {
     const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
@@ -295,11 +296,14 @@ describe("ClientFile", () => {
       "private readonly Dictionary<string, object>[] _flows = new Dictionary<string, object>[]",
     );
     expect(clientFile).toContain("GetTokenOptions.ScopesPropertyName");
-    expect(clientFile).toContain("GetTokenOptions.AuthorizationUrlPropertyName");
+    expect(clientFile).toContain(
+      "GetTokenOptions.AuthorizationUrlPropertyName",
+    );
     expect(clientFile).toContain("GetTokenOptions.RefreshUrlPropertyName");
     expect(clientFile).toContain("GetTokenOptions.TokenUrlPropertyName");
 
     // Verify using directives
+    expect(clientFile).toContain("using System.ClientModel;");
     expect(clientFile).toContain("using System.ClientModel.Primitives;");
     expect(clientFile).toContain("using System.Collections.Generic;");
   });
@@ -899,7 +903,9 @@ describe("ClientFile", () => {
     const oauth2Body = clientFile.substring(oauth2CtorStart);
     expect(oauth2Body).toContain("_tokenProvider = tokenProvider;");
     expect(oauth2Body).not.toContain("_keyCredential");
-    expect(oauth2Body).toContain("new BearerTokenPolicy(_tokenProvider, _flows)");
+    expect(oauth2Body).toContain(
+      "new BearerTokenPolicy(_tokenProvider, _flows)",
+    );
     expect(oauth2Body).not.toContain("ApiKeyAuthenticationPolicy");
 
     // Should NOT have a combined constructor with both credentials

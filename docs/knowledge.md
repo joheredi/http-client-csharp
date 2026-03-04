@@ -2539,23 +2539,26 @@ Required non-nullable literals use raw primitive types with initializers (e.g., 
 ## Design Decisions — Task 13.11: OAuth2 flows dictionary
 
 **Chosen approach:** Alloy library references + JSX fragment composition
+
 - Added `BearerTokenPolicy` and `GetTokenOptions` to SystemClientModelPrimitives library for auto-import
 - Used `<>{parts}</>` JSX fragment pattern to compose multi-line dictionary initialization
 - Each dictionary entry uses `code` template for `GetTokenOptions` references, plain strings for formatting
 
 **Rejected approach:** Nested `code` template composition
-- When nesting `code` template results inside outer `code` templates, `\n` newlines between entries 
+
+- When nesting `code` template results inside outer `code` templates, `\n` newlines between entries
   were silently collapsed, producing all entries on a single line
 - Splitting into JSX children (mixed strings + code templates) fixed the newline issue
 
 **Gotcha: Nested code templates lose newlines**
-When building multi-line structures, do NOT use `code\`${codeNode1},\n${codeNode2}\`` — the newlines 
+When building multi-line structures, do NOT use `code\`${codeNode1},\n${codeNode2}\``— the newlines 
 between interpolated code nodes are lost. Instead, use JSX fragment with alternating string and code 
-children: `<>{"prefix"}{codeNode1}{",\n"}{codeNode2}{"suffix"}</>`.
+children:`<>{"prefix"}{codeNode1}{",\n"}{codeNode2}{"suffix"}</>`.
 
 ## Design Decisions
 
 ### Separate constructors per auth scheme (task 13.12)
+
 **Chosen approach**: Iterate over auth schemes in `RootClientConstructors`, generating independent constructors per scheme. Each full constructor validates/assigns only its own auth credential and creates a pipeline with only its auth policy.
 
 **Rejected approach**: Keep combined constructors but with separate pipeline creation. Rejected because the legacy golden files (SampleTypeSpecClient.cs) show fully independent constructors — consumers should only need to provide the credential for their chosen auth scheme, not all credentials.
@@ -2573,3 +2576,19 @@ All 9 ARM resource-manager specs emit successfully but fail C# compilation. Four
 3. **Namespace/type collision (CS0118)** — When a sub-client operation group (e.g., `MixedSubscriptionPlacement`) has the same name as its containing namespace, C# `using` imports create ambiguity. The emitter adds `using Azure.ResourceManager.MethodSubscriptionId.MixedSubscriptionPlacement;` and then tries to use `MixedSubscriptionPlacement` as a type.
 
 4. **Duplicate method overloads (CS0111)** — When a resource type has both a scalar operation and a paging operation with the same name (e.g., `GetByResourceGroup`), the generated methods have identical parameter signatures but different return types. C# doesn't allow overloads differing only in return type.
+
+### AuthenticationTokenProvider namespace
+
+`AuthenticationTokenProvider` belongs to `System.ClientModel` namespace (not `System.ClientModel.Primitives`). The Alloy `createLibrary()` namespace determines which `using` directive is auto-generated, so placing types in the wrong library causes missing `using` errors in generated code. Always verify the actual .NET namespace using the NuGet XML docs before adding types to Alloy library declarations.
+
+### BearerTokenAuthenticationPolicy doesn't exist
+
+`BearerTokenAuthenticationPolicy` does not exist in `System.ClientModel` 1.9.0. The correct type is `BearerTokenPolicy` (in `System.ClientModel.Primitives`). The old `BearerTokenAuthenticationPolicy` reference was a legacy holdover that was never used in generated code.
+
+## Design Decisions
+
+### AuthenticationTokenProvider in SystemClientModel (not SystemClientModelPrimitives)
+
+**Chosen:** Move `AuthenticationTokenProvider` to the `SystemClientModel` library (`System.ClientModel` namespace).
+**Why:** The .NET type `System.ClientModel.AuthenticationTokenProvider` lives in `System.ClientModel`, verified via NuGet XML docs. Placing it in `SystemClientModelPrimitives` caused Alloy to generate only `using System.ClientModel.Primitives;`, missing the correct `using System.ClientModel;` directive.
+**Rejected:** Adding a manual `using System.ClientModel;` import via raw strings — this fights against Alloy's auto-import system and is fragile.

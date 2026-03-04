@@ -149,8 +149,7 @@ function extractAuthFromScheme(scheme: HttpAuth): AuthInfo | undefined {
             "authorizationUrl" in flow
               ? (flow.authorizationUrl as string)
               : undefined,
-          tokenUrl:
-            "tokenUrl" in flow ? (flow.tokenUrl as string) : undefined,
+          tokenUrl: "tokenUrl" in flow ? (flow.tokenUrl as string) : undefined,
           refreshUrl:
             "refreshUrl" in flow ? (flow.refreshUrl as string) : undefined,
         });

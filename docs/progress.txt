@@ -4239,3 +4239,32 @@ Ran `pnpm emit:e2e --filter azure/resource-manager` — all 9 specs emit success
 - Created 4 follow-up tasks in prd.json: 12.5 (AuthenticationTokenProvider), 12.6 (async paging), 12.7 (namespace collision), 12.8 (duplicate overloads)
 
 **Patterns for next person:** The emit-e2e script's `--filter` flag is useful for testing specific spec categories. Use `dotnet build {csproj} --verbosity quiet 2>&1 | grep "error CS"` to quickly categorize compilation errors.
+
+## 2026-03-04 — Task 12.5: Fix AuthenticationTokenProvider namespace for OAuth2 auth (DONE)
+
+### What was done
+- Moved `AuthenticationTokenProvider` from `SystemClientModelPrimitives` (System.ClientModel.Primitives) to
+  `SystemClientModel` (System.ClientModel) in `src/builtins/system-client-model.ts`. The actual .NET type
+  lives in `System.ClientModel`, not `System.ClientModel.Primitives`.
+- Removed unused `BearerTokenAuthenticationPolicy` from builtins (doesn't exist in System.ClientModel 1.9.0;
+  the correct type is `BearerTokenPolicy` which was already defined).
+- Updated `src/components/clients/ClientFile.tsx` to reference `SystemClientModel.AuthenticationTokenProvider`
+  instead of `SystemClientModelPrimitives.AuthenticationTokenProvider`.
+- Updated unit test comment and assertion in `test/client-file.test.ts` to verify `using System.ClientModel;`
+  directive is generated for OAuth2 auth clients.
+- Updated `test/e2e/.testignore` comments — ARM specs now have model-level errors (CS0103/CS0191), NOT
+  AuthenticationTokenProvider errors.
+
+### Root cause
+The Alloy `createLibrary()` namespace determines which `using` directive is auto-generated. Having
+`AuthenticationTokenProvider` under `System.ClientModel.Primitives` caused Alloy to only generate
+`using System.ClientModel.Primitives;`, but the real type needs `using System.ClientModel;`.
+
+### Verification
+- Re-emitted `azure/resource-manager/common-properties` spec — confirmed CS0246 (AuthenticationTokenProvider)
+  is gone. Remaining errors are CS0103 (Argument) and CS0191 (readonly field) from model serialization code.
+- All 1,283 unit tests pass. No scenario test changes needed (they check class body, not using directives).
+
+### Key learning
+Always verify which .NET namespace a type belongs to before adding it to the Alloy builtins libraries.
+Check the NuGet package XML docs: `grep "T:Full.Type.Name" ~/.nuget/packages/{pkg}/{ver}/lib/net8.0/{pkg}.xml`

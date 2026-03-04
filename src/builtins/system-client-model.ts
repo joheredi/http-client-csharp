@@ -123,6 +123,21 @@ export const SystemClientModel = createLibrary("System.ClientModel", {
       FromBytes: { kind: "method", methodKind: "ordinary", isStatic: true },
     },
   },
+
+  /**
+   * Abstract base class for token-based authentication providers.
+   * Stored as a private field in generated client classes for OAuth2/bearer
+   * token authentication scenarios.
+   *
+   * Note: This type lives in the System.ClientModel namespace (not Primitives),
+   * so it must be declared here to generate the correct `using System.ClientModel;` directive.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.authenticationtokenprovider
+   */
+  AuthenticationTokenProvider: {
+    kind: "class",
+    members: {},
+  },
 });
 
 /**
@@ -295,18 +310,6 @@ export const SystemClientModelPrimitives = createLibrary(
     },
 
     /**
-     * Abstract base class for token-based authentication providers.
-     * Stored as a private field in generated client classes for OAuth2/bearer
-     * token authentication scenarios.
-     *
-     * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.primitives.authenticationtokenprovider
-     */
-    AuthenticationTokenProvider: {
-      kind: "class",
-      members: {},
-    },
-
-    /**
      * Pipeline policy that sets the User-Agent header on outgoing requests.
      * Created in the primary client constructor and passed as a per-retry
      * policy to ClientPipeline.Create.
@@ -314,18 +317,6 @@ export const SystemClientModelPrimitives = createLibrary(
      * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.primitives.useragentpolicy
      */
     UserAgentPolicy: {
-      kind: "class",
-      members: {},
-    },
-
-    /**
-     * Pipeline policy that authenticates requests using a bearer token
-     * obtained from an AuthenticationTokenProvider.
-     * Used in OAuth2-authenticated client constructors.
-     *
-     * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.primitives.bearertokenauthenticationpolicy
-     */
-    BearerTokenAuthenticationPolicy: {
       kind: "class",
       members: {},
     },
