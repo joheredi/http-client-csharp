@@ -3,8 +3,13 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    include: ["test/**/*.test.{ts,tsx}"],
-    exclude: ["test/e2e/**", "test/smoke.test.ts"],
+    include: ["test/components/**/*.test.{ts,tsx}", "test/**/*.test.{ts,tsx}"],
+    exclude: [
+      "test/e2e/**",
+      "test/smoke.test.ts",
+      "test/scenarios.test.ts",
+      "test/integration/**",
+    ],
     passWithNoTests: true,
     testTimeout: 30000,
     hookTimeout: 30000,

@@ -1,0 +1,2 @@
+# Specs to skip during e2e generation.
+# One path per line (relative to specs root). Lines starting with # are comments.

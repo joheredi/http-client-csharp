@@ -3,11 +3,10 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    include: ["test/**/*.test.{ts,tsx}"],
-    exclude: ["test/e2e/**", "test/smoke.test.ts"],
+    include: ["test/smoke.test.ts"],
     passWithNoTests: true,
-    testTimeout: 30000,
-    hookTimeout: 30000,
+    testTimeout: 180000,
+    hookTimeout: 180000,
     pool: "forks",
     poolOptions: {
       forks: {

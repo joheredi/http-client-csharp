@@ -3,17 +3,14 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    include: ["test/**/*.test.{ts,tsx}"],
-    exclude: ["test/e2e/**", "test/smoke.test.ts"],
+    environment: "node",
+    include: ["test/e2e/**/*.test.ts"],
+    globalSetup: ["test/e2e/setup/global-setup.ts"],
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
+    isolate: false,
     passWithNoTests: true,
-    testTimeout: 30000,
-    hookTimeout: 30000,
     pool: "forks",
-    poolOptions: {
-      forks: {
-        maxForks: 4,
-      },
-    },
   },
   esbuild: {
     jsx: "preserve",
