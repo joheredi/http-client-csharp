@@ -18,6 +18,7 @@ import {
 } from "../../builtins/system-client-model.js";
 import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
 import { System } from "../../builtins/system.js";
+import { formatDocLines } from "../../utils/doc.js";
 import { SystemThreadingTasks } from "../../builtins/system-threading.js";
 import { isProtocolParamValueType } from "../../utils/nullable.js";
 import { cleanOperationName } from "../../utils/operation-naming.js";
@@ -332,7 +333,7 @@ export function buildXmlDoc(
 
   // Summary block with [Protocol Method] prefix
   lines.push(`/// <summary>`);
-  lines.push(`/// [Protocol Method] ${description}`);
+  lines.push(`/// [Protocol Method] ${formatDocLines(description)}`);
   lines.push(`/// <list type="bullet">`);
   lines.push(`/// <item>`);
   lines.push(
@@ -349,7 +350,7 @@ export function buildXmlDoc(
         `/// <param name="content"> The content to send as the body of the request. </param>`,
       );
     } else {
-      const docContent = p.doc ? ` ${p.doc} ` : "";
+      const docContent = p.doc ? ` ${formatDocLines(p.doc)} ` : "";
       lines.push(`/// <param name="${p.name}">${docContent}</param>`);
     }
   }

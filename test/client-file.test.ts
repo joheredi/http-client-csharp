@@ -1024,4 +1024,40 @@ describe("ClientFile", () => {
     expect(factoryIdx).toBeGreaterThan(-1);
     expect(pipelineIdx).toBeLessThan(factoryIdx);
   });
+
+  /**
+   * Verifies that multiline @doc on the @service produces valid XML doc
+   * comments on the client class summary where every continuation line
+   * starts with `///`.
+   *
+   * Why this test matters:
+   * - The client/structure/default spec has a multiline @doc on the service
+   *   that produced broken XML doc comments where continuation lines (numbered
+   *   list items) lacked the `///` prefix.
+   */
+  it("formats multiline @doc on service as valid /// summary comment", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @doc("""
+        A service that supports multiple features:
+        1. Feature one
+        2. Feature two
+        3. Feature three
+        """)
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op test(): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+    // Summary continuation lines must have ///
+    expect(clientFile).toContain("/// 1. Feature one");
+    expect(clientFile).toContain("/// 2. Feature two");
+    // Must NOT have bare continuation lines
+    expect(clientFile).not.toMatch(/\n\s+1\. Feature one/);
+  });
 });

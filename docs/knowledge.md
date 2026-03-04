@@ -2105,3 +2105,24 @@ A union like `Cat | Dog` has all variants with the same TypeSpec kind ("Model"),
 
 ### Gotcha: Stale files in temp/e2e/ after name changes
 When a generated file's name changes (e.g., `Type.UnionModelFactory.cs` → `TypeUnionModelFactory.cs`), the old file persists in `temp/e2e/` because the generate script doesn't clean up files with different names. Use `--clean` flag or manually delete old files. Don't trust grep results on `temp/e2e/` without checking timestamps.
+
+## Gotcha #15: TypeSpec multiline strings in tests
+
+TypeSpec uses triple-quoted strings (`"""..."""`) for multiline content, NOT escape sequences like `\n`. In test TypeSpec snippets, write:
+```typespec
+@doc("""
+  Line one
+  Line two
+  """)
+```
+Not `@doc("Line one\nLine two")` — the `\n` is a literal backslash-n, not a newline.
+
+## Design Decisions
+
+### Task 12.2.3: Multiline XML doc comment formatting
+
+**Chosen approach:** String sanitization utility (`formatDocLines()`) — a simple `text.replace(/\n/g, "\n/// ")` applied at all interpolation points where doc content flows into `///` comment strings.
+
+**Rejected approach:** Switch to Alloy's `DocSummary`/`DocParam` JSX components — these handle multiline formatting natively but would require refactoring all doc generation code away from raw strings. Knowledge.md gotcha #2 notes raw strings are preferred for doc comments to match legacy emitter formatting.
+
+**Rationale:** The raw string approach is established across 18+ files and gives exact control over formatting. The utility function is surgical — it fixes the multiline bug without touching the working single-line paths.

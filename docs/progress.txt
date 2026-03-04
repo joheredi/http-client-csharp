@@ -3454,3 +3454,31 @@ Removed `using={["System"]}` prop from all four `<SourceFile>` components in `Co
 - They are filtered OUT of method parameters in `buildMethodParams` (line 487)
 - But the statement builders must use the field name (`_name`) when generating URI/header code
 - All 1174 tests pass (2 new tests)
+
+## 2026-03-04: Task 12.2.3 — Fix multiline XML documentation comments (complete)
+
+### What was done
+Created `src/utils/doc.ts` with a `formatDocLines()` utility that replaces `\n` with `\n/// ` in documentation text before interpolation into XML doc comment strings. Applied it in three files:
+- `src/components/clients/ProtocolMethod.tsx` — description and param doc lines in `buildXmlDoc()`
+- `src/components/clients/ConvenienceMethod.tsx` — summary and param doc lines in `buildConvenienceXmlDoc()`
+- `src/components/clients/ClientFile.tsx` — client class summary and constructor param docs
+
+### Root cause
+When TypeSpec `@doc` decorators contain multiline text (using triple-quoted strings `"""..."""`), the raw text includes newlines. Interpolating this into `/// <tag>` strings produced continuation lines without the `///` prefix, breaking C# syntax (e.g., `/// <param name="x"> first line\nsecond line </param>`).
+
+### Tests added
+- `test/doc-utils.test.ts` — 6 unit tests for `formatDocLines()` covering single-line, multiline, empty, trailing newline, param context, summary context
+- `test/convenience-method.test.ts` — 1 integration test for multiline @doc on parameters
+- `test/protocol-method.test.ts` — 1 integration test for multiline @doc on parameters  
+- `test/client-file.test.ts` — 1 integration test for multiline @doc on service summary
+
+### Patterns used
+- String sanitization utility in `src/utils/doc.ts` — preferred over switching to Alloy DocComment components per knowledge.md guidance that raw strings are preferred for doc comments
+- Applied at all interpolation points where doc content flows from TypeSpec into `///` comment strings
+
+### For next iterations
+- TypeSpec multiline strings use triple-quoted syntax (`"""..."""`) — use this in tests, not `\n`
+- All test TypeSpec snippets need `using TypeSpec.Http;` and `@service namespace` for HttpTester
+- If new doc comment generation points are added, import and use `formatDocLines` from `../../utils/doc.js`
+
+**Result:** 1183 tests pass (9 new), 128 skipped, 63 test files. Build and lint clean.

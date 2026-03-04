@@ -4496,7 +4496,7 @@
           "title": "Fix multiline XML documentation comments breaking C# syntax",
           "description": "XML documentation comments with multiline content are not properly formatted, causing C# syntax errors. When a TypeSpec `@doc` decorator contains text that wraps across multiple lines, the generated XML comment breaks out of the `///` comment block.\n\nExample of broken generated code (special-headers/conditional-request/ConditionalRequestClient.cs):\n```csharp\n/// <param name=\"ifModifiedSince\"> A timestamp indicating the last modified time of the resource known to the\nclient. The operation will be performed only if the resource on the service has\nbeen modified since the specified time. </param>\n```\n\nShould be:\n```csharp\n/// <param name=\"ifModifiedSince\"> A timestamp indicating the last modified time of the resource known to the\n/// client. The operation will be performed only if the resource on the service has\n/// been modified since the specified time. </param>\n```\n\nAlso affects client/structure/default (ServiceClient.cs) where a multiline `@doc` on the service creates a broken `<summary>` comment.\n\nThe issue is in how the emitter renders multi-line doc comments \u2014 each continuation line must start with `///`.\n\nTo reproduce: `dotnet build temp/e2e/Spector/http/special-headers/conditional-request/src/SpecialHeaders.ConditionalRequest.csproj`",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],

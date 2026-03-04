@@ -999,4 +999,43 @@ describe("ConvenienceMethod", () => {
       "Argument.AssertNotNull(colors, nameof(colors));",
     );
   });
+
+  /**
+   * Verifies that multiline @doc text on parameters produces valid XML doc
+   * comments where every continuation line starts with `///`.
+   *
+   * Why this test matters:
+   * - TypeSpec @doc decorators can contain long descriptions that span multiple
+   *   lines. Without proper formatting, continuation lines lack the `///` prefix,
+   *   producing invalid C# that fails dotnet build.
+   * - This was observed in special-headers/conditional-request where `ifModifiedSince`
+   *   parameter doc spans 3 lines.
+   */
+  it("formats multiline @doc parameter descriptions with /// on each line", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op test(
+        @doc("""
+          A timestamp indicating the last modified time of the resource known to the
+          client. The operation will be performed only if the resource has
+          been modified since the specified time.
+          """)
+        @query timestamp: string,
+      ): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+    const clientFile = Object.values(outputs).find((o) =>
+      o.includes("class TestServiceClient"),
+    )!;
+    // Each continuation line in the param doc must start with ///
+    expect(clientFile).toContain("/// client.");
+    expect(clientFile).toContain("/// been modified");
+    // Must NOT have bare continuation lines without ///
+    expect(clientFile).not.toMatch(/\n\s+client\./);
+  });
 });

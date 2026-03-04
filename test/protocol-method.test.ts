@@ -394,4 +394,42 @@ describe("ProtocolMethod", () => {
       "Argument.AssertNotNull(colors, nameof(colors));",
     );
   });
+
+  /**
+   * Verifies that multiline @doc text on parameters produces valid XML doc
+   * comments where every continuation line starts with `///` in protocol methods.
+   *
+   * Why this test matters:
+   * - Protocol method XML doc blocks include parameter descriptions from @doc.
+   *   If these span multiple lines, continuation lines must have `///` prefix
+   *   or the generated C# won't compile.
+   * - The [Protocol Method] summary description could also be multiline.
+   */
+  it("formats multiline @doc parameter descriptions with /// on each line", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op test(
+        @doc("""
+          A long description that spans multiple lines because
+          it contains detailed information about the parameter
+          and its expected usage.
+          """)
+        @query detail: string,
+      ): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+    const clientFile = Object.values(outputs).find((o) =>
+      o.includes("class TestServiceClient"),
+    )!;
+    // Each continuation line in the param doc must start with ///
+    expect(clientFile).toContain("/// it contains detailed");
+    expect(clientFile).toContain("/// and its expected");
+    // Must NOT have bare continuation lines without ///
+    expect(clientFile).not.toMatch(/\n\s+it contains/);
+  });
 });

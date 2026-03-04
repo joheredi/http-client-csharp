@@ -16,6 +16,7 @@ import type {
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import { SystemClientModel } from "../../builtins/system-client-model.js";
 import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
+import { formatDocLines } from "../../utils/doc.js";
 import {
   SystemThreading,
   SystemThreadingTasks,
@@ -685,11 +686,11 @@ export function buildConvenienceXmlDoc(
   const lines: string[] = [];
 
   // Summary
-  lines.push(`/// <summary> ${description} </summary>`);
+  lines.push(`/// <summary> ${formatDocLines(description)} </summary>`);
 
   // Parameter docs
   for (const p of params) {
-    const docContent = p.doc ? ` ${p.doc} ` : "";
+    const docContent = p.doc ? ` ${formatDocLines(p.doc)} ` : "";
     lines.push(`/// <param name="${p.name}">${docContent}</param>`);
   }
   lines.push(

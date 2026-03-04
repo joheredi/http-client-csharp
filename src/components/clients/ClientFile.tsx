@@ -28,6 +28,7 @@ import {
   getClientMethodParameters,
   getFieldTypeForParam,
 } from "../../utils/client-params.js";
+import { formatDocLines } from "../../utils/doc.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { OverloadConstructor } from "../models/ModelConstructors.js";
 import { ConvenienceMethods } from "./ConvenienceMethod.js";
@@ -135,7 +136,7 @@ export function ClientFile(props: ClientFileProps) {
   const docComment = isSubClient
     ? `/// <summary> The ${className} sub-client. </summary>`
     : (client.doc ?? client.summary)
-      ? `/// <summary> ${client.doc ?? client.summary} </summary>`
+      ? `/// <summary> ${formatDocLines(client.doc ?? client.summary!)} </summary>`
       : `/// <summary> The ${className}. </summary>`;
 
   // Constructor setup for root clients.
@@ -384,7 +385,7 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
   ];
   const methodDocParams = nonApiVersionParams.map(
     (p) =>
-      `/// <param name="${p.name}"> ${p.doc ?? p.summary ?? `The ${p.name}.`} </param>`,
+      `/// <param name="${p.name}"> ${formatDocLines(p.doc ?? p.summary ?? `The ${p.name}.`)} </param>`,
   );
 
   return (
