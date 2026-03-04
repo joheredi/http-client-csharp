@@ -3745,3 +3745,21 @@ All 1247 tests pass (66 test files). Build succeeds.
 - **Fix**: Added `isConstantAcceptHeader()` helper that checks `serializedName === "accept" && isConstantType(param.type)`. Added a `continue` guard in the header loop to skip constant Accept headers, since they're already handled by the auto-derived Accept logic (which ensures correct ordering after Content-Type).
 - **Design Decision**: Chose to filter constant Accept from the header loop rather than broadening the `acceptHeaderParam` check, because the auto-derived Accept logic places Accept after Content-Type (matching golden file ordering). If we let the header loop handle it, Accept would appear before Content-Type.
 - **Tests**: Added regression test "does not emit duplicate Accept header for POST with body and response" that checks Accept appears exactly once, Content-Type appears exactly once, and Accept comes after Content-Type. All 1248 tests pass.
+
+## 2026-03-04: Task 13.14 — Fix constructor access modifier order: private protected (not protected private)
+
+**What was done:** Fixed the C# access modifier ordering for abstract model constructors. The Alloy framework's `getAccessModifier` function iterates modifiers in `["public", "protected", "private", ...]` order, producing `"protected private"` when both flags are set. C# canonical order is `"private protected"`. 
+
+**Changes:**
+1. `src/components/models/ModelConstructors.tsx`: 
+   - Added `getCSharpAccessModifier()` helper that produces modifiers in C# canonical order (private before protected, matching `"private protected"` and `"protected internal"`)
+   - Updated `OverloadConstructor` to use the new helper instead of Alloy's `getAccessModifier`
+   - Replaced `<Constructor>` (from Alloy) with `<OverloadConstructor>` in `BaseModelConstructors` since Alloy's Constructor component has the same ordering issue
+   - Removed unused `Constructor` and `getAccessModifier` imports; added `AccessModifiers` type import
+2. `test/model.test.ts`: Tightened the regex to match only `private protected` (was accepting both orders)
+3. `test/scenarios/models/enum_discriminator.md`: Updated Dog and Snake constructor expectations
+4. `test/scenarios/models/single_discriminator.md`: Updated Bird constructor expectation
+
+**Pattern used:** Created a local `getCSharpAccessModifier` function that respects C# canonical modifier ordering instead of relying on Alloy's built-in function which has the wrong order for compound modifiers.
+
+**Note for future loops:** The `_additionalBinaryDataProperties` field already uses string `"private protected"` directly (not boolean flags), so it was already correct. Only the constructor modifiers had this issue.

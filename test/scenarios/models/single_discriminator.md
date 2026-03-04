@@ -51,7 +51,7 @@ public abstract partial class Bird
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
-        protected private Bird(string kind, int wingspan)
+        private protected Bird(string kind, int wingspan)
         {
             Argument.AssertNotNull(kind, nameof(kind));
 

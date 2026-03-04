@@ -2315,3 +2315,18 @@ parts.push("\n", code`${SCP.PipelineMessage} message = ...`);
 ```
 
 This applies anywhere `code` templates are used in `Children[]` arrays for statement-level code generation. Plain strings with `\n` work fine; the issue is specific to the `code` template tag.
+
+## Alloy getAccessModifier Compound Modifier Ordering
+
+**Gotcha**: The `getAccessModifier` function from `@alloy-js/csharp` iterates modifiers in `["public", "protected", "private", "internal", "file"]` order. When both `protected` and `private` are true, it produces `"protected private"` instead of the C# canonical `"private protected"`. 
+
+**Workaround**: Use the local `getCSharpAccessModifier()` function in `src/components/models/ModelConstructors.tsx` which has the correct order: `private` before `protected`. This also handles `"protected internal"` correctly.
+
+**Impact**: Affects `OverloadConstructor` and any code that spreads `{ private: true, protected: true }` into Alloy's `<Constructor>` component. The Alloy `<Constructor>` from `@alloy-js/csharp` should NOT be used with compound access modifiers — use `OverloadConstructor` instead.
+
+## Design Decisions
+
+### Task 13.14: Constructor Access Modifier Order Fix
+**Chosen approach**: Created a local `getCSharpAccessModifier()` helper that computes access modifiers in C# canonical order, and replaced `<Constructor>` with `<OverloadConstructor>` in `BaseModelConstructors`.
+**Rejected approach**: Post-processing the string from `getAccessModifier` (find+replace "protected private" → "private protected") — too fragile and obscures intent.
+**Rejected approach**: Changing `getConstructorAccessModifiers` to return a pre-computed string — would break the existing boolean-flag interface pattern used by all Alloy components.

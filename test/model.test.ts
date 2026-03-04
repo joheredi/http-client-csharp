@@ -1939,12 +1939,8 @@ describe("AbstractBaseModel", () => {
     expect(petFile).toBeDefined();
     const content = outputs[petFile!];
 
-    // Constructor must be private protected (not public/internal)
-    // Note: Alloy outputs "protected private" which is semantically identical
-    // to "private protected" in C# — both compile to the same access level
-    expect(content).toMatch(
-      /(?:private\s+protected|protected\s+private)\s+Pet\s*\(/,
-    );
+    // Constructor must be private protected (C# canonical modifier order)
+    expect(content).toMatch(/private\s+protected\s+Pet\s*\(/);
   });
 
   /**

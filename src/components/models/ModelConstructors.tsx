@@ -30,10 +30,9 @@
  */
 
 import {
-  Constructor,
+  type AccessModifiers,
   type ConstructorProps,
   computeModifiersPrefix,
-  getAccessModifier,
   MethodScope,
   MethodSymbol,
   type ParameterProps,
@@ -73,6 +72,27 @@ import {
 } from "../../utils/property.js";
 import { efCsharpRefkey } from "../../utils/refkey.js";
 import { hasDynamicModelProperties, isDynamicModel } from "./DynamicModel.js";
+
+/**
+ * Computes the access modifier string in C# canonical order.
+ *
+ * The Alloy framework's `getAccessModifier` iterates modifiers in
+ * `["public", "protected", "private", ...]` order, producing
+ * `"protected private"` when both flags are set. C# canonical order
+ * is `"private protected"` (private before protected). This function
+ * handles compound access modifiers correctly.
+ *
+ * @see https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/classes-and-structs/access-modifiers
+ */
+function getCSharpAccessModifier(props: AccessModifiers): string {
+  const parts: string[] = [];
+  if (props.public) parts.push("public");
+  if (props.private) parts.push("private");
+  if (props.protected) parts.push("protected");
+  if (props.internal) parts.push("internal");
+  if (props.file) parts.push("file");
+  return parts.join(" ");
+}
 
 /**
  * Props for the {@link ModelConstructors} component.
@@ -611,7 +631,7 @@ export function OverloadConstructor(props: ModelConstructorProps) {
     refkeys: props.refkey,
     ignoreNameConflict: true,
   });
-  const modifiers = computeModifiersPrefix([getAccessModifier(props)]);
+  const modifiers = computeModifiersPrefix([getCSharpAccessModifier(props)]);
 
   return (
     <MemberDeclaration symbol={ctorSymbol}>
@@ -736,9 +756,9 @@ function BaseModelConstructors(props: {
 
   return (
     <>
-      <Constructor {...accessModifiers} parameters={parameters}>
+      <OverloadConstructor {...accessModifiers} parameters={parameters}>
         {body}
-      </Constructor>
+      </OverloadConstructor>
       {"\n\n"}
       {isDynamic &&
         "#pragma warning disable SCME0001 // Type is for evaluation purposes only and is subject to change or removal in future updates.\n"}

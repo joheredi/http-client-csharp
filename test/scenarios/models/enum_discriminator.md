@@ -67,7 +67,7 @@ public abstract partial class Dog
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
-        protected private Dog(DogKind kind, int weight)
+        private protected Dog(DogKind kind, int weight)
         {
             Kind = kind;
             Weight = weight;
@@ -108,7 +108,7 @@ public abstract partial class Snake
         /// <summary> Keeps track of any properties unknown to the library. </summary>
         private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties;
 
-        protected private Snake(SnakeKind kind, int length)
+        private protected Snake(SnakeKind kind, int length)
         {
             Kind = kind;
             Length = length;
