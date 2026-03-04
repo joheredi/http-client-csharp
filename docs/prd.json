@@ -4773,7 +4773,7 @@
           "title": "Install @azure-tools/typespec-azure-resource-manager dependency",
           "description": "All 9 azure/resource-manager/* Spector specs fail during e2e generation because @azure-tools/typespec-azure-resource-manager is not installed. The azure-http-specs package's ARM specs import this package but it is not declared as a direct dependency. Add @azure-tools/typespec-azure-resource-manager as a devDependency in package.json and run pnpm install. Verify that `pnpm emit:e2e --filter azure/resource-manager` succeeds after installation. Failing specs: azure/resource-manager/common-properties, azure/resource-manager/large-header, azure/resource-manager/method-subscription-id, azure/resource-manager/multi-service, azure/resource-manager/multi-service-older-versions, azure/resource-manager/multi-service-shared-models, azure/resource-manager/non-resource, azure/resource-manager/operation-templates, azure/resource-manager/resources",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

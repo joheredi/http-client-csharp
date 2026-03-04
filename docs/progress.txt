@@ -3961,3 +3961,25 @@ Component-level namespace override was chosen over emitter-level mutation becaus
 **Notes for next iteration:**
 - The golden SampleTypeSpecClient.cs calls the INTERNAL constructor (with all properties including literals and defaults), while the new emitter calls the PUBLIC constructor. This is a separate, larger issue that affects how spread body args are generated beyond just collection conversion. The `.ToList()` conversion added here works with both constructors.
 - 1287 tests pass, 128 skipped, 0 failures
+
+## Task 12.3 — Install @azure-tools/typespec-azure-resource-manager dependency (2026-03-04)
+
+### What was done
+- Added `@azure-tools/typespec-azure-resource-manager@^0.65.0` as a devDependency
+- Added `@typespec/openapi@^1.9.0` as a devDependency (peer dependency of the ARM package)
+- Verified all 9 azure/resource-manager/* Spector specs compile successfully via `pnpm emit:e2e --filter azure/resource-manager`
+- All existing tests continue to pass (66 test files, 1287 tests)
+
+### Files changed
+- `package.json` — Added two new devDependencies
+- `pnpm-lock.yaml` — Updated lockfile
+
+### Key patterns
+- ARM specs are part of `@azure-tools/azure-http-specs` and need the ARM library installed to compile
+- The ARM package requires `@typespec/openapi` as a peer dependency (not previously installed)
+- Version ranges follow existing conventions: `^0.65.0` for azure-tools, `^1.9.0` for typespec packages
+
+### Important for next person
+- Task 12.4 (verify ARM specs generate correctly in e2e) is now unblocked
+- All 9 ARM specs compile without errors, but their generated output hasn't been verified against golden files yet
+- If ARM-specific features are missing from the emitter, task 12.4 should document them and add to .testignore
