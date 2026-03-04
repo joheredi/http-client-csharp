@@ -3,3 +3,5 @@ dist/
 temp/
 *.tsbuildinfo
 pnpm-lock.yaml
+test/e2e/Spector.Tests/obj/
+test/e2e/Spector.Tests/bin/

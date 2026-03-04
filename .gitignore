@@ -10,3 +10,7 @@ node_modules/
 
 # Smoke test output (kept after runs for investigation)
 temp/
+
+# .NET build artifacts
+test/e2e/Spector.Tests/obj/
+test/e2e/Spector.Tests/bin/
