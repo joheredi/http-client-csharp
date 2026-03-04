@@ -5300,7 +5300,7 @@
           "title": "Remove extra infrastructure files not in golden output",
           "description": "The new emitter generates 3 infrastructure files that do NOT exist in the golden output:\n\n- Internal/BinaryContentHelper.cs\n- Internal/PipelineRequestHeadersExtensions.cs\n- Internal/Utf8JsonBinaryContent.cs\n\nThese appear to be additional helpers that the legacy emitter does not produce for this service. The legacy emitter handles BinaryContent creation and header extensions differently (possibly inline or via System.ClientModel internals).\n\nThese files need to either:\n1. Be removed from generation if they're unnecessary, OR\n2. Only be generated conditionally when the service requires their functionality\n\nWhen in doubt, the legacy output wins \u2014 if the golden output doesn't include them, the new emitter should not generate them for this service input.",
           "phase": "phase-13",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],

@@ -38,10 +38,7 @@ import { ProjectFile } from "./components/infrastructure/ProjectFile.js";
 import { SerializationFormatFile } from "./components/infrastructure/SerializationFormatFile.js";
 import { SolutionFile } from "./components/infrastructure/SolutionFile.js";
 import { TypeFormattersFile } from "./components/infrastructure/TypeFormattersFile.js";
-import { Utf8JsonBinaryContentFile } from "./components/infrastructure/Utf8JsonBinaryContentFile.js";
-import { BinaryContentHelperFile } from "./components/infrastructure/BinaryContentHelperFile.js";
 import { MultiPartFormDataBinaryContentFile } from "./components/infrastructure/MultiPartFormDataBinaryContentFile.js";
-import { PipelineRequestHeadersExtensionsFile } from "./components/infrastructure/PipelineRequestHeadersExtensionsFile.js";
 import { ModelFactoryFile } from "./components/model-factory/ModelFactoryFile.js";
 import { hasDiscriminatedSubtypes } from "./components/models/ModelConstructors.js";
 import {
@@ -214,16 +211,7 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
         packageName={rootNamespace}
         options={options}
       />
-      <Utf8JsonBinaryContentFile
-        packageName={rootNamespace}
-        options={options}
-      />
-      <BinaryContentHelperFile packageName={rootNamespace} options={options} />
       <MultiPartFormDataBinaryContentFile packageName={rootNamespace} />
-      <PipelineRequestHeadersExtensionsFile
-        packageName={rootNamespace}
-        options={options}
-      />
       <CodeGenAttributeFiles options={options} />
       <CSharpScalarOverrides>
         {clients.map((c) => (

@@ -2441,3 +2441,14 @@ The golden `SampleTypeSpecClient.cs` calls the **internal** constructor (all pro
 literals, defaults, and additionalBinaryDataProperties). The new emitter calls the **public**
 constructor (only exposed params). This is a separate issue that causes more output differences
 beyond just the `.ToList()` conversion. The `.ToList()` works with both constructor styles.
+
+## Design Decisions
+
+### Task 13.22: Infrastructure File Removal Strategy
+**Decision**: Remove BinaryContentHelper, Utf8JsonBinaryContent, and PipelineRequestHeadersExtensions from unconditional generation rather than implementing conditional generation.
+
+**Why**: The legacy emitter always registers these types but relies on a PostProcessor tree-shaker (reference graph traversal in PostProcessor.cs) to prune unreferenced types from output. The new Alloy-based emitter has no such tree-shaking step. Since no golden test project includes these files and no generated client code currently references them, the simplest correct approach is to not render them.
+
+**Rejected alternative**: Conditional generation based on usage detection (e.g., checking if any operation needs collection-to-BinaryContent conversion). This was rejected because: (1) we don't yet generate client method bodies that would reference these helpers, and (2) the exact conditions are complex and would be premature to implement.
+
+**Future note**: When client method body generation is implemented (operations that serialize collections/dictionaries to request bodies), these component files may need to be conditionally re-added. The .tsx source files are preserved in src/components/infrastructure/ for this purpose.
