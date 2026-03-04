@@ -2340,3 +2340,13 @@ This applies anywhere `code` templates are used in `Children[]` arrays for state
 2. Consistent reference resolution without manual string computation
 
 **Gotcha**: The `.Default` property accessor is appended as a plain string after the refkey interpolation (`${modelReaderWriterContextRefkey()}.Default`). This is the same pattern used for other static member accesses (e.g., `${SystemClientModelPrimitives.ModelReaderWriter}.Write(...)`).
+
+## Design Decisions
+
+### Task 13.15: Constructor validation boundary
+
+**Decision:** Abstract base model constructors (`private protected`) should have NO `Argument.AssertNotNull` validation. Derived model constructors should validate ALL reference-type parameters, including inherited ones from the base hierarchy.
+
+**Why:** The base constructor is only callable from derived classes. Validating in both base and derived causes double-validation. The golden output confirms this pattern: Animal's base constructor just assigns, while Pet and Dog validate all string parameters (including inherited `name`).
+
+**Rejected approach:** A shared helper function that encapsulates the null check decision based on model type — over-engineering for what amounts to a 2-line conditional change.

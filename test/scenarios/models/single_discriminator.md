@@ -53,8 +53,6 @@ public abstract partial class Bird
 
         private protected Bird(string kind, int wingspan)
         {
-            Argument.AssertNotNull(kind, nameof(kind));
-
             Kind = kind;
             Wingspan = wingspan;
         }

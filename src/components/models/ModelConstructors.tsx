@@ -716,7 +716,12 @@ function BaseModelConstructors(props: {
   );
 
   const parameters = buildParameters(ctorParamProps, namePolicy);
-  const nullChecks = buildNullChecks(ctorParamProps, namePolicy);
+  // Abstract base models skip null checks — derived classes validate before
+  // calling base(). This matches the legacy emitter's golden output where
+  // private protected constructors have no Argument.AssertNotNull calls.
+  const nullChecks = isModelAbstract(type)
+    ? []
+    : buildNullChecks(ctorParamProps, namePolicy);
   const assignments = buildAssignments(
     type.properties,
     ctorParamProps,
@@ -818,8 +823,12 @@ function DerivedModelConstructors(props: {
   const allCtorParams = [...baseCtorParams, ...ownCtorParams];
   const parameters = buildParameters(allCtorParams, namePolicy);
 
-  // Null checks only for own params (base ctor handles its own)
-  const nullChecks = buildNullChecks(ownCtorParams, namePolicy);
+  // Null checks for ALL constructor params (inherited + own) — the base
+  // class's private protected ctor does NOT validate, so the derived public
+  // ctor is responsible for validating all reference-type params before
+  // passing them to base(). Matches golden output where Pet validates `name`
+  // (inherited from Animal) and Dog validates both `name` and `breed`.
+  const nullChecks = buildNullChecks(allCtorParams, namePolicy);
   // Assignments only for own properties
   const assignments = buildAssignments(
     ownProperties,

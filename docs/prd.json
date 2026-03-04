@@ -5136,7 +5136,7 @@
           "title": "Fix base constructor argument validation: do not over-validate in base constructors",
           "description": "The new emitter adds `Argument.AssertNotNull()` calls in base class constructors (e.g., Animal validates kind and name), but the golden files do NOT validate in the base constructor \u2014 only in the public/exposed constructors.\n\nGolden (Animal.cs):\n```csharp\nprivate protected Animal(string kind, string name)\n{\n    Kind = kind;\n    Name = name;\n}\n```\n\nGenerated (Animal.cs):\n```csharp\nprotected private Animal(string kind, string name)\n{\n    Argument.AssertNotNull(kind, nameof(kind));\n    Argument.AssertNotNull(name, nameof(name));\n\n    Kind = kind;\n    Name = name;\n}\n```\n\nAlso affects Friend.cs (internal constructor adds AssertNotNull on name). The legacy pattern only validates in public constructors. When in doubt, the legacy output wins.",
           "phase": "phase-13",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],

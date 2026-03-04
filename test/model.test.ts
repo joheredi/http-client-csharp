@@ -1944,6 +1944,56 @@ describe("AbstractBaseModel", () => {
   });
 
   /**
+   * Validates that abstract base model constructors do NOT include
+   * Argument.AssertNotNull validation.
+   *
+   * Abstract base models have `private protected` constructors that are only
+   * called from derived classes. The derived classes are responsible for
+   * validating all parameters before passing them to base(). Including null
+   * checks in the base constructor would cause double-validation since the
+   * derived constructor already validates. The golden output confirms this:
+   * Animal's constructor assigns directly without any Argument.AssertNotNull.
+   *
+   * This is a regression guard: an earlier version of the emitter incorrectly
+   * added null checks to base constructors.
+   */
+  it("does not generate Argument.AssertNotNull in abstract base constructor", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Animal {
+        kind: string;
+        name: string;
+      }
+
+      model Dog extends Animal {
+        kind: "dog";
+      }
+
+      @route("/test")
+      op test(@body body: Animal): Animal;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const animalFile = Object.keys(outputs).find((k) =>
+      k.includes("Animal.cs"),
+    );
+    expect(animalFile).toBeDefined();
+    const content = outputs[animalFile!];
+
+    // Abstract base constructor should NOT have null checks
+    expect(content).not.toContain("Argument.AssertNotNull");
+    // But should still have property assignments
+    expect(content).toMatch(/Kind\s*=\s*kind;/);
+    expect(content).toMatch(/Name\s*=\s*name;/);
+  });
+
+  /**
    * Validates that a non-discriminated model is NOT abstract.
    *
    * This is a negative test ensuring that regular models without @discriminator
@@ -2275,6 +2325,56 @@ describe("DerivedModelDiscriminator", () => {
 
     // Own property assigned in the public ctor body
     expect(content).toMatch(/Indoor\s*=\s*indoor;/);
+  });
+
+  /**
+   * Validates that derived model public constructors validate ALL reference-type
+   * parameters, including inherited ones from the base hierarchy.
+   *
+   * The abstract base model's private protected constructor does NOT validate
+   * its parameters. The derived model's public constructor is the validation
+   * boundary — it must validate all reference-type params before passing them
+   * to base(). This prevents null values from reaching the base constructor.
+   *
+   * Golden output confirms: Pet validates `name` (inherited from Animal),
+   * and Dog validates both `name` (inherited) and `breed` (own).
+   */
+  it("validates all reference-type params including inherited in derived public constructor", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @discriminator("kind")
+      model Animal {
+        kind: string;
+        name: string;
+      }
+
+      model Pet extends Animal {
+        kind: "pet";
+        breed: string;
+      }
+
+      @route("/test")
+      op test(@body body: Animal): Animal;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const petFile = Object.keys(outputs).find((k) => k.includes("Pet.cs"));
+    expect(petFile).toBeDefined();
+    const content = outputs[petFile!];
+
+    // Inherited reference-type param `name` must be validated
+    expect(content).toContain(
+      "Argument.AssertNotNull(name, nameof(name));",
+    );
+    // Own reference-type param `breed` must be validated
+    expect(content).toContain(
+      "Argument.AssertNotNull(breed, nameof(breed));",
+    );
   });
 });
 
