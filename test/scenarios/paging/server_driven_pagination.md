@@ -93,7 +93,7 @@ public partial class ServerDrivenPagination
         /// <param name="options"> The request options, which can override default behaviors of the client pipeline on a per-call basis. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async AsyncCollectionResult LinkAsync(RequestOptions options)
+        public virtual AsyncCollectionResult LinkAsync(RequestOptions options)
         {
             return new ServerDrivenPaginationLinkAsyncCollectionResult(this, options);
         }
@@ -109,7 +109,7 @@ public partial class ServerDrivenPagination
         /// <summary>  </summary>
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async AsyncCollectionResult<Pet> LinkAsync(CancellationToken cancellationToken = default)
+        public virtual AsyncCollectionResult<Pet> LinkAsync(CancellationToken cancellationToken = default)
         {
             return new ServerDrivenPaginationLinkAsyncCollectionResultOfT(this, cancellationToken.ToRequestOptions());
         }
@@ -141,7 +141,7 @@ public partial class ServerDrivenPagination
         /// <param name="options"> The request options, which can override default behaviors of the client pipeline on a per-call basis. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async AsyncCollectionResult LinkStringAsync(RequestOptions options)
+        public virtual AsyncCollectionResult LinkStringAsync(RequestOptions options)
         {
             return new ServerDrivenPaginationLinkStringAsyncCollectionResult(this, options);
         }
@@ -157,7 +157,7 @@ public partial class ServerDrivenPagination
         /// <summary>  </summary>
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async AsyncCollectionResult<Pet> LinkStringAsync(CancellationToken cancellationToken = default)
+        public virtual AsyncCollectionResult<Pet> LinkStringAsync(CancellationToken cancellationToken = default)
         {
             return new ServerDrivenPaginationLinkStringAsyncCollectionResultOfT(this, cancellationToken.ToRequestOptions());
         }

@@ -97,7 +97,7 @@ public partial class ContinuationToken
         /// <param name="options"> The request options, which can override default behaviors of the client pipeline on a per-call basis. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async AsyncCollectionResult RequestQueryResponseBodyAsync(
+        public virtual AsyncCollectionResult RequestQueryResponseBodyAsync(
             string token = default,
             string foo = default,
             string bar = default,
@@ -129,7 +129,7 @@ public partial class ContinuationToken
         /// <param name="bar"></param>
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async AsyncCollectionResult<Pet> RequestQueryResponseBodyAsync(
+        public virtual AsyncCollectionResult<Pet> RequestQueryResponseBodyAsync(
             string token = default,
             string foo = default,
             string bar = default,

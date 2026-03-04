@@ -89,7 +89,7 @@ public partial class PageSize
         /// <param name="options"> The request options, which can override default behaviors of the client pipeline on a per-call basis. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async AsyncCollectionResult GetWithoutContinuationAsync(RequestOptions options)
+        public virtual AsyncCollectionResult GetWithoutContinuationAsync(RequestOptions options)
         {
             return new PageSizeGetWithoutContinuationAsyncCollectionResult(this, options);
         }
@@ -105,7 +105,7 @@ public partial class PageSize
         /// <summary>  </summary>
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async AsyncCollectionResult<Pet> GetWithoutContinuationAsync(
+        public virtual AsyncCollectionResult<Pet> GetWithoutContinuationAsync(
             CancellationToken cancellationToken = default
         )
         {
@@ -141,7 +141,7 @@ public partial class PageSize
         /// <param name="options"> The request options, which can override default behaviors of the client pipeline on a per-call basis. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async AsyncCollectionResult GetWithPageSizeAsync(
+        public virtual AsyncCollectionResult GetWithPageSizeAsync(
             int? pageSize = default,
             RequestOptions options = null
         )
@@ -165,7 +165,7 @@ public partial class PageSize
         /// <param name="pageSize"></param>
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async AsyncCollectionResult<Pet> GetWithPageSizeAsync(
+        public virtual AsyncCollectionResult<Pet> GetWithPageSizeAsync(
             int? pageSize = default,
             CancellationToken cancellationToken = default
         )

@@ -64,9 +64,10 @@ describe("LroPagingMethods", () => {
       "public virtual CollectionResult GetBatchItems(RequestOptions options)",
     );
 
-    // Protocol async method returns AsyncCollectionResult
+    // Protocol async method returns AsyncCollectionResult (no async keyword —
+    // AsyncCollectionResult is not Task-based; the method just returns a new instance)
     expect(clientFile).toContain(
-      "public virtual async AsyncCollectionResult GetBatchItemsAsync(RequestOptions options)",
+      "public virtual AsyncCollectionResult GetBatchItemsAsync(RequestOptions options)",
     );
 
     // Convenience sync method returns CollectionResult<Item>
@@ -74,10 +75,10 @@ describe("LroPagingMethods", () => {
       "public virtual CollectionResult<Item> GetBatchItems(CancellationToken cancellationToken = default)",
     );
 
-    // Convenience async method returns AsyncCollectionResult<Item>
-    // (may wrap across lines due to printWidth)
+    // Convenience async method returns AsyncCollectionResult<Item> (no async keyword —
+    // AsyncCollectionResult<T> is not Task-based; the method just returns a new instance)
     expect(clientFile).toContain(
-      "public virtual async AsyncCollectionResult<Item> GetBatchItemsAsync(",
+      "public virtual AsyncCollectionResult<Item> GetBatchItemsAsync(",
     );
     expect(clientFile).toContain(
       "CancellationToken cancellationToken = default",

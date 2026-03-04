@@ -57,9 +57,10 @@ describe("PagingMethods", () => {
       "public virtual CollectionResult GetThings(RequestOptions options)",
     );
 
-    // Verify protocol async method returns AsyncCollectionResult
+    // Verify protocol async method returns AsyncCollectionResult (no async keyword —
+    // AsyncCollectionResult is not Task-based; the method just returns a new instance)
     expect(clientFile).toContain(
-      "public virtual async AsyncCollectionResult GetThingsAsync(RequestOptions options)",
+      "public virtual AsyncCollectionResult GetThingsAsync(RequestOptions options)",
     );
 
     // Verify convenience sync method returns CollectionResult<Thing>
@@ -67,9 +68,10 @@ describe("PagingMethods", () => {
       "public virtual CollectionResult<Thing> GetThings(CancellationToken cancellationToken = default)",
     );
 
-    // Verify convenience async method returns AsyncCollectionResult<Thing>
+    // Verify convenience async method returns AsyncCollectionResult<Thing> (no async keyword —
+    // AsyncCollectionResult<T> is not Task-based; the method just returns a new instance)
     expect(clientFile).toContain(
-      "public virtual async AsyncCollectionResult<Thing> GetThingsAsync(CancellationToken cancellationToken = default)",
+      "public virtual AsyncCollectionResult<Thing> GetThingsAsync(CancellationToken cancellationToken = default)",
     );
   });
 

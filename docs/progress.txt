@@ -4268,3 +4268,17 @@ The Alloy `createLibrary()` namespace determines which `using` directive is auto
 ### Key learning
 Always verify which .NET namespace a type belongs to before adding it to the Alloy builtins libraries.
 Check the NuGet package XML docs: `grep "T:Full.Type.Name" ~/.nuget/packages/{pkg}/{ver}/lib/net8.0/{pkg}.xml`
+
+## 2026-03-04 — Task 12.6: Fix async keyword on paging methods returning AsyncCollectionResult (DONE)
+
+**What**: Removed the `async` keyword from paging client methods that return `AsyncCollectionResult` or `AsyncCollectionResult<T>` in `PagingMethods.tsx`. These methods just instantiate and return a collection result object (no `await`), so `async` is incorrect and causes CS1983 errors.
+
+**Files changed**:
+- `src/components/clients/PagingMethods.tsx` — removed `async` prop from both `renderProtocolPagingMethods` and `renderConveniencePagingMethods` async method variants
+- `test/paging-methods.test.ts` — updated expectations to match (no `async` in signatures)
+- `test/lro-paging-methods.test.ts` — updated expectations to match
+- `test/scenarios/paging/continuation_token_params.md` — removed `async` from expected output
+- `test/scenarios/paging/page_size_paging.md` — removed `async` from expected output
+- `test/scenarios/paging/server_driven_pagination.md` — removed `async` from expected output
+
+**Pattern**: Methods returning `AsyncCollectionResult`/`AsyncCollectionResult<T>` must NOT use `async` because they are not Task-based. The `async` keyword is only correct for methods returning `Task<T>` or `async IAsyncEnumerable<T>` (like the internal GetRawPagesAsync in CollectionResultFile.tsx which correctly uses it).
