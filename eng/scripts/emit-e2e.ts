@@ -285,7 +285,7 @@ async function compileSpec(spec: SpecEntry): Promise<CompileResult> {
       "--emit",
       emitterPath,
       "--option",
-      `http-client-csharp.emitter-output-dir="${outputDir}"`,
+      `http-client-csharp.emitter-output-dir=${outputDir}`,
       "--option",
       "http-client-csharp.new-project=true",
     ];
@@ -293,14 +293,14 @@ async function compileSpec(spec: SpecEntry): Promise<CompileResult> {
     if (spec.packageName) {
       args.push(
         "--option",
-        `http-client-csharp.package-name="${spec.packageName}"`,
+        `http-client-csharp.package-name=${spec.packageName}`,
       );
     }
 
     if (spec.apiVersion) {
       args.push(
         "--option",
-        `http-client-csharp.api-version="${spec.apiVersion}"`,
+        `http-client-csharp.api-version=${spec.apiVersion}`,
       );
     }
 

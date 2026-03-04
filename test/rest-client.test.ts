@@ -1219,4 +1219,55 @@ describe("RestClientFile", () => {
     // System namespace must be imported for Guid and DateTimeOffset
     expect(restClient).toContain("using System;");
   });
+
+  /**
+   * Verifies that Accept header is set exactly once per request method,
+   * even when the operation has both a body (triggering Content-Type) and
+   * a response body (triggering Accept).
+   *
+   * Regression test for a bug where TCGC exposes Accept as a constant header
+   * param AND the emitter derives it from response content types, causing
+   * duplicate `request.Headers.Set("Accept", ...)` lines in the output.
+   * The golden files only set Accept once, after Content-Type.
+   */
+  it("does not emit duplicate Accept header for POST with body and response", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/widget")
+      @post op createWidget(@body body: Widget): Widget;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const restClient = outputs["src/Generated/TestServiceClient.RestClient.cs"];
+    expect(restClient).toBeDefined();
+
+    // Accept must appear exactly once
+    const acceptMatches = restClient!.match(
+      /request\.Headers\.Set\("Accept"/g,
+    );
+    expect(acceptMatches).toHaveLength(1);
+
+    // Content-Type must also appear exactly once
+    const contentTypeMatches = restClient!.match(
+      /request\.Headers\.Set\("Content-Type"/g,
+    );
+    expect(contentTypeMatches).toHaveLength(1);
+
+    // Accept must come after Content-Type (correct ordering)
+    const contentTypeIndex = restClient!.indexOf(
+      'request.Headers.Set("Content-Type"',
+    );
+    const acceptIndex = restClient!.indexOf(
+      'request.Headers.Set("Accept"',
+    );
+    expect(acceptIndex).toBeGreaterThan(contentTypeIndex);
+  });
 });

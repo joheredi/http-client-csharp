@@ -78,13 +78,14 @@ Build, test, and lint form the **back pressure** that rejects bad code generatio
 Run validation with a **single subagent** (do not fan out builds/tests to multiple subagents — it causes backpressure):
 
 ```bash
-pnpm build && pnpm test
+pnpm build && pnpm test && pnpm test:e2e
 ```
 
 ### What each validation step catches
 
 - **`pnpm build`** — TypeScript type system catches structural errors before runtime.
 - **`pnpm test`** — vitest assertions verify the emitted C# matches expected output. This is the primary correctness gate.
+- **`pnpm test:e2e`** — end-to-end tests that validate the full emitter pipeline against real TypeSpec inputs. Must pass before committing.
 - **`pnpm lint`** — ESLint catches code quality regressions. Run when making style-sensitive changes.
 
 If tests unrelated to your work fail, it is **your job** to resolve them as part of this increment of change. **IMPORTANT**: You should think hard when investigating these failures — it is not acceptable to just update the test expectations to make it pass without being 100% certain that it is the correct thing to do.

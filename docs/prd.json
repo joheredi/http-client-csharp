@@ -5181,7 +5181,7 @@
           "title": "Fix duplicate Accept header in RestClient request methods",
           "description": "The new emitter generates duplicate `request.Headers.Set(\"Accept\", \"application/json\")` calls in some RestClient CreateRequest methods. The golden files only set Accept once.\n\nGenerated:\n```csharp\nrequest.Headers.Set(\"Accept\", \"application/json\");\nrequest.Headers.Set(\"Content-Type\", \"application/json\");\nrequest.Headers.Set(\"Accept\", \"application/json\");  // DUPLICATE\n```\n\nGolden:\n```csharp\nrequest.Headers.Set(\"Accept\", \"application/json\");\nrequest.Headers.Set(\"Content-Type\", \"application/json\");\n```\n\nThis affects RestClient methods that set both Accept and Content-Type. When in doubt, the legacy output wins.",
           "phase": "phase-13",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],

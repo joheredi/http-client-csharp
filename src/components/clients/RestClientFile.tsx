@@ -609,6 +609,18 @@ function isSpecialHeaderParam(param: SdkHeaderParameter): boolean {
 }
 
 /**
+ * Checks if a header parameter is a constant-valued Accept header.
+ * Constant Accept headers are skipped in the regular header loop because
+ * Accept is handled separately (after Content-Type) to ensure correct
+ * header ordering in the generated request method.
+ */
+function isConstantAcceptHeader(param: SdkHeaderParameter): boolean {
+  return (
+    param.serializedName.toLowerCase() === "accept" && isConstantType(param.type)
+  );
+}
+
+/**
  * Checks if a body parameter uses multipart/form-data content type.
  * Multipart operations require a dynamic contentType parameter (with boundary)
  * instead of a hardcoded Content-Type header.
@@ -1043,6 +1055,9 @@ function buildRequestBody(
   for (const param of headerParams) {
     if (isImplicitContentTypeHeader(param)) continue;
     if (isSpecialHeaderParam(param)) continue;
+    // Skip constant Accept headers — they are handled by the auto-derived Accept
+    // logic below (after Content-Type) to ensure correct header ordering.
+    if (isConstantAcceptHeader(param)) continue;
     parts.push(`\n${buildHeaderParamStatement(param, getParamName)}`);
   }
 

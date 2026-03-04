@@ -125,12 +125,9 @@ describe("reorderFileHeader", () => {
    * Non-C# files or files without headers should be left unchanged.
    */
   it("does not modify content without a header block", () => {
-    const input = [
-      "using System;",
-      "",
-      "namespace TestNamespace {",
-      "}",
-    ].join("\n");
+    const input = ["using System;", "", "namespace TestNamespace {", "}"].join(
+      "\n",
+    );
 
     const result = reorderFileHeader(input);
     expect(result).toBe(input);

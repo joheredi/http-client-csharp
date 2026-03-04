@@ -3738,3 +3738,10 @@ Added `ensureTrailingPeriod()` utility to `src/utils/doc.ts` and applied it in `
 **Pattern for future tasks**: The `ensureTrailingPeriod` utility should be applied in any component generating `<summary>` tags from dynamic TCGC content. Other affected files (ClientFile.tsx, ConvenienceMethod.tsx, enum files) have their own tasks (13.3-13.7, 13.24).
 
 All 1247 tests pass (66 test files). Build succeeds.
+
+## 2026-03-04: Task 13.17 — Fix duplicate Accept header in RestClient request methods
+- **Problem**: When an operation has both a body (triggering Content-Type) and a response body (triggering Accept), TCGC exposes Accept as a constant header param. The header loop rendered it, and then the auto-derived Accept logic also rendered it — producing duplicate `request.Headers.Set("Accept", ...)` lines.
+- **Root Cause**: The header loop at line 1043 skipped implicit Content-Type and special headers but did NOT skip constant Accept headers. The auto-derived Accept logic at line 1095 only checked for *variable* Accept params (`!isConstantType(p.type)`), so constant Accept headers fell through both code paths.
+- **Fix**: Added `isConstantAcceptHeader()` helper that checks `serializedName === "accept" && isConstantType(param.type)`. Added a `continue` guard in the header loop to skip constant Accept headers, since they're already handled by the auto-derived Accept logic (which ensures correct ordering after Content-Type).
+- **Design Decision**: Chose to filter constant Accept from the header loop rather than broadening the `acceptHeaderParam` check, because the auto-derived Accept logic places Accept after Content-Type (matching golden file ordering). If we let the header loop handle it, Accept would appear before Content-Type.
+- **Tests**: Added regression test "does not emit duplicate Accept header for POST with body and response" that checks Accept appears exactly once, Content-Type appears exactly once, and Accept comes after Content-Type. All 1248 tests pass.

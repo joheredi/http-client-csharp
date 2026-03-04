@@ -1123,6 +1123,8 @@ describe("CollectionResultFile", () => {
     expect(content).toContain(
       "public override ContinuationToken GetContinuationToken",
     );
-    expect(content).not.toContain("global::System.ClientModel.ContinuationToken");
+    expect(content).not.toContain(
+      "global::System.ClientModel.ContinuationToken",
+    );
   });
 });
