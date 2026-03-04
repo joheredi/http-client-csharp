@@ -2071,3 +2071,17 @@ Dynamic models do NOT have `_additionalBinaryDataProperties` at all — no field
 - Per-file golden comparisons are skipped by default to avoid blocking CI with 128 failing tests.
 - The metrics test always passes and logs progress stats.
 - This approach lets the integration test serve as a tracking tool while development continues.
+
+## UnionVariant Type Handling (Task 12.1.1)
+
+### Gotcha: UnionVariant crashes TypeExpression
+The emitter-framework's C# `TypeExpression` component does NOT handle `UnionVariant` type kind. The TypeScript emitter handles it (unwraps to inner type), the Python emitter handles it (references parent union for named variants), but C# was missing. Added `.forTypeKind("UnionVariant", ...)` override in `CSharpTypeExpression.tsx`.
+
+### Gotcha: SdkEnumValueType not tracked in type reachability graph
+`extractModelOrEnumTypes()` in `unreferenced-types.ts` didn't handle `kind: "enumvalue"` (SdkEnumValueType). This caused parent enum types to be filtered out when only referenced through union variants. Added `case "enumvalue": return [type.enumType]`.
+
+### Design Decision: UnionVariant override approach
+- **Chosen**: Add `.forTypeKind("UnionVariant", ...)` override — centralized, follows existing override pattern, minimal change
+- **Rejected**: Preprocess types before TypeExpression calls — too invasive, requires changes across 12+ files
+- For named union variants: reference parent union via `efCsharpRefkey(variant.union)` — matches legacy emitter behavior where `ExtendedEnum.EnumValue2` → C# type `ExtendedEnum`
+- For unnamed variants: fall back to `<TypeExpression type={variant.type} />` to unwrap to inner type

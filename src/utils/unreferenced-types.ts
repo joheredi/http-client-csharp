@@ -41,6 +41,8 @@ export function extractModelOrEnumTypes(
       return [type];
     case "enum":
       return [type];
+    case "enumvalue":
+      return [type.enumType];
     case "array":
       return extractModelOrEnumTypes(type.valueType);
     case "dict":

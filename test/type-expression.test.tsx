@@ -6,7 +6,7 @@ import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import { beforeEach, describe, expect, it } from "vitest";
 import { CSharpScalarOverrides } from "../src/components/CSharpTypeExpression.js";
 import { System } from "../src/builtins/system.js";
-import { ApiTester } from "./test-host.js";
+import { ApiTester, HttpTester } from "./test-host.js";
 
 /**
  * Tests for the CSharpScalarOverrides provider component.
@@ -221,6 +221,53 @@ describe("CSharpScalarOverrides", () => {
       const content = renderType(type);
       expect(content).toContain("using System;");
       expect(content).toContain("BinaryData");
+    });
+  });
+
+  describe("union variant type overrides", () => {
+    /**
+     * Verifies that a UnionVariant used as a property type (e.g.,
+     * `ExtendedEnum.EnumValue2`) resolves to the parent union/extensible
+     * enum type in C#. Without this override, the emitter crashes with
+     * "Unsupported type for TypeExpression: UnionVariant" because the
+     * emitter-framework's TypeExpression does not handle UnionVariant
+     * nodes natively. The override maps the variant to the parent union
+     * type, matching the legacy emitter's behavior where `ExtendedEnum.EnumValue2`
+     * produces a property of type `ExtendedEnum`.
+     */
+    it("maps named union variant to parent union type", async () => {
+      const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+        using TypeSpec.Http;
+
+        @service
+        namespace TestNamespace;
+
+        union ExtendedEnum {
+          string,
+          EnumValue2: "value2",
+        }
+
+        model TestModel {
+          property: ExtendedEnum.EnumValue2;
+        }
+
+        @route("/test")
+        op test(): TestModel;
+      `);
+
+      expect(diagnostics).toHaveLength(0);
+
+      // Find the generated model file
+      const modelFileKey = Object.keys(outputs).find(
+        (k) => k.includes("TestModel") && !k.includes("Serialization"),
+      );
+      expect(modelFileKey).toBeDefined();
+
+      const modelFile = outputs[modelFileKey!];
+      // The property type should be ExtendedEnum (parent union), not a string literal
+      expect(modelFile).toContain("ExtendedEnum");
+      expect(modelFile).not.toContain("UnionVariant");
+      expect(modelFile).not.toContain("Unresolved");
     });
   });
 });

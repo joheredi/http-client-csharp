@@ -27,7 +27,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "create": ["src/options.ts"],
+            "create": [
+              "src/options.ts"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/emitter/src/options.ts",
@@ -47,10 +49,14 @@
           "description": "Update src/lib.ts to register the emitter options schema with TypeSpec's library system. Use `createTypeSpecLibrary` with an `emitter` options schema that maps each option to its TypeSpec type (string, boolean, enum). Add default values. Reference the legacy emitter's lib.ts for the pattern. Also define diagnostic codes that the emitter will use (general-warning, general-error, unsupported-auth, unsupported-type, etc.).",
           "phase": "phase-0",
           "status": "done",
-          "dependencies": ["0.1.1"],
+          "dependencies": [
+            "0.1.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/lib.ts"],
+            "modify": [
+              "src/lib.ts"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/emitter/src/lib/lib.ts"
             ]
@@ -68,10 +74,16 @@
           "description": "Rewrite src/emitter.tsx to be the real emitter entry point. It should: (1) resolve emitter options from the EmitContext, (2) create a TCGC SdkContext via createSdkContext(), (3) render the root <HttpClientCSharpOutput> component tree, (4) call writeOutput() from @typespec/emitter-framework to write files to disk. The legacy emitter does this in emitter/src/emitter.ts but also serializes to JSON and spawns a C# process \u2014 skip those steps entirely. Use the Output component from @typespec/emitter-framework which sets up TspContext.",
           "phase": "phase-0",
           "status": "done",
-          "dependencies": ["0.1.1", "0.1.2", "0.3.1"],
+          "dependencies": [
+            "0.1.1",
+            "0.1.2",
+            "0.3.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/emitter.tsx"],
+            "modify": [
+              "src/emitter.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/emitter/src/emitter.ts"
             ]
@@ -92,7 +104,10 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["package.json", "pnpm-lock.yaml"],
+            "modify": [
+              "package.json",
+              "pnpm-lock.yaml"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/package.json"
             ]
@@ -111,9 +126,13 @@
           "description": "Create an Alloy builtin library declaration for System.ClientModel using createLibrary() from @alloy-js/csharp. This enables generated code to reference SCM types (ClientResult, ClientPipeline, BinaryContent, etc.) with automatic using-statement generation. Declare types in the System.ClientModel and System.ClientModel.Primitives namespaces. Include: ClientResult, ClientResult<T>, ClientPipeline, BinaryContent, PipelineMessage, PipelineRequest, PipelineResponse, PipelinePolicy, PipelineMessageClassifier. Each type should be declared with its kind (class/struct/interface) and key members (properties and methods used in generated code). See the Alloy builtins pattern at alloy/packages/csharp/src/builtins/System/index.ts for the declaration pattern.",
           "phase": "phase-0",
           "status": "done",
-          "dependencies": ["0.1.4"],
+          "dependencies": [
+            "0.1.4"
+          ],
           "files": {
-            "create": ["src/builtins/system-client-model.ts"],
+            "create": [
+              "src/builtins/system-client-model.ts"
+            ],
             "modify": [],
             "reference": [
               "submodules/alloy/packages/csharp/src/builtins/System/index.ts",
@@ -136,10 +155,14 @@
           "description": "Extend the System.ClientModel builtins with auth and options types: ClientPipelineOptions, RequestOptions, ClientResultException, ApiKeyCredential, ApiKeyAuthenticationPolicy (with CreateHeaderApiKeyPolicy static method). These are used in generated client constructors and pipeline setup. See golden file at TestProjects/Local/Sample-TypeSpec/src/Generated/SampleTypeSpecClient.cs for how these types are used.",
           "phase": "phase-0",
           "status": "done",
-          "dependencies": ["0.2.1"],
+          "dependencies": [
+            "0.2.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/builtins/system-client-model.ts"],
+            "modify": [
+              "src/builtins/system-client-model.ts"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/SampleTypeSpecClient.RestClient.cs",
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator.ClientModel/src/Providers/ClientProvider.cs"
@@ -158,10 +181,14 @@
           "description": "Add paging-related types to the System.ClientModel builtins: CollectionResult, AsyncCollectionResult, CollectionResult<T>, AsyncCollectionResult<T>, ContinuationToken. These are the base classes that generated paging collection classes extend. See golden file at TestProjects/Local/Sample-TypeSpec/src/Generated/CollectionResults/ for usage.",
           "phase": "phase-0",
           "status": "done",
-          "dependencies": ["0.2.1"],
+          "dependencies": [
+            "0.2.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/builtins/system-client-model.ts"],
+            "modify": [
+              "src/builtins/system-client-model.ts"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/CollectionResults/SampleTypeSpecClientGetWithNextLinkCollectionResult.cs"
             ]
@@ -178,10 +205,14 @@
           "description": "Add model serialization types to the System.ClientModel builtins: ModelReaderWriterOptions, ModelReaderWriterContext, IJsonModel<T>, IPersistableModel<T>, ModelReaderWriter (with Write static method), PersistableModelProxyAttribute, ModelReaderWriterBuildableAttribute. These are the interfaces and attributes that generated serialization classes implement. See golden file at TestProjects/Local/Sample-TypeSpec/src/Generated/Models/ for any .Serialization.cs file.",
           "phase": "phase-0",
           "status": "done",
-          "dependencies": ["0.2.1"],
+          "dependencies": [
+            "0.2.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/builtins/system-client-model.ts"],
+            "modify": [
+              "src/builtins/system-client-model.ts"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator.ClientModel/src/Providers/MrwSerializationTypeDefinition.cs"
             ]
@@ -201,10 +232,14 @@
           "description": "Add token auth types: BearerTokenPolicy, UserAgentPolicy, AuthenticationTokenProvider. These are used in client pipeline construction. See ClientProvider.cs in the legacy generator for usage patterns.",
           "phase": "phase-0",
           "status": "done",
-          "dependencies": ["0.2.1"],
+          "dependencies": [
+            "0.2.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/builtins/system-client-model.ts"],
+            "modify": [
+              "src/builtins/system-client-model.ts"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator.ClientModel/src/Providers/ClientPipelineProvider.cs"
             ]
@@ -221,10 +256,14 @@
           "description": "Add JsonPatch and related experimental types for merge-patch support. These are only needed when dynamic models are present. See MrwSerializationTypeDefinition.Dynamic.cs in the legacy generator.",
           "phase": "phase-0",
           "status": "done",
-          "dependencies": ["0.2.1"],
+          "dependencies": [
+            "0.2.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/builtins/system-client-model.ts"],
+            "modify": [
+              "src/builtins/system-client-model.ts"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator.ClientModel/src/Providers/MrwSerializationTypeDefinition.Dynamic.cs"
             ]
@@ -240,10 +279,16 @@
           "description": "Create the root component that wraps the entire emitter output. It should use the Output component from @typespec/emitter-framework (which sets up TspContext) and configure the C# name policy (PascalCase for classes/methods/properties, camelCase for parameters/variables) via createCSharpNamePolicy() from @alloy-js/csharp. It should also set format options (4-space indent, 120 print width). The component iterates over the TCGC SdkPackage to produce: model files, enum files, client files, infrastructure files, and project files. Initially it can just render an empty <Output> with correct config.",
           "phase": "phase-0",
           "status": "done",
-          "dependencies": ["0.1.4"],
+          "dependencies": [
+            "0.1.4"
+          ],
           "files": {
-            "create": ["src/components/HttpClientCSharpOutput.tsx"],
-            "modify": ["src/emitter.tsx"],
+            "create": [
+              "src/components/HttpClientCSharpOutput.tsx"
+            ],
+            "modify": [
+              "src/emitter.tsx"
+            ],
             "reference": [
               "submodules/alloy/packages/csharp/src/name-policy.ts",
               "submodules/alloy/packages/csharp/src/contexts/format-options.ts"
@@ -262,10 +307,17 @@
           "description": "Create an Alloy ComponentContext that carries the resolved emitter options and derived state through the component tree. Components throughout the emitter will use this context to access: the package name, license info, whether XML serialization is needed, whether dynamic models exist, whether multipart operations exist, the TCGC SdkPackage with all clients/models/enums. Use createContext() from @alloy-js/core to create the context, and provide it in the HttpClientCSharpOutput component.",
           "phase": "phase-0",
           "status": "done",
-          "dependencies": ["0.3.1", "0.1.1"],
+          "dependencies": [
+            "0.3.1",
+            "0.1.1"
+          ],
           "files": {
-            "create": ["src/context.ts"],
-            "modify": ["src/components/HttpClientCSharpOutput.tsx"],
+            "create": [
+              "src/context.ts"
+            ],
+            "modify": [
+              "src/components/HttpClientCSharpOutput.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/emitter/src/sdk-context.ts"
             ]
@@ -285,7 +337,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "create": ["src/utils/namespace.ts"],
+            "create": [
+              "src/utils/namespace.ts"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/emitter/src/lib/utils.ts",
@@ -305,9 +359,13 @@
           "description": "Create a utility that generates the standard file header from emitter options. Every generated file starts with: `// Copyright (c) {company}. All rights reserved.\\n// Licensed under the {name}.\\n\\n// <auto-generated/>\\n\\n#nullable disable`. The company and license name come from the emitter options. See any golden file for the exact format.",
           "phase": "phase-0",
           "status": "done",
-          "dependencies": ["0.1.1"],
+          "dependencies": [
+            "0.1.1"
+          ],
           "files": {
-            "create": ["src/utils/header.ts"],
+            "create": [
+              "src/utils/header.ts"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/Models/Thing.cs"
@@ -327,9 +385,14 @@
           "description": "Set up the @typespec/emitter-framework scenario test harness for end-to-end testing. Use createCSharpExtractorConfig() to configure tree-sitter for C# snippet extraction. Create a test entry point that calls executeScenarios() with the emitter tester configured to import @typespec/http and @typespec/rest. Create the test/scenarios/ directory for markdown scenario files.",
           "phase": "phase-0",
           "status": "done",
-          "dependencies": ["0.1.4"],
+          "dependencies": [
+            "0.1.4"
+          ],
           "files": {
-            "create": ["test/scenarios.test.ts", "test/scenarios/"],
+            "create": [
+              "test/scenarios.test.ts",
+              "test/scenarios/"
+            ],
             "modify": [],
             "reference": [
               "node_modules/@typespec/emitter-framework/dist/src/testing/scenario-test/harness.d.ts"
@@ -348,9 +411,13 @@
           "description": "Create test helper utilities for unit testing individual components. Include: createTestHost() that sets up a TypeSpec test host with the emitter configured, compileAndEmit(code) that compiles TypeSpec code and returns the emitted output directory, assertFileContents(output, path, expected) for file content assertions. Follow the existing test pattern at test/test-host.ts and test/hello.test.ts.",
           "phase": "phase-0",
           "status": "done",
-          "dependencies": ["0.1.4"],
+          "dependencies": [
+            "0.1.4"
+          ],
           "files": {
-            "create": ["test/utils.ts"],
+            "create": [
+              "test/utils.ts"
+            ],
             "modify": [],
             "reference": [
               "test/test-host.ts",
@@ -371,9 +438,15 @@
           "description": "Write the first scenario test verifying the emitter works end-to-end. Test that a minimal TypeSpec service (just `@service namespace MyService;`) emits the correct file structure. This validates the entire pipeline from $onEmit through Alloy rendering to file output.",
           "phase": "phase-0",
           "status": "done",
-          "dependencies": ["0.4.1", "0.4.2", "0.1.3"],
+          "dependencies": [
+            "0.4.1",
+            "0.4.2",
+            "0.1.3"
+          ],
           "files": {
-            "create": ["test/scenarios/baseline.md"],
+            "create": [
+              "test/scenarios/baseline.md"
+            ],
             "modify": [],
             "reference": []
           },
@@ -389,7 +462,9 @@
           "description": "Set up the test directory structure mirroring the Spector test organization. Create subdirectories under test/scenarios/ for: models, enums, clients, serialization, parameters, paging, authentication, versioning. This provides organized locations for scenario tests as features are implemented.",
           "phase": "phase-0",
           "status": "done",
-          "dependencies": ["0.4.1"],
+          "dependencies": [
+            "0.4.1"
+          ],
           "files": {
             "create": [
               "test/scenarios/models/",
@@ -422,9 +497,13 @@
           "description": "Audit the emitter-framework's TypeExpression component to verify it covers all TCGC SdkType kinds needed for the HTTP client. Check: primitives (bool, int, string, etc.), datetime (utcDateTime\u2192DateTimeOffset, offsetDateTime\u2192DateTimeOffset), duration\u2192TimeSpan, bytes\u2192byte[], models (reference by refkey), enums (reference by refkey), arrays\u2192T[] or IList<T>, dicts\u2192IDictionary<string,T>, unions\u2192BinaryData, nullable\u2192T?. Document any gaps.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["0.1.4"],
+          "dependencies": [
+            "0.1.4"
+          ],
           "files": {
-            "create": ["src/utils/type-mapping.ts"],
+            "create": [
+              "src/utils/type-mapping.ts"
+            ],
             "modify": [],
             "reference": [
               "node_modules/@typespec/emitter-framework/dist/src/csharp/components/type-expression.d.ts",
@@ -442,9 +521,13 @@
           "description": "Implement any type mappings missing from the emitter-framework's TypeExpression. Known needed additions: InputPrimitiveType.Url\u2192System.Uri, Stream\u2192System.IO.Stream, IPAddress\u2192System.Net.IPAddress. Create a wrapper component or utility that extends TypeExpression with these additional mappings. Use the Alloy System builtins for Uri, Stream, etc.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.1.1"],
+          "dependencies": [
+            "1.1.1"
+          ],
           "files": {
-            "create": ["src/components/CSharpTypeExpression.tsx"],
+            "create": [
+              "src/components/CSharpTypeExpression.tsx"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator/src/TypeFactory.cs"
@@ -462,9 +545,13 @@
           "description": "Create utility functions that determine the correct C# collection type based on usage direction. Input models use IList<T>/IDictionary<string,T> (mutable). Output models use IReadOnlyList<T>/IReadOnlyDictionary<string,T> (immutable). The PropertyInitializationType maps IList\u2192List, IDictionary\u2192Dictionary for constructor initialization. See TypeFactory.CreateCSharpType in the legacy generator for the array/dict handling.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.1.1"],
+          "dependencies": [
+            "1.1.1"
+          ],
           "files": {
-            "create": ["src/utils/collections.ts"],
+            "create": [
+              "src/utils/collections.ts"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator/src/TypeFactory.cs",
@@ -483,9 +570,13 @@
           "description": "Create utility functions for nullable type handling. Rules: optional non-collection value types become T? (Nullable<T>). Optional reference types stay as-is (already nullable in C# with #nullable disable). Required types are never nullable. Collections are never nullable (use ChangeTrackingList for 'undefined' semantics instead). See PropertyProvider.cs lines 86-100 in the legacy generator.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.1.1"],
+          "dependencies": [
+            "1.1.1"
+          ],
           "files": {
-            "create": ["src/utils/nullable.ts"],
+            "create": [
+              "src/utils/nullable.ts"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator/src/Providers/PropertyProvider.cs"
@@ -502,9 +593,15 @@
           "description": "Write comprehensive tests for all type mapping utilities. Test every TypeSpec scalar \u2192 C# type mapping, collection type selection based on usage direction, and nullable type determination. Include edge cases: nested collections, nullable enums, literal types.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.1.2", "1.1.3", "1.1.4"],
+          "dependencies": [
+            "1.1.2",
+            "1.1.3",
+            "1.1.4"
+          ],
           "files": {
-            "create": ["test/utils/type-mapping.test.ts"],
+            "create": [
+              "test/utils/type-mapping.test.ts"
+            ],
             "modify": [],
             "reference": []
           },
@@ -521,9 +618,15 @@
           "description": "Create the ModelFile component that generates a complete model .cs file. It should produce a SourceFile with the standard header (copyright, auto-generated, #nullable disable), using statements (auto-managed by Alloy), file-scoped namespace, and a partial class declaration. Use @alloy-js/csharp SourceFile and ClassDeclaration components. The file path should be src/Generated/Models/{ModelName}.cs. See any model golden file like TestProjects/Local/Sample-TypeSpec/src/Generated/Models/Thing.cs for the exact format.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["0.3.1", "0.3.4", "1.1.2"],
+          "dependencies": [
+            "0.3.1",
+            "0.3.4",
+            "1.1.2"
+          ],
           "files": {
-            "create": ["src/components/models/ModelFile.tsx"],
+            "create": [
+              "src/components/models/ModelFile.tsx"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/Models/Thing.cs",
@@ -544,10 +647,17 @@
           "description": "Implement property generation inside the model class. Properties should have: XML doc comment from TypeSpec @doc, correct C# type from TypeExpression, access modifier (public), getter (always), setter (only for input+output models \u2014 see PropertyProvider.PropertyHasSetter logic). Read-only properties use get-only. Optional properties of value types use nullable T?. Property names follow PascalCase convention. See PropertyProvider.cs for the complete setter determination logic.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.2.1", "1.1.4"],
+          "dependencies": [
+            "1.2.1",
+            "1.1.4"
+          ],
           "files": {
-            "create": ["src/components/models/ModelProperty.tsx"],
-            "modify": ["src/components/models/ModelFile.tsx"],
+            "create": [
+              "src/components/models/ModelProperty.tsx"
+            ],
+            "modify": [
+              "src/components/models/ModelFile.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator/src/Providers/PropertyProvider.cs",
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/type/model/usage/src/Generated/Models/InputRecord.cs"
@@ -568,7 +678,9 @@
           "description": "Implement the full required/optional property logic. Required non-nullable reference types get Argument.AssertNotNull in constructors. Optional collections are initialized to ChangeTrackingList<T> or ChangeTrackingDictionary<string,T>. Required collections use .ToList() from IEnumerable parameter. Optional scalars get default values. See ModelProvider.GetPropertyInitializers and the constructor building logic.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.2.2"],
+          "dependencies": [
+            "1.2.2"
+          ],
           "files": {
             "create": [],
             "modify": [
@@ -592,10 +704,16 @@
           "description": "Generate the public initialization constructor. Parameters include only required, non-readonly, non-literal properties. Each parameter has Argument.AssertNotNull validation for non-nullable reference types. Constructor body assigns parameters to properties. For abstract models, constructor is private protected. For output-only models, constructor is internal. See ModelProvider.BuildConstructors and ConstructorProviderHelper.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.2.3"],
+          "dependencies": [
+            "1.2.3"
+          ],
           "files": {
-            "create": ["src/components/models/ModelConstructors.tsx"],
-            "modify": ["src/components/models/ModelFile.tsx"],
+            "create": [
+              "src/components/models/ModelConstructors.tsx"
+            ],
+            "modify": [
+              "src/components/models/ModelFile.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator/src/Providers/ModelProvider.cs",
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/Models/Thing.cs"
@@ -615,10 +733,14 @@
           "description": "Generate the internal serialization constructor that takes ALL properties plus the additionalBinaryDataProperties dictionary. This constructor is used by deserialization code. It has no validation \u2014 just direct assignment. Parameters follow the same order as properties plus raw data last. See ModelProvider.FullConstructor.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.2.4"],
+          "dependencies": [
+            "1.2.4"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/models/ModelConstructors.tsx"],
+            "modify": [
+              "src/components/models/ModelConstructors.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator/src/Providers/ModelProvider.cs"
             ]
@@ -636,10 +758,14 @@
           "description": "Generate the _additionalBinaryDataProperties field on models. It's declared as `private protected readonly IDictionary<string, BinaryData> _additionalBinaryDataProperties`. Only generated on the root model in an inheritance hierarchy (not on derived models). Used to store unknown JSON properties during deserialization. See ModelProvider.RawDataField.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.2.1"],
+          "dependencies": [
+            "1.2.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/models/ModelFile.tsx"],
+            "modify": [
+              "src/components/models/ModelFile.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator/src/Providers/ModelProvider.cs",
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/Models/Thing.cs"
@@ -658,10 +784,16 @@
           "description": "Generate XML documentation comments on models and their members. Use the @alloy-js/csharp DocComment and DocSummary components. Extract documentation from TypeSpec's @doc decorator via useTsp(). Model gets a <summary> from the model's doc. Each property gets <summary> from its doc. Constructor parameters get <param> tags.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.2.1"],
+          "dependencies": [
+            "1.2.1"
+          ],
           "files": {
-            "create": ["src/utils/doc-comments.ts"],
-            "modify": ["src/components/models/ModelFile.tsx"],
+            "create": [
+              "src/utils/doc-comments.ts"
+            ],
+            "modify": [
+              "src/components/models/ModelFile.tsx"
+            ],
             "reference": [
               "submodules/alloy/packages/csharp/src/components/doc/comment.tsx",
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator/src/Providers/XmlDocProvider.cs"
@@ -679,10 +811,14 @@
           "description": "When a model has modelAsStruct=true, generate a readonly struct instead of a class. Use @alloy-js/csharp StructDeclaration with readonly modifier. Struct models always include all properties in the public constructor. See ModelProvider lines 206-211.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.2.4"],
+          "dependencies": [
+            "1.2.4"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/models/ModelFile.tsx"],
+            "modify": [
+              "src/components/models/ModelFile.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator/src/Providers/ModelProvider.cs"
             ]
@@ -699,7 +835,9 @@
           "description": "Write tests for model generation covering: simple model with required string property, model with optional properties, input-only model (no public ctor, read-only props), output-only model, input+output model (get/set props, both operators). Compare output against golden files from Spector http/type/model/usage/.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.2.8"],
+          "dependencies": [
+            "1.2.8"
+          ],
           "files": {
             "create": [
               "test/scenarios/models/basic.md",
@@ -722,10 +860,16 @@
           "description": "When a model has a DiscriminatorProperty but no DiscriminatorValue, generate it as an abstract partial class with a private protected constructor. The discriminator property should be internal with get/set. See ModelProvider.IsAbstract logic and golden files at Spector/http/type/model/inheritance/single-discriminator/.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.2.4"],
+          "dependencies": [
+            "1.2.4"
+          ],
           "files": {
-            "create": ["src/components/models/DiscriminatorModel.tsx"],
-            "modify": ["src/components/models/ModelFile.tsx"],
+            "create": [
+              "src/components/models/DiscriminatorModel.tsx"
+            ],
+            "modify": [
+              "src/components/models/ModelFile.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/type/model/inheritance/single-discriminator/src/Generated/Models/"
             ]
@@ -742,10 +886,14 @@
           "description": "Generate the internal discriminator property on base models. For string discriminators, type is string. For enum discriminators, type is the enum type. The property is internal with get/set. See ModelProvider and the golden files.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.3.1"],
+          "dependencies": [
+            "1.3.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/models/DiscriminatorModel.tsx"],
+            "modify": [
+              "src/components/models/DiscriminatorModel.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/type/model/inheritance/enum-discriminator/src/Generated/Models/"
             ]
@@ -761,10 +909,14 @@
           "description": "Derived models pass their discriminator literal value to the base constructor. For string discriminators: `base(\"eagle\", wingspan)`. For enum discriminators: `base(DogKind.Golden, weight)`. The derived class public constructor does not expose the discriminator parameter. See the golden files for exact patterns.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.3.2"],
+          "dependencies": [
+            "1.3.2"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/models/ModelConstructors.tsx"],
+            "modify": [
+              "src/components/models/ModelConstructors.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/type/model/inheritance/single-discriminator/src/Generated/Models/Eagle.cs"
             ]
@@ -782,9 +934,13 @@
           "description": "Generate an internal Unknown{BaseName} class for every abstract discriminated base model. It inherits from the base, has an internal constructor that accepts the discriminator (with null-guard for strings, != default guard for structs), and passes it to the base. See UnknownBird.cs in the single-discriminator golden files.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.3.3"],
+          "dependencies": [
+            "1.3.3"
+          ],
           "files": {
-            "create": ["src/components/models/UnknownDiscriminatorModel.tsx"],
+            "create": [
+              "src/components/models/UnknownDiscriminatorModel.tsx"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/type/model/inheritance/single-discriminator/src/Generated/Models/UnknownBird.cs"
@@ -802,10 +958,15 @@
           "description": "Derived models may have properties beyond the base model. These should be generated with the same property logic as regular models. The derived constructor includes both base properties and own properties. See Eagle.cs which has Friends, Hate, Partner properties in addition to base Bird properties.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.3.3", "1.2.2"],
+          "dependencies": [
+            "1.3.3",
+            "1.2.2"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/models/ModelFile.tsx"],
+            "modify": [
+              "src/components/models/ModelFile.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/type/model/inheritance/single-discriminator/src/Generated/Models/Eagle.cs"
             ]
@@ -822,10 +983,14 @@
           "description": "When an intermediate model in a discriminator hierarchy both has a discriminator value AND has its own discriminated subtypes, generate a dual-constructor pattern. See ModelProvider multi-level discriminator detection logic.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.3.5"],
+          "dependencies": [
+            "1.3.5"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/models/DiscriminatorModel.tsx"],
+            "modify": [
+              "src/components/models/DiscriminatorModel.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator/src/Providers/ModelProvider.cs"
             ]
@@ -841,9 +1006,13 @@
           "description": "Write tests for model inheritance covering: single string discriminator, enum discriminator, unknown variant generation, multi-level discriminators. Compare against golden files.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.3.6"],
+          "dependencies": [
+            "1.3.6"
+          ],
           "files": {
-            "create": ["test/scenarios/models/inheritance.md"],
+            "create": [
+              "test/scenarios/models/inheritance.md"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/type/model/inheritance/"
@@ -861,9 +1030,14 @@
           "description": "Generate a C# enum declaration from a non-extensible TCGC InputEnumType. Use @alloy-js/csharp EnumDeclaration and EnumMember. File path: src/Generated/Models/{EnumName}.cs. Each member has XML doc comment. String-backed enums have no initialization values. Int-backed enums have explicit integer values. See golden files at Spector/http/type/enum/fixed/.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["0.3.1", "0.3.4"],
+          "dependencies": [
+            "0.3.1",
+            "0.3.4"
+          ],
           "files": {
-            "create": ["src/components/enums/FixedEnumFile.tsx"],
+            "create": [
+              "src/components/enums/FixedEnumFile.tsx"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/type/enum/fixed/src/Generated/Models/DaysOfWeekEnum.cs",
@@ -883,10 +1057,14 @@
           "description": "String-backed fixed enums require a serialization extension class because C# enums can't hold string values directly. The enum members don't have initialization values. Serialization/deserialization is handled by the extension class (task 1.5).",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.4.1"],
+          "dependencies": [
+            "1.4.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/enums/FixedEnumFile.tsx"],
+            "modify": [
+              "src/components/enums/FixedEnumFile.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/Models/StringFixedEnum.cs"
             ]
@@ -902,10 +1080,14 @@
           "description": "Int-backed fixed enums have explicit integer initialization values on each member. E.g., `One = 1, Two = 2, Four = 4`. The values come from the InputEnumTypeValue.Value field.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.4.1"],
+          "dependencies": [
+            "1.4.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/enums/FixedEnumFile.tsx"],
+            "modify": [
+              "src/components/enums/FixedEnumFile.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/Models/IntFixedEnum.cs"
             ]
@@ -920,10 +1102,14 @@
           "description": "Float-backed fixed enums behave like string-backed \u2014 no initialization on members since C# enums can't hold float values. Serialization handled by extension class.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.4.1"],
+          "dependencies": [
+            "1.4.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/enums/FixedEnumFile.tsx"],
+            "modify": [
+              "src/components/enums/FixedEnumFile.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/Models/FloatFixedEnum.cs"
             ]
@@ -938,9 +1124,13 @@
           "description": "Write tests for string-backed, int-backed, and float-backed fixed enums. Compare against golden files.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.4.4"],
+          "dependencies": [
+            "1.4.4"
+          ],
           "files": {
-            "create": ["test/scenarios/enums/fixed.md"],
+            "create": [
+              "test/scenarios/enums/fixed.md"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/type/enum/fixed/src/Generated/Models/"
@@ -957,9 +1147,13 @@
           "description": "Generate the serialization extension class for fixed enums. File path: src/Generated/Models/{EnumName}.Serialization.cs. The class is `internal static partial class {EnumName}Extensions`. See golden file StringFixedEnum.Serialization.cs.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.4.1"],
+          "dependencies": [
+            "1.4.1"
+          ],
           "files": {
-            "create": ["src/components/enums/FixedEnumSerializationFile.tsx"],
+            "create": [
+              "src/components/enums/FixedEnumSerializationFile.tsx"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/Models/StringFixedEnum.Serialization.cs",
@@ -977,10 +1171,14 @@
           "description": "Generate `public static string ToSerialString(this EnumName value)` method with a switch expression mapping each enum member to its wire value string. E.g., `EnumName.One => \"1\"`. See FixedEnumSerializationProvider.BuildSerializationMethod.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.5.1"],
+          "dependencies": [
+            "1.5.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/enums/FixedEnumSerializationFile.tsx"],
+            "modify": [
+              "src/components/enums/FixedEnumSerializationFile.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator.ClientModel/src/Providers/FixedEnumSerializationProvider.cs"
             ]
@@ -997,10 +1195,14 @@
           "description": "Generate ToSerialSingle or ToSerialInt32 for float/int-backed enums. These use the same switch expression pattern but return numeric values.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.5.1"],
+          "dependencies": [
+            "1.5.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/enums/FixedEnumSerializationFile.tsx"],
+            "modify": [
+              "src/components/enums/FixedEnumSerializationFile.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/Models/FloatFixedEnum.Serialization.cs"
             ]
@@ -1015,10 +1217,14 @@
           "description": "Generate `public static EnumName ToEnumName(this string/int/float value)` method. For strings, uses `if (StringComparer.OrdinalIgnoreCase.Equals(value, \"wireValue\"))` chain. For numerics, uses `if (value == numericValue)` chain. Falls through to `throw new ArgumentOutOfRangeException`.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.5.1"],
+          "dependencies": [
+            "1.5.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/enums/FixedEnumSerializationFile.tsx"],
+            "modify": [
+              "src/components/enums/FixedEnumSerializationFile.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator.ClientModel/src/Providers/FixedEnumSerializationProvider.cs"
             ]
@@ -1035,10 +1241,14 @@
           "description": "Int-backed fixed enums don't need a ToSerialXxx method because (int)enumValue suffices. Only generate the deserialization To{EnumName} method. See FixedEnumSerializationProvider.NeedsSerializationMethod.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.5.2"],
+          "dependencies": [
+            "1.5.2"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/enums/FixedEnumSerializationFile.tsx"],
+            "modify": [
+              "src/components/enums/FixedEnumSerializationFile.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -1052,9 +1262,13 @@
           "description": "Test serialization extension generation for string, int, and float enums.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.5.5"],
+          "dependencies": [
+            "1.5.5"
+          ],
           "files": {
-            "create": ["test/scenarios/enums/fixed-serialization.md"],
+            "create": [
+              "test/scenarios/enums/fixed-serialization.md"
+            ],
             "modify": [],
             "reference": []
           },
@@ -1069,9 +1283,14 @@
           "description": "Generate a readonly partial struct implementing IEquatable<T> for extensible enums. Use @alloy-js/csharp StructDeclaration with readonly modifier. The struct has a private _value field, private const value fields, static properties, a constructor, equality operators, implicit conversion, Equals, GetHashCode, and ToString. File path: src/Generated/Models/{EnumName}.cs. See golden file DaysOfWeekExtensibleEnum.cs from Spector.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["0.3.1", "0.3.4"],
+          "dependencies": [
+            "0.3.1",
+            "0.3.4"
+          ],
           "files": {
-            "create": ["src/components/enums/ExtensibleEnumFile.tsx"],
+            "create": [
+              "src/components/enums/ExtensibleEnumFile.tsx"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/type/enum/extensible/src/Generated/Models/DaysOfWeekExtensibleEnum.cs",
@@ -1090,10 +1309,14 @@
           "description": "Generate the private _value field and private const value fields. E.g., `private readonly string _value;` and `private const string MondayValue = \"Monday\";`. The const field names append 'Value' suffix to the member name.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.6.1"],
+          "dependencies": [
+            "1.6.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/enums/ExtensibleEnumFile.tsx"],
+            "modify": [
+              "src/components/enums/ExtensibleEnumFile.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator/src/Providers/ExtensibleEnumProvider.cs"
             ]
@@ -1110,10 +1333,14 @@
           "description": "Generate static properties that return cached instances. E.g., `public static DaysOfWeek Monday { get; } = new DaysOfWeek(MondayValue);`.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.6.2"],
+          "dependencies": [
+            "1.6.2"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/enums/ExtensibleEnumFile.tsx"],
+            "modify": [
+              "src/components/enums/ExtensibleEnumFile.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -1127,10 +1354,14 @@
           "description": "Generate the public constructor: `public EnumName(underlyingType value)`. For string underlying types, add `Argument.AssertNotNull(value, nameof(value))`. Assigns `_value = value`.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.6.1"],
+          "dependencies": [
+            "1.6.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/enums/ExtensibleEnumFile.tsx"],
+            "modify": [
+              "src/components/enums/ExtensibleEnumFile.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -1145,10 +1376,14 @@
           "description": "Generate: operator ==, operator !=, Equals(object), Equals(T), GetHashCode. String equality uses StringComparison.InvariantCultureIgnoreCase. Numeric equality uses direct comparison. GetHashCode for strings uses StringComparer.InvariantCultureIgnoreCase. See ExtensibleEnumProvider.BuildMethods.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.6.1"],
+          "dependencies": [
+            "1.6.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/enums/ExtensibleEnumFile.tsx"],
+            "modify": [
+              "src/components/enums/ExtensibleEnumFile.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator/src/Providers/ExtensibleEnumProvider.cs"
             ]
@@ -1165,10 +1400,14 @@
           "description": "Generate implicit operator from underlying type: `public static implicit operator EnumName(underlyingType value) => new EnumName(value);`. For string types, also generate nullable variant: `public static implicit operator EnumName?(string value) => value == null ? null : new EnumName(value);`.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.6.1"],
+          "dependencies": [
+            "1.6.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/enums/ExtensibleEnumFile.tsx"],
+            "modify": [
+              "src/components/enums/ExtensibleEnumFile.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -1182,10 +1421,14 @@
           "description": "Generate ToString: for strings, return `_value` directly. For numeric types, return `_value.ToString(CultureInfo.InvariantCulture)`.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.6.1"],
+          "dependencies": [
+            "1.6.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/enums/ExtensibleEnumFile.tsx"],
+            "modify": [
+              "src/components/enums/ExtensibleEnumFile.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -1198,9 +1441,13 @@
           "description": "Write tests for string-backed, int-backed extensible enums. Compare against golden files from Spector.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.6.7"],
+          "dependencies": [
+            "1.6.7"
+          ],
           "files": {
-            "create": ["test/scenarios/enums/extensible.md"],
+            "create": [
+              "test/scenarios/enums/extensible.md"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/type/enum/extensible/src/Generated/Models/"
@@ -1217,7 +1464,9 @@
           "description": "Generate serialization partial struct for numeric extensible enums. File path: src/Generated/Models/{EnumName}.Serialization.cs. Generates a partial struct with ToSerialInt32/ToSerialSingle method that returns `_value`. String extensible enums don't need a serialization file. See ExtensibleEnumSerializationProvider.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.6.1"],
+          "dependencies": [
+            "1.6.1"
+          ],
           "files": {
             "create": [
               "src/components/enums/ExtensibleEnumSerializationFile.tsx"
@@ -1239,7 +1488,9 @@
           "description": "Generate `internal int ToSerialInt32() => _value;` or `internal float ToSerialSingle() => _value;` depending on underlying type.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.7.1"],
+          "dependencies": [
+            "1.7.1"
+          ],
           "files": {
             "create": [],
             "modify": [
@@ -1259,7 +1510,9 @@
           "description": "String extensible enums use ToString() for serialization and implicit operator for deserialization. No serialization file needed.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.7.1"],
+          "dependencies": [
+            "1.7.1"
+          ],
           "files": {
             "create": [],
             "modify": [
@@ -1277,9 +1530,13 @@
           "description": "Test extensible enum serialization file generation for numeric and string variants.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.7.3"],
+          "dependencies": [
+            "1.7.3"
+          ],
           "files": {
-            "create": ["test/scenarios/enums/extensible-serialization.md"],
+            "create": [
+              "test/scenarios/enums/extensible-serialization.md"
+            ],
             "modify": [],
             "reference": []
           },
@@ -1294,9 +1551,13 @@
           "description": "Generate the static model factory class: `public static partial class {ServiceName}ModelFactory`. Contains one static method per public model for creating instances (for testing/mocking). File path: src/Generated/{ServiceName}ModelFactory.cs.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.2.5"],
+          "dependencies": [
+            "1.2.5"
+          ],
           "files": {
-            "create": ["src/components/models/ModelFactoryFile.tsx"],
+            "create": [
+              "src/components/models/ModelFactoryFile.tsx"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator/src/Providers/ModelFactoryProvider.cs",
@@ -1315,10 +1576,14 @@
           "description": "Each factory method takes parameters matching the full serialization constructor minus additionalBinaryDataProperties. Collections default to null-coalesced with `new List<T>()`. Returns `new ModelType(params..., null)` (null for raw data).",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.8.1"],
+          "dependencies": [
+            "1.8.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/models/ModelFactoryFile.tsx"],
+            "modify": [
+              "src/components/models/ModelFactoryFile.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator/src/Providers/ModelFactoryProvider.cs"
             ]
@@ -1335,10 +1600,15 @@
           "description": "Abstract models instantiate the Unknown variant instead. E.g., `public static Bird Bird(...) => new UnknownBird(...)`. See ModelFactoryProvider lines 375-387.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.8.2", "1.3.4"],
+          "dependencies": [
+            "1.8.2",
+            "1.3.4"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/models/ModelFactoryFile.tsx"],
+            "modify": [
+              "src/components/models/ModelFactoryFile.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -1352,10 +1622,14 @@
           "description": "Exclude discriminator parameters from factory methods when the model has a fixed discriminator value. The discriminator is hardcoded in the derived constructor, so it shouldn't be a factory parameter.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.8.2"],
+          "dependencies": [
+            "1.8.2"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/models/ModelFactoryFile.tsx"],
+            "modify": [
+              "src/components/models/ModelFactoryFile.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -1368,9 +1642,13 @@
           "description": "Test model factory generation for various model types.",
           "phase": "phase-1",
           "status": "done",
-          "dependencies": ["1.8.4"],
+          "dependencies": [
+            "1.8.4"
+          ],
           "files": {
-            "create": ["test/scenarios/models/model-factory.md"],
+            "create": [
+              "test/scenarios/models/model-factory.md"
+            ],
             "modify": [],
             "reference": []
           },
@@ -1391,7 +1669,9 @@
           "description": "Generate the .Serialization.cs partial class that implements IJsonModel<T> and IPersistableModel<T>. The file declares a partial class with the same name as the model, in the same namespace, with the interface implementations. File path: src/Generated/Models/{Name}.Serialization.cs. See any .Serialization.cs golden file.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["1.2.1"],
+          "dependencies": [
+            "1.2.1"
+          ],
           "files": {
             "create": [
               "src/components/serialization/ModelSerializationFile.tsx"
@@ -1413,7 +1693,9 @@
           "description": "Determine which interfaces the serialization class implements: IJsonModel<T> for JSON-supporting models, IPersistableModel<T> for XML-only models. Most models use IJsonModel (which extends IPersistableModel). Check InputModelTypeUsage flags.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.1.1"],
+          "dependencies": [
+            "2.1.1"
+          ],
           "files": {
             "create": [],
             "modify": [
@@ -1434,7 +1716,9 @@
           "description": "Generate `internal ModelName() { }` or `internal ModelName() => throw null;` as the deserialization constructor. This is needed for the MRW framework.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.1.1"],
+          "dependencies": [
+            "2.1.1"
+          ],
           "files": {
             "create": [],
             "modify": [
@@ -1452,7 +1736,9 @@
           "description": "Generate PersistableModelWriteCore and PersistableModelCreateCore methods. These dispatch on format string: 'J' \u2192 JSON path, 'X' \u2192 XML path. WriteCore uses ModelReaderWriter.Write for JSON. CreateCore uses JsonDocument.Parse for JSON. Both are protected virtual (or override for derived models).",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.1.1"],
+          "dependencies": [
+            "2.1.1"
+          ],
           "files": {
             "create": [
               "src/components/serialization/PersistableModelMethods.tsx"
@@ -1476,7 +1762,9 @@
           "description": "Generate the one-liner explicit interface implementations: `BinaryData IPersistableModel<T>.Write(options) => PersistableModelWriteCore(options);`, `T IPersistableModel<T>.Create(data, options) => PersistableModelCreateCore(data, options);`, `string IPersistableModel<T>.GetFormatFromOptions(options) => \"J\";`.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.1.4"],
+          "dependencies": [
+            "2.1.4"
+          ],
           "files": {
             "create": [],
             "modify": [
@@ -1495,13 +1783,19 @@
           "description": "Test the serialization file structure (interfaces, constructors, method signatures) without testing method bodies.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.1.5"],
+          "dependencies": [
+            "2.1.5"
+          ],
           "files": {
-            "create": ["test/scenarios/serialization/structure.md"],
+            "create": [
+              "test/scenarios/serialization/structure.md"
+            ],
             "modify": [],
             "reference": []
           },
-          "acceptance_criteria": ["Structure tests pass"]
+          "acceptance_criteria": [
+            "Structure tests pass"
+          ]
         },
         {
           "id": "2.2.1",
@@ -1509,9 +1803,13 @@
           "description": "Generate the JsonModelWriteCore method body. This is the core serialization method that writes each property to JSON. It's protected virtual for root models, protected override for derived. Starts with format validation, then writes properties, then writes additional data. See MrwSerializationTypeDefinition.cs CreateSerializeHandler.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.1.1"],
+          "dependencies": [
+            "2.1.1"
+          ],
           "files": {
-            "create": ["src/components/serialization/JsonWriteCore.tsx"],
+            "create": [
+              "src/components/serialization/JsonWriteCore.tsx"
+            ],
             "modify": [
               "src/components/serialization/ModelSerializationFile.tsx"
             ],
@@ -1531,13 +1829,19 @@
           "description": "Derived models call base.JsonModelWriteCore(writer, options) before writing their own properties.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.2.1"],
+          "dependencies": [
+            "2.2.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/JsonWriteCore.tsx"],
+            "modify": [
+              "src/components/serialization/JsonWriteCore.tsx"
+            ],
             "reference": []
           },
-          "acceptance_criteria": ["Derived models call base.JsonModelWriteCore"]
+          "acceptance_criteria": [
+            "Derived models call base.JsonModelWriteCore"
+          ]
         },
         {
           "id": "2.2.3",
@@ -1545,10 +1849,16 @@
           "description": "Generate writer.WritePropertyName(\"name\"u8) + writer.WriteStringValue/WriteNumberValue/WriteBooleanValue for each primitive type. Use UTF-8 string literals for property names.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.2.1"],
+          "dependencies": [
+            "2.2.1"
+          ],
           "files": {
-            "create": ["src/components/serialization/PropertySerializer.tsx"],
-            "modify": ["src/components/serialization/JsonWriteCore.tsx"],
+            "create": [
+              "src/components/serialization/PropertySerializer.tsx"
+            ],
+            "modify": [
+              "src/components/serialization/JsonWriteCore.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator.ClientModel/src/Providers/MrwSerializationTypeDefinition.cs"
             ]
@@ -1566,10 +1876,14 @@
           "description": "DateTimeOffset serialization depends on encoding: RFC3339/ISO8601\u2192WriteStringValue(value, \"O\"), RFC7231/RFC1123\u2192WriteStringValue(value, \"R\"), Unix\u2192WriteNumberValue(value, \"U\"). See MrwSerializationTypeDefinition lines 2365-2376.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.2.3"],
+          "dependencies": [
+            "2.2.3"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/PropertySerializer.tsx"],
+            "modify": [
+              "src/components/serialization/PropertySerializer.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -1584,10 +1898,14 @@
           "description": "TimeSpan serialization: ISO8601\u2192WriteStringValue(value, \"P\"), Seconds\u2192WriteNumberValue(TotalSeconds), Milliseconds\u2192WriteNumberValue(TotalMilliseconds). Float variants use double TotalSeconds.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.2.3"],
+          "dependencies": [
+            "2.2.3"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/PropertySerializer.tsx"],
+            "modify": [
+              "src/components/serialization/PropertySerializer.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -1601,10 +1919,14 @@
           "description": "byte[]/BinaryData serialization: Base64\u2192WriteBase64StringValue(value, \"D\"), Base64URL\u2192WriteBase64StringValue(value, \"U\").",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.2.3"],
+          "dependencies": [
+            "2.2.3"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/PropertySerializer.tsx"],
+            "modify": [
+              "src/components/serialization/PropertySerializer.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -1618,13 +1940,19 @@
           "description": "Nested model properties use writer.WriteObjectValue(value, options) which delegates to the model's own IJsonModel.Write.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.2.3"],
+          "dependencies": [
+            "2.2.3"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/PropertySerializer.tsx"],
+            "modify": [
+              "src/components/serialization/PropertySerializer.tsx"
+            ],
             "reference": []
           },
-          "acceptance_criteria": ["Nested models use WriteObjectValue"]
+          "acceptance_criteria": [
+            "Nested models use WriteObjectValue"
+          ]
         },
         {
           "id": "2.2.8",
@@ -1632,13 +1960,19 @@
           "description": "Fixed enums: string-backed\u2192value.ToSerialString(), int-backed\u2192(int)value, float-backed\u2192value.ToSerialSingle(). Extensible enums: string-backed\u2192value.ToString(), numeric\u2192value.ToSerialInt32().",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.2.3"],
+          "dependencies": [
+            "2.2.3"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/PropertySerializer.tsx"],
+            "modify": [
+              "src/components/serialization/PropertySerializer.tsx"
+            ],
             "reference": []
           },
-          "acceptance_criteria": ["All enum serialization patterns implemented"]
+          "acceptance_criteria": [
+            "All enum serialization patterns implemented"
+          ]
         },
         {
           "id": "2.2.9",
@@ -1646,10 +1980,14 @@
           "description": "Lists: WriteStartArray \u2192 foreach item \u2192 serialize item \u2192 WriteEndArray. Handle nested collections recursively.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.2.3"],
+          "dependencies": [
+            "2.2.3"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/PropertySerializer.tsx"],
+            "modify": [
+              "src/components/serialization/PropertySerializer.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -1663,10 +2001,14 @@
           "description": "Dictionaries: WriteStartObject \u2192 foreach KVP \u2192 WritePropertyName(key) \u2192 serialize value \u2192 WriteEndObject.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.2.3"],
+          "dependencies": [
+            "2.2.3"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/PropertySerializer.tsx"],
+            "modify": [
+              "src/components/serialization/PropertySerializer.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -1679,10 +2021,14 @@
           "description": "Optional properties wrapped with `if (Optional.IsDefined(prop))`. Optional collections wrapped with `if (Optional.IsCollectionDefined(prop))`.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.2.1"],
+          "dependencies": [
+            "2.2.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/JsonWriteCore.tsx"],
+            "modify": [
+              "src/components/serialization/JsonWriteCore.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -1696,10 +2042,14 @@
           "description": "Required nullable properties use IsDefined + WriteNull else branch: `if (Optional.IsDefined(prop)) { write... } else { writer.WriteNull(\"name\"u8); }`.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.2.11"],
+          "dependencies": [
+            "2.2.11"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/JsonWriteCore.tsx"],
+            "modify": [
+              "src/components/serialization/JsonWriteCore.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -1712,10 +2062,14 @@
           "description": "Read-only properties are only serialized when `options.Format != \"W\"` (non-wire format).",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.2.1"],
+          "dependencies": [
+            "2.2.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/JsonWriteCore.tsx"],
+            "modify": [
+              "src/components/serialization/JsonWriteCore.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -1728,10 +2082,14 @@
           "description": "Write _additionalBinaryDataProperties at the end of JsonModelWriteCore, only when options.Format != \"W\". Use #if NET6_0_OR_GREATER guard for WriteRawValue vs JsonDocument.Parse fallback.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.2.1"],
+          "dependencies": [
+            "2.2.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/JsonWriteCore.tsx"],
+            "modify": [
+              "src/components/serialization/JsonWriteCore.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -1745,9 +2103,13 @@
           "description": "Test JSON serialization for various property type combinations.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.2.14"],
+          "dependencies": [
+            "2.2.14"
+          ],
           "files": {
-            "create": ["test/scenarios/serialization/json-write.md"],
+            "create": [
+              "test/scenarios/serialization/json-write.md"
+            ],
             "modify": [],
             "reference": []
           },
@@ -1762,9 +2124,13 @@
           "description": "Generate the static DeserializeXxx(JsonElement element, ModelReaderWriterOptions options) method. This is the core deserialization method.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.1.1"],
+          "dependencies": [
+            "2.1.1"
+          ],
           "files": {
-            "create": ["src/components/serialization/JsonDeserialize.tsx"],
+            "create": [
+              "src/components/serialization/JsonDeserialize.tsx"
+            ],
             "modify": [
               "src/components/serialization/ModelSerializationFile.tsx"
             ],
@@ -1784,13 +2150,19 @@
           "description": "First line: `if (element.ValueKind == JsonValueKind.Null) { return null; }`.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.3.1"],
+          "dependencies": [
+            "2.3.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/JsonDeserialize.tsx"],
+            "modify": [
+              "src/components/serialization/JsonDeserialize.tsx"
+            ],
             "reference": []
           },
-          "acceptance_criteria": ["Null check at method start"]
+          "acceptance_criteria": [
+            "Null check at method start"
+          ]
         },
         {
           "id": "2.3.3",
@@ -1798,10 +2170,14 @@
           "description": "Declare local variables for all serialization constructor parameters. E.g., `string name = default;`, `IList<int> items = default;`, `IDictionary<string, BinaryData> additionalBinaryDataProperties = new ChangeTrackingDictionary<string, BinaryData>();`.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.3.1"],
+          "dependencies": [
+            "2.3.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/JsonDeserialize.tsx"],
+            "modify": [
+              "src/components/serialization/JsonDeserialize.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -1814,10 +2190,16 @@
           "description": "Generate `foreach (var prop in element.EnumerateObject())` with `if (prop.NameEquals(\"name\"u8))` for each property, followed by value extraction and `continue`.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.3.3"],
+          "dependencies": [
+            "2.3.3"
+          ],
           "files": {
-            "create": ["src/components/serialization/PropertyDeserializer.tsx"],
-            "modify": ["src/components/serialization/JsonDeserialize.tsx"],
+            "create": [
+              "src/components/serialization/PropertyDeserializer.tsx"
+            ],
+            "modify": [
+              "src/components/serialization/JsonDeserialize.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -1832,13 +2214,19 @@
           "description": "Map each primitive type to its JsonElement getter: string\u2192GetString(), int\u2192GetInt32(), bool\u2192GetBoolean(), etc.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.3.4"],
+          "dependencies": [
+            "2.3.4"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/PropertyDeserializer.tsx"],
+            "modify": [
+              "src/components/serialization/PropertyDeserializer.tsx"
+            ],
             "reference": []
           },
-          "acceptance_criteria": ["All primitive getters mapped correctly"]
+          "acceptance_criteria": [
+            "All primitive getters mapped correctly"
+          ]
         },
         {
           "id": "2.3.6",
@@ -1846,13 +2234,19 @@
           "description": "DateTime: Unix\u2192FromUnixTimeSeconds(GetInt64()), others\u2192GetDateTimeOffset(format). Duration: Seconds\u2192FromSeconds(GetInt32/GetDouble()), ISO8601\u2192GetTimeSpan(\"P\"). Bytes: Base64\u2192GetBytesFromBase64(), Base64URL\u2192custom.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.3.5"],
+          "dependencies": [
+            "2.3.5"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/PropertyDeserializer.tsx"],
+            "modify": [
+              "src/components/serialization/PropertyDeserializer.tsx"
+            ],
             "reference": []
           },
-          "acceptance_criteria": ["All encoded types deserialized correctly"]
+          "acceptance_criteria": [
+            "All encoded types deserialized correctly"
+          ]
         },
         {
           "id": "2.3.7",
@@ -1860,10 +2254,14 @@
           "description": "Nested models: `ModelName.DeserializeModelName(prop.Value, options)`.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.3.5"],
+          "dependencies": [
+            "2.3.5"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/PropertyDeserializer.tsx"],
+            "modify": [
+              "src/components/serialization/PropertyDeserializer.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -1876,10 +2274,14 @@
           "description": "Fixed enums: use the To{EnumName} extension method. Extensible enums: use `new ExtensibleEnum(element.GetString())` or implicit conversion.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.3.5"],
+          "dependencies": [
+            "2.3.5"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/PropertyDeserializer.tsx"],
+            "modify": [
+              "src/components/serialization/PropertyDeserializer.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -1892,10 +2294,14 @@
           "description": "Lists: declare `List<T>`, foreach item in element.EnumerateArray(), deserialize, add to list.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.3.5"],
+          "dependencies": [
+            "2.3.5"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/PropertyDeserializer.tsx"],
+            "modify": [
+              "src/components/serialization/PropertyDeserializer.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -1908,10 +2314,14 @@
           "description": "Dictionaries: declare `Dictionary<string,T>`, foreach prop in element.EnumerateObject(), deserialize value, add.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.3.5"],
+          "dependencies": [
+            "2.3.5"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/PropertyDeserializer.tsx"],
+            "modify": [
+              "src/components/serialization/PropertyDeserializer.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -1924,13 +2334,19 @@
           "description": "Handle JsonValueKind.Null for each property variant: nullable\u2192assign null, required nullable collection\u2192new empty list, optional\u2192continue.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.3.4"],
+          "dependencies": [
+            "2.3.4"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/PropertyDeserializer.tsx"],
+            "modify": [
+              "src/components/serialization/PropertyDeserializer.tsx"
+            ],
             "reference": []
           },
-          "acceptance_criteria": ["Null handling correct per property variant"]
+          "acceptance_criteria": [
+            "Null handling correct per property variant"
+          ]
         },
         {
           "id": "2.3.12",
@@ -1938,10 +2354,14 @@
           "description": "Unknown properties in the foreach loop go to additionalBinaryDataProperties: `additionalBinaryDataProperties.Add(prop.Name, BinaryData.FromString(prop.Value.GetRawText()))`. Only when options.Format != \"W\".",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.3.4"],
+          "dependencies": [
+            "2.3.4"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/JsonDeserialize.tsx"],
+            "modify": [
+              "src/components/serialization/JsonDeserialize.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -1954,10 +2374,14 @@
           "description": "After the loop, return new ModelName(allParams) calling the internal serialization constructor.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.3.12"],
+          "dependencies": [
+            "2.3.12"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/JsonDeserialize.tsx"],
+            "modify": [
+              "src/components/serialization/JsonDeserialize.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -1970,13 +2394,19 @@
           "description": "Test JSON deserialization for various property types.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.3.13"],
+          "dependencies": [
+            "2.3.13"
+          ],
           "files": {
-            "create": ["test/scenarios/serialization/json-read.md"],
+            "create": [
+              "test/scenarios/serialization/json-read.md"
+            ],
             "modify": [],
             "reference": []
           },
-          "acceptance_criteria": ["All deserialization patterns tested"]
+          "acceptance_criteria": [
+            "All deserialization patterns tested"
+          ]
         },
         {
           "id": "2.4.1",
@@ -1984,13 +2414,20 @@
           "description": "In DeserializeXxx for abstract base models: peek at discriminator property via element.TryGetProperty(\"kind\"u8, out discriminator), then discriminator.GetString().",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.3.1", "1.3.1"],
+          "dependencies": [
+            "2.3.1",
+            "1.3.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/JsonDeserialize.tsx"],
+            "modify": [
+              "src/components/serialization/JsonDeserialize.tsx"
+            ],
             "reference": []
           },
-          "acceptance_criteria": ["Discriminator peek implemented"]
+          "acceptance_criteria": [
+            "Discriminator peek implemented"
+          ]
         },
         {
           "id": "2.4.2",
@@ -1998,10 +2435,14 @@
           "description": "Switch on discriminator value, dispatching to the correct derived DeserializeXxx method.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.4.1"],
+          "dependencies": [
+            "2.4.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/JsonDeserialize.tsx"],
+            "modify": [
+              "src/components/serialization/JsonDeserialize.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -2014,13 +2455,19 @@
           "description": "Default case dispatches to UnknownXxx.DeserializeUnknownXxx for unrecognized discriminator values.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.4.2"],
+          "dependencies": [
+            "2.4.2"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/JsonDeserialize.tsx"],
+            "modify": [
+              "src/components/serialization/JsonDeserialize.tsx"
+            ],
             "reference": []
           },
-          "acceptance_criteria": ["Unknown fallback implemented"]
+          "acceptance_criteria": [
+            "Unknown fallback implemented"
+          ]
         },
         {
           "id": "2.4.4",
@@ -2028,7 +2475,9 @@
           "description": "Add [PersistableModelProxy(typeof(UnknownXxx))] attribute on abstract base model serialization class.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.4.1"],
+          "dependencies": [
+            "2.4.1"
+          ],
           "files": {
             "create": [],
             "modify": [
@@ -2046,13 +2495,19 @@
           "description": "Test discriminator dispatch for string and enum discriminators.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.4.4"],
+          "dependencies": [
+            "2.4.4"
+          ],
           "files": {
-            "create": ["test/scenarios/serialization/discriminator.md"],
+            "create": [
+              "test/scenarios/serialization/discriminator.md"
+            ],
             "modify": [],
             "reference": []
           },
-          "acceptance_criteria": ["Discriminator tests pass"]
+          "acceptance_criteria": [
+            "Discriminator tests pass"
+          ]
         },
         {
           "id": "2.5.1",
@@ -2060,9 +2515,13 @@
           "description": "Generate `public static implicit operator BinaryContent(T model)` on input model serialization classes. Returns null if model is null, otherwise BinaryContent.Create(model, WireOptions).",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.1.1"],
+          "dependencies": [
+            "2.1.1"
+          ],
           "files": {
-            "create": ["src/components/serialization/CastOperators.tsx"],
+            "create": [
+              "src/components/serialization/CastOperators.tsx"
+            ],
             "modify": [
               "src/components/serialization/ModelSerializationFile.tsx"
             ],
@@ -2079,10 +2538,15 @@
           "description": "Generate `public static explicit operator T(ClientResult result)` on output model serialization classes. Parses response content as JSON and deserializes.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.1.1", "2.3.1"],
+          "dependencies": [
+            "2.1.1",
+            "2.3.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/CastOperators.tsx"],
+            "modify": [
+              "src/components/serialization/CastOperators.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -2096,10 +2560,14 @@
           "description": "Models supporting both JSON and XML need Content-Type sniffing in the explicit operator.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.5.2"],
+          "dependencies": [
+            "2.5.2"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/CastOperators.tsx"],
+            "modify": [
+              "src/components/serialization/CastOperators.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -2112,13 +2580,19 @@
           "description": "Test cast operators for input, output, and dual-format models.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.5.3"],
+          "dependencies": [
+            "2.5.3"
+          ],
           "files": {
-            "create": ["test/scenarios/serialization/operators.md"],
+            "create": [
+              "test/scenarios/serialization/operators.md"
+            ],
             "modify": [],
             "reference": []
           },
-          "acceptance_criteria": ["Operator tests pass"]
+          "acceptance_criteria": [
+            "Operator tests pass"
+          ]
         },
         {
           "id": "2.6.1",
@@ -2126,7 +2600,9 @@
           "description": "Generate `void IJsonModel<T>.Write(Utf8JsonWriter writer, ModelReaderWriterOptions options)` that calls WriteStartObject \u2192 JsonModelWriteCore \u2192 WriteEndObject.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.2.1"],
+          "dependencies": [
+            "2.2.1"
+          ],
           "files": {
             "create": [],
             "modify": [
@@ -2144,7 +2620,9 @@
           "description": "Generate JsonModelCreateCore that validates format, parses JsonDocument from reader, calls DeserializeXxx.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.3.1"],
+          "dependencies": [
+            "2.3.1"
+          ],
           "files": {
             "create": [],
             "modify": [
@@ -2162,13 +2640,19 @@
           "description": "Test the IJsonModel Write and Create wrapper methods.",
           "phase": "phase-2",
           "status": "done",
-          "dependencies": ["2.6.2"],
+          "dependencies": [
+            "2.6.2"
+          ],
           "files": {
-            "create": ["test/scenarios/serialization/ijsonmodel.md"],
+            "create": [
+              "test/scenarios/serialization/ijsonmodel.md"
+            ],
             "modify": [],
             "reference": []
           },
-          "acceptance_criteria": ["Wrapper method tests pass"]
+          "acceptance_criteria": [
+            "Wrapper method tests pass"
+          ]
         }
       ]
     },
@@ -2183,9 +2667,14 @@
           "description": "Generate {Name}Options : ClientPipelineOptions with nested ServiceVersion enum and version\u2192string constructor. See golden file SampleTypeSpecClientOptions.cs.",
           "phase": "phase-3",
           "status": "done",
-          "dependencies": ["0.2.2", "0.3.1"],
+          "dependencies": [
+            "0.2.2",
+            "0.3.1"
+          ],
           "files": {
-            "create": ["src/components/clients/ClientOptionsFile.tsx"],
+            "create": [
+              "src/components/clients/ClientOptionsFile.tsx"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/SampleTypeSpecClientOptions.cs"
@@ -2203,10 +2692,14 @@
           "description": "Generate nested ServiceVersion enum with monotonic ordinals from API version strings. See ApiVersionEnumProvider.",
           "phase": "phase-3",
           "status": "done",
-          "dependencies": ["3.1.1"],
+          "dependencies": [
+            "3.1.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/clients/ClientOptionsFile.tsx"],
+            "modify": [
+              "src/components/clients/ClientOptionsFile.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator/src/Providers/ApiVersionEnumProvider.cs"
             ]
@@ -2222,10 +2715,14 @@
           "description": "Generate constructor with switch expression mapping each ServiceVersion member to its string value.",
           "phase": "phase-3",
           "status": "done",
-          "dependencies": ["3.1.2"],
+          "dependencies": [
+            "3.1.2"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/clients/ClientOptionsFile.tsx"],
+            "modify": [
+              "src/components/clients/ClientOptionsFile.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -2239,15 +2736,21 @@
           "description": "Test client options generation for single and multi-version services.",
           "phase": "phase-3",
           "status": "done",
-          "dependencies": ["3.1.3"],
+          "dependencies": [
+            "3.1.3"
+          ],
           "files": {
-            "create": ["test/scenarios/clients/options.md"],
+            "create": [
+              "test/scenarios/clients/options.md"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/versioning/added/v2/src/Generated/"
             ]
           },
-          "acceptance_criteria": ["Tests pass for versioned services"]
+          "acceptance_criteria": [
+            "Tests pass for versioned services"
+          ]
         },
         {
           "id": "3.2.1",
@@ -2255,9 +2758,14 @@
           "description": "Generate the main client partial class with fields, constructors, Pipeline property, and operation methods. See golden file SampleTypeSpecClient.cs for complete structure.",
           "phase": "phase-3",
           "status": "done",
-          "dependencies": ["3.1.1", "0.2.1"],
+          "dependencies": [
+            "3.1.1",
+            "0.2.1"
+          ],
           "files": {
-            "create": ["src/components/clients/ClientFile.tsx"],
+            "create": [
+              "src/components/clients/ClientFile.tsx"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/PetOperations.cs",
@@ -2275,13 +2783,19 @@
           "description": "Generate client fields: _endpoint (Uri), auth credential fields, _apiVersion, sub-client cache fields. See ClientProvider.BuildFields.",
           "phase": "phase-3",
           "status": "done",
-          "dependencies": ["3.2.1"],
+          "dependencies": [
+            "3.2.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/clients/ClientFile.tsx"],
+            "modify": [
+              "src/components/clients/ClientFile.tsx"
+            ],
             "reference": []
           },
-          "acceptance_criteria": ["All client fields generated correctly"]
+          "acceptance_criteria": [
+            "All client fields generated correctly"
+          ]
         },
         {
           "id": "3.2.3",
@@ -2289,10 +2803,16 @@
           "description": "Generate 3 constructors: mocking (protected parameterless), primary (endpoint+credential+options with pipeline creation), secondary (convenience with defaults). See ClientProvider.BuildConstructors.",
           "phase": "phase-3",
           "status": "done",
-          "dependencies": ["3.2.2"],
+          "dependencies": [
+            "3.2.2"
+          ],
           "files": {
-            "create": ["src/components/clients/ClientConstructors.tsx"],
-            "modify": ["src/components/clients/ClientFile.tsx"],
+            "create": [
+              "src/components/clients/ClientConstructors.tsx"
+            ],
+            "modify": [
+              "src/components/clients/ClientFile.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator.ClientModel/src/Providers/ClientProvider.cs"
             ]
@@ -2309,10 +2829,14 @@
           "description": "Generate thread-safe lazy sub-client accessors using Volatile.Read + Interlocked.CompareExchange pattern. See ClientProvider lines 844-927.",
           "phase": "phase-3",
           "status": "done",
-          "dependencies": ["3.2.1"],
+          "dependencies": [
+            "3.2.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/clients/ClientFile.tsx"],
+            "modify": [
+              "src/components/clients/ClientFile.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -2326,15 +2850,21 @@
           "description": "Test client generation for simple and multi-client scenarios.",
           "phase": "phase-3",
           "status": "done",
-          "dependencies": ["3.2.4"],
+          "dependencies": [
+            "3.2.4"
+          ],
           "files": {
-            "create": ["test/scenarios/clients/client.md"],
+            "create": [
+              "test/scenarios/clients/client.md"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/authentication/api-key/src/Generated/"
             ]
           },
-          "acceptance_criteria": ["Client tests pass"]
+          "acceptance_criteria": [
+            "Client tests pass"
+          ]
         },
         {
           "id": "3.3.1",
@@ -2342,9 +2872,14 @@
           "description": "Generate {Name}.RestClient.cs partial class with PipelineMessageClassifier fields and Create{Op}Request methods. See golden file SampleTypeSpecClient.RestClient.cs.",
           "phase": "phase-3",
           "status": "done",
-          "dependencies": ["3.2.1", "0.2.1"],
+          "dependencies": [
+            "3.2.1",
+            "0.2.1"
+          ],
           "files": {
-            "create": ["src/components/clients/RestClientFile.tsx"],
+            "create": [
+              "src/components/clients/RestClientFile.tsx"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/SampleTypeSpecClient.RestClient.cs",
@@ -2363,10 +2898,16 @@
           "description": "Generate Create{Op}Request method body: ClientUriBuilder construction, path/query parameters, Pipeline.CreateMessage, header setting, content setting, message.Apply. See RestClientProvider.BuildMessage.",
           "phase": "phase-3",
           "status": "done",
-          "dependencies": ["3.3.1"],
+          "dependencies": [
+            "3.3.1"
+          ],
           "files": {
-            "create": ["src/components/clients/RequestBuilder.tsx"],
-            "modify": ["src/components/clients/RestClientFile.tsx"],
+            "create": [
+              "src/components/clients/RequestBuilder.tsx"
+            ],
+            "modify": [
+              "src/components/clients/RestClientFile.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator.ClientModel/src/Providers/RestClientProvider.cs"
             ]
@@ -2384,10 +2925,14 @@
           "description": "Handle all parameter placement variants: required/optional query, path (with URL encoding), headers (with collection format), collection parameters (CSV/SSV/pipes/multi).",
           "phase": "phase-3",
           "status": "done",
-          "dependencies": ["3.3.2"],
+          "dependencies": [
+            "3.3.2"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/clients/RequestBuilder.tsx"],
+            "modify": [
+              "src/components/clients/RequestBuilder.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/parameters/collection-format/src/Generated/"
             ]
@@ -2403,13 +2948,19 @@
           "description": "Test request building for various parameter combinations.",
           "phase": "phase-3",
           "status": "done",
-          "dependencies": ["3.3.3"],
+          "dependencies": [
+            "3.3.3"
+          ],
           "files": {
-            "create": ["test/scenarios/clients/rest-client.md"],
+            "create": [
+              "test/scenarios/clients/rest-client.md"
+            ],
             "modify": [],
             "reference": []
           },
-          "acceptance_criteria": ["Tests pass for all parameter variants"]
+          "acceptance_criteria": [
+            "Tests pass for all parameter variants"
+          ]
         },
         {
           "id": "3.4.1",
@@ -2417,10 +2968,17 @@
           "description": "Generate protocol-level client methods: sync and async pairs that call Create{Op}Request \u2192 Pipeline.ProcessMessage \u2192 return ClientResult.FromResponse. Include full XML docs with [Protocol Method] tag. See ScmMethodProviderCollection.BuildProtocolMethod.",
           "phase": "phase-3",
           "status": "done",
-          "dependencies": ["3.2.1", "3.3.1"],
+          "dependencies": [
+            "3.2.1",
+            "3.3.1"
+          ],
           "files": {
-            "create": ["src/components/clients/ProtocolMethod.tsx"],
-            "modify": ["src/components/clients/ClientFile.tsx"],
+            "create": [
+              "src/components/clients/ProtocolMethod.tsx"
+            ],
+            "modify": [
+              "src/components/clients/ClientFile.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator.ClientModel/src/Providers/ScmMethodProviderCollection.cs"
             ]
@@ -2438,13 +2996,19 @@
           "description": "Test protocol method generation.",
           "phase": "phase-3",
           "status": "done",
-          "dependencies": ["3.4.1"],
+          "dependencies": [
+            "3.4.1"
+          ],
           "files": {
-            "create": ["test/scenarios/clients/protocol-methods.md"],
+            "create": [
+              "test/scenarios/clients/protocol-methods.md"
+            ],
             "modify": [],
             "reference": []
           },
-          "acceptance_criteria": ["Protocol method tests pass"]
+          "acceptance_criteria": [
+            "Protocol method tests pass"
+          ]
         },
         {
           "id": "3.5.1",
@@ -2452,10 +3016,16 @@
           "description": "Generate convenience-level client methods: sync and async pairs with typed parameters and return types. Delegates to protocol method. Handles body serialization, response deserialization, CancellationToken\u2192RequestOptions conversion. See ScmMethodProviderCollection.BuildConvenienceMethod.",
           "phase": "phase-3",
           "status": "done",
-          "dependencies": ["3.4.1"],
+          "dependencies": [
+            "3.4.1"
+          ],
           "files": {
-            "create": ["src/components/clients/ConvenienceMethod.tsx"],
-            "modify": ["src/components/clients/ClientFile.tsx"],
+            "create": [
+              "src/components/clients/ConvenienceMethod.tsx"
+            ],
+            "modify": [
+              "src/components/clients/ClientFile.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator.ClientModel/src/Providers/ScmMethodProviderCollection.cs"
             ]
@@ -2473,10 +3043,14 @@
           "description": "Spread parameters flatten model properties into individual method parameters. The convenience method reconstructs the model from individual params before passing to protocol method.",
           "phase": "phase-3",
           "status": "done",
-          "dependencies": ["3.5.1"],
+          "dependencies": [
+            "3.5.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/clients/ConvenienceMethod.tsx"],
+            "modify": [
+              "src/components/clients/ConvenienceMethod.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/parameters/spread/src/Generated/"
             ]
@@ -2492,13 +3066,19 @@
           "description": "Test convenience method generation for various return types and parameter patterns.",
           "phase": "phase-3",
           "status": "done",
-          "dependencies": ["3.5.2"],
+          "dependencies": [
+            "3.5.2"
+          ],
           "files": {
-            "create": ["test/scenarios/clients/convenience-methods.md"],
+            "create": [
+              "test/scenarios/clients/convenience-methods.md"
+            ],
             "modify": [],
             "reference": []
           },
-          "acceptance_criteria": ["Convenience method tests pass"]
+          "acceptance_criteria": [
+            "Convenience method tests pass"
+          ]
         },
         {
           "id": "3.6.1",
@@ -2506,9 +3086,13 @@
           "description": "Apply C# naming conventions: List\u2192GetAll, ListXxx\u2192GetXxx, add Async suffix for async methods.",
           "phase": "phase-3",
           "status": "done",
-          "dependencies": ["3.4.1"],
+          "dependencies": [
+            "3.4.1"
+          ],
           "files": {
-            "create": ["src/utils/naming.ts"],
+            "create": [
+              "src/utils/naming.ts"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator.ClientModel/src/Providers/ClientProvider.cs"
@@ -2532,9 +3116,14 @@
           "description": "Generate per-operation paging collection classes (4 per operation: sync/async \u00d7 protocol/convenience). Each extends CollectionResult/AsyncCollectionResult. Stores client, options, and paging parameters. Implements GetRawPages with yield-return loop. See golden files in TestProjects/Local/Sample-TypeSpec/src/Generated/CollectionResults/.",
           "phase": "phase-4",
           "status": "done",
-          "dependencies": ["3.4.1", "0.2.3"],
+          "dependencies": [
+            "3.4.1",
+            "0.2.3"
+          ],
           "files": {
-            "create": ["src/components/paging/CollectionResultFile.tsx"],
+            "create": [
+              "src/components/paging/CollectionResultFile.tsx"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/CollectionResults/SampleTypeSpecClientGetWithNextLinkCollectionResult.cs",
@@ -2554,10 +3143,14 @@
           "description": "For next-link pagination: extract URI from response body, call CreateNext{Op}Request, null-check for termination. See CollectionResultDefinition.BuildGetRawPagesForNextLink.",
           "phase": "phase-4",
           "status": "done",
-          "dependencies": ["4.1.1"],
+          "dependencies": [
+            "4.1.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/paging/CollectionResultFile.tsx"],
+            "modify": [
+              "src/components/paging/CollectionResultFile.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -2572,10 +3165,14 @@
           "description": "For continuation-token pagination: extract token from response body or header, reuse same Create{Op}Request with updated token, IsNullOrEmpty check for termination.",
           "phase": "phase-4",
           "status": "done",
-          "dependencies": ["4.1.1"],
+          "dependencies": [
+            "4.1.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/paging/CollectionResultFile.tsx"],
+            "modify": [
+              "src/components/paging/CollectionResultFile.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -2590,7 +3187,10 @@
           "description": "Generate paging-specific client methods returning CollectionResult/AsyncCollectionResult types. Method body instantiates the collection result class.",
           "phase": "phase-4",
           "status": "done",
-          "dependencies": ["4.1.1", "3.4.1"],
+          "dependencies": [
+            "4.1.1",
+            "3.4.1"
+          ],
           "files": {
             "create": [],
             "modify": [
@@ -2610,15 +3210,21 @@
           "description": "Test paging generation for next-link and continuation-token strategies.",
           "phase": "phase-4",
           "status": "done",
-          "dependencies": ["4.4.1"],
+          "dependencies": [
+            "4.4.1"
+          ],
           "files": {
-            "create": ["test/scenarios/paging/basic.md"],
+            "create": [
+              "test/scenarios/paging/basic.md"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/payload/pageable/src/Generated/"
             ]
           },
-          "acceptance_criteria": ["Paging tests pass for both strategies"]
+          "acceptance_criteria": [
+            "Paging tests pass for both strategies"
+          ]
         },
         {
           "id": "4.5.1",
@@ -2626,10 +3232,15 @@
           "description": "Generate long-running operation method signatures. Analyze LRO patterns needed from TCGC SdkServiceMethod where kind is 'lro' or 'lropaging'. Generate appropriate return types and polling patterns. See the legacy generator's LRO handling in ScmMethodProviderCollection.",
           "phase": "phase-4",
           "status": "done",
-          "dependencies": ["3.4.1", "3.5.1"],
+          "dependencies": [
+            "3.4.1",
+            "3.5.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/ClientFile.tsx"],
+            "modify": [
+              "src/components/ClientFile.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator.ClientModel/src/Providers/ScmMethodProviderCollection.cs"
             ]
@@ -2646,10 +3257,15 @@
           "description": "Handle operations that combine long-running operations with paging (kind 'lropaging'). Generate methods that return pageable results after an LRO completes.",
           "phase": "phase-4",
           "status": "done",
-          "dependencies": ["4.5.1", "4.4.1"],
+          "dependencies": [
+            "4.5.1",
+            "4.4.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/ClientFile.tsx"],
+            "modify": [
+              "src/components/ClientFile.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -2663,9 +3279,14 @@
           "description": "Write tests for LRO method generation: basic LRO polling, final-state-via patterns, and LRO+paging combination.",
           "phase": "phase-4",
           "status": "done",
-          "dependencies": ["4.5.1", "4.5.2"],
+          "dependencies": [
+            "4.5.1",
+            "4.5.2"
+          ],
           "files": {
-            "create": ["test/scenarios/lro.test.ts"],
+            "create": [
+              "test/scenarios/lro.test.ts"
+            ],
             "modify": [],
             "reference": []
           },
@@ -2688,15 +3309,21 @@
           "description": "Generate the internal static Argument class with AssertNotNull, AssertNotNullOrEmpty, AssertNotNullOrWhiteSpace, AssertInRange, CheckNotNullOrEmpty methods. This is a nearly-static file. Use the golden file directly as the template. File path: src/Generated/Internal/Argument.cs.",
           "phase": "phase-5",
           "status": "done",
-          "dependencies": ["0.3.1"],
+          "dependencies": [
+            "0.3.1"
+          ],
           "files": {
-            "create": ["src/components/infrastructure/ArgumentFile.tsx"],
+            "create": [
+              "src/components/infrastructure/ArgumentFile.tsx"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/Internal/Argument.cs"
             ]
           },
-          "acceptance_criteria": ["Argument.cs generated matching golden file"]
+          "acceptance_criteria": [
+            "Argument.cs generated matching golden file"
+          ]
         },
         {
           "id": "5.1.2",
@@ -2704,15 +3331,21 @@
           "description": "Generate internal static Optional class with IsDefined and IsCollectionDefined methods. Includes JsonElement IsDefined variant.",
           "phase": "phase-5",
           "status": "done",
-          "dependencies": ["0.3.1"],
+          "dependencies": [
+            "0.3.1"
+          ],
           "files": {
-            "create": ["src/components/infrastructure/OptionalFile.tsx"],
+            "create": [
+              "src/components/infrastructure/OptionalFile.tsx"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/Internal/Optional.cs"
             ]
           },
-          "acceptance_criteria": ["Optional.cs generated matching golden file"]
+          "acceptance_criteria": [
+            "Optional.cs generated matching golden file"
+          ]
         },
         {
           "id": "5.1.3",
@@ -2720,7 +3353,9 @@
           "description": "Generate internal ChangeTrackingList<T> : IList<T>, IReadOnlyList<T> with lazy initialization and IsUndefined semantics.",
           "phase": "phase-5",
           "status": "done",
-          "dependencies": ["0.3.1"],
+          "dependencies": [
+            "0.3.1"
+          ],
           "files": {
             "create": [
               "src/components/infrastructure/ChangeTrackingListFile.tsx"
@@ -2740,7 +3375,9 @@
           "description": "Generate internal ChangeTrackingDictionary<TKey,TValue> with lazy initialization and IsUndefined semantics.",
           "phase": "phase-5",
           "status": "done",
-          "dependencies": ["0.3.1"],
+          "dependencies": [
+            "0.3.1"
+          ],
           "files": {
             "create": [
               "src/components/infrastructure/ChangeTrackingDictionaryFile.tsx"
@@ -2760,7 +3397,9 @@
           "description": "Generate CancellationTokenExtensions.cs (17 lines), ErrorResult.cs (27 lines), SerializationFormat.cs (49 lines), ClientPipelineExtensions.cs (70 lines). Use golden files from submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/Internal/ as reference. Follow the pattern from ArgumentFile.tsx: SourceFile with using array, Namespace, ClassDeclaration, code template literals.",
           "phase": "phase-5",
           "status": "done",
-          "dependencies": ["0.3.1"],
+          "dependencies": [
+            "0.3.1"
+          ],
           "files": {
             "create": [
               "src/components/infrastructure/CancellationTokenExtensionsFile.tsx",
@@ -2768,7 +3407,9 @@
               "src/components/infrastructure/SerializationFormatFile.tsx",
               "src/components/infrastructure/ClientPipelineExtensionsFile.tsx"
             ],
-            "modify": ["src/emitter.tsx"],
+            "modify": [
+              "src/emitter.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/Internal/CancellationTokenExtensions.cs",
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/Internal/ErrorResult.cs",
@@ -2788,13 +3429,17 @@
           "description": "Generate ClientUriBuilder.cs (184 lines) and TypeFormatters.cs (181 lines). These are medium-complexity infrastructure files. Use golden files as reference. Follow ArgumentFile.tsx pattern. ClientUriBuilder handles URI path/query parameter building. TypeFormatters provides string conversion utilities for various types (DateTimeOffset, TimeSpan, bool, byte[], Guid, etc.).",
           "phase": "phase-5",
           "status": "done",
-          "dependencies": ["0.3.1"],
+          "dependencies": [
+            "0.3.1"
+          ],
           "files": {
             "create": [
               "src/components/infrastructure/ClientUriBuilderFile.tsx",
               "src/components/infrastructure/TypeFormattersFile.tsx"
             ],
-            "modify": ["src/emitter.tsx"],
+            "modify": [
+              "src/emitter.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/Internal/ClientUriBuilder.cs",
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/Internal/TypeFormatters.cs"
@@ -2812,12 +3457,16 @@
           "description": "Generate ModelSerializationExtensions.cs (428 lines). This is the largest infrastructure file, providing extension methods for JSON serialization: WireOptions, GetObject, GetBytesFromBase64, GetChar, GetDateTimeOffset, GetTimeSpan, WriteStringValue, WriteBase64StringValue, WriteNumberValue, WriteObjectValue, ThrowNonNullablePropertyIsNull. Uses ModelReaderWriterOptions and JsonSerializerOptions. Reference golden file and legacy ModelSerializationExtensionsDefinition.",
           "phase": "phase-5",
           "status": "done",
-          "dependencies": ["0.3.1"],
+          "dependencies": [
+            "0.3.1"
+          ],
           "files": {
             "create": [
               "src/components/infrastructure/ModelSerializationExtensionsFile.tsx"
             ],
-            "modify": ["src/emitter.tsx"],
+            "modify": [
+              "src/emitter.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/Internal/ModelSerializationExtensions.cs",
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator.ClientModel/src/Providers/ModelSerializationExtensionsDefinition.cs"
@@ -2836,14 +3485,18 @@
           "description": "Generate Utf8JsonBinaryContent.cs, BinaryContentHelper.cs, PipelineRequestHeadersExtensions.cs. These files are NOT in the Sample-TypeSpec golden output \u2014 they need to be reverse-engineered from the legacy generator definitions at: Utf8JsonBinaryContentDefinition.cs, BinaryContentHelperDefinition.cs, PipelineRequestHeadersExtensionsDefinition.cs in submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator.ClientModel/src/Providers/. Check if these are conditionally generated.",
           "phase": "phase-5",
           "status": "done",
-          "dependencies": ["0.3.1"],
+          "dependencies": [
+            "0.3.1"
+          ],
           "files": {
             "create": [
               "src/components/infrastructure/Utf8JsonBinaryContentFile.tsx",
               "src/components/infrastructure/BinaryContentHelperFile.tsx",
               "src/components/infrastructure/PipelineRequestHeadersExtensionsFile.tsx"
             ],
-            "modify": ["src/emitter.tsx"],
+            "modify": [
+              "src/emitter.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator.ClientModel/src/Providers/Utf8JsonBinaryContentDefinition.cs",
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator.ClientModel/src/Providers/BinaryContentHelperDefinition.cs",
@@ -2862,7 +3515,9 @@
           "description": "Generate CodeGenTypeAttribute.cs, CodeGenMemberAttribute.cs, CodeGenSuppressAttribute.cs, CodeGenSerializationAttribute.cs. These are small, fixed-content files.",
           "phase": "phase-5",
           "status": "done",
-          "dependencies": ["0.3.1"],
+          "dependencies": [
+            "0.3.1"
+          ],
           "files": {
             "create": [
               "src/components/infrastructure/CodeGenAttributeFiles.tsx"
@@ -2872,7 +3527,9 @@
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/Internal/CodeGenTypeAttribute.cs"
             ]
           },
-          "acceptance_criteria": ["All 4 attribute files generated"]
+          "acceptance_criteria": [
+            "All 4 attribute files generated"
+          ]
         },
         {
           "id": "5.3.1",
@@ -2880,9 +3537,13 @@
           "description": "Generate {Namespace}Context : ModelReaderWriterContext with [ModelReaderWriterBuildable(typeof(T))] attributes for each serializable model. See golden file _TypeModelUsageContext.cs from Spector.",
           "phase": "phase-5",
           "status": "done",
-          "dependencies": ["2.1.1"],
+          "dependencies": [
+            "2.1.1"
+          ],
           "files": {
-            "create": ["src/components/infrastructure/MrwContextFile.tsx"],
+            "create": [
+              "src/components/infrastructure/MrwContextFile.tsx"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/type/model/usage/src/Generated/Models/_TypeModelUsageContext.cs"
@@ -2908,11 +3569,15 @@
             "5.1.5d"
           ],
           "files": {
-            "create": ["test/scenarios/infrastructure/helpers.md"],
+            "create": [
+              "test/scenarios/infrastructure/helpers.md"
+            ],
             "modify": [],
             "reference": []
           },
-          "acceptance_criteria": ["All infrastructure file tests pass"]
+          "acceptance_criteria": [
+            "All infrastructure file tests pass"
+          ]
         },
         {
           "id": "5.4.1",
@@ -2920,9 +3585,13 @@
           "description": "Implement the ability to detect user-written partial classes and filter conflicting generated members. The legacy generator uses Roslyn to analyze custom code; the rewrite needs an alternative strategy (e.g., reading existing .cs files via TypeScript-based parsing or tree-sitter). When a user has written a partial class with a member matching a generated member, the emitter should skip generating that member. This integrates with CodeGenType, CodeGenMember, CodeGenSuppress, and CodeGenSerialization attributes.",
           "phase": "phase-5",
           "status": "done",
-          "dependencies": ["5.2.1"],
+          "dependencies": [
+            "5.2.1"
+          ],
           "files": {
-            "create": ["src/custom-code-reader.ts"],
+            "create": [
+              "src/custom-code-reader.ts"
+            ],
             "modify": [
               "src/components/ModelFile.tsx",
               "src/components/ClientFile.tsx"
@@ -2947,10 +3616,18 @@
           "description": "Implement the unreferenced-types-handling emitter option logic. When set to 'removeOrInternalize', types not referenced by any client operation should be removed or internalized. When set to 'internalize', unreferenced types get internal access. When set to 'keepAll', all types are emitted. This requires building a reference graph from client operations to types and walking it to determine reachability. The legacy generator uses Roslyn's SymbolFinder for BFS traversal from root types.",
           "phase": "phase-5",
           "status": "done",
-          "dependencies": ["0.1.1", "1.2.1", "3.2.1"],
+          "dependencies": [
+            "0.1.1",
+            "1.2.1",
+            "3.2.1"
+          ],
           "files": {
-            "create": ["src/unreferenced-type-handler.ts"],
-            "modify": ["src/components/HttpClientCSharpOutput.tsx"],
+            "create": [
+              "src/unreferenced-type-handler.ts"
+            ],
+            "modify": [
+              "src/components/HttpClientCSharpOutput.tsx"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator/src/GeneratedCodeWorkspace.cs"
             ]
@@ -2976,9 +3653,13 @@
           "description": "Generate WriteXml and XmlModelWriteCore methods for XML-supporting models. Handle attributes vs elements, namespaces, wrapped/unwrapped collections. See MrwSerializationTypeDefinition.Xml.cs and golden files at Spector/http/payload/xml/.",
           "phase": "phase-6",
           "status": "done",
-          "dependencies": ["2.1.1"],
+          "dependencies": [
+            "2.1.1"
+          ],
           "files": {
-            "create": ["src/components/serialization/XmlWriteCore.tsx"],
+            "create": [
+              "src/components/serialization/XmlWriteCore.tsx"
+            ],
             "modify": [
               "src/components/serialization/ModelSerializationFile.tsx"
             ],
@@ -2998,9 +3679,13 @@
           "description": "Generate DeserializeXxx(XElement, options) using LINQ to XML. Separate loops for attributes and elements.",
           "phase": "phase-6",
           "status": "done",
-          "dependencies": ["6.1.1"],
+          "dependencies": [
+            "6.1.1"
+          ],
           "files": {
-            "create": ["src/components/serialization/XmlDeserialize.tsx"],
+            "create": [
+              "src/components/serialization/XmlDeserialize.tsx"
+            ],
             "modify": [],
             "reference": []
           },
@@ -3015,7 +3700,10 @@
           "description": "Handle models with both JSON and XML: format dispatch, Content-Type sniffing, ToBinaryContent(format).",
           "phase": "phase-6",
           "status": "done",
-          "dependencies": ["6.1.1", "6.2.1"],
+          "dependencies": [
+            "6.1.1",
+            "6.2.1"
+          ],
           "files": {
             "create": [],
             "modify": [
@@ -3023,7 +3711,9 @@
             ],
             "reference": []
           },
-          "acceptance_criteria": ["Dual format dispatch works"]
+          "acceptance_criteria": [
+            "Dual format dispatch works"
+          ]
         },
         {
           "id": "6.3.2",
@@ -3031,13 +3721,19 @@
           "description": "Test XML serialization against golden files.",
           "phase": "phase-6",
           "status": "done",
-          "dependencies": ["6.3.1"],
+          "dependencies": [
+            "6.3.1"
+          ],
           "files": {
-            "create": ["test/scenarios/serialization/xml.md"],
+            "create": [
+              "test/scenarios/serialization/xml.md"
+            ],
             "modify": [],
             "reference": []
           },
-          "acceptance_criteria": ["XML tests pass"]
+          "acceptance_criteria": [
+            "XML tests pass"
+          ]
         }
       ]
     },
@@ -3052,9 +3748,14 @@
           "description": "Detect JsonMergePatch usage flag. Generate _patch field, Patch ref-return property with experimental/JsonIgnore attributes. Modify internal constructor to accept JsonPatch. See ScmModelProvider and golden files at Spector/http/payload/json-merge-patch/.",
           "phase": "phase-7",
           "status": "done",
-          "dependencies": ["1.2.1", "0.2.6"],
+          "dependencies": [
+            "1.2.1",
+            "0.2.6"
+          ],
           "files": {
-            "create": ["src/components/models/DynamicModel.tsx"],
+            "create": [
+              "src/components/models/DynamicModel.tsx"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/payload/json-merge-patch/src/Generated/Models/"
@@ -3071,7 +3772,10 @@
           "description": "Generate serialization with Patch.Contains/IsRemoved checks per property, collection-level removal support, Patch.WriteTo flush. See MrwSerializationTypeDefinition.Dynamic.cs.",
           "phase": "phase-7",
           "status": "done",
-          "dependencies": ["7.1.1", "2.2.1"],
+          "dependencies": [
+            "7.1.1",
+            "2.2.1"
+          ],
           "files": {
             "create": [
               "src/components/serialization/PatchAwareSerialization.tsx"
@@ -3092,10 +3796,14 @@
           "description": "Generate SetPropagators + PropagateGet/PropagateSet for nested dynamic models. Handle list/dictionary/deeply-nested navigation.",
           "phase": "phase-7",
           "status": "done",
-          "dependencies": ["7.1.1"],
+          "dependencies": [
+            "7.1.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/models/DynamicModel.tsx"],
+            "modify": [
+              "src/components/models/DynamicModel.tsx"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -3109,13 +3817,19 @@
           "description": "Test dynamic model generation against golden files.",
           "phase": "phase-7",
           "status": "done",
-          "dependencies": ["7.3.1"],
+          "dependencies": [
+            "7.3.1"
+          ],
           "files": {
-            "create": ["test/scenarios/serialization/merge-patch.md"],
+            "create": [
+              "test/scenarios/serialization/merge-patch.md"
+            ],
             "modify": [],
             "reference": []
           },
-          "acceptance_criteria": ["Merge-patch tests pass"]
+          "acceptance_criteria": [
+            "Merge-patch tests pass"
+          ]
         }
       ]
     },
@@ -3130,9 +3844,13 @@
           "description": "Generate .csproj using Alloy CsprojFile component. Include netstandard2.0;net8.0 targets, System.ClientModel dependency, package metadata. See NewProjectScaffolding in the legacy generator.",
           "phase": "phase-8",
           "status": "done",
-          "dependencies": ["0.3.1"],
+          "dependencies": [
+            "0.3.1"
+          ],
           "files": {
-            "create": ["src/components/infrastructure/ProjectFile.tsx"],
+            "create": [
+              "src/components/infrastructure/ProjectFile.tsx"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator/src/Primitives/NewProjectScaffolding.cs"
@@ -3149,13 +3867,19 @@
           "description": "Generate Visual Studio .sln file referencing the project.",
           "phase": "phase-8",
           "status": "done",
-          "dependencies": ["8.1.1"],
+          "dependencies": [
+            "8.1.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/infrastructure/ProjectFile.tsx"],
+            "modify": [
+              "src/components/infrastructure/ProjectFile.tsx"
+            ],
             "reference": []
           },
-          "acceptance_criteria": [".sln file generated correctly"]
+          "acceptance_criteria": [
+            ".sln file generated correctly"
+          ]
         }
       ]
     },
@@ -3170,9 +3894,13 @@
           "description": "Conditionally generate MultiPartFormDataBinaryContent.cs when multipart operations exist. See golden file and MultiPartFormDataBinaryContentDefinition.",
           "phase": "phase-9",
           "status": "done",
-          "dependencies": ["5.1.5d"],
+          "dependencies": [
+            "5.1.5d"
+          ],
           "files": {
-            "create": ["src/components/infrastructure/MultipartFile.tsx"],
+            "create": [
+              "src/components/infrastructure/MultipartFile.tsx"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/Microsoft.TypeSpec.Generator.ClientModel/src/Providers/MultiPartFormDataBinaryContentDefinition.cs"
@@ -3188,13 +3916,20 @@
           "description": "Generate request building for multipart operations: create MultiPartFormDataBinaryContent, pass content.ContentType.",
           "phase": "phase-9",
           "status": "done",
-          "dependencies": ["9.1.1", "3.3.2"],
+          "dependencies": [
+            "9.1.1",
+            "3.3.2"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/clients/RequestBuilder.tsx"],
+            "modify": [
+              "src/components/clients/RequestBuilder.tsx"
+            ],
             "reference": []
           },
-          "acceptance_criteria": ["Multipart request building works"]
+          "acceptance_criteria": [
+            "Multipart request building works"
+          ]
         },
         {
           "id": "9.1.3",
@@ -3202,15 +3937,21 @@
           "description": "Test multipart generation.",
           "phase": "phase-9",
           "status": "done",
-          "dependencies": ["9.1.2"],
+          "dependencies": [
+            "9.1.2"
+          ],
           "files": {
-            "create": ["test/scenarios/clients/multipart.md"],
+            "create": [
+              "test/scenarios/clients/multipart.md"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/payload/multipart/src/Generated/"
             ]
           },
-          "acceptance_criteria": ["Multipart tests pass"]
+          "acceptance_criteria": [
+            "Multipart tests pass"
+          ]
         }
       ]
     },
@@ -3225,9 +3966,13 @@
           "description": "Compare output against Spector authentication golden files: api-key, oauth2, union, noauth, custom.",
           "phase": "phase-10",
           "status": "done",
-          "dependencies": ["3.2.5"],
+          "dependencies": [
+            "3.2.5"
+          ],
           "files": {
-            "create": ["test/integration/authentication.test.ts"],
+            "create": [
+              "test/integration/authentication.test.ts"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/authentication/"
@@ -3243,15 +3988,22 @@
           "description": "Compare output against Spector type/model golden files: usage, inheritance, enum-discriminator, single-discriminator.",
           "phase": "phase-10",
           "status": "done",
-          "dependencies": ["1.3.7", "2.4.5"],
+          "dependencies": [
+            "1.3.7",
+            "2.4.5"
+          ],
           "files": {
-            "create": ["test/integration/models.test.ts"],
+            "create": [
+              "test/integration/models.test.ts"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/type/model/"
             ]
           },
-          "acceptance_criteria": ["Output matches all model golden files"]
+          "acceptance_criteria": [
+            "Output matches all model golden files"
+          ]
         },
         {
           "id": "10.1.3",
@@ -3259,15 +4011,22 @@
           "description": "Compare output against Spector type/enum golden files: fixed, extensible.",
           "phase": "phase-10",
           "status": "done",
-          "dependencies": ["1.5.6", "1.7.4"],
+          "dependencies": [
+            "1.5.6",
+            "1.7.4"
+          ],
           "files": {
-            "create": ["test/integration/enums.test.ts"],
+            "create": [
+              "test/integration/enums.test.ts"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/type/enum/"
             ]
           },
-          "acceptance_criteria": ["Output matches all enum golden files"]
+          "acceptance_criteria": [
+            "Output matches all enum golden files"
+          ]
         },
         {
           "id": "10.1.4",
@@ -3275,15 +4034,21 @@
           "description": "Compare output against Spector parameter golden files: basic, spread, collection-format, body-optionality.",
           "phase": "phase-10",
           "status": "done",
-          "dependencies": ["3.5.3"],
+          "dependencies": [
+            "3.5.3"
+          ],
           "files": {
-            "create": ["test/integration/parameters.test.ts"],
+            "create": [
+              "test/integration/parameters.test.ts"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/parameters/"
             ]
           },
-          "acceptance_criteria": ["Output matches all parameter golden files"]
+          "acceptance_criteria": [
+            "Output matches all parameter golden files"
+          ]
         },
         {
           "id": "10.1.5",
@@ -3291,15 +4056,21 @@
           "description": "Compare output against Spector encode golden files: datetime, duration, bytes.",
           "phase": "phase-10",
           "status": "done",
-          "dependencies": ["2.2.15"],
+          "dependencies": [
+            "2.2.15"
+          ],
           "files": {
-            "create": ["test/integration/encoding.test.ts"],
+            "create": [
+              "test/integration/encoding.test.ts"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/encode/"
             ]
           },
-          "acceptance_criteria": ["Output matches all encoding golden files"]
+          "acceptance_criteria": [
+            "Output matches all encoding golden files"
+          ]
         },
         {
           "id": "10.1.6",
@@ -3307,15 +4078,21 @@
           "description": "Compare output against Spector payload/pageable golden files.",
           "phase": "phase-10",
           "status": "done",
-          "dependencies": ["4.4.2"],
+          "dependencies": [
+            "4.4.2"
+          ],
           "files": {
-            "create": ["test/integration/paging.test.ts"],
+            "create": [
+              "test/integration/paging.test.ts"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/payload/pageable/"
             ]
           },
-          "acceptance_criteria": ["Output matches paging golden files"]
+          "acceptance_criteria": [
+            "Output matches paging golden files"
+          ]
         },
         {
           "id": "10.1.7",
@@ -3323,15 +4100,21 @@
           "description": "Compare output against Spector versioning golden files: added, removed.",
           "phase": "phase-10",
           "status": "done",
-          "dependencies": ["3.1.4"],
+          "dependencies": [
+            "3.1.4"
+          ],
           "files": {
-            "create": ["test/integration/versioning.test.ts"],
+            "create": [
+              "test/integration/versioning.test.ts"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/versioning/"
             ]
           },
-          "acceptance_criteria": ["Output matches versioning golden files"]
+          "acceptance_criteria": [
+            "Output matches versioning golden files"
+          ]
         },
         {
           "id": "10.2.1",
@@ -3339,15 +4122,23 @@
           "description": "End-to-end validation against the complete Local/Sample-TypeSpec golden output including all clients, models, infrastructure, and collection results.",
           "phase": "phase-10",
           "status": "done",
-          "dependencies": ["5.1.6", "3.5.3", "4.4.2"],
+          "dependencies": [
+            "5.1.6",
+            "3.5.3",
+            "4.4.2"
+          ],
           "files": {
-            "create": ["test/integration/sample-typespec.test.ts"],
+            "create": [
+              "test/integration/sample-typespec.test.ts"
+            ],
             "modify": [],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/"
             ]
           },
-          "acceptance_criteria": ["All generated files match golden output"]
+          "acceptance_criteria": [
+            "All generated files match golden output"
+          ]
         },
         {
           "id": "10.1.8",
@@ -3355,7 +4146,9 @@
           "description": "Compare output against Spector server/endpoint golden files. Verify correct endpoint parameter handling, multi-server support, and URL template resolution.",
           "phase": "phase-10",
           "status": "done",
-          "dependencies": ["3.3.1"],
+          "dependencies": [
+            "3.3.1"
+          ],
           "files": {
             "create": [],
             "modify": [],
@@ -3374,7 +4167,10 @@
           "description": "Compare output against Spector payload/content-negotiation and payload/media-type golden files. Verify correct Accept header handling and response content type processing.",
           "phase": "phase-10",
           "status": "done",
-          "dependencies": ["3.3.1", "3.5.1"],
+          "dependencies": [
+            "3.3.1",
+            "3.5.1"
+          ],
           "files": {
             "create": [],
             "modify": [],
@@ -3393,7 +4189,9 @@
           "title": "Fix collection parameter type to use IEnumerable<T>",
           "description": "Convenience method and protocol method parameters for collection types (string[]) should use IEnumerable<string> instead of string[] to match the legacy emitter pattern. Protocol methods incorrectly flatten to string. Affects collection-format Query and Header sub-clients.",
           "status": "done",
-          "dependencies": ["10.1.4"],
+          "dependencies": [
+            "10.1.4"
+          ],
           "phase": "phase-10"
         },
         {
@@ -3401,7 +4199,9 @@
           "title": "Fix implicit body convenience methods to spread individual parameters",
           "description": "Operations with implicit body (no @body decorator, using spread operator) should expose individual scalar parameters in convenience methods instead of a synthesized model wrapper. E.g., Simple(string name) instead of Simple(SimpleRequest name). Affects Parameters.Basic.ImplicitBody and Parameters.BodyOptionality.requiredImplicit.",
           "status": "done",
-          "dependencies": ["10.1.4"],
+          "dependencies": [
+            "10.1.4"
+          ],
           "phase": "phase-10"
         },
         {
@@ -3410,7 +4210,9 @@
           "description": "The previous task (10.1.4a) changed array parameters to use IEnumerable<T> in protocol and convenience methods, but did not update the test/scenarios/parameters/collection_format.md scenario file. The scenario expects string for array params (e.g., string colors) but the emitter now correctly generates IEnumerable<string> colors. Update the test expectations to match. Two failing tests: Query.cs and Header.cs in collection_format.md.",
           "status": "done",
           "phase": "phase-10",
-          "dependencies": ["10.1.4"],
+          "dependencies": [
+            "10.1.4"
+          ],
           "acceptance_criteria": [
             "collection_format.md scenario tests pass",
             "All tests pass"
@@ -3445,14 +4247,18 @@
           "title": "Fix optional int32 mapping for @pageSize parameter",
           "description": "The emitter maps optional int32 (pageSize?: int32) to 'int pageSize = default' instead of 'int? pageSize'. The Spector golden file for Payload.Pageable.PageSize uses nullable 'int?' which allows distinguishing 'not set' from '0'. Fix the type mapping for optional value types in paging parameters.",
           "status": "done",
-          "dependencies": ["10.1.6"]
+          "dependencies": [
+            "10.1.6"
+          ]
         },
         {
           "id": "10.1.6.2",
           "title": "Fix continuation token parameter ordering",
           "description": "The emitter places @continuationToken parameter after header params in method signatures (foo, token, bar) instead of first (token, foo, bar). The Spector golden file for Payload.Pageable.ServerDrivenPagination.ContinuationToken shows token should come first. Fix parameter ordering in PagingMethods to match legacy emitter.",
           "status": "done",
-          "dependencies": ["10.1.6"]
+          "dependencies": [
+            "10.1.6"
+          ]
         }
       ]
     },
@@ -3470,7 +4276,9 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/components/models/ModelFile.tsx"],
+            "modify": [
+              "src/components/models/ModelFile.tsx"
+            ],
             "reference": [
               "temp/smoke/minimal-service/src/Generated/Models/Widget.cs",
               "src/components/models/ModelConstructors.tsx",
@@ -3519,7 +4327,9 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/emitter.tsx"],
+            "modify": [
+              "src/emitter.tsx"
+            ],
             "reference": [
               "src/builtins/",
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Local/Sample-TypeSpec/src/Generated/Internal/"
@@ -3541,7 +4351,9 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/JsonDeserialize.tsx"],
+            "modify": [
+              "src/components/serialization/JsonDeserialize.tsx"
+            ],
             "reference": [
               "temp/smoke/minimal-service/src/Generated/Models/Widget.Serialization.cs",
               "src/components/serialization/PropertyMatchingLoop.tsx",
@@ -3563,7 +4375,9 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/components/CSharpTypeExpression.tsx"],
+            "modify": [
+              "src/components/CSharpTypeExpression.tsx"
+            ],
             "reference": [
               "test/fixtures/smoke/widget.tsp",
               "node_modules/@typespec/emitter-framework/src/csharp/components/type-expression.tsx",
@@ -3585,7 +4399,9 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/components/serialization/PropertyMatchingLoop.tsx"],
+            "modify": [
+              "src/components/serialization/PropertyMatchingLoop.tsx"
+            ],
             "reference": [
               "temp/smoke/complex-models/src/Generated/Models/Person.Serialization.cs"
             ]
@@ -3607,11 +4423,13 @@
           "title": "Fix emitter crash on UnionVariant type in type/property/value-types",
           "description": "The emitter crashes with 'Unsupported type for TypeExpression: UnionVariant (\"value2\")' when compiling the type/property/value-types spec. The crash originates in @typespec/emitter-framework's TypeExpression component (type-expression.tsx:52) which doesn't handle UnionVariant nodes. The type/property/value-types spec defines properties with union literal types (e.g., `string | float32 | \"value2\"`), and the emitter must map these union variants to appropriate C# types.\n\nTo reproduce:\n```\nnpx tsp compile node_modules/@typespec/http-specs/specs/type/property/value-types/main.tsp --emit /path/to/repo --option http-client-csharp.emitter-output-dir=/tmp/out --option http-client-csharp.new-project=true\n```\n\nThe legacy emitter handles this by resolving union variants to their underlying types. Check how the legacy emitter maps union literals in `submodules/typespec/packages/http-client-csharp/emitter/src/` and compare with the TypeExpression component in `@typespec/emitter-framework/src/csharp/components/type-expression.tsx`.",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/components/"],
+            "modify": [
+              "src/components/"
+            ],
             "reference": [
               "node_modules/@typespec/http-specs/specs/type/property/value-types/main.tsp",
               "node_modules/@typespec/emitter-framework/src/csharp/components/type-expression.tsx",
@@ -3633,7 +4451,9 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/components/model-factory/ModelFactoryFile.tsx"],
+            "modify": [
+              "src/components/model-factory/ModelFactoryFile.tsx"
+            ],
             "reference": [
               "temp/e2e/Spector/http/authentication/api-key/src/Generated/Authentication.ApiKeyModelFactory.cs",
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector/http/authentication/api-key/src/Generated/AuthenticationApiKeyModelFactory.cs",
@@ -3656,7 +4476,9 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/components/"],
+            "modify": [
+              "src/components/"
+            ],
             "reference": [
               "temp/e2e/Spector/http/special-words/src/Generated/Models/As.Serialization.cs",
               "node_modules/@typespec/http-specs/specs/special-words/main.tsp",
@@ -3678,7 +4500,9 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/components/"],
+            "modify": [
+              "src/components/"
+            ],
             "reference": [
               "temp/e2e/Spector/http/special-headers/conditional-request/src/Generated/ConditionalRequestClient.cs",
               "temp/e2e/Spector/http/client/structure/default/src/Generated/ServiceClient.cs",
@@ -3701,7 +4525,9 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/components/"],
+            "modify": [
+              "src/components/"
+            ],
             "reference": [
               "temp/e2e/Spector/http/resiliency/srv-driven/v2/src/Generated/ResiliencyServiceDrivenClient.RestClient.cs",
               "node_modules/@azure-tools/azure-http-specs/specs/resiliency/srv-driven/main.tsp"
@@ -3722,7 +4548,9 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/components/"],
+            "modify": [
+              "src/components/"
+            ],
             "reference": [
               "temp/e2e/Spector/http/type/union/src/Generated/Models/GetResponse5.Serialization.cs",
               "node_modules/@typespec/http-specs/specs/type/union/main.tsp"
@@ -3743,7 +4571,9 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/components/clients/ClientFile.tsx"],
+            "modify": [
+              "src/components/clients/ClientFile.tsx"
+            ],
             "reference": [
               "temp/e2e/Spector/http/routes/src/Generated/LabelExpansion.cs",
               "node_modules/@typespec/http-specs/specs/routes/main.tsp",
@@ -3765,7 +4595,9 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/components/"],
+            "modify": [
+              "src/components/"
+            ],
             "reference": [
               "temp/e2e/Spector/http/special-headers/repeatability/src/Generated/RepeatabilityClient.cs",
               "temp/e2e/Spector/http/special-headers/repeatability/src/Generated/RepeatabilityClient.RestClient.cs",
@@ -3786,7 +4618,9 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/components/"],
+            "modify": [
+              "src/components/"
+            ],
             "reference": [
               "temp/e2e/Spector/http/versioning/returnTypeChangedFrom/v2/src/Generated/ReturnTypeChangedFromClient.cs",
               "temp/e2e/Spector/http/versioning/returnTypeChangedFrom/v2/src/Generated/Internal/Argument.cs",
@@ -3808,7 +4642,9 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/components/"],
+            "modify": [
+              "src/components/"
+            ],
             "reference": [
               "temp/e2e/Spector/http/parameters/spread/src/Generated/",
               "node_modules/@typespec/http-specs/specs/parameters/spread/main.tsp",
@@ -3826,10 +4662,14 @@
           "description": "The `type/property/optionality` spec defines properties with union literal types (e.g., `UnionFloatLiteralPropertyProperty`, `UnionIntLiteralPropertyProperty`). The emitter generates model files for these but they contain syntax errors in the type declarations and serialization code.\n\nThis is related to task 12.1.1 (UnionVariant crash) but manifests differently \u2014 here the emitter doesn't crash but produces malformed C# for union literal types.\n\nTo reproduce: `dotnet build temp/e2e/Spector/http/type/property/optionality/src/Type.Property.Optional.csproj`",
           "phase": "phase-12",
           "status": "pending",
-          "dependencies": ["12.1.1"],
+          "dependencies": [
+            "12.1.1"
+          ],
           "files": {
             "create": [],
-            "modify": ["src/components/"],
+            "modify": [
+              "src/components/"
+            ],
             "reference": [
               "temp/e2e/Spector/http/type/property/optionality/src/Generated/Models/UnionFloatLiteralPropertyProperty.cs",
               "node_modules/@typespec/http-specs/specs/type/property/optionality/main.tsp"
@@ -3849,7 +4689,9 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/components/"],
+            "modify": [
+              "src/components/"
+            ],
             "reference": [
               "temp/e2e/Spector/http/payload/pageable/src/Generated/CollectionResults/",
               "node_modules/@typespec/http-specs/specs/payload/pageable/main.tsp",
@@ -3870,7 +4712,9 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/components/"],
+            "modify": [
+              "src/components/"
+            ],
             "reference": [
               "temp/e2e/Spector/http/server/versions/versioned/src/Generated/VersionedClient.RestClient.cs",
               "node_modules/@typespec/http-specs/specs/server/versions/versioned/main.tsp",

@@ -1,11 +1,11 @@
 import { type Children } from "@alloy-js/core";
 import { Reference } from "@alloy-js/csharp";
-import type { IntrinsicType, Scalar, Union } from "@typespec/compiler";
+import type { IntrinsicType, Scalar, Union, UnionVariant } from "@typespec/compiler";
 import {
   Experimental_ComponentOverrides,
   Experimental_ComponentOverridesConfig,
 } from "@typespec/emitter-framework";
-import { intrinsicNameToCSharpType } from "@typespec/emitter-framework/csharp";
+import { TypeExpression, intrinsicNameToCSharpType } from "@typespec/emitter-framework/csharp";
 import { System } from "../builtins/system.js";
 import { efCsharpRefkey } from "../utils/refkey.js";
 
@@ -178,6 +178,12 @@ function isMultiTypeNamedUnion(union: Union): boolean {
  *   literal unions that TCGC converts to `SdkEnumType`. These are referenced
  *   via `efCsharpRefkey` to resolve to the generated enum declaration.
  *
+ * **UnionVariants**:
+ * - A UnionVariant used as a property type (e.g., `ExtendedEnum.EnumValue2`)
+ *   resolves to the parent union/extensible enum type. The emitter-framework's
+ *   TypeExpression does not handle UnionVariant natively, so this override
+ *   prevents a crash.
+ *
  * **Scalars** (7 overrides):
  * - bytes → BinaryData, integer/safeint → long, numeric/float → double,
  *   plainDate → DateTimeOffset, plainTime → TimeSpan
@@ -208,6 +214,19 @@ const csharpTypeOverrides = Experimental_ComponentOverridesConfig()
       // The enum declarations register efCsharpRefkey(rawType), so we
       // reference the same key to resolve to the generated enum type.
       return <Reference refkey={efCsharpRefkey(props.type)} />;
+    },
+  })
+  .forTypeKind("UnionVariant", {
+    reference: (props) => {
+      const variant = props.type as UnionVariant;
+      // A UnionVariant used as a property type means referencing a specific
+      // member of a named union (e.g., ExtendedEnum.EnumValue2). In C#, the
+      // property type resolves to the parent union/extensible enum type.
+      if (variant.union.name) {
+        return <Reference refkey={efCsharpRefkey(variant.union)} />;
+      }
+      // Fallback for unnamed union variants: render the variant's inner type.
+      return <TypeExpression type={variant.type} />;
     },
   })
   .forTypeKind("Scalar", {

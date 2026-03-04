@@ -3352,3 +3352,30 @@ Task 0.4.4 was already fully implemented. The test/scenarios/ directory exists w
 
 ### Result
 1161 tests pass (2 new), 128 skipped, 62 test files. Build and lint clean.
+
+## Task 12.1.1: Fix emitter crash on UnionVariant type in type/property/value-types
+**Date**: 2026-03-04
+
+### What was done
+Two-part fix for the "Unsupported type for TypeExpression: UnionVariant" crash:
+
+1. **Added `UnionVariant` override in CSharpTypeExpression.tsx** (lines 213-225):
+   - Added `.forTypeKind("UnionVariant", ...)` to the Experimental_ComponentOverrides config
+   - For variants from named unions (e.g., `ExtendedEnum.EnumValue2`), references the parent union type via `efCsharpRefkey(variant.union)`
+   - For unnamed union variants, falls back to `<TypeExpression type={variant.type} />`
+   - Imported `UnionVariant` from `@typespec/compiler` and `TypeExpression` from `@typespec/emitter-framework/csharp`
+
+2. **Added `SdkEnumValueType` handling in unreferenced-types.ts** (line 44-45):
+   - Added `case "enumvalue": return [type.enumType]` to `extractModelOrEnumTypes()`
+   - Without this, parent enum types referenced only through union variants were filtered out as unreachable, leaving unresolved refkey symbols
+
+### Test added
+- `test/type-expression.test.tsx`: "maps named union variant to parent union type"
+  - Compiles TypeSpec with `union ExtendedEnum { string, EnumValue2: "value2" }` and property `ExtendedEnum.EnumValue2`
+  - Verifies emitter produces no diagnostics, model file contains `ExtendedEnum`, no unresolved symbols
+
+### Key insight
+The crash had two root causes: (1) TypeExpression didn't handle `UnionVariant` type kind, and (2) the type reachability graph didn't follow `SdkEnumValueType → enumType` edges, so parent enums weren't generated. Both fixes were required.
+
+### Result
+1162 tests pass (1 new), 128 skipped, 62 test files. Build and lint clean.
