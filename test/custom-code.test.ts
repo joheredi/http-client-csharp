@@ -502,3 +502,147 @@ describe("getCustomNamespace", () => {
     expect(getCustomNamespace(model, "Unknown")).toBeUndefined();
   });
 });
+
+/**
+ * Tests for applyCustomCodeRenames — the pre-processing step in the emitter
+ * that mutates TCGC model names to match custom code declared names.
+ *
+ * This is critical for the @clientName + custom code interaction:
+ * When TypeSpec uses @clientName("RenamedModel") and user writes
+ * [CodeGenType("RenamedModel")] on class RenamedModelCustom, the
+ * generated code must use "RenamedModelCustom" everywhere.
+ */
+describe("applyCustomCodeRenames", () => {
+  // Lazy import to avoid circular dependency issues
+  let applyCustomCodeRenames: typeof import("../src/emitter.js").applyCustomCodeRenames;
+
+  beforeEach(async () => {
+    const mod = await import("../src/emitter.js");
+    applyCustomCodeRenames = mod.applyCustomCodeRenames;
+  });
+
+  /**
+   * Core scenario: custom code declares [CodeGenType("RenamedModel")] on
+   * class RenamedModelCustom. The model name should be mutated from
+   * "RenamedModel" to "RenamedModelCustom".
+   */
+  it("renames model when custom code has a different declaredName", () => {
+    const model = { name: "RenamedModel" } as any;
+    const customCode = createEmptyCustomCodeModel();
+    customCode.types.set("RenamedModel", {
+      declaredName: "RenamedModelCustom",
+      originalName: "RenamedModel",
+      members: [],
+      suppressedMembers: [],
+      serializationOverrides: [],
+    });
+
+    applyCustomCodeRenames([model], customCode);
+
+    expect(model.name).toBe("RenamedModelCustom");
+  });
+
+  /**
+   * When a rename is applied, the custom code map should also include
+   * an entry under the new name so that downstream lookups
+   * (isMemberSuppressed, getCustomNamespace) work correctly.
+   */
+  it("adds custom code entry under the new name for downstream lookups", () => {
+    const model = { name: "RenamedModel" } as any;
+    const customCode = createEmptyCustomCodeModel();
+    const typeInfo = {
+      declaredName: "RenamedModelCustom",
+      originalName: "RenamedModel",
+      namespace: "Custom.Namespace",
+      members: [],
+      suppressedMembers: [],
+      serializationOverrides: [],
+    };
+    customCode.types.set("RenamedModel", typeInfo);
+
+    applyCustomCodeRenames([model], customCode);
+
+    // Lookup by the new name should return the same typeInfo
+    expect(customCode.types.get("RenamedModelCustom")).toBe(typeInfo);
+    // Lookup by the old name should still work too
+    expect(customCode.types.get("RenamedModel")).toBe(typeInfo);
+  });
+
+  /**
+   * Models without any custom code should not be affected.
+   * This is the common case for most models.
+   */
+  it("does not rename models without custom code entries", () => {
+    const model = { name: "Widget" } as any;
+    const customCode = createEmptyCustomCodeModel();
+
+    applyCustomCodeRenames([model], customCode);
+
+    expect(model.name).toBe("Widget");
+  });
+
+  /**
+   * When a custom partial class has the same name as the generated type
+   * (declaredName === originalName, i.e., no [CodeGenType] attribute),
+   * the model should NOT be renamed.
+   */
+  it("does not rename when declaredName equals originalName", () => {
+    const model = { name: "Friend" } as any;
+    const customCode = createEmptyCustomCodeModel();
+    customCode.types.set("Friend", {
+      declaredName: "Friend",
+      originalName: "Friend",
+      members: [],
+      suppressedMembers: [],
+      serializationOverrides: [],
+    });
+
+    applyCustomCodeRenames([model], customCode);
+
+    expect(model.name).toBe("Friend");
+  });
+
+  /**
+   * Multiple models can have renames. Verify that the function processes
+   * all of them, including models that should and shouldn't be renamed.
+   */
+  it("handles multiple models with mixed rename scenarios", () => {
+    const model1 = { name: "RenamedModel" } as any;
+    const model2 = { name: "Widget" } as any;
+    const model3 = { name: "AnotherRename" } as any;
+    const customCode = createEmptyCustomCodeModel();
+    customCode.types.set("RenamedModel", {
+      declaredName: "RenamedModelCustom",
+      originalName: "RenamedModel",
+      members: [],
+      suppressedMembers: [],
+      serializationOverrides: [],
+    });
+    customCode.types.set("AnotherRename", {
+      declaredName: "AnotherRenameCustom",
+      originalName: "AnotherRename",
+      members: [],
+      suppressedMembers: [],
+      serializationOverrides: [],
+    });
+
+    applyCustomCodeRenames([model1, model2, model3], customCode);
+
+    expect(model1.name).toBe("RenamedModelCustom");
+    expect(model2.name).toBe("Widget");
+    expect(model3.name).toBe("AnotherRenameCustom");
+  });
+
+  /**
+   * When custom code has an empty types map (fresh project without custom code),
+   * no models should be renamed. This is a no-op.
+   */
+  it("is a no-op when custom code has no types", () => {
+    const model = { name: "Widget" } as any;
+    const customCode = createEmptyCustomCodeModel();
+
+    applyCustomCodeRenames([model], customCode);
+
+    expect(model.name).toBe("Widget");
+  });
+});

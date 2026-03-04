@@ -3923,3 +3923,16 @@ Component-level namespace override was chosen over emitter-level mutation becaus
 **Notes for next iteration:**
 - XML serialization for Unknown models not yet implemented (only JSON) — may be needed for models with XML usage
 - The `endsWith("/Model.Serialization.cs")` fix should be applied to any future test that looks up discriminated base model serialization files
+
+2026-03-04 — Task 13.10: Fix @clientName support — RenamedModel → RenamedModelCustom (complete)
+- Added `applyCustomCodeRenames()` function in `src/emitter.tsx` that mutates TCGC model names
+  before rendering when custom code declares [CodeGenType("OriginalName")] on a class with
+  a different name. This ensures ALL components that derive the C# class name from `type.name`
+  automatically produce the correct custom name.
+- Approach: Mutate model.name early (before JSX rendering). Since JS objects are by reference,
+  ALL references to the model (including from other models' property types) see the updated name.
+  Also updates the custom code map to include entry under the new name for downstream lookups.
+- Added 6 unit tests in `test/custom-code.test.ts` under `applyCustomCodeRenames` suite.
+- No changes needed in 20+ downstream components — the early mutation handles everything.
+- Pattern: When needing to change a name that many components read, mutate early at the source
+  rather than changing every consumer. This is the TCGC mutation pattern.

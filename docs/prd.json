@@ -5019,7 +5019,7 @@
           "title": "Fix @clientName support: RenamedModel should become RenamedModelCustom",
           "description": "The TypeSpec input uses `@clientName(\"RenamedModel\")` on a model, and the legacy emitter generates the file as `RenamedModelCustom` (the custom name). The new emitter generates it as `RenamedModel` (the base name), and its ModelReaderWriterContext references `RenamedModel` instead of `RenamedModelCustom`.\n\nGolden files:\n- Models/RenamedModelCustom.cs\n- Models/RenamedModelCustom.Serialization.cs\n\nGenerated files:\n- Models/RenamedModel.cs\n- Models/RenamedModel.Serialization.cs\n\nThe emitter needs to properly resolve @clientName decorator and use the renamed type. When in doubt, the legacy output wins.",
           "phase": "phase-13",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],

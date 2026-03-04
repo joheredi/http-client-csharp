@@ -1,5 +1,6 @@
 import {
   createSdkContext,
+  type SdkModelType,
   UsageFlags,
 } from "@azure-tools/typespec-client-generator-core";
 import { existsSync } from "fs";
@@ -77,6 +78,7 @@ import { ToBinaryContent } from "./components/serialization/ToBinaryContent.js";
 import { $lib } from "./lib.js";
 import { type CSharpEmitterOptions, resolveOptions } from "./options.js";
 import { getAllClients } from "./utils/clients.js";
+import type { CustomCodeModel } from "./utils/custom-code-model.js";
 import { scanCustomCode } from "./utils/custom-code-scanner.js";
 import {
   resolvePackageName,
@@ -169,6 +171,12 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
   // Custom code files live under src/ but outside the Generated/ subdirectory.
   // When found, their CodeGen attributes inform member filtering/renaming.
   const customCode = await scanCustomCode(context.emitterOutputDir);
+
+  // Apply custom code renames to TCGC model names. When a custom partial class
+  // declares [CodeGenType("GeneratedName")] on a class with a different name
+  // (e.g., class RenamedModelCustom), mutate model.name so ALL components that
+  // compute the C# class name from type.name automatically get the custom name.
+  applyCustomCodeRenames(models, customCode);
 
   const output = (
     <HttpClientCSharpOutput
@@ -371,6 +379,40 @@ async function writeOutputDirectory(
           path: joinPaths(emitterOutputDir, item.path),
         });
       }
+    }
+  }
+}
+
+/**
+ * Applies custom code type renames to TCGC model names.
+ *
+ * When a user writes a custom partial class with `[CodeGenType("OriginalName")]`
+ * on a class with a different name (e.g., `class RenamedModelCustom`), the
+ * generated code should use the custom declared name everywhere. This function
+ * mutates the TCGC model's `name` property so that all downstream components
+ * that derive the C# class name from `type.name` automatically produce the
+ * correct custom name.
+ *
+ * Also updates the custom code map to be keyed by the new name, so that
+ * `isMemberSuppressed` and `getCustomNamespace` lookups continue to work.
+ *
+ * @param models - The array of TCGC SDK model types to process.
+ * @param customCode - The scanned custom code model containing type mappings.
+ */
+export function applyCustomCodeRenames(
+  models: SdkModelType[],
+  customCode: CustomCodeModel,
+): void {
+  for (const model of models) {
+    const typeInfo = customCode.types.get(model.name);
+    if (typeInfo && typeInfo.declaredName !== typeInfo.originalName) {
+      // Add the entry under the new name so downstream lookups by
+      // the effective name (e.g., isMemberSuppressed, getCustomNamespace) work.
+      customCode.types.set(typeInfo.declaredName, typeInfo);
+      // Mutate the TCGC model name. Because JS objects are shared by reference,
+      // all other models that reference this type (e.g., as a property type)
+      // will also see the updated name.
+      model.name = typeInfo.declaredName;
     }
   }
 }

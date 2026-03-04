@@ -2408,3 +2408,20 @@ Tests that use `k.includes("Model.Serialization.cs")` will also match `UnknownMo
 
 ### Unknown Model Interface Pattern
 Unknown discriminator serialization files implement `IJsonModel<BaseType>` (not `IJsonModel<UnknownType>`). All method signatures (IPersistableModel cast, nameof, Deserialize calls) reference the **base type name**, not the unknown type. Only the class name, DeserializeUnknown method, and constructor call reference the unknown name.
+
+## Design Decisions
+
+### Task 13.10: Custom Code Rename Strategy
+**Chosen approach**: Mutate TCGC model `name` property early in `emitter.tsx` (before JSX rendering) when custom code declares `[CodeGenType("OriginalName")]` on a class with a different name.
+
+**Why**: ~20 components independently compute `modelName = namePolicy.getName(type.name, "class")`. Updating all of them would be error-prone. Instead, mutating `model.name` once at the source propagates the change to all consumers automatically via JS object references.
+
+**Rejected approaches**:
+1. **Utility function in each component** — Required changing 20+ files, each needing `useCustomCode()` + `getEffectiveModelName()`. Error-prone and verbose.
+2. **React context for effective model name** — Clean but still required 20+ file changes to use the new context hook.
+3. **Name policy wrapper** — Could have unintended side effects on non-model naming contexts.
+
+**Implementation notes**:
+- The custom code map is also updated to include an entry under the new name (for `isMemberSuppressed` and `getCustomNamespace` lookups).
+- TCGC names starting with uppercase are preserved by the C# name policy (`createHttpClientNamePolicy`), so `type.name` matches the custom code map key directly.
+- The mutation happens after `ensureModelNamespaces` and `cleanAllNamespaces` but before JSX rendering.
