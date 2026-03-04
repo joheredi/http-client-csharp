@@ -3530,3 +3530,25 @@ When TypeSpec `@doc` decorators contain multiline text (using triple-quoted stri
 **Verification:** Generated a versioned project and confirmed both Argument.cs (infrastructure) and ReturnTypeChangedFromClient.cs (client) use `Versioning.ReturnTypeChangedFrom` namespace, while the csproj is still named `Versioning.ReturnTypeChangedFrom.V2.csproj`.
 
 **All 64 test files pass (1198 tests).**
+
+## 2026-03-04 — Task 12.2.6: Fix missing sub-client classes for deeply nested route operations
+
+**What was done:**
+- Added `getClientFileName()` utility to `src/utils/clients.ts` that computes unique filenames for client classes based on their position in the hierarchy
+- Updated `src/components/clients/ClientFile.tsx`, `RestClientFile.tsx`, and `CollectionResultFile.tsx` to use `getClientFileName()` for SourceFile path generation instead of just the short class name
+- The function walks up the parent chain and concatenates all non-root ancestor names (e.g., PathParameters > LabelExpansion > Standard → "PathParametersLabelExpansionStandard.cs")
+- For single-level hierarchies (root > child), the result equals the short name, so no existing tests break
+
+**Root cause:** Multiple sub-clients sharing the same short name (e.g., "Standard", "Explode" in the routes spec) all generated to the same filename (`Standard.cs`), causing only one file to survive. The others were silently dropped.
+
+**Key patterns:**
+- The TCGC `SdkClientType` has a `parent` property for traversing up the hierarchy
+- The legacy emitter uses concatenated hierarchical names for all sub-client files
+- TypeSpec uses `namespace` (not `interface`) for deeply nested operation groups
+- Class names remain short (e.g., `class Standard`) with namespaces handling disambiguation; only filenames use the concatenated form
+
+**Tests added:**
+- 6 unit tests for `getClientFileName()` in `test/client-filename.test.ts`
+- 2 integration tests in `test/client-file.test.ts` for deeply nested sub-client file generation
+
+**All 65 test files pass (1206 tests).**

@@ -29,6 +29,7 @@ import {
 } from "../../builtins/system-client-model.js";
 import { System } from "../../builtins/system.js";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
+import { getClientFileName } from "../../utils/clients.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { isProtocolParamValueType } from "../../utils/nullable.js";
 import { cleanOperationName } from "../../utils/operation-naming.js";
@@ -111,6 +112,9 @@ export function RestClientFile(props: RestClientFileProps) {
   const header = getLicenseHeader(options);
   const namePolicy = useCSharpNamePolicy();
   const className = namePolicy.getName(client.name, "class");
+  const fileName = getClientFileName(client, (name) =>
+    namePolicy.getName(name, "class"),
+  );
 
   // Get service methods that have HTTP operations.
   // Filter to methods with an HTTP operation (basic, paging, lro, lropaging).
@@ -133,7 +137,7 @@ export function RestClientFile(props: RestClientFileProps) {
   const partialName = namekey(className, { ignoreNameConflict: true });
 
   return (
-    <SourceFile path={`src/Generated/${className}.RestClient.cs`}>
+    <SourceFile path={`src/Generated/${fileName}.RestClient.cs`}>
       {header}
       {"\n\n"}
       <Namespace name={client.namespace}>

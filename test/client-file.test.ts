@@ -1060,4 +1060,111 @@ describe("ClientFile", () => {
     // Must NOT have bare continuation lines
     expect(clientFile).not.toMatch(/\n\s+1\. Feature one/);
   });
+
+  /**
+   * Verifies that deeply nested sub-clients produce unique filenames by
+   * concatenating all non-root ancestor names. Without this, sub-clients with
+   * the same short name (e.g., "Standard" under both "GroupA" and "GroupB")
+   * would collide to a single file and only one would survive.
+   *
+   * This test creates a 3-level hierarchy using namespaces (the same pattern
+   * used by the routes spec):
+   *   Root > GroupA > Nested
+   *   Root > GroupB > Nested
+   *
+   * Expected files:
+   *   - Root: src/Generated/TestServiceClient.cs
+   *   - GroupA: src/Generated/GroupA.cs
+   *   - GroupB: src/Generated/GroupB.cs
+   *   - Nested under GroupA: src/Generated/GroupANested.cs
+   *   - Nested under GroupB: src/Generated/GroupBNested.cs
+   *
+   * This matches the legacy emitter's convention (e.g., PathParametersLabelExpansionStandard.cs).
+   */
+  it("generates unique filenames for deeply nested sub-clients with same name", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/a")
+      namespace GroupA {
+        @route("/nested")
+        namespace Nested {
+          @route("/op")
+          @get op getItem(): void;
+        }
+      }
+
+      @route("/b")
+      namespace GroupB {
+        @route("/nested")
+        namespace Nested {
+          @route("/op")
+          @get op getItem(): void;
+        }
+      }
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    // Both deeply nested "Nested" sub-clients must generate separate files
+    const nestedA = outputs["src/Generated/GroupANested.cs"];
+    const nestedB = outputs["src/Generated/GroupBNested.cs"];
+
+    expect(nestedA).toBeDefined();
+    expect(nestedB).toBeDefined();
+
+    // Each must be in its own namespace
+    expect(nestedA).toContain("namespace TestService.GroupA.Nested");
+    expect(nestedB).toContain("namespace TestService.GroupB.Nested");
+
+    // Each must have the short class name (not the hierarchical filename)
+    expect(nestedA).toContain("public partial class Nested");
+    expect(nestedB).toContain("public partial class Nested");
+
+    // Parent clients should also exist with correct filenames
+    expect(outputs["src/Generated/GroupA.cs"]).toBeDefined();
+    expect(outputs["src/Generated/GroupB.cs"]).toBeDefined();
+    expect(outputs["src/Generated/TestServiceClient.cs"]).toBeDefined();
+  });
+
+  /**
+   * Verifies that RestClient files also use hierarchical filenames to prevent
+   * collisions for deeply nested sub-clients with operations.
+   */
+  it("generates unique RestClient filenames for deeply nested sub-clients", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/a")
+      namespace GroupA {
+        @route("/nested")
+        namespace Nested {
+          @route("/op")
+          @get op getItem(): void;
+        }
+      }
+
+      @route("/b")
+      namespace GroupB {
+        @route("/nested")
+        namespace Nested {
+          @route("/op")
+          @get op getItem(): void;
+        }
+      }
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    // Both deeply nested "Nested" sub-clients must generate separate RestClient files
+    const restA = outputs["src/Generated/GroupANested.RestClient.cs"];
+    const restB = outputs["src/Generated/GroupBNested.RestClient.cs"];
+
+    expect(restA).toBeDefined();
+    expect(restB).toBeDefined();
+  });
 });

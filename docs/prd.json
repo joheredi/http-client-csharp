@@ -4567,7 +4567,7 @@
           "title": "Fix missing sub-client classes for deeply nested route operations",
           "description": "The `routes` spec defines deeply nested route operations with path parameter expansion styles (label, matrix, simple, path, query). The emitter generates sub-client accessor methods and `using` directives for sub-namespaces (e.g., `using Routes.PathParameters.LabelExpansion.Explode`) but does not generate the actual sub-client classes in those namespaces.\n\nErrors:\n```\nCS0234: The type or namespace name 'Explode' does not exist in the namespace 'Routes.PathParameters.LabelExpansion'\nCS0246: The type or namespace name 'Standard' could not be found\n```\n\nThe emitter generates top-level sub-clients (LabelExpansion, MatrixExpansion, etc.) but not their nested children (Explode, Standard). Check how deeply nested client hierarchies are traversed in `src/components/clients/ClientFile.tsx` and ensure all levels of the client tree produce corresponding client class files.\n\nTo reproduce: `dotnet build temp/e2e/Spector/http/routes/src/Routes.csproj`",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],

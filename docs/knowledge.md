@@ -2182,3 +2182,13 @@ When `package-name` includes a version suffix (e.g., `Versioning.Foo.V2`), `reso
 **Chosen approach:** Compute `rootNamespace` from TCGC (ignoring explicit `package-name`), pass to infrastructure files. Keep `packageName` for project files.
 
 **Rejected approach:** Override client namespace with `packageName` — rejected because legacy emitter generates client code in the TCGC-derived namespace (without version suffix), and our output must match.
+
+## Design Decisions
+
+### Hierarchical Client Filenames (Task 12.2.6)
+**Chosen approach:** Walk up `client.parent` chain and concatenate all non-root ancestor class names for the filename. Root clients keep their short name.
+**Why:** Matches the legacy emitter's convention (e.g., `PathParametersLabelExpansionStandard.cs`). Prevents filename collisions when multiple sub-clients share the same short name at different hierarchy levels.
+**Rejected:** Only using hierarchical names when a collision is detected — too fragile and unpredictable. Using directory nesting to match namespaces — doesn't match legacy convention and changes the output structure.
+
+### TypeSpec Nesting for Sub-Clients
+Deeply nested operation groups in TypeSpec use `namespace` nesting, not nested `interface`. The `interface` keyword creates a single-level operation group. Always use `namespace` when defining 3+ level deep hierarchies in test TypeSpec code.

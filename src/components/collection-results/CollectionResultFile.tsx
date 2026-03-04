@@ -40,6 +40,7 @@ import {
 } from "../../builtins/system-client-model.js";
 import { SystemThreadingTasks } from "../../builtins/system-threading.js";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
+import { getClientFileName } from "../../utils/clients.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { cleanOperationName } from "../../utils/operation-naming.js";
 import { reorderTokenFirst } from "../../utils/parameter-ordering.js";
@@ -147,7 +148,9 @@ interface CollectionResultFileProps {
 function CollectionResultFile(props: CollectionResultFileProps) {
   const { client, method, options, isAsync, isConvenience } = props;
   const namePolicy = useCSharpNamePolicy();
-  const clientName = namePolicy.getName(client.name, "class");
+  const clientName = getClientFileName(client, (name) =>
+    namePolicy.getName(name, "class"),
+  );
   const operationName = cleanOperationName(
     namePolicy.getName(method.name, "class"),
   );

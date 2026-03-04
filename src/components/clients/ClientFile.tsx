@@ -28,6 +28,7 @@ import {
   getClientMethodParameters,
   getFieldTypeForParam,
 } from "../../utils/client-params.js";
+import { getClientFileName } from "../../utils/clients.js";
 import { formatDocLines } from "../../utils/doc.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { OverloadConstructor } from "../models/ModelConstructors.js";
@@ -113,6 +114,9 @@ export function ClientFile(props: ClientFileProps) {
   const header = getLicenseHeader(options);
   const namePolicy = useCSharpNamePolicy();
   const className = namePolicy.getName(client.name, "class");
+  const fileName = getClientFileName(client, (name) =>
+    namePolicy.getName(name, "class"),
+  );
   const isSubClient = client.parent !== undefined;
 
   // Extract auth info for root clients only.
@@ -147,7 +151,7 @@ export function ClientFile(props: ClientFileProps) {
   const nonApiVersionParams = methodParams.filter((p) => !p.isApiVersionParam);
 
   return (
-    <SourceFile path={`src/Generated/${className}.cs`}>
+    <SourceFile path={`src/Generated/${fileName}.cs`}>
       {header}
       {"\n\n"}
       <Namespace name={client.namespace}>

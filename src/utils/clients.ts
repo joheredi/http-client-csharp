@@ -28,3 +28,41 @@ export function getAllClients(
   }
   return result;
 }
+
+/**
+ * Computes a unique filename prefix for a client based on its position in the
+ * hierarchy. This prevents filename collisions when multiple sub-clients share
+ * the same short name (e.g., "Standard", "Explode") at different levels.
+ *
+ * Root clients use their class name directly (e.g., "RoutesClient").
+ * Sub-clients concatenate all non-root ancestor names with their own name
+ * (e.g., "PathParametersLabelExpansionStandard"), matching the legacy emitter's
+ * filename convention.
+ *
+ * For single-level hierarchies (root > child), the result equals the short
+ * class name since there is only one non-root ancestor (the child itself).
+ *
+ * @param client - The TCGC SDK client type.
+ * @param toClassName - A function that converts a raw client name to a C# class
+ *   name (typically `(name) => namePolicy.getName(name, "class")`).
+ * @returns A unique filename prefix for the client.
+ */
+export function getClientFileName(
+  client: SdkClientType<SdkHttpOperation>,
+  toClassName: (name: string) => string,
+): string {
+  // Root clients: just use the class name directly
+  if (!client.parent) {
+    return toClassName(client.name);
+  }
+
+  // Sub-clients: walk up the parent chain and concatenate all non-root names.
+  // Stop at the root (parent === undefined) to exclude the root client name.
+  const parts: string[] = [];
+  let current: SdkClientType<SdkHttpOperation> | undefined = client;
+  while (current && current.parent !== undefined) {
+    parts.unshift(toClassName(current.name));
+    current = current.parent;
+  }
+  return parts.join("");
+}
