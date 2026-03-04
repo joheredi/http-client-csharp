@@ -1038,4 +1038,44 @@ describe("ConvenienceMethod", () => {
     // Must NOT have bare continuation lines without ///
     expect(clientFile).not.toMatch(/\n\s+client\./);
   });
+
+  /**
+   * Verifies that OASIS repeatability headers (Repeatability-Request-ID and
+   * Repeatability-First-Sent) are excluded from convenience method signatures.
+   *
+   * The legacy emitter filters these "special" headers so they never appear as
+   * user-facing parameters. Instead, they are auto-populated with runtime values
+   * (Guid.NewGuid() and DateTimeOffset.Now) in the request creation method.
+   *
+   * Without this filtering, the generated API surface would differ from the
+   * legacy emitter and expose implementation details to SDK consumers.
+   */
+  it("excludes repeatability headers from convenience method signatures", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @post op testOp(
+        @header("Repeatability-Request-ID") repeatabilityRequestID: string,
+        @header("Repeatability-First-Sent") repeatabilityFirstSent: utcDateTime,
+      ): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Repeatability headers must NOT appear as parameters in convenience methods
+    expect(clientFile).not.toContain("repeatabilityRequestID");
+    expect(clientFile).not.toContain("repeatabilityRequestId");
+    expect(clientFile).not.toContain("repeatabilityFirstSent");
+
+    // Convenience method should only have CancellationToken
+    expect(clientFile).toContain(
+      "CancellationToken cancellationToken = default",
+    );
+  });
 });

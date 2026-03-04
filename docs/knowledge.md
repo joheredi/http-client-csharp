@@ -2192,3 +2192,13 @@ When `package-name` includes a version suffix (e.g., `Versioning.Foo.V2`), `reso
 
 ### TypeSpec Nesting for Sub-Clients
 Deeply nested operation groups in TypeSpec use `namespace` nesting, not nested `interface`. The `interface` keyword creates a single-level operation group. Always use `namespace` when defining 3+ level deep hierarchies in test TypeSpec code.
+
+### Special Header Handling (Task 12.2.7)
+**Chosen approach:** Filter out repeatability headers by serialized name (case-insensitive) from all method signatures and auto-populate them in request creation with `Guid.NewGuid().ToString()` and `DateTimeOffset.Now.ToString("R")`.
+**Why:** Matches the legacy emitter's `TryGetSpecialHeaderParam` behaviour exactly. These are OASIS repeatability spec headers that should never be user-facing parameters.
+**Rejected:** Fixing only the naming inconsistency (ID vs Id) — would make the code compile but produce wrong API surface vs legacy. Also considered a shared utility function for `isSpecialHeaderParam` — followed existing convention of duplicating across the 3 client files (like `isImplicitContentTypeHeader`).
+
+## Gotchas
+
+### Alloy naming policy and acronyms
+When Alloy's naming policy applies camelCase to a parameter name like `repeatabilityRequestID`, it normalizes `ID` to `Id`. But raw string references in method bodies use the original TCGC name. This causes CS0103 errors for any parameter with acronyms (ID, URL, etc.). Special headers bypass this issue by being excluded entirely, but other parameters with acronyms could hit this bug.

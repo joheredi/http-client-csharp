@@ -432,4 +432,39 @@ describe("ProtocolMethod", () => {
     // Must NOT have bare continuation lines without ///
     expect(clientFile).not.toMatch(/\n\s+it contains/);
   });
+
+  /**
+   * Verifies that OASIS repeatability headers (Repeatability-Request-ID and
+   * Repeatability-First-Sent) are excluded from protocol method signatures.
+   *
+   * These headers are auto-populated at runtime and must not be exposed to
+   * SDK consumers. The protocol method should only take RequestOptions.
+   */
+  it("excludes repeatability headers from protocol method signatures", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @post op testOp(
+        @header("Repeatability-Request-ID") repeatabilityRequestID: string,
+        @header("Repeatability-First-Sent") repeatabilityFirstSent: utcDateTime,
+      ): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Protocol method signature should only have RequestOptions
+    expect(clientFile).toContain("TestOp(RequestOptions options)");
+    expect(clientFile).toContain("TestOpAsync(RequestOptions options)");
+
+    // No repeatability params in the protocol methods
+    expect(clientFile).not.toContain("repeatabilityRequestID");
+    expect(clientFile).not.toContain("repeatabilityRequestId");
+    expect(clientFile).not.toContain("repeatabilityFirstSent");
+  });
 });

@@ -1164,4 +1164,55 @@ describe("RestClientFile", () => {
     expect(restClient).not.toMatch(/if \(new-parameter/);
     expect(restClient).not.toMatch(/if \(sort-order/);
   });
+
+  /**
+   * Verifies that OASIS repeatability headers are auto-populated in the
+   * request creation method with runtime-generated values instead of being
+   * passed as method parameters.
+   *
+   * The legacy emitter uses `Guid.NewGuid().ToString()` for Repeatability-Request-ID
+   * and `DateTimeOffset.Now.ToString("R")` for Repeatability-First-Sent (RFC7231 format).
+   * These must be set automatically so the SDK consumer doesn't need to manage them.
+   *
+   * This test also ensures that the using System; directive is present (needed for
+   * Guid and DateTimeOffset) and that the parameters don't appear in the method signature.
+   */
+  it("auto-populates repeatability headers in request creation", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @post op testOp(
+        @header("Repeatability-Request-ID") repeatabilityRequestID: string,
+        @header("Repeatability-First-Sent") repeatabilityFirstSent: utcDateTime,
+      ): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const restClient = outputs["src/Generated/TestServiceClient.RestClient.cs"];
+    expect(restClient).toBeDefined();
+
+    // Repeatability headers must NOT appear as method parameters
+    expect(restClient).not.toContain("string repeatabilityRequest");
+    expect(restClient).not.toContain("DateTimeOffset repeatabilityFirst");
+
+    // Request creation method should only take RequestOptions
+    expect(restClient).toContain(
+      "internal PipelineMessage CreateTestOpRequest(RequestOptions options)",
+    );
+
+    // Auto-populated header values
+    expect(restClient).toContain(
+      'request.Headers.Set("Repeatability-Request-ID", Guid.NewGuid().ToString())',
+    );
+    expect(restClient).toContain(
+      'request.Headers.Set("Repeatability-First-Sent", DateTimeOffset.Now.ToString("R"))',
+    );
+
+    // System namespace must be imported for Guid and DateTimeOffset
+    expect(restClient).toContain("using System;");
+  });
 });

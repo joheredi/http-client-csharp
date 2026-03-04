@@ -3552,3 +3552,27 @@ When TypeSpec `@doc` decorators contain multiline text (using triple-quoted stri
 - 2 integration tests in `test/client-file.test.ts` for deeply nested sub-client file generation
 
 **All 65 test files pass (1206 tests).**
+
+## 2026-03-04: Task 12.2.7 — Fix implicit special header parameters not being generated
+
+### What was done
+- Added `isSpecialHeaderParam()` function to detect OASIS repeatability headers (Repeatability-Request-ID, Repeatability-First-Sent) by serialized name
+- Filtered special headers out of method parameters in ConvenienceMethod.tsx, ProtocolMethod.tsx, and RestClientFile.tsx
+- Auto-populated special headers in RestClientFile.tsx's `buildRequestBody()` with `Guid.NewGuid().ToString()` and `DateTimeOffset.Now.ToString("R")`
+- Added `Guid` to System builtins for proper `using System;` directive generation
+- Used Alloy's `code` template tag with builtin references to ensure automatic using statement generation
+
+### Patterns used
+- Same pattern as existing `isImplicitContentTypeHeader()` — duplicated across the 3 client files (matching codebase convention)
+- Used `specialHeaderNames` Set for case-insensitive lookup
+- Used Alloy `code` template with `System.Guid` and `System.DateTimeOffset` builtin refs for proper using directive management
+
+### Generated output matches legacy
+- Convenience methods: `ImmediateSuccess(CancellationToken cancellationToken = default)` — no repeatability params
+- Protocol methods: `ImmediateSuccess(RequestOptions options)` — no repeatability params
+- Request creation: Auto-sets `Guid.NewGuid().ToString()` and `DateTimeOffset.Now.ToString("R")` headers
+
+### Tests added (3 new, 1209 total passing)
+- convenience-method.test.ts: Verifies repeatability headers excluded from convenience methods
+- protocol-method.test.ts: Verifies repeatability headers excluded from protocol methods
+- rest-client.test.ts: Verifies auto-population in request creation and using System; directive

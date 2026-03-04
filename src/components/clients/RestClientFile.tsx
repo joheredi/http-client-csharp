@@ -508,6 +508,7 @@ function buildMethodParams(
   for (const p of headerParams) {
     if (isConstantType(p.type) || p.onClient) continue;
     if (isImplicitContentTypeHeader(p)) continue;
+    if (isSpecialHeaderParam(p)) continue;
     const priority = p.optional ? 400 : 100;
     const typeExpr = maybeNullable(
       getProtocolTypeExpression(p.type),
@@ -582,6 +583,29 @@ function buildMethodParams(
  */
 function isImplicitContentTypeHeader(param: SdkHeaderParameter): boolean {
   return param.serializedName.toLowerCase() === "content-type";
+}
+
+/**
+ * Known header names that are auto-populated at runtime and should not appear
+ * in public method signatures.  Values are auto-generated in the request
+ * creation method (see {@link buildRequestBody}).
+ *
+ * Per the OASIS repeatability spec, `Repeatability-Request-ID` gets a new GUID
+ * and `Repeatability-First-Sent` gets the current UTC timestamp.
+ */
+const specialHeaderNames = new Set([
+  "repeatability-request-id",
+  "repeatability-first-sent",
+]);
+
+/**
+ * Checks if a header parameter is a "special" header that should be
+ * auto-populated at runtime rather than exposed as a method parameter.
+ * Detection is by serialized header name (case-insensitive), matching
+ * the legacy emitter's `TryGetSpecialHeaderParam` behaviour.
+ */
+function isSpecialHeaderParam(param: SdkHeaderParameter): boolean {
+  return specialHeaderNames.has(param.serializedName.toLowerCase());
 }
 
 /**
@@ -1016,7 +1040,26 @@ function buildRequestBody(
 
   for (const param of headerParams) {
     if (isImplicitContentTypeHeader(param)) continue;
+    if (isSpecialHeaderParam(param)) continue;
     parts.push(`\n${buildHeaderParamStatement(param, getParamName)}`);
+  }
+
+  // Auto-populate special headers (repeatability headers) with runtime values.
+  // These are not exposed as method parameters — they are generated
+  // automatically per the OASIS repeatability specification.
+  // Using code`...` with Alloy builtin references ensures `using System;` is emitted.
+  for (const param of headerParams) {
+    if (!isSpecialHeaderParam(param)) continue;
+    const sn = param.serializedName.toLowerCase();
+    if (sn === "repeatability-request-id") {
+      parts.push(
+        code`\nrequest.Headers.Set("${param.serializedName}", ${System.Guid}.NewGuid().ToString());`,
+      );
+    } else if (sn === "repeatability-first-sent") {
+      parts.push(
+        code`\nrequest.Headers.Set("${param.serializedName}", ${System.DateTimeOffset}.Now.ToString("R"));`,
+      );
+    }
   }
 
   // Content-Type header (derived from body's defaultContentType)

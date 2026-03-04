@@ -324,6 +324,7 @@ export function buildConvenienceParams(
   for (const p of headerParams) {
     if (isConstantType(p.type) || p.onClient) continue;
     if (isImplicitContentTypeHeader(p)) continue;
+    if (isSpecialHeaderParam(p)) continue;
     const convInfo = getConvenienceTypeInfo(p.type);
     const typeExpr = maybeNullable(convInfo.expression, p.type, p.optional);
     params.push({
@@ -783,6 +784,24 @@ function isConstantType(type: SdkType): boolean {
 /** Checks if a header parameter is the implicit Content-Type header. */
 function isImplicitContentTypeHeader(param: SdkHeaderParameter): boolean {
   return param.serializedName.toLowerCase() === "content-type";
+}
+
+/**
+ * Known header names that are auto-populated at runtime and should not appear
+ * in public method signatures. See RestClientFile.tsx for where the values
+ * are generated in the request creation method.
+ */
+const specialHeaderNames = new Set([
+  "repeatability-request-id",
+  "repeatability-first-sent",
+]);
+
+/**
+ * Checks if a header parameter is a "special" header that is auto-populated
+ * at runtime rather than exposed as a method parameter.
+ */
+function isSpecialHeaderParam(param: SdkHeaderParameter): boolean {
+  return specialHeaderNames.has(param.serializedName.toLowerCase());
 }
 
 /**

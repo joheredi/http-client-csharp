@@ -58,6 +58,18 @@ export const System = createLibrary("System", {
   },
 
   /**
+   * Represents a globally unique identifier (GUID).
+   * Used to auto-generate Repeatability-Request-ID values for OASIS
+   * repeatability headers in generated REST client request methods.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/system.guid
+   */
+  Guid: {
+    kind: "struct",
+    members: {},
+  },
+
+  /**
    * Represents a point in time relative to UTC, used for date-time
    * parameters in generated REST client request methods.
    *
