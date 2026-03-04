@@ -4031,3 +4031,20 @@ Design decision: Chose unconditional removal over conditional generation because
 1. No golden output includes these files
 2. No current component references them (only emitter.tsx rendered them)
 3. Conditional logic would be premature without knowing exact usage triggers
+
+## 2026-03-04 — Task 13.23: Add missing ModelReaderWriterContext summary and using directives
+
+### What was done
+- Added `<summary>` XML doc comment to the ModelReaderWriterContext class via `ClassDeclaration`'s `doc` prop
+- The summary matches the legacy emitter's unconditional `BuildXmlDocs()` output: includes SourceGeneration reference and documentation link
+- Added unit test verifying the summary doc comment content (4 assertions for `<summary>`, body text, `<see href>`, `</summary>`)
+- Cross-namespace using directives (e.g., `using SampleTypeSpec.Models.Custom;`) already work via Alloy's refkey auto-resolution
+- Empty class body `{ }` already working per existing tests
+
+### Pattern used
+- Used `ClassDeclaration`'s `doc?: Children` prop with multiline string containing `\n` separators
+- Alloy's `DocComment`/`DocWhen` components handle `/// ` line prefixing via `<align>` component
+- Same pattern as `ModelProperty.tsx` uses for property doc comments
+
+### Result
+- 1265 tests pass (1 new), 128 skipped, 66 test files

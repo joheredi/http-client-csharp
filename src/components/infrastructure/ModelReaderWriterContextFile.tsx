@@ -70,6 +70,10 @@ interface BuildableEntry {
  *
  * namespace SampleTypeSpec
  * {
+ *     /// <summary>
+ *     /// Context class which will be filled in by the System.ClientModel.SourceGeneration.
+ *     /// For more information <see href='...' />
+ *     /// </summary>
  *     [ModelReaderWriterBuildable(typeof(Dog))]
  *     [ModelReaderWriterBuildable(typeof(Pet))]
  *     [ModelReaderWriterBuildable(typeof(UnknownPet))]
@@ -125,6 +129,9 @@ export function ModelReaderWriterContextFile(
     />
   ));
 
+  // Summary doc comment matching legacy emitter's ModelReaderWriterContextDefinition.
+  const summaryDoc = `<summary>\nContext class which will be filled in by the System.ClientModel.SourceGeneration.\nFor more information <see href='https://github.com/Azure/azure-sdk-for-net/blob/main/sdk/core/System.ClientModel/src/docs/ModelReaderWriterContext.md' />\n</summary>`;
+
   return (
     <SourceFile path={`src/Generated/Models/${contextClassName}.cs`}>
       {header}
@@ -137,6 +144,7 @@ export function ModelReaderWriterContextFile(
           refkey={modelReaderWriterContextRefkey()}
           baseType={SystemClientModelPrimitives.ModelReaderWriterContext}
           attributes={attributes}
+          doc={summaryDoc}
         />
       </Namespace>
     </SourceFile>

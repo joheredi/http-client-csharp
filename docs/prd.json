@@ -5323,7 +5323,7 @@
           "title": "Add missing ModelReaderWriterContext summary and using directives",
           "description": "The golden SampleTypeSpecContext.cs has a multi-line `<summary>` doc comment with a `<see href>` link that the new emitter omits:\n\n```csharp\n/// <summary>\n/// Context class which will be filled in by the System.ClientModel.SourceGeneration.\n/// For more information <see href='https://github.com/Azure/azure-sdk-for-net/blob/main/sdk/core/System.ClientModel/src/docs/ModelReaderWriterContext.md' />\n/// </summary>\n```\n\nAlso missing `using SampleTypeSpec.Models.Custom;` directive (depends on task 13.9 for Friend namespace fix). The empty class body should use `{ }` not `;`. When in doubt, the legacy output wins.",
           "phase": "phase-13",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "13.9",
             "13.10"
