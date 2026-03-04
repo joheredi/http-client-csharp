@@ -2561,3 +2561,15 @@ children: `<>{"prefix"}{codeNode1}{",\n"}{codeNode2}{"suffix"}</>`.
 **Rejected approach**: Keep combined constructors but with separate pipeline creation. Rejected because the legacy golden files (SampleTypeSpecClient.cs) show fully independent constructors — consumers should only need to provide the credential for their chosen auth scheme, not all credentials.
 
 **Key insight**: Only the FIRST auth scheme gets a convenience (short) constructor without options. This matches SampleTypeSpecClient.cs where ApiKey gets short + full, but OAuth2 gets only the full constructor.
+
+### ARM resource-manager e2e compilation errors (2026-03-04)
+
+All 9 ARM resource-manager specs emit successfully but fail C# compilation. Four distinct error categories:
+
+1. **AuthenticationTokenProvider (CS0246)** — All 9 ARM specs use OAuth2 bearer token auth. The emitter generates `AuthenticationTokenProvider` references but this type doesn't exist in System.ClientModel. The `BearerTokenPolicy` is created with `_tokenProvider` and `_flows`. This is the blocking issue for all ARM specs.
+
+2. **Async paging (CS1983)** — Methods returning `AsyncCollectionResult` or `AsyncCollectionResult<T>` are incorrectly marked with `async` keyword. These types are not `Task`-based, so `async` must be omitted. Fix is in the Operations/paging component that generates these methods.
+
+3. **Namespace/type collision (CS0118)** — When a sub-client operation group (e.g., `MixedSubscriptionPlacement`) has the same name as its containing namespace, C# `using` imports create ambiguity. The emitter adds `using Azure.ResourceManager.MethodSubscriptionId.MixedSubscriptionPlacement;` and then tries to use `MixedSubscriptionPlacement` as a type.
+
+4. **Duplicate method overloads (CS0111)** — When a resource type has both a scalar operation and a paging operation with the same name (e.g., `GetByResourceGroup`), the generated methods have identical parameter signatures but different return types. C# doesn't allow overloads differing only in return type.

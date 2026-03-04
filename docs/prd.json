@@ -4786,13 +4786,65 @@
           "title": "Verify ARM resource-manager specs generate correctly in e2e",
           "description": "After installing @azure-tools/typespec-azure-resource-manager (task 12.3), run the full e2e generation and confirm all 9 azure/resource-manager specs compile successfully: azure/resource-manager/common-properties, azure/resource-manager/large-header, azure/resource-manager/method-subscription-id, azure/resource-manager/multi-service, azure/resource-manager/multi-service-older-versions, azure/resource-manager/multi-service-shared-models, azure/resource-manager/non-resource, azure/resource-manager/operation-templates, azure/resource-manager/resources. If any specs fail due to missing emitter features (e.g., ARM-specific decorators or patterns not yet supported), add them to test/e2e/.testignore with a comment explaining what's missing, and create follow-up tasks for the unsupported features.",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "12.3"
           ],
           "files": {
             "modify": [
               "test/e2e/.testignore"
+            ]
+          }
+        },
+        {
+          "id": "12.5",
+          "title": "Support AuthenticationTokenProvider for OAuth2/bearer token auth in ARM specs",
+          "description": "All 9 ARM resource-manager specs fail to compile because the emitter generates AuthenticationTokenProvider references for bearer token auth (CS0246). The emitter needs to either: (a) generate the AuthenticationTokenProvider type alongside the client, or (b) reference it from the correct System.ClientModel assembly. All ARM APIs use token-based auth via @useAuth(OAuth2Auth<...>). This blocks all azure/resource-manager specs in e2e. See test/e2e/.testignore for the full list.",
+          "phase": "phase-12",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "src/components/"
+            ]
+          }
+        },
+        {
+          "id": "12.6",
+          "title": "Fix async keyword on paging methods returning AsyncCollectionResult",
+          "description": "ARM specs method-subscription-id, operation-templates, and resources generate async methods that return AsyncCollectionResult directly (not wrapped in Task). CS1983 error. The emitter should not add the async keyword to methods that return AsyncCollectionResult/AsyncCollectionResult<T> since these are not Task-based types. Affected specs: azure/resource-manager/method-subscription-id (Operations.cs), azure/resource-manager/operation-templates (Operations.cs, LroPaging.cs), azure/resource-manager/resources (ExtensionsResources.cs, LocationResources.cs, Nested.cs, Singleton.cs, TopLevel.cs).",
+          "phase": "phase-12",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "src/components/"
+            ]
+          }
+        },
+        {
+          "id": "12.7",
+          "title": "Fix namespace/type name collision for sub-client operation groups",
+          "description": "In azure/resource-manager/method-subscription-id, sub-client classes (MixedSubscriptionPlacement, TwoSubscriptionResourcesMethodLevel) have the same name as their containing namespace, causing CS0118 errors. The emitter imports the namespace via \"using\" and then tries to use the same name as a type. Need to ensure sub-client class names do not collide with namespace names, or use fully-qualified type references.",
+          "phase": "phase-12",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "src/components/"
+            ]
+          }
+        },
+        {
+          "id": "12.8",
+          "title": "Fix duplicate method overloads for scalar vs paging operations with same name",
+          "description": "In azure/resource-manager/resources, the Singleton type generates both a scalar GetByResourceGroup (returning ClientResult<T>) and a paging GetByResourceGroup (returning CollectionResult<T>) with the same parameter signatures (string, CancellationToken). C# does not allow overloads that differ only in return type (CS0111). The emitter needs to disambiguate these methods, possibly by renaming the paging variant or merging them.",
+          "phase": "phase-12",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "src/components/"
             ]
           }
         }

@@ -1,2 +1,30 @@
 # Specs to skip during e2e generation.
 # One path per line (relative to specs root). Lines starting with # are comments.
+
+# === ARM resource-manager specs ===
+# All ARM specs fail to compile because the emitter generates references to
+# AuthenticationTokenProvider (for OAuth2/bearer token auth) which does not
+# exist in the System.ClientModel package. Additional issues exist in some
+# specs (see per-spec comments below).
+
+# CS0246: AuthenticationTokenProvider not found
+azure/resource-manager/common-properties
+azure/resource-manager/large-header
+azure/resource-manager/multi-service
+azure/resource-manager/multi-service-older-versions
+azure/resource-manager/multi-service-shared-models
+azure/resource-manager/non-resource
+
+# CS0246 (AuthenticationTokenProvider) + CS0118 (namespace/type name collision
+# for MixedSubscriptionPlacement, TwoSubscriptionResourcesMethodLevel) +
+# CS1983 (async paging methods with non-Task return types)
+azure/resource-manager/method-subscription-id
+
+# CS0246 (AuthenticationTokenProvider) + CS1983 (async paging methods with
+# non-Task return types in Operations.cs, LroPaging.cs)
+azure/resource-manager/operation-templates
+
+# CS0246 (AuthenticationTokenProvider) + CS1983 (async paging methods) +
+# CS0111 (duplicate GetByResourceGroup overloads in Singleton.cs — scalar
+# and paging methods have same parameter signatures but different return types)
+azure/resource-manager/resources

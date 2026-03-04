@@ -4223,3 +4223,19 @@ Pattern: `buildPipelineCreateLine` already handled individual auth schemes — t
 - The `AuthorizationHeader` and `AuthorizationApiKeyPrefix` const fields have no doc comments (matches golden)
 - Sub-client constructors don't have exception tags (they don't call Argument.AssertNotNull)
 - All 1,411 tests pass (1,283 passed + 128 skipped)
+
+## 2026-03-04 — Task 12.4: Verify ARM resource-manager specs generate correctly in e2e (DONE)
+
+Ran `pnpm emit:e2e --filter azure/resource-manager` — all 9 specs emit successfully (TypeSpec→C# generation works). However, none of the 9 specs compile with `dotnet build` due to missing emitter features for ARM-specific patterns.
+
+**Error categories found:**
+1. **AuthenticationTokenProvider not found (CS0246)** — all 9 specs. The emitter generates `AuthenticationTokenProvider` references for OAuth2/bearer token auth but this type doesn't exist in System.ClientModel.
+2. **Async paging methods with non-Task return types (CS1983)** — 4 specs (method-subscription-id, operation-templates, resources). Methods marked `async` return `AsyncCollectionResult` directly instead of `Task<AsyncCollectionResult>`. The `async` keyword should be removed.
+3. **Namespace/type name collision (CS0118)** — method-subscription-id only. Sub-client classes (MixedSubscriptionPlacement, TwoSubscriptionResourcesMethodLevel) collide with their containing namespace names.
+4. **Duplicate method overloads (CS0111)** — resources only. Singleton generates both scalar and paging variants of `GetByResourceGroup` with identical parameter signatures but different return types.
+
+**Actions taken:**
+- Added all 9 ARM specs to `test/e2e/.testignore` with detailed comments per spec explaining each error
+- Created 4 follow-up tasks in prd.json: 12.5 (AuthenticationTokenProvider), 12.6 (async paging), 12.7 (namespace collision), 12.8 (duplicate overloads)
+
+**Patterns for next person:** The emit-e2e script's `--filter` flag is useful for testing specific spec categories. Use `dotnet build {csproj} --verbosity quiet 2>&1 | grep "error CS"` to quickly categorize compilation errors.
