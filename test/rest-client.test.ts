@@ -1039,4 +1039,75 @@ describe("RestClientFile", () => {
       'uri.AppendQuery("includeDeleted", TypeFormatters.ConvertToString(includeDeleted), true);',
     );
   });
+
+  /**
+   * Verifies that onClient parameters (such as api-version in @versioned
+   * services) are referenced as client fields (_fieldName) rather than method
+   * parameters in the generated RestClient.
+   *
+   * This is critical because:
+   * - onClient params are NOT passed as method parameters (they're filtered out)
+   * - They are stored as private fields on the client (e.g., _apiVersion)
+   * - Using the bare param name would cause CS0103 (undefined variable)
+   *
+   * Tests all three parameter locations: query, path, and header.
+   */
+  it("uses client field for onClient query api-version parameter", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+      using TypeSpec.Versioning;
+
+      @versioned(Versions)
+      @service
+      namespace TestService;
+
+      enum Versions {
+        v2024_01_01: "2024-01-01",
+      }
+
+      @route("/test")
+      @get op testOp(@query("api-version") apiVersion: string): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const restClient = outputs["src/Generated/TestServiceClient.RestClient.cs"];
+    expect(restClient).toBeDefined();
+
+    // onClient query param should use _apiVersion field with null check
+    expect(restClient).toContain("_apiVersion");
+    expect(restClient).toContain(
+      'uri.AppendQuery("api-version", _apiVersion, true)',
+    );
+    // Must NOT reference bare apiVersion (which would be undefined)
+    expect(restClient).not.toMatch(/[^_]apiVersion/);
+  });
+
+  it("uses client field for onClient path api-version parameter", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+      using TypeSpec.Versioning;
+
+      @versioned(Versions)
+      @service
+      namespace TestService;
+
+      enum Versions {
+        v2024_01_01: "2024-01-01",
+      }
+
+      @route("/test")
+      @get op testOp(@path apiVersion: string): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const restClient = outputs["src/Generated/TestServiceClient.RestClient.cs"];
+    expect(restClient).toBeDefined();
+
+    // onClient path param should use _apiVersion field
+    expect(restClient).toContain("uri.AppendPath(_apiVersion, true)");
+    // Must NOT reference bare apiVersion (which would be undefined)
+    expect(restClient).not.toMatch(/[^_]apiVersion/);
+    // Should NOT have apiVersion as a method parameter
+    expect(restClient).not.toContain("string apiVersion");
+  });
 });

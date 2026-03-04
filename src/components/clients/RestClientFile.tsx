@@ -668,13 +668,14 @@ function getAcceptHeaderValue(responses: SdkHttpResponse[]): string | null {
  */
 function getParamValueExpression(
   param: SdkPathParameter | SdkQueryParameter | SdkHeaderParameter,
+  nameOverride?: string,
 ): string {
   if (isConstantType(param.type)) {
     return getConstantValueExpression(param.type);
   }
 
   const type = unwrapType(param.type);
-  const name = param.name;
+  const name = nameOverride ?? param.name;
 
   // String → use directly
   if (type.kind === "string") {
@@ -869,14 +870,17 @@ function buildPathParamStatement(param: SdkPathParameter): string {
   // allowReserved means reserved characters should NOT be escaped
   const escape = !param.allowReserved;
 
+  // onClient params (e.g., api-version) are stored as client fields (_name)
+  const effectiveName = param.onClient ? `_${param.name}` : param.name;
+
   if (isCollectionType(param.type)) {
     // Collection path parameter: use delimited serialization
     // Path params use "simple" style by default → comma-delimited
-    return `uri.AppendPathDelimited(${param.name}, ",", ${escape});`;
+    return `uri.AppendPathDelimited(${effectiveName}, ",", ${escape});`;
   }
 
   // Scalar path parameter
-  const valueExpr = getParamValueExpression(param);
+  const valueExpr = getParamValueExpression(param, param.onClient ? effectiveName : undefined);
   return `uri.AppendPath(${valueExpr}, ${escape});`;
 }
 
@@ -897,6 +901,15 @@ function buildHeaderParamStatement(param: SdkHeaderParameter): string {
   if (isConstantType(param.type)) {
     const valueExpr = getConstantValueExpression(param.type);
     return `request.Headers.Set("${serializedName}", ${valueExpr});`;
+  }
+
+  // onClient params are stored as client fields (_name)
+  if (param.onClient) {
+    const fieldName = `_${name}`;
+    if (param.optional) {
+      return `if (${fieldName} != null)\n{\n    request.Headers.Set("${serializedName}", ${fieldName});\n}`;
+    }
+    return `request.Headers.Set("${serializedName}", ${fieldName});`;
   }
 
   if (isCollectionType(param.type)) {

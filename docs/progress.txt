@@ -3432,3 +3432,25 @@ Removed `using={["System"]}` prop from all four `<SourceFile>` components in `Co
 ### For next iterations
 - Other infrastructure files (Argument.cs, Optional.cs, etc.) have the same using-ordering issue but that's tracked separately
 - The namespace brace style (Egyptian vs Allman) is a different issue controlled by Alloy's renderer, not by individual components
+
+## Task 12.2.12: Fix api-version query parameter not declared in versioned server client (2026-03-04)
+
+**What was done:**
+- Fixed `buildPathParamStatement` in `src/components/clients/RestClientFile.tsx` to check `param.onClient`
+  and use `_fieldName` prefix for client-level parameters (e.g., `_apiVersion` instead of `apiVersion`).
+- Fixed `buildHeaderParamStatement` with the same onClient handling for completeness.
+- Added `nameOverride` parameter to `getParamValueExpression` to support field name substitution.
+- Added 2 tests in `test/rest-client.test.ts`:
+  - "uses client field for onClient query api-version parameter" — verifies query params use `_apiVersion`
+  - "uses client field for onClient path api-version parameter" — verifies path params use `_apiVersion`
+
+**Root cause:**
+- `buildQueryParamStatement` already had `onClient` handling (using `_${name}` for field reference)
+- `buildPathParamStatement` and `buildHeaderParamStatement` were missing this check
+- This caused the generated code to reference `apiVersion` (undefined variable) instead of `_apiVersion` (client field)
+
+**Key patterns:**
+- onClient parameters are stored as private fields (`_name`) on the client class
+- They are filtered OUT of method parameters in `buildMethodParams` (line 487)
+- But the statement builders must use the field name (`_name`) when generating URI/header code
+- All 1174 tests pass (2 new tests)

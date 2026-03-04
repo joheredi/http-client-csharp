@@ -4708,7 +4708,7 @@
           "title": "Fix api-version query parameter not declared in versioned server client",
           "description": "The `server/versions/versioned` spec uses `@versioned` with an api-version query parameter. The generated RestClient references `apiVersion` variable without declaring it, causing CS0103.\n\nThe emitter should either:\n1. Add `apiVersion` as a constructor parameter on the client (stored as a field), or\n2. Generate it as a constant based on the selected version\n\nThe legacy emitter stores the API version in the client options and passes it through to the REST client.\n\nTo reproduce: `dotnet build temp/e2e/Spector/http/server/versions/versioned/src/Server.Versions.Versioned.csproj`",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],
