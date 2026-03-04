@@ -2358,3 +2358,11 @@ This applies anywhere `code` templates are used in `Children[]` arrays for state
 - **Why**: `<Block>` from `@alloy-js/core` renders empty content as `{}` (framework limitation). `ClassDeclaration` from `@alloy-js/csharp` renders no-children classes as `;` (file-scoped). Both are framework components we cannot modify.
 - **Rejected approaches**: (1) Passing invisible children to trick `ContentSlot.hasContent` — too fragile, depends on framework internals. (2) Using `code` templates — they strip leading whitespace per knowledge.md gotcha.
 - **Key insight**: `"\n{\n}"` in JSX string children works because Alloy's rendering engine handles `\n` as line breaks with proper indentation from parent context.
+
+## Enum-level XML doc summary
+
+The `/// <summary>` doc comment on the fixed enum type declaration is conditionally rendered only when `type.summary ?? type.doc` is available from TCGC. Uses `ensureTrailingPeriod()` to match the legacy emitter's `XmlDocStatement.GetPeriodOrEmpty()` behavior (adds period if missing). The summary is rendered as a text sibling before `<EnumDeclaration>` in the JSX, not inside it. Scenario tests using tree-sitter AST extraction do NOT capture preceding comments — they only extract the `enum_declaration` node starting at `public enum`.
+
+### Spector vs Local golden file discrepancy for enum summaries
+
+The Spector golden file `DaysOfWeekEnum.cs` does NOT have an enum-level `/// <summary>` comment, even though the TypeSpec source has `@doc("Days of the week")`. However, the Local/Sample-TypeSpec golden files (StringFixedEnum, FloatFixedEnum, IntFixedEnum) DO have the summary. The PRD task references Local goldens as the target. This discrepancy suggests the Spector golden files may not be fully regenerated or there's a configuration difference.

@@ -5348,7 +5348,7 @@
           "title": "Add missing fixed enum summary XML doc on enum type declaration",
           "description": "Golden fixed enum files have a `<summary>` doc comment on the enum type declaration that the new emitter omits:\n\nGolden:\n```csharp\n/// <summary> Simple enum. </summary>\npublic enum StringFixedEnum\n```\n\nGenerated:\n```csharp\npublic enum StringFixedEnum\n```\n\nThis affects StringFixedEnum.cs, FloatFixedEnum.cs, IntFixedEnum.cs, etc. When in doubt, the legacy output wins.",
           "phase": "phase-13",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],

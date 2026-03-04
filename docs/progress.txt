@@ -3826,3 +3826,30 @@ All 1247 tests pass (66 test files). Build succeeds.
 - The `<Block>` component from `@alloy-js/core` renders empty content as `{}` (no whitespace). This is a framework limitation that cannot be changed from the emitter. The workaround is to bypass `<Block>` for empty bodies.
 - Empty class body fix uses regex post-processing because `ClassDeclaration` from `@alloy-js/csharp` renders empty classes with `;` instead of `{}`. Cannot be fixed at the component level.
 - Pre-existing lint errors exist in `test/fixed-enum.test.ts` and `test/package-name.test.ts` (unrelated to this task).
+
+## 2026-03-04 — Task 13.24: Add missing fixed enum summary XML doc on enum type declaration
+
+**What was done:**
+- Added enum-level `/// <summary>` XML doc comment on fixed enum type declarations when `@doc` decorator is present on the TypeSpec enum.
+- Created `getEnumDescription()` helper in `src/components/enums/FixedEnumFile.tsx` that extracts `type.summary ?? type.doc` and applies `ensureTrailingPeriod()`.
+- Added conditional rendering before `<EnumDeclaration>` — only emits summary when documentation exists.
+- Imported `ensureTrailingPeriod` and `formatDocLines` from `../../utils/doc.js`.
+
+**Files modified:**
+- `src/components/enums/FixedEnumFile.tsx` — Added `getEnumDescription()` helper and conditional summary rendering
+- `test/fixed-enum.test.ts` — Added 4 new tests:
+  1. "generates XML doc summary on enum type declaration when @doc is present"
+  2. "does not generate enum-level summary when no @doc is present"
+  3. "adds trailing period to enum-level summary when missing"
+  4. "does not double trailing period on enum-level summary"
+
+**Design decision:**
+- Approach chosen: Raw string interpolation with `ensureTrailingPeriod` — consistent with existing member doc comment pattern.
+- Approach rejected: Alloy `DocComment`/`DocSummary` components — produce multi-line format that doesn't match golden files.
+
+**Key findings:**
+- Spector golden files do NOT have enum-level summary even when TypeSpec has `@doc`. Local/Sample-TypeSpec goldens DO have it.
+- Scenario tests use tree-sitter AST extraction, which only captures the `enum_declaration` node — preceding comments are not included in the extracted block.
+- `ensureTrailingPeriod` from `src/utils/doc.ts` matches the legacy emitter's `XmlDocStatement.GetPeriodOrEmpty()` behavior.
+
+**Tests:** 1262 passed, 128 skipped (4 new tests added)

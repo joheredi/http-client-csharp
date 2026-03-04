@@ -11,6 +11,7 @@ import {
   type SdkEnumValueType,
 } from "@azure-tools/typespec-client-generator-core";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
+import { ensureTrailingPeriod, formatDocLines } from "../../utils/doc.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { declarationRefkeys } from "../../utils/refkey.js";
 
@@ -65,6 +66,22 @@ export function fixedEnumMemberName(
  */
 function getEnumMemberDescription(member: SdkEnumValueType): string {
   return member.summary ?? member.doc ?? `${member.name}.`;
+}
+
+/**
+ * Returns the XML doc description for a fixed enum type declaration, or
+ * `undefined` when the TypeSpec definition has no documentation.
+ *
+ * Uses the TCGC summary or doc string, applying `ensureTrailingPeriod` to
+ * match the legacy emitter's `XmlDocStatement.GetPeriodOrEmpty()` behavior
+ * (single-line summaries always end with a period).
+ *
+ * @param sdkEnum - The TCGC enum type to extract documentation from.
+ * @returns A description string with trailing period, or `undefined` if no doc exists.
+ */
+function getEnumDescription(sdkEnum: SdkEnumType): string | undefined {
+  const raw = sdkEnum.summary ?? sdkEnum.doc;
+  return raw ? ensureTrailingPeriod(raw) : undefined;
 }
 
 /**
@@ -127,12 +144,16 @@ export function FixedEnumFile(props: FixedEnumFileProps) {
   const namePolicy = useCSharpNamePolicy();
   const enumName = namePolicy.getName(props.type.name, "enum");
   const hasIntValues = isIntValueType(props.type);
+  const enumDescription = getEnumDescription(props.type);
 
   return (
     <SourceFile path={`src/Generated/Models/${enumName}.cs`}>
       {header}
       {"\n\n"}
       <Namespace name={props.type.namespace}>
+        {enumDescription
+          ? `/// <summary> ${formatDocLines(enumDescription)} </summary>\n`
+          : ""}
         <EnumDeclaration
           public
           name={enumName}

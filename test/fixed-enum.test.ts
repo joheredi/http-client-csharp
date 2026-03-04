@@ -418,4 +418,162 @@ describe("FixedEnumFile", () => {
     expect(allModelFiles).toContain("_1 = 1");
     expect(allModelFiles).toContain("_2 = 2");
   });
+
+  /**
+   * Validates that a `@doc` decorator on the enum type itself generates a
+   * `/// <summary>` XML doc comment on the enum declaration. This matches
+   * the legacy emitter's golden file pattern (e.g., StringFixedEnum.cs).
+   *
+   * Without this, the generated enum declaration has no type-level documentation,
+   * which differs from the legacy emitter output. The summary text should also
+   * have a trailing period added via `ensureTrailingPeriod`.
+   */
+  it("generates XML doc summary on enum type declaration when @doc is present", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @doc("Simple enum")
+      enum StringFixedEnum {
+        One: "1",
+        Two: "2",
+        Four: "4",
+      }
+
+      @route("/test")
+      op test(@query val: StringFixedEnum): void;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const enumFileKey = Object.keys(outputs).find((k) =>
+      k.includes("StringFixedEnum"),
+    );
+    expect(enumFileKey).toBeDefined();
+    const enumFile = outputs[enumFileKey!];
+
+    // Enum-level summary should appear before the enum declaration
+    expect(enumFile).toContain("/// <summary> Simple enum. </summary>");
+    // It should be directly before the enum declaration
+    expect(enumFile).toContain(
+      "/// <summary> Simple enum. </summary>\n    public enum StringFixedEnum",
+    );
+  });
+
+  /**
+   * Validates that enums without a `@doc` decorator on the type do NOT
+   * generate an enum-level `/// <summary>` comment. Only member-level
+   * summaries should be present.
+   *
+   * This matches the Spector golden file pattern (e.g., DaysOfWeekEnum.cs
+   * in the Spector test projects) where enums without explicit type-level
+   * documentation have no summary on the declaration.
+   */
+  it("does not generate enum-level summary when no @doc is present", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      enum Season {
+        Spring,
+        Summer,
+        Autumn,
+        Winter,
+      }
+
+      @route("/test")
+      op test(@query season: Season): void;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const enumFileKey = Object.keys(outputs).find((k) =>
+      k.includes("Season"),
+    );
+    expect(enumFileKey).toBeDefined();
+    const enumFile = outputs[enumFileKey!];
+
+    // Lines between namespace brace and "public enum" should NOT have a summary
+    const lines = enumFile.split("\n");
+    const enumDeclIndex = lines.findIndex((l: string) =>
+      l.includes("public enum Season"),
+    );
+    expect(enumDeclIndex).toBeGreaterThan(0);
+
+    // The line before the enum declaration should be a brace or blank, not a summary
+    const lineBefore = lines[enumDeclIndex - 1].trim();
+    expect(lineBefore).not.toContain("/// <summary>");
+  });
+
+  /**
+   * Validates that the trailing period is added to enum-level summary when
+   * the @doc text doesn't already end with one. This matches the legacy
+   * emitter's `XmlDocStatement.GetPeriodOrEmpty()` behavior.
+   */
+  it("adds trailing period to enum-level summary when missing", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @doc("float fixed enum")
+      enum FloatFixedEnum {
+        OneDotOne: 1.1,
+        TwoDotTwo: 2.2,
+      }
+
+      @route("/test")
+      op test(@query val: FloatFixedEnum): void;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const enumFileKey = Object.keys(outputs).find((k) =>
+      k.includes("FloatFixedEnum"),
+    );
+    expect(enumFileKey).toBeDefined();
+    const enumFile = outputs[enumFileKey!];
+
+    // "float fixed enum" → "float fixed enum." (period added)
+    expect(enumFile).toContain("/// <summary> float fixed enum. </summary>");
+  });
+
+  /**
+   * Validates that the trailing period is NOT doubled when the @doc text
+   * already ends with one.
+   */
+  it("does not double trailing period on enum-level summary", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @doc("Already has period.")
+      enum MyEnum {
+        A,
+        B,
+      }
+
+      @route("/test")
+      op test(@query val: MyEnum): void;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const enumFileKey = Object.keys(outputs).find((k) =>
+      k.includes("MyEnum"),
+    );
+    expect(enumFileKey).toBeDefined();
+    const enumFile = outputs[enumFileKey!];
+
+    // Should have exactly one period, not two
+    expect(enumFile).toContain("/// <summary> Already has period. </summary>");
+    expect(enumFile).not.toContain("Already has period..");
+  });
 });
