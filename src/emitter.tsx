@@ -23,6 +23,9 @@ import { ExtensibleEnumSerializationFile } from "./components/enums/ExtensibleEn
 import { FixedEnumFile } from "./components/enums/FixedEnumFile.js";
 import { FixedEnumSerializationFile } from "./components/enums/FixedEnumSerializationFile.js";
 import { HttpClientCSharpOutput } from "./components/HttpClientCSharpOutput.js";
+import { collectLiteralTypes } from "./components/literal-types/collect.js";
+import { LiteralTypeFile } from "./components/literal-types/LiteralTypeFile.js";
+import { LiteralTypeSerializationFile } from "./components/literal-types/LiteralTypeSerializationFile.js";
 import { ArgumentFile } from "./components/infrastructure/ArgumentFile.js";
 import { CancellationTokenExtensionsFile } from "./components/infrastructure/CancellationTokenExtensionsFile.js";
 import { ChangeTrackingDictionaryFile } from "./components/infrastructure/ChangeTrackingDictionaryFile.js";
@@ -134,6 +137,11 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
   const extensibleEnums = enums.filter((e) => !e.isFixed);
   const allClients = getAllClients(clients);
 
+  // Collect literal type wrapper structs from model properties.
+  // These are optional/nullable constant-typed properties (excluding bool)
+  // that need readonly struct wrappers similar to extensible enums.
+  const literalTypes = collectLiteralTypes(models);
+
   // Resolve the package name for the generated library
   const packageName = resolvePackageName(sdkContext, options["package-name"]);
 
@@ -239,6 +247,22 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
           .filter((e) => e.valueType.kind !== "string")
           .map((e) => (
             <ExtensibleEnumSerializationFile type={e} options={options} />
+          ))}
+        {literalTypes.map((lt) => (
+          <LiteralTypeFile
+            type={lt.constantType}
+            namespace={lt.namespace}
+            options={options}
+          />
+        ))}
+        {literalTypes
+          .filter((lt) => lt.constantType.valueType.kind !== "string")
+          .map((lt) => (
+            <LiteralTypeSerializationFile
+              type={lt.constantType}
+              namespace={lt.namespace}
+              options={options}
+            />
           ))}
         {models.map((m) => (
           <ModelFile type={m} options={options} />

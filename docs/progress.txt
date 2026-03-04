@@ -4129,3 +4129,29 @@ Chose to add doc comments ONLY to abstract base model classes (not all models) t
 **Pattern used**: String-based `///` doc comments (established pattern from DeserializationConstructor.tsx), not JSX DocComment components. Consistent with prior tasks 13.3 and 13.5.
 
 **Key gotcha**: XML deserialize uses "The xml element" (lowercase) while JSON uses "The JSON element" (uppercase). The golden file `XmlItem.Serialization.cs` confirms this distinction.
+
+## 2026-03-04 — Task 13.20: Generate missing literal type wrapper structs (DONE)
+
+### What was done
+Implemented literal type wrapper struct generation for optional/nullable constant-typed model properties. These structs follow the extensible enum pattern: `readonly partial struct` implementing `IEquatable<T>`.
+
+### Files created
+- `src/components/literal-types/collect.ts` — Utility to discover which SdkConstantType instances need wrapper structs by walking model properties
+- `src/components/literal-types/LiteralTypeFile.tsx` — Generates the readonly struct file with value field, constructor, static property, equality operators, implicit conversions, Equals/GetHashCode/ToString
+- `src/components/literal-types/LiteralTypeSerializationFile.tsx` — Generates `.Serialization.cs` file with `ToSerialXxx()` method for numeric literal types
+- `test/literal-type.test.ts` — 6 unit tests covering float, int, string, bool exclusion, and model property type reference
+
+### Files modified
+- `src/utils/refkey.ts` — Added `literalTypeRefkey()` using deterministic `Symbol.for("http-client-csharp:literal-type")` prefix
+- `src/emitter.tsx` — Added literal type collection + rendering in the JSX component tree
+- `src/components/models/ModelProperty.tsx` — Property type now uses wrapper struct refkey instead of TypeExpression for constant types that need wrappers
+
+### Key patterns
+- Wrapper structs are generated when: property type is `constant`, property is optional/nullable, AND value type is NOT boolean
+- Used `refkey(LITERAL_TYPE_PREFIX, constantType)` for deterministic cross-file references — Alloy's `refkey()` is memoized by arguments (WeakMap for objects, string for primitives), so calling from declaration and reference sites with the same SdkConstantType instance produces matching refkeys
+- The `needsLiteralWrapperStruct()` function is used in both `collectLiteralTypes` (emitter) and `ModelProperty` to ensure consistent decisions
+
+### What's next
+- Model serialization code may need updates to handle wrapper struct types during serialization/deserialization (e.g., calling `.ToSerialSingle()` on the wrapper struct)
+- Model constructor parameter types may still use primitive types instead of wrapper struct types
+- The integration test (sample-typespec) should be checked to see if literal type files now match golden output

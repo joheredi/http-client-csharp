@@ -10,7 +10,10 @@
  */
 
 import { Property } from "@alloy-js/csharp";
-import type { SdkModelPropertyType } from "@azure-tools/typespec-client-generator-core";
+import type {
+  SdkConstantType,
+  SdkModelPropertyType,
+} from "@azure-tools/typespec-client-generator-core";
 import { UsageFlags } from "@azure-tools/typespec-client-generator-core";
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import { renderCollectionPropertyType } from "../../utils/collection-type-expression.js";
@@ -21,6 +24,8 @@ import {
   unwrapNullableType,
 } from "../../utils/nullable.js";
 import { isPropertyReadOnly } from "../../utils/property.js";
+import { literalTypeRefkey } from "../../utils/refkey.js";
+import { needsLiteralWrapperStruct } from "../literal-types/collect.js";
 
 /**
  * Props for the {@link ModelProperty} component.
@@ -136,10 +141,15 @@ export function ModelProperty(props: ModelPropertyProps) {
   // Collection types (arrays, dicts) render as IList<T>/IReadOnlyList<T> or
   // IDictionary<string,T>/IReadOnlyDictionary<string,T> instead of T[] or the
   // default IDictionary. Non-collections use TypeExpression directly.
+  // Literal type wrapper structs use a refkey to the generated struct declaration
+  // instead of TypeExpression, since TypeExpression would resolve to the primitive type.
   const isCollection = isCollectionType(property.type);
   const readOnly = isPropertyReadOnly(property);
+  const isLiteralWrapper = needsLiteralWrapperStruct(type, nullable);
   const typeExpr = isCollection ? (
     renderCollectionPropertyType(type, readOnly)
+  ) : isLiteralWrapper ? (
+    literalTypeRefkey(type as SdkConstantType)
   ) : (
     <TypeExpression type={type.__raw!} />
   );

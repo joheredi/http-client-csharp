@@ -2493,15 +2493,45 @@ beyond just the `.ToList()` conversion. The `.ToList()` works with both construc
 **Gotcha:** When tests use `content.indexOf("DeserializeXxx")`, the first match may be a call-site reference inside PersistableModelCreateCore (which calls DeserializeXxx), not the method declaration. Use the method signature (e.g., `static Widget DeserializeWidget(`) to find the declaration.
 
 ### XML doc comment text for XML vs JSON deserialization methods
+
 The golden files use different text for the `element` parameter doc comment:
+
 - JSON Deserialize: `/// <param name="element"> The JSON element to deserialize. </param>`
 - XML Deserialize: `/// <param name="element"> The xml element to deserialize. </param>` (note lowercase "xml")
 
 This was confirmed in `XmlItem.Serialization.cs` golden file. The `XmlDeserialize.tsx` component must use "xml" (lowercase) not "JSON".
 
 ### Task 13.6 Design Decision: Serialization method XML doc comments
+
 **Chosen approach**: String-based `///` doc comments added inline before each method signature in each component file. This follows the established pattern from `DeserializationConstructor.tsx` and prior tasks (13.3, 13.5).
 
 **Rejected approach**: JSX DocComment components from `@alloy-js/csharp` — would require refactoring all serialization components. Knowledge.md gotcha notes raw strings are preferred for doc comments to match legacy formatting exactly.
 
 **Coverage**: All serialization methods including PersistableModel, IJsonModel, IPersistableModel, cast operators, DeserializeXxx, WriteXml, XmlModelWriteCore, ToBinaryContent, and UnknownDiscriminator variants.
+
+## Design Decisions — Task 13.20: Literal type wrapper structs
+
+**Approach chosen**: Dedicated `LiteralTypeFile` and `LiteralTypeSerializationFile` components with deterministic refkeys via `literalTypeRefkey()`.
+
+**Why**: Literal wrapper structs are structurally identical to single-member extensible enums, but creating fake `SdkEnumType` adapters from `SdkConstantType` would be fragile. Dedicated components are clearer and independently testable.
+
+**Rejected**: Reusing `ExtensibleEnumFile` with type adapters — too much coupling between unrelated TCGC types.
+
+## Gotcha — Alloy refkey determinism for literal types
+
+`refkey()` from `@alloy-js/core` IS deterministic for the same arguments. It uses a `Map` keyed on a composite string derived from:
+
+- Objects → `WeakMap`-based incremental IDs (same object reference = same ID)
+- Primitives/Symbols → `String(value)` prefixed with `"s"`
+
+This means `refkey(symbolPrefix, sdkConstantType)` returns the same refkey from both the declaration site (LiteralTypeFile) and the reference site (ModelProperty), as long as they pass the same SdkConstantType object instance. The model's properties array is shared, so both sites get the same instance.
+
+## Gotcha — literal type wrapper rules
+
+Not ALL constant types get wrapper structs. The rules are:
+
+1. Property type (after unwrapping nullable) has `kind === "constant"`
+2. Property is optional OR type is explicitly nullable
+3. Constant value type is NOT boolean (bool has only 2 values, no extensibility needed)
+
+Required non-nullable literals use raw primitive types with initializers (e.g., `public float Foo { get; } = 1.23F;`).

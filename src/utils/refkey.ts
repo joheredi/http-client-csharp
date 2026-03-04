@@ -14,6 +14,7 @@
  */
 
 import { refkey, type Refkey } from "@alloy-js/core";
+import type { SdkConstantType } from "@azure-tools/typespec-client-generator-core";
 import type { Type } from "@typespec/compiler";
 
 /**
@@ -101,6 +102,33 @@ export function declarationRefkeys(
     return [userRefkey, refkey(EF_CSHARP_PREFIX, rawType)];
   }
   return [userRefkey];
+}
+
+/**
+ * Well-known symbol prefix for literal type wrapper struct refkeys.
+ *
+ * Used to create deterministic refkeys for emitter-synthesized literal type
+ * wrapper structs (e.g., `ThingOptionalLiteralFloat`). Both the struct
+ * declaration (in LiteralTypeFile.tsx) and property type references
+ * (in ModelProperty.tsx) use this constant to produce matching refkeys,
+ * enabling Alloy to resolve cross-file references and auto-generate
+ * `using` directives.
+ */
+const LITERAL_TYPE_PREFIX = Symbol.for("http-client-csharp:literal-type");
+
+/**
+ * Creates a refkey for a literal type wrapper struct.
+ *
+ * Given the TCGC constant type, produces a deterministic refkey that matches
+ * between the struct declaration and any property type references. This enables
+ * Alloy's automatic `using` directive generation when the wrapper struct is in
+ * a different namespace from the model that references it.
+ *
+ * @param constantType - The TCGC SdkConstantType representing the literal value.
+ * @returns A stable refkey for the wrapper struct declaration.
+ */
+export function literalTypeRefkey(constantType: SdkConstantType): Refkey {
+  return refkey(LITERAL_TYPE_PREFIX, constantType);
 }
 
 /**
