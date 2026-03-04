@@ -5369,7 +5369,7 @@
           "title": "Add missing using System.Linq in client files",
           "description": "The golden SampleTypeSpecClient.cs includes `using System.Linq;` in its using directives, but the new emitter does not generate this import. This may be needed for LINQ operations used in convenience method implementations (e.g., `.ToList()`, `.Select()`, etc.).\n\nThis should only be added when the file actually uses LINQ methods. When in doubt, the legacy output wins.",
           "phase": "phase-13",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],

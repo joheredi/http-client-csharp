@@ -46,6 +46,13 @@ export interface ConvenienceParam {
   doc?: string;
   /** The expression to pass for this param when calling the protocol method. */
   protocolCallArg: string;
+  /**
+   * For array/list body params in spread bodies, the element type expression.
+   * When set, `buildSpreadProtocolCallExpr` generates a `.ToList()` conversion
+   * instead of passing the param name directly, matching the golden output pattern:
+   * `paramName?.ToList() as IList<T> ?? new ChangeTrackingList<T>()`.
+   */
+  collectionElementExpr?: Children;
 }
 
 /**
@@ -376,6 +383,19 @@ export function buildConvenienceParams(
           mp.type,
           mpOptional,
         );
+
+        // Detect array params for .ToList() conversion in spread body construction.
+        // When the convenience method accepts IEnumerable<T> but the model stores
+        // IList<T>, the spread body must convert via .ToList().
+        const unwrappedMpType = unwrapType(mp.type);
+        let collectionElementExpr: Children | undefined;
+        if (unwrappedMpType.kind === "array") {
+          const elementInfo = getConvenienceTypeInfo(
+            (unwrappedMpType as SdkArrayType).valueType,
+          );
+          collectionElementExpr = elementInfo.expression;
+        }
+
         params.push({
           name: mp.name,
           type: typeExpr,
@@ -385,6 +405,7 @@ export function buildConvenienceParams(
           isStringType: convInfo.isString,
           doc: mp.doc ?? mp.summary,
           protocolCallArg: getProtocolCallArg(mp.name, mp.type),
+          collectionElementExpr,
           priority: mp.optional ? 300 : 200,
           index: index++,
         });
@@ -433,6 +454,10 @@ export function buildConvenienceParams(
  * BinaryContent conversion), this constructs the model from the individual
  * spread parameters: `new BodyType(param1, param2, ...)`.
  *
+ * Collection (array) parameters are converted from `IEnumerable<T>` to
+ * `IList<T>` via `.ToList()`, matching the golden output pattern:
+ * `paramName?.ToList() as IList<T> ?? new ChangeTrackingList<T>()`.
+ *
  * Maintains parameter ordering: non-body args at their original positions,
  * the body construction at the first body param's position, and
  * `cancellationToken.ToRequestOptions()` at the end.
@@ -442,7 +467,23 @@ function buildSpreadProtocolCallExpr(
   spreadBodyType: SdkModelType,
 ): Children {
   const bodyTypeExpr = <TypeExpression type={spreadBodyType.__raw!} />;
-  const spreadArgNames = params.filter((p) => p.isBody).map((p) => p.name);
+  const bodyParams = params.filter((p) => p.isBody);
+
+  // Build argument expressions for body params, converting collections with .ToList()
+  const spreadArgs: Children[] = [];
+  for (let i = 0; i < bodyParams.length; i++) {
+    if (i > 0) spreadArgs.push(", ");
+    const bp = bodyParams[i];
+    if (bp.collectionElementExpr) {
+      // Collection param: convert IEnumerable<T> → IList<T> with null-safety.
+      // Pattern: paramName?.ToList() as IList<T> ?? new ChangeTrackingList<T>()
+      spreadArgs.push(
+        code`${bp.name}?.ToList() as ${SystemCollectionsGeneric.IList}<${bp.collectionElementExpr}> ?? new ChangeTrackingList<${bp.collectionElementExpr}>()`,
+      );
+    } else {
+      spreadArgs.push(bp.name);
+    }
+  }
 
   const parts: Children[] = [];
   let bodyInserted = false;
@@ -450,7 +491,7 @@ function buildSpreadProtocolCallExpr(
     if (p.isBody) {
       if (!bodyInserted) {
         if (parts.length > 0) parts.push(", ");
-        parts.push(code`new ${bodyTypeExpr}(${spreadArgNames.join(", ")})`);
+        parts.push(code`new ${bodyTypeExpr}(${spreadArgs})`);
         bodyInserted = true;
       }
       // Skip remaining body params — they're combined in the constructor
@@ -819,4 +860,41 @@ function maybeNullable(
 ): Children {
   if (!optional || !isConvenienceParamValueType(sdkType)) return typeExpr;
   return typeof typeExpr === "string" ? `${typeExpr}?` : code`${typeExpr}?`;
+}
+
+/**
+ * Determines whether a client needs `using System.Linq` in its source file.
+ *
+ * Returns true when any convenience method has a spread body containing array
+ * (collection) parameters, which generates `.ToList()` conversion expressions.
+ * This check is used by {@link ClientFile} to conditionally add the using directive.
+ */
+export function clientNeedsLinq(
+  client: SdkClientType<SdkHttpOperation>,
+): boolean {
+  const methods = client.methods.filter(
+    (m): m is SdkServiceMethod<SdkHttpOperation> =>
+      m.kind !== "paging" &&
+      m.kind !== "lropaging" &&
+      "operation" in m &&
+      m.generateConvenient === true &&
+      (m as SdkServiceMethod<SdkHttpOperation>).operation?.kind === "http",
+  );
+
+  for (const method of methods) {
+    const operation = method.operation;
+    const bodyParam = operation.bodyParam;
+    if (!bodyParam || isConstantType(bodyParam.type)) continue;
+    if (!isSpreadBody(bodyParam)) continue;
+
+    // Check if any spread body param is an array type
+    for (const mp of bodyParam.correspondingMethodParams) {
+      const unwrapped = unwrapType(mp.type);
+      if (unwrapped.kind === "array") {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }

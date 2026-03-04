@@ -1205,4 +1205,60 @@ describe("ClientFile", () => {
     expect(restA).toBeDefined();
     expect(restB).toBeDefined();
   });
+
+  /**
+   * Verifies that `using System.Linq` is included in client files when the client
+   * has convenience methods with spread body containing collection (array) params.
+   *
+   * The golden SampleTypeSpecClient.cs includes this using because spread body
+   * convenience methods use .ToList() to convert IEnumerable<T> parameters to
+   * IList<T> when constructing the model for the protocol call.
+   *
+   * Conversely, clients without collection params in spread bodies should NOT
+   * include System.Linq to avoid unused using directives.
+   */
+  it("includes using System.Linq when spread body has collection params", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Widget {
+        name: string;
+        tags: string[];
+      }
+
+      @route("/widgets")
+      @post op createWidget(...Widget): Widget;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+    expect(clientFile).toContain("using System.Linq;");
+  });
+
+  it("does NOT include using System.Linq when no collection params in spread body", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Widget {
+        name: string;
+        @doc("weight of the widget")
+        weight: float32;
+      }
+
+      @route("/widgets")
+      @post op createWidget(...Widget): Widget;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+    expect(clientFile).not.toContain("using System.Linq;");
+  });
 });

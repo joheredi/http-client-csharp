@@ -3936,3 +3936,28 @@ Component-level namespace override was chosen over emitter-level mutation becaus
 - No changes needed in 20+ downstream components — the early mutation handles everything.
 - Pattern: When needing to change a name that many components read, mutate early at the source
   rather than changing every consumer. This is the TCGC mutation pattern.
+
+## 2026-03-04 — Task 13.25: Add missing using System.Linq in client files (DONE)
+
+**What was done:**
+- Added `.ToList()` conversion for array/collection parameters in spread body convenience methods
+- Added `using System.Linq` to client files when spread body operations contain collection params
+- Added `collectionElementExpr` field to `ConvenienceParam` interface to track collection element types
+- Updated `buildSpreadProtocolCallExpr` to generate `paramName?.ToList() as IList<T> ?? new ChangeTrackingList<T>()` for collection params
+- Added `clientNeedsLinq()` exported helper to detect when a client file needs System.Linq
+- Updated `ClientFile.tsx` to conditionally pass `using={["System.Linq"]}` to SourceFile
+
+**Files modified:**
+- `src/components/clients/ConvenienceMethod.tsx` — collection detection in spread body, `.ToList()` generation, `clientNeedsLinq` export
+- `src/components/clients/ClientFile.tsx` — import `clientNeedsLinq`, pass `System.Linq` using to SourceFile
+- `test/convenience-method.test.ts` — new test for `.ToList()` conversion in spread body
+- `test/client-file.test.ts` — two new tests: System.Linq included with collection spread, excluded without
+
+**Patterns used:**
+- `SourceFile` `using` prop for additional using directives (same pattern as ModelFactoryFile.tsx)
+- `SystemCollectionsGeneric.IList` builtin for IList<T> in code templates
+- `ChangeTrackingList` as raw string in code templates (same pattern as ModelFactoryMethod.tsx)
+
+**Notes for next iteration:**
+- The golden SampleTypeSpecClient.cs calls the INTERNAL constructor (with all properties including literals and defaults), while the new emitter calls the PUBLIC constructor. This is a separate, larger issue that affects how spread body args are generated beyond just collection conversion. The `.ToList()` conversion added here works with both constructors.
+- 1287 tests pass, 128 skipped, 0 failures

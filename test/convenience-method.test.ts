@@ -1078,4 +1078,51 @@ describe("ConvenienceMethod", () => {
       "CancellationToken cancellationToken = default",
     );
   });
+
+  /**
+   * Verifies that spread body convenience methods convert collection (array)
+   * parameters using .ToList() when constructing the model from individual params.
+   *
+   * When an operation uses spread body (implicit body via ...Model syntax),
+   * array parameters are typed as IEnumerable<T> in the convenience method signature.
+   * When constructing the model for the protocol call, these must be converted
+   * to IList<T> via .ToList(), matching the golden output pattern:
+   *   paramName?.ToList() as IList<T> ?? new ChangeTrackingList<T>()
+   *
+   * This ensures:
+   * 1. The model constructor receives the correct type (IList<T>)
+   * 2. The using System.Linq directive is added to the file
+   * 3. Null safety is handled via ?. and ?? ChangeTrackingList<T>()
+   */
+  it("generates .ToList() conversion for collection params in spread body", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model MyModel {
+        name: string;
+        tags: string[];
+      }
+
+      @route("/test")
+      @post op createItem(...MyModel): MyModel;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Collection param should use IEnumerable<T> in method signature
+    expect(clientFile).toContain("IEnumerable<string> tags");
+
+    // Spread body construction should use .ToList() conversion with null-safety
+    expect(clientFile).toContain(
+      "tags?.ToList() as IList<string> ?? new ChangeTrackingList<string>()",
+    );
+
+    // System.Linq is required for .ToList() extension method
+    expect(clientFile).toContain("using System.Linq;");
+  });
 });

@@ -32,7 +32,7 @@ import { getClientFileName } from "../../utils/clients.js";
 import { formatDocLines } from "../../utils/doc.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { OverloadConstructor } from "../models/ModelConstructors.js";
-import { ConvenienceMethods } from "./ConvenienceMethod.js";
+import { clientNeedsLinq, ConvenienceMethods } from "./ConvenienceMethod.js";
 import { PagingMethods } from "./PagingMethods.js";
 import { ProtocolMethods } from "./ProtocolMethod.js";
 
@@ -150,8 +150,14 @@ export function ClientFile(props: ClientFileProps) {
   const apiVersionParams = methodParams.filter((p) => p.isApiVersionParam);
   const nonApiVersionParams = methodParams.filter((p) => !p.isApiVersionParam);
 
+  // Add System.Linq when convenience methods use .ToList() for collection params
+  // in spread body constructions (e.g., IEnumerable<T> → IList<T> conversion).
+  const additionalUsings = clientNeedsLinq(client)
+    ? ["System.Linq"]
+    : undefined;
+
   return (
-    <SourceFile path={`src/Generated/${fileName}.cs`}>
+    <SourceFile path={`src/Generated/${fileName}.cs`} using={additionalUsings}>
       {header}
       {"\n\n"}
       <Namespace name={client.namespace}>

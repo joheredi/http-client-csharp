@@ -2425,3 +2425,19 @@ Unknown discriminator serialization files implement `IJsonModel<BaseType>` (not 
 - The custom code map is also updated to include an entry under the new name (for `isMemberSuppressed` and `getCustomNamespace` lookups).
 - TCGC names starting with uppercase are preserved by the C# name policy (`createHttpClientNamePolicy`), so `type.name` matches the custom code map key directly.
 - The mutation happens after `ensureModelNamespaces` and `cleanAllNamespaces` but before JSX rendering.
+
+## System.Linq using in client files — collection params in spread bodies
+
+When a convenience method has a spread body (implicit body or `...Model`) with array/collection
+parameters, the spread body construction must convert `IEnumerable<T>` to `IList<T>` via `.ToList()`.
+The pattern is: `paramName?.ToList() as IList<T> ?? new ChangeTrackingList<T>()`. This requires
+`using System.Linq` in the client file.
+
+The `clientNeedsLinq()` function in `ConvenienceMethod.tsx` detects this condition by checking if any
+service method has a spread body with array-type corresponding method params.
+
+### Spread body internal constructor gap
+The golden `SampleTypeSpecClient.cs` calls the **internal** constructor (all properties including
+literals, defaults, and additionalBinaryDataProperties). The new emitter calls the **public**
+constructor (only exposed params). This is a separate issue that causes more output differences
+beyond just the `.ToList()` conversion. The `.ToList()` works with both constructor styles.
