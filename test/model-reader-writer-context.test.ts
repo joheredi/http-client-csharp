@@ -160,9 +160,7 @@ describe("ModelReaderWriterContextFile", () => {
     // Should NOT end with semicolon (file-scoped declaration)
     expect(content).not.toContain("ModelReaderWriterContext;");
     // Should use block-body style with braces on separate lines
-    expect(content).toContain(
-      "ModelReaderWriterContext\n    {\n    }",
-    );
+    expect(content).toContain("ModelReaderWriterContext\n    {\n    }");
   });
 
   /**

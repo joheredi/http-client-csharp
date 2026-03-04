@@ -745,7 +745,10 @@ function collectSerializationParamDocs(
   namePolicy: ReturnType<typeof useCSharpNamePolicy>,
 ): ParamDocInfo[] {
   if (isDerivedDiscriminatedModel(model)) {
-    const baseDocs = collectSerializationParamDocs(model.baseModel!, namePolicy);
+    const baseDocs = collectSerializationParamDocs(
+      model.baseModel!,
+      namePolicy,
+    );
     const ownProps = model.properties.filter(
       (p) => !isBaseDiscriminatorOverride(p),
     );

@@ -1250,9 +1250,7 @@ describe("RestClientFile", () => {
     expect(restClient).toBeDefined();
 
     // Accept must appear exactly once
-    const acceptMatches = restClient!.match(
-      /request\.Headers\.Set\("Accept"/g,
-    );
+    const acceptMatches = restClient!.match(/request\.Headers\.Set\("Accept"/g);
     expect(acceptMatches).toHaveLength(1);
 
     // Content-Type must also appear exactly once
@@ -1265,9 +1263,7 @@ describe("RestClientFile", () => {
     const contentTypeIndex = restClient!.indexOf(
       'request.Headers.Set("Content-Type"',
     );
-    const acceptIndex = restClient!.indexOf(
-      'request.Headers.Set("Accept"',
-    );
+    const acceptIndex = restClient!.indexOf('request.Headers.Set("Accept"');
     expect(acceptIndex).toBeGreaterThan(contentTypeIndex);
   });
 });

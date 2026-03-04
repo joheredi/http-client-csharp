@@ -4993,7 +4993,7 @@
           "title": "Fix @friendlyName namespace mapping: Friend model should be in Models.Custom",
           "description": "The golden files place the Friend model (renamed from NotFriend via @friendlyName) in a custom sub-namespace `SampleTypeSpec.Models.Custom`. The new emitter places it in the root `SampleTypeSpec` namespace.\n\nGolden:\n```csharp\nnamespace SampleTypeSpec.Models.Custom\n{\n    public partial class Friend\n```\n\nGenerated:\n```csharp\nnamespace SampleTypeSpec {\n    public partial class Friend\n```\n\nThis also affects Friend.Serialization.cs (which has `using SampleTypeSpec;` for cross-namespace references) and SampleTypeSpecContext.cs (which needs `using SampleTypeSpec.Models.Custom;`). The legacy emitter derives the namespace from the TypeSpec model's containing namespace. When in doubt, the legacy output wins.",
           "phase": "phase-13",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],

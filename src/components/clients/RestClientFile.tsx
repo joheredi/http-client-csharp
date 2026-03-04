@@ -616,7 +616,8 @@ function isSpecialHeaderParam(param: SdkHeaderParameter): boolean {
  */
 function isConstantAcceptHeader(param: SdkHeaderParameter): boolean {
   return (
-    param.serializedName.toLowerCase() === "accept" && isConstantType(param.type)
+    param.serializedName.toLowerCase() === "accept" &&
+    isConstantType(param.type)
   );
 }
 

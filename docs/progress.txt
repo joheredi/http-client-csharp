@@ -3875,3 +3875,26 @@ All 1247 tests pass (66 test files). Build succeeds.
 - Parameters without `@doc` get empty `<param>` tags: `/// <param name="x"></param>` — this matches the current behavior but may differ from legacy output where TCGC provides default descriptions
 - The multiline doc handling (e.g., bullet lists) uses `formatDocLines` which replaces `\n` with `\n/// ` — complex markdown-to-XML conversion is not yet handled (that would need `DocFromMarkdown`)
 - The Spector golden files DON'T have constructor doc comments (they use `=> throw null;` stubs) — only Local/Sample-TypeSpec golden files have them
+
+## 2026-03-04 — Task 13.9: Fix @friendlyName namespace mapping (complete)
+
+### What was done
+- Added `getCustomNamespace()` utility function to `src/contexts/custom-code-context.ts`
+- Modified `ModelFile.tsx` to use custom namespace override when custom code declares a different namespace via `[CodeGenType]`
+- Modified `ModelSerializationFile.tsx` with the same namespace override logic
+- Added 4 unit tests for `getCustomNamespace()` in `test/custom-code.test.ts`
+
+### Pattern used
+When a user writes a custom partial class in a different namespace (e.g., `[CodeGenType("Friend")]` in `SampleTypeSpec.Models.Custom`), both ModelFile and ModelSerializationFile now detect this via `getCustomNamespace()` and use the custom namespace instead of the TCGC default. This ensures generated and custom partial classes merge correctly in C#.
+
+### Design decision
+Component-level namespace override was chosen over emitter-level mutation because:
+1. Name policy (PascalCase conversion) is needed to match model names against custom code keys
+2. Name policy is only available inside Alloy components (via `useCSharpNamePolicy()` hook)
+3. Follows existing pattern where components already use `useCustomCode()` for member suppression
+
+### Files modified
+- `src/contexts/custom-code-context.ts` — Added `getCustomNamespace()` utility
+- `src/components/models/ModelFile.tsx` — Uses `effectiveNamespace` from custom code
+- `src/components/serialization/ModelSerializationFile.tsx` — Same namespace override logic
+- `test/custom-code.test.ts` — 4 new unit tests for `getCustomNamespace()`

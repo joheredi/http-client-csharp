@@ -1548,9 +1548,8 @@ describe("ModelConstructors", () => {
 
     // Serialization constructor has summary
     const summaryCount =
-      content.match(
-        /Initializes a new instance of <see cref="Widget"\/>/g,
-      ) || [];
+      content.match(/Initializes a new instance of <see cref="Widget"\/>/g) ||
+      [];
     expect(summaryCount.length).toBeGreaterThanOrEqual(2); // Public + serialization
 
     // additionalBinaryDataProperties param is documented
@@ -2577,13 +2576,9 @@ describe("DerivedModelDiscriminator", () => {
     const content = outputs[petFile!];
 
     // Inherited reference-type param `name` must be validated
-    expect(content).toContain(
-      "Argument.AssertNotNull(name, nameof(name));",
-    );
+    expect(content).toContain("Argument.AssertNotNull(name, nameof(name));");
     // Own reference-type param `breed` must be validated
-    expect(content).toContain(
-      "Argument.AssertNotNull(breed, nameof(breed));",
-    );
+    expect(content).toContain("Argument.AssertNotNull(breed, nameof(breed));");
   });
 });
 

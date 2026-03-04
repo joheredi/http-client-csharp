@@ -491,9 +491,7 @@ describe("FixedEnumFile", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const enumFileKey = Object.keys(outputs).find((k) =>
-      k.includes("Season"),
-    );
+    const enumFileKey = Object.keys(outputs).find((k) => k.includes("Season"));
     expect(enumFileKey).toBeDefined();
     const enumFile = outputs[enumFileKey!];
 
@@ -566,9 +564,7 @@ describe("FixedEnumFile", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const enumFileKey = Object.keys(outputs).find((k) =>
-      k.includes("MyEnum"),
-    );
+    const enumFileKey = Object.keys(outputs).find((k) => k.includes("MyEnum"));
     expect(enumFileKey).toBeDefined();
     const enumFile = outputs[enumFileKey!];
 

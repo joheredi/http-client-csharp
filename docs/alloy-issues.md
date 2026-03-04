@@ -17,6 +17,7 @@ Tracked bugs and limitations in the Alloy framework (`@alloy-js/core`, `@alloy-j
 
 **Packages:** `@alloy-js/csharp`
 **Description:** The `Namespace` component renders the opening brace on the same line as the declaration (K&R style: `namespace Foo {`). C# convention (and the legacy emitter golden files) uses Allman style with the brace on the next line:
+
 ```csharp
 // Current (K&R)
 namespace SampleTypeSpec {
@@ -29,6 +30,7 @@ namespace SampleTypeSpec
     ...
 }
 ```
+
 Ideally the `Namespace` component should support a brace style option, or default to Allman for C#.
 **Reproduction:** Any use of `<Namespace name="Foo">...</Namespace>` in `@alloy-js/csharp`.
 **Workaround applied:** Yes — `src/utils/namespace-brace-style.ts` post-processes rendered output with a regex to convert K&R to Allman. This is a cosmetic workaround and should be removed once Alloy supports Allman brace style natively.
@@ -37,6 +39,7 @@ Ideally the `Namespace` component should support a brace style option, or defaul
 
 **Packages:** `@alloy-js/csharp`
 **Description:** The `SourceFile` component from `@alloy-js/csharp` renders auto-detected `using` directives before the component's children content. This means the license/auto-generated header (placed as children) appears after the usings, but C# convention requires the header before usings:
+
 ```csharp
 // Current output:
 using System;
@@ -50,6 +53,7 @@ using System;
 #nullable disable
 using System;
 ```
+
 The `SourceFile` component should either support a `header` prop that renders before usings, or allow children ordering control.
 **Reproduction:** Any `<SourceFile>` with both auto-detected usings and a header comment as children.
 **Workaround applied:** Yes — `src/utils/reorder-header.ts` post-processes rendered output to move the header block before using directives. This is a cosmetic workaround and should be removed once Alloy provides native header ordering support.

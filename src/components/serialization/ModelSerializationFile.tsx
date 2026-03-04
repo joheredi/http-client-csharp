@@ -11,6 +11,10 @@ import {
   UsageFlags,
 } from "@azure-tools/typespec-client-generator-core";
 import { SystemClientModelPrimitives } from "../../builtins/system-client-model.js";
+import {
+  getCustomNamespace,
+  useCustomCode,
+} from "../../contexts/custom-code-context.js";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { efCsharpRefkey, unknownModelRefkey } from "../../utils/refkey.js";
@@ -128,6 +132,13 @@ export function ModelSerializationFile(props: ModelSerializationFileProps) {
   // the second declaration with a "_2" suffix.
   const partialName = namekey(modelName, { ignoreNameConflict: true });
 
+  // When custom code declares a partial class in a different namespace
+  // (e.g., [CodeGenType("Friend")] in SampleTypeSpec.Models.Custom),
+  // the serialization file must match the model file's namespace.
+  const customCode = useCustomCode();
+  const effectiveNamespace =
+    getCustomNamespace(customCode, modelName) ?? props.type.namespace;
+
   // Dynamic models (JSON Merge Patch) need System.Text for Encoding.UTF8.GetBytes()
   // used in per-key dictionary patch checks.
   const additionalUsings = isDynamicModel(props.type)
@@ -153,7 +164,7 @@ export function ModelSerializationFile(props: ModelSerializationFileProps) {
     >
       {header}
       {"\n\n"}
-      <Namespace name={props.type.namespace}>
+      <Namespace name={effectiveNamespace}>
         <ClassDeclaration
           public={isPublic}
           internal={!isPublic}

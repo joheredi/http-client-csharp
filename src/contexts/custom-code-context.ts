@@ -51,6 +51,29 @@ export function useCustomCode(): CustomCodeModel | undefined {
 }
 
 /**
+ * Returns the custom namespace for a generated type, if one exists.
+ *
+ * When a user writes a custom partial class in a different namespace and
+ * annotates it with `[CodeGenType("GeneratedTypeName")]`, the generated
+ * model should adopt that namespace. This enables the legacy emitter's
+ * "custom namespace" pattern where models like `Friend` (renamed from
+ * `NotFriend` via `@friendlyName`) can be placed in a sub-namespace
+ * like `Models.Custom`.
+ *
+ * @param customCode - The custom code model (may be undefined).
+ * @param generatedTypeName - The name of the generated type to look up.
+ * @returns The custom namespace string, or `undefined` if no override exists.
+ */
+export function getCustomNamespace(
+  customCode: CustomCodeModel | undefined,
+  generatedTypeName: string,
+): string | undefined {
+  if (!customCode) return undefined;
+  const typeInfo = customCode.types.get(generatedTypeName);
+  return typeInfo?.namespace;
+}
+
+/**
  * Checks whether a generated property should be suppressed because the user
  * has provided a custom implementation via `[CodeGenMember]` or
  * `[CodeGenSuppress]` attributes.

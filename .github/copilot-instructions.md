@@ -118,6 +118,7 @@ When you encounter a bug or limitation in the Alloy framework (including `@alloy
 **Do NOT work around Alloy bugs or limitations.** Especially avoid hacks for cosmetic issues (e.g., whitespace, formatting, import ordering). The only justification for a workaround is when the bug **blocks all other tasks** and no progress can be made without it. In that case, clearly mark the workaround with a `// HACK: alloy workaround — <description>` comment and add an entry to `docs/alloy-issues.md`.
 
 Each entry in `docs/alloy-issues.md` should include:
+
 - A short title
 - A description of the issue (what happens vs. what should happen)
 - A minimal reproduction or pointer to the affected code

@@ -10,6 +10,7 @@ import type { SdkModelType } from "@azure-tools/typespec-client-generator-core";
 import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
 import { System } from "../../builtins/system.js";
 import {
+  getCustomNamespace,
   isMemberSuppressed,
   useCustomCode,
 } from "../../contexts/custom-code-context.js";
@@ -97,6 +98,12 @@ export function ModelFile(props: ModelFileProps) {
     });
   }
 
+  // When custom code declares a partial class in a different namespace
+  // (e.g., [CodeGenType("Friend")] in SampleTypeSpec.Models.Custom),
+  // the generated model must adopt that namespace so both partials merge.
+  const effectiveNamespace =
+    getCustomNamespace(customCode, modelName) ?? props.type.namespace;
+
   // Only root models (no base model) declare the _additionalBinaryDataProperties
   // field. Derived models inherit it from their base class. The access modifier
   // is `private protected` for classes (allowing derived class access) and
@@ -135,7 +142,7 @@ export function ModelFile(props: ModelFileProps) {
     <SourceFile path={`src/Generated/Models/${modelName}.cs`}>
       {header}
       {"\n\n"}
-      <Namespace name={props.type.namespace}>
+      <Namespace name={effectiveNamespace}>
         {isStruct ? (
           <StructDeclaration
             public={isPublic}

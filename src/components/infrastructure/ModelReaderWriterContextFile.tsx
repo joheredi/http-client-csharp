@@ -10,7 +10,11 @@ import type { SdkModelType } from "@azure-tools/typespec-client-generator-core";
 import { SystemClientModelPrimitives } from "../../builtins/system-client-model.js";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
-import { efCsharpRefkey, modelReaderWriterContextRefkey, unknownModelRefkey } from "../../utils/refkey.js";
+import {
+  efCsharpRefkey,
+  modelReaderWriterContextRefkey,
+  unknownModelRefkey,
+} from "../../utils/refkey.js";
 import { hasDiscriminatedSubtypes } from "../models/ModelConstructors.js";
 
 /**

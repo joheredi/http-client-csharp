@@ -20,6 +20,7 @@ import {
 } from "../src/utils/custom-code-scanner.js";
 import { createEmptyCustomCodeModel } from "../src/utils/custom-code-model.js";
 import { isMemberSuppressed } from "../src/contexts/custom-code-context.js";
+import { getCustomNamespace } from "../src/contexts/custom-code-context.js";
 
 let testDir: string;
 
@@ -439,5 +440,65 @@ describe("isMemberSuppressed", () => {
   it("returns false for types not in custom code model", () => {
     const model = createEmptyCustomCodeModel();
     expect(isMemberSuppressed(model, "Unknown", "Prop")).toBe(false);
+  });
+});
+
+describe("getCustomNamespace", () => {
+  /**
+   * Tests that a custom namespace is returned when a custom partial class
+   * declares a different namespace for a generated type. This is the core
+   * mechanism that enables the legacy emitter's "custom namespace" pattern
+   * (e.g., Friend model placed in SampleTypeSpec.Models.Custom via
+   * [CodeGenType("Friend")] in a custom file with that namespace).
+   */
+  it("returns custom namespace when type has one", () => {
+    const model = createEmptyCustomCodeModel();
+    model.types.set("Friend", {
+      declaredName: "Friend",
+      originalName: "Friend",
+      namespace: "SampleTypeSpec.Models.Custom",
+      members: [],
+      suppressedMembers: [],
+      serializationOverrides: [],
+    });
+
+    expect(getCustomNamespace(model, "Friend")).toBe(
+      "SampleTypeSpec.Models.Custom",
+    );
+  });
+
+  /**
+   * Tests that undefined is returned when a custom type exists but has
+   * no namespace override. Most custom types declare in the same namespace
+   * as the generated code and don't need an override.
+   */
+  it("returns undefined when type has no namespace", () => {
+    const model = createEmptyCustomCodeModel();
+    model.types.set("Widget", {
+      declaredName: "Widget",
+      originalName: "Widget",
+      members: [],
+      suppressedMembers: [],
+      serializationOverrides: [],
+    });
+
+    expect(getCustomNamespace(model, "Widget")).toBeUndefined();
+  });
+
+  /**
+   * Tests that undefined is returned when no custom code model is provided.
+   * Components should use the default TCGC namespace in this case.
+   */
+  it("returns undefined when custom code model is undefined", () => {
+    expect(getCustomNamespace(undefined, "Friend")).toBeUndefined();
+  });
+
+  /**
+   * Tests that undefined is returned for types not in the custom code model.
+   * Most generated types won't have custom code entries.
+   */
+  it("returns undefined for types not in custom code model", () => {
+    const model = createEmptyCustomCodeModel();
+    expect(getCustomNamespace(model, "Unknown")).toBeUndefined();
   });
 });
