@@ -2222,3 +2222,21 @@ Sub-client classes like `Model` and `Alias` conflict with their own namespaces (
 **Why**: Consistent with existing `ensureModelNamespaces()` pattern. Avoids changing every component that reads `.namespace`.
 **Rejected**: Context-based approach (over-engineered), per-component transformation (too many files).
 **Key insight**: The legacy emitter's `GetCleanNameSpace` prefixes ALL segments of ANY namespace that match a client name or reserved word (Type, Array, Enum). The invalid segments are collected globally from all clients, then applied to all clients, models, and enums.
+
+## Gotcha: Alloy pascalCase cannot produce underscore-prefixed identifiers for numeric names
+
+**Pattern**: For enum member names starting with digits (e.g., "1.25", "1"), `change-case` v5's `pascalCase` does NOT produce valid C# identifiers:
+- `"1.25"` → `"1_25"` (adds `_` before second word starting with digit, not at front)
+- `"1"` → `"1"` (unchanged)
+
+The legacy emitter's `ToIdentifierName()` correctly produces `_125` and `_1`.
+
+**Fix**: Use `fixedEnumMemberName()` from `src/components/enums/FixedEnumFile.tsx`:
+```typescript
+if (/^\d/.test(rawName)) {
+  return `_${rawName.replace(/[^a-zA-Z0-9]/g, "")}`;
+}
+return namePolicy.getName(rawName, "enum-member");
+```
+
+Also: the `EnumMember` Alloy component cannot be used for these names because it always applies `pascalCase` internally (via `CSharpSymbol` with `namePolicy`). Raw text output must be used instead. This is safe since no code uses `refkey()` for fixed enum member symbols.

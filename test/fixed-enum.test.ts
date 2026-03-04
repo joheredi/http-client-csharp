@@ -358,4 +358,56 @@ describe("FixedEnumFile", () => {
     expect(enumFile).toContain("The operation is currently active.");
     expect(enumFile).toContain("The operation has been paused.");
   });
+
+  /**
+   * Validates that enum members whose names start with a digit (e.g., float
+   * literal union values like "1.25", "2.375") are emitted as valid C# identifiers.
+   *
+   * TCGC preserves float literal union values verbatim as enum member names
+   * (e.g., "1.25"). In C#, identifiers cannot start with a digit, so the legacy
+   * emitter prefixes them with "_" and removes the decimal point:
+   *   "1.25" → "_125", "2.375" → "_2375"
+   *
+   * This test ensures our emitter matches that behavior and produces compilable code.
+   * Without this fix, the emitter generated "1_25" (invalid C# identifier).
+   */
+  it("generates valid C# identifiers for numeric-starting enum member names", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        floatProp?: 1.25 | 2.375;
+        intProp?: 1 | 2;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    // Float literal union → enum with "_125", "_2375" (not "1_25", "2_375")
+    // The enum file name is derived from the model+property names by TCGC
+    const floatEnumKey = Object.keys(outputs).find(
+      (k) => k.includes("Models") && k.endsWith(".cs") && !k.includes("Serialization"),
+    );
+    const allModelFiles = Object.entries(outputs)
+      .filter(([k]) => k.includes("Models") && k.endsWith(".cs") && !k.includes("Serialization"))
+      .map(([, v]) => v)
+      .join("\n");
+
+    // Must contain valid C# identifiers: _125 and _2375
+    expect(allModelFiles).toContain("_125");
+    expect(allModelFiles).toContain("_2375");
+    // Must NOT contain invalid identifiers starting with digits
+    expect(allModelFiles).not.toContain("\n    1_25,");
+    expect(allModelFiles).not.toContain("\n    2_375");
+
+    // Int literal union → enum with "_1 = 1", "_2 = 2" (not bare "1 = 1", "2 = 2")
+    expect(allModelFiles).toContain("_1 = 1");
+    expect(allModelFiles).toContain("_2 = 2");
+  });
 });

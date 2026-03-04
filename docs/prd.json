@@ -4661,7 +4661,7 @@
           "title": "Fix union float/int literal property types in optionality spec",
           "description": "The `type/property/optionality` spec defines properties with union literal types (e.g., `UnionFloatLiteralPropertyProperty`, `UnionIntLiteralPropertyProperty`). The emitter generates model files for these but they contain syntax errors in the type declarations and serialization code.\n\nThis is related to task 12.1.1 (UnionVariant crash) but manifests differently \u2014 here the emitter doesn't crash but produces malformed C# for union literal types.\n\nTo reproduce: `dotnet build temp/e2e/Spector/http/type/property/optionality/src/Type.Property.Optional.csproj`",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "12.1.1"
           ],

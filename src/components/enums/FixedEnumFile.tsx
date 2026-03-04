@@ -1,6 +1,5 @@
 import {
   EnumDeclaration,
-  EnumMember,
   Namespace,
   SourceFile,
   useCSharpNamePolicy,
@@ -23,6 +22,35 @@ export interface FixedEnumFileProps {
   type: SdkEnumType;
   /** Resolved emitter options used for generating the file header. */
   options: ResolvedCSharpEmitterOptions;
+}
+
+/**
+ * Converts a TCGC enum member name to a valid C# identifier.
+ *
+ * Matches the legacy emitter's `ToIdentifierName()` behavior from StringExtensions.cs:
+ * - If the raw name starts with a digit, strip all non-alphanumeric characters
+ *   (e.g., the decimal point in `"1.25"`) and prefix with `_`.
+ *   Examples: `"1.25"` → `"_125"`, `"2.375"` → `"_2375"`, `"1"` → `"_1"`.
+ * - Otherwise, delegate to the C# naming policy for normal PascalCase conversion.
+ *
+ * This is needed because TCGC preserves numeric literal union values verbatim
+ * (e.g., `1.25`, `2.375`) as enum member names, which are invalid C# identifiers.
+ * The `pascalCase` transform from `change-case` incorrectly produces `"1_25"`
+ * instead of `"_125"` for these inputs.
+ *
+ * @param rawName - The raw member name from TCGC (e.g., `"1.25"`, `"Hello"`).
+ * @param namePolicy - The active C# name policy for delegating normal names.
+ * @returns A valid C# identifier for the enum member.
+ */
+export function fixedEnumMemberName(
+  rawName: string,
+  namePolicy: ReturnType<typeof useCSharpNamePolicy>,
+): string {
+  if (/^\d/.test(rawName)) {
+    // Remove all non-alphanumeric characters (e.g., decimal points) and prefix with '_'
+    return `_${rawName.replace(/[^a-zA-Z0-9]/g, "")}`;
+  }
+  return namePolicy.getName(rawName, "enum-member");
 }
 
 /**
@@ -112,13 +140,13 @@ export function FixedEnumFile(props: FixedEnumFileProps) {
         >
           <For each={props.type.values} joiner={",\n"}>
             {(member) => {
-              const memberName = namePolicy.getName(member.name, "enum-member");
+              const memberName = fixedEnumMemberName(member.name, namePolicy);
               const description = getEnumMemberDescription(member);
               return (
                 <>
                   {`/// <summary> ${description} </summary>`}
                   {"\n"}
-                  <EnumMember name={memberName} refkey={refkey(member)} />
+                  {memberName}
                   {hasIntValues ? ` = ${member.value}` : ""}
                 </>
               );

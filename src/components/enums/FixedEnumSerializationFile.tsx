@@ -10,6 +10,7 @@ import {
 } from "@azure-tools/typespec-client-generator-core";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
+import { fixedEnumMemberName } from "./FixedEnumFile.js";
 
 /**
  * C# type information derived from a TCGC value type kind.
@@ -199,7 +200,7 @@ function SerializeMethod(props: SerializeMethodProps) {
       {"\n"}
       {"{"}
       {type.values.map((member) => {
-        const memberName = namePolicy.getName(member.name, "enum-member");
+        const memberName = fixedEnumMemberName(member.name, namePolicy);
         const literal = formatValueLiteral(member.value, type.valueType.kind);
         return (
           <>
@@ -237,7 +238,7 @@ function DeserializeMethod(props: DeserializeMethodProps) {
       {"\n"}
       {"{"}
       {type.values.map((member) => {
-        const memberName = namePolicy.getName(member.name, "enum-member");
+        const memberName = fixedEnumMemberName(member.name, namePolicy);
         const literal = formatValueLiteral(member.value, type.valueType.kind);
         const condition = isString
           ? `StringComparer.OrdinalIgnoreCase.Equals(value, ${literal})`

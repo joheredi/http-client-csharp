@@ -278,4 +278,43 @@ describe("FixedEnumSerializationFile", () => {
     expect(serFileKey).toBeDefined();
     expect(serFileKey).toContain("src/Generated/Models/Fruit.Serialization.cs");
   });
+
+  /**
+   * Validates that serialization extension methods for float literal union
+   * enums use the correct C# identifier names (e.g., "_125", "_2375") that
+   * match what FixedEnumFile generates.
+   *
+   * TCGC enum members with names starting with digits (e.g., "1.25") must be
+   * sanitized consistently in both the enum declaration and its serialization
+   * extension class. A mismatch would cause C# compilation errors.
+   */
+  it("uses correct member names for numeric-starting float enum members", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        choice?: 1.25 | 2.375;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    // Serialization switch arms must use "_125" and "_2375" (not "1_25", "2_375")
+    // The enum file name is derived from the model+property names by TCGC
+    const allSerFiles = Object.entries(outputs)
+      .filter(([k]) => k.includes("Models") && k.includes("Serialization"))
+      .map(([, v]) => v)
+      .join("\n");
+
+    expect(allSerFiles).toContain("._125");
+    expect(allSerFiles).toContain("._2375");
+    expect(allSerFiles).not.toContain(".1_25");
+    expect(allSerFiles).not.toContain(".2_375");
+  });
 });

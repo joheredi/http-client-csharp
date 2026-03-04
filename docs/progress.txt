@@ -3617,3 +3617,23 @@ Called `cleanAllNamespaces()` from `emitter.tsx` after `ensureModelNamespaces()`
 **Files changed**: `src/utils/package-name.ts`, `src/emitter.tsx`, `test/package-name.test.ts`
 **Tests added**: 12 new tests covering `collectInvalidNamespaceSegments`, `cleanNamespace`, and `cleanAllNamespaces`
 **All 65 test files pass (1225 passed, 128 skipped)**
+
+## 2026-03-04: Task 12.2.10 — Fix union float/int literal property types in optionality spec
+
+**Problem**: TCGC preserves numeric literal union values verbatim as enum member names (e.g., "1.25", "2.375"). The Alloy `pascalCase` transform from `change-case` converts "1.25" → "1_25" (word at index>0 starting with digit gets `_` prefix, but at the wrong position), and "1" → "1" (unchanged). Both are invalid C# identifiers.
+
+**Root cause**: `change-case` v5's `pascalCaseTransformFactory` adds `_` before digits only at word index > 0: `"1_25"` comes from words `["1", "25"]` where the second word gets `_` prefix. The legacy emitter's `ToIdentifierName()` instead prefixes the WHOLE result with `_` and removes non-alphanumeric chars.
+
+**Solution**: Added `fixedEnumMemberName()` utility function exported from `FixedEnumFile.tsx`:
+- If `rawName` starts with a digit: `_${rawName.replace(/[^a-zA-Z0-9]/g, "")}`
+  - "1.25" → "_125", "2.375" → "_2375", "1" → "_1"
+- Otherwise: delegates to `namePolicy.getName(rawName, "enum-member")`
+
+Also removed `<EnumMember>` component and replaced with raw text output, since:
+- `EnumMember` internally applies `pascalCase` which can't produce `_125`
+- No refkeys to fixed enum members exist anywhere else in the codebase
+
+**Files changed**: `src/components/enums/FixedEnumFile.tsx`, `src/components/enums/FixedEnumSerializationFile.tsx`, `test/fixed-enum.test.ts`, `test/fixed-enum-serialization.test.ts`
+
+**Tests added**: 2 new tests for numeric-starting enum member names in declaration and serialization files.
+**All 65 test files pass (1227 passed, 128 skipped)**
