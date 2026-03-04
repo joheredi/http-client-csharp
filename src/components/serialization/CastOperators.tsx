@@ -26,6 +26,7 @@ import {
 } from "@azure-tools/typespec-client-generator-core";
 import { System } from "../../builtins/system.js";
 import { SystemIO } from "../../builtins/system-io.js";
+import { escapeCSharpKeyword } from "../../utils/csharp-keywords.js";
 import {
   SystemClientModel,
   SystemClientModelPrimitives,
@@ -103,7 +104,11 @@ export function ImplicitBinaryContentOperator(
 
   const namePolicy = useCSharpNamePolicy();
   const modelName = namePolicy.getName(type.name, "class");
-  const paramName = namePolicy.getName(type.name, "parameter");
+  // Escape the parameter name if it collides with a C# keyword.
+  // E.g., a model named "As" → paramName "as" → must be "@as" in C#.
+  const paramName = escapeCSharpKeyword(
+    namePolicy.getName(type.name, "parameter"),
+  );
 
   return (
     <>

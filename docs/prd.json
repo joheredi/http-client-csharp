@@ -4472,7 +4472,7 @@
           "title": "Fix C# keyword escaping in parameter names and cast operators",
           "description": "When TypeSpec models use names that are C# reserved keywords (e.g., `as`, `break`, `class`, `continue`, `else`, `finally`, `for`, `if`, `in`, `is`, `return`, `try`, `while`), the emitter generates C# code using these keywords as identifiers without the `@` prefix escape.\n\nExample of broken generated code (special-words/Models/As.Serialization.cs):\n```csharp\npublic static implicit operator BinaryContent(As as)  // 'as' is a C# keyword!\n{\n    if (as == null)  // invalid\n```\n\nShould be:\n```csharp\npublic static implicit operator BinaryContent(As @as)\n{\n    if (@as == null)\n```\n\nThis affects the `special-words` spec (13 model types named after C# keywords) and any other spec that uses reserved keyword names. The `@alloy-js/csharp` package should handle keyword escaping in its Name component, but the cast operator code generation in `src/components/` may be using raw strings instead of Alloy name references.\n\nFiles to investigate:\n- Cast operator generation in serialization components\n- The `@alloy-js/csharp` keyword escaping mechanism\n- The legacy emitter uses `_` prefix for these names in some cases\n\nTo reproduce: `dotnet build temp/e2e/Spector/http/special-words/src/SpecialWords.csproj`",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],

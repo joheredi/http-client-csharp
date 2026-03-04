@@ -2126,3 +2126,13 @@ Not `@doc("Line one\nLine two")` — the `\n` is a literal backslash-n, not a ne
 **Rejected approach:** Switch to Alloy's `DocSummary`/`DocParam` JSX components — these handle multiline formatting natively but would require refactoring all doc generation code away from raw strings. Knowledge.md gotcha #2 notes raw strings are preferred for doc comments to match legacy emitter formatting.
 
 **Rationale:** The raw string approach is established across 18+ files and gives exact control over formatting. The utility function is surgical — it fixes the multiline bug without touching the working single-line paths.
+
+## Design Decisions
+
+### C# keyword escaping — utility function vs naming policy (Task 12.2.2)
+
+**Chosen approach:** Utility function `escapeCSharpKeyword()` in `src/utils/csharp-keywords.ts` applied at each point of use where parameter names are interpolated into raw C# strings.
+
+**Rejected approach:** Modify the custom naming policy in `HttpClientCSharpOutput.tsx` to automatically add `@` prefix for keywords. While this would fix all 15+ call sites at once, it risks unexpected interactions with Alloy's internal name resolution (symbol lookups, refkey matching) and would affect ALL naming contexts, not just raw string interpolation.
+
+**Rationale:** The utility function is explicit, testable, and safe. It has zero risk of side effects on Alloy's rendering pipeline. Other components can import and use it as needed. The keyword list (101 entries) matches the legacy emitter's Roslyn SyntaxFacts behavior exactly.

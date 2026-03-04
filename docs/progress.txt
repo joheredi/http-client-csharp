@@ -3482,3 +3482,19 @@ When TypeSpec `@doc` decorators contain multiline text (using triple-quoted stri
 - If new doc comment generation points are added, import and use `formatDocLines` from `../../utils/doc.js`
 
 **Result:** 1183 tests pass (9 new), 128 skipped, 63 test files. Build and lint clean.
+
+## 2026-03-04 — Task 12.2.2: Fix C# keyword escaping in parameter names and cast operators
+**What was done:**
+- Created `src/utils/csharp-keywords.ts` with a set of 101 C# reserved/contextual keywords and `escapeCSharpKeyword()` utility function
+- Fixed `src/components/serialization/CastOperators.tsx` to escape the parameter name in `ImplicitBinaryContentOperator` when it collides with a C# keyword (e.g., `As` → `@as`, `For` → `@for`)
+- Added unit tests in `test/csharp-keywords.test.ts` for the keyword detection and escaping utility
+- Added integration tests in `test/cast-operators.test.ts` for keyword-named models (`For`, `Is`)
+
+**Key patterns:**
+- The `@alloy-js/csharp` package does NOT automatically escape C# keywords — this must be done manually
+- The keyword list matches the legacy emitter's Roslyn `SyntaxFacts` behavior (101 keywords, excludes `dynamic`)
+- The `escapeCSharpKeyword()` utility is designed to be reusable for other components that need keyword escaping (e.g., ConvenienceMethod, RestClientFile, ModelConstructors)
+
+**Notes for next iteration:**
+- Other components that use `namePolicy.getName(name, "parameter")` in raw strings may also need keyword escaping. The utility function is ready to be imported in those files.
+- 1192 tests passing (was 1183), lint clean

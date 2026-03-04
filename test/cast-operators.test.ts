@@ -178,6 +178,88 @@ describe("ImplicitBinaryContentOperator", () => {
       "public static implicit operator BinaryContent(LongNamedWidget longNamedWidget)",
     );
   });
+
+  /**
+   * Validates that model names which are C# reserved keywords get the `@` prefix
+   * in the operator's parameter name. Without this escaping, the generated code
+   * would be invalid C# (e.g., `BinaryContent(As as)` is a syntax error because
+   * `as` is a keyword — must be `BinaryContent(As @as)`).
+   *
+   * This is the core fix for the `special-words` spec which defines 13 model types
+   * named after C# keywords (As, Break, Class, Continue, Else, Finally, For, If,
+   * In, Is, Return, Try, While).
+   */
+  it("escapes C# keyword parameter names with @ prefix", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model For {
+        name: string;
+      }
+
+      @route("/items")
+      @post
+      op createItem(@body item: For): void;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("For.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+
+    const content = outputs[fileKey!];
+
+    // Parameter name must have @ prefix because "for" is a C# keyword
+    expect(content).toContain(
+      "public static implicit operator BinaryContent(For @for)",
+    );
+
+    // All references to the parameter in the method body must also use @for
+    expect(content).toContain("if (@for == null)");
+    expect(content).toContain(
+      "return BinaryContent.Create(@for, ModelSerializationExtensions.WireOptions);",
+    );
+  });
+
+  /**
+   * Validates keyword escaping for another common keyword: "is".
+   * This ensures the escaping works for multiple keywords, not just "for".
+   */
+  it("escapes 'is' keyword in parameter name", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Is {
+        name: string;
+      }
+
+      @route("/items")
+      @post
+      op createItem(@body item: Is): void;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Is.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+
+    const content = outputs[fileKey!];
+
+    expect(content).toContain(
+      "public static implicit operator BinaryContent(Is @is)",
+    );
+    expect(content).toContain("if (@is == null)");
+  });
 });
 
 /**
