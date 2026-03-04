@@ -3983,3 +3983,24 @@ Component-level namespace override was chosen over emitter-level mutation becaus
 - Task 12.4 (verify ARM specs generate correctly in e2e) is now unblocked
 - All 9 ARM specs compile without errors, but their generated output hasn't been verified against golden files yet
 - If ARM-specific features are missing from the emitter, task 12.4 should document them and add to .testignore
+
+## Task 13.4: Add missing XML documentation on extensible enum members and operators (2026-03-04 — Done)
+
+Added XML doc comments to all extensible enum members, operators, and standard methods in `ExtensibleEnumFile.tsx`:
+- Struct-level `<summary>` using `getEnumDescription()` (with `ensureTrailingPeriod`); always renders tag, empty when no `@doc`
+- Constructor: `<summary>`, `<param>`, `<exception>` (string-backed only)
+- Static properties: `Gets the {MemberName}.` pattern via `getEnumMemberDescription()`, uses TCGC summary/doc when available
+- Equality operators: `<summary>` + `<param name="left">` + `<param name="right">`
+- Implicit conversion operators: `<summary>` + `<param name="value">`
+- Standard methods (Equals, GetHashCode, ToString): `<inheritdoc/>` before attribute/method
+
+Approach: Raw string literals matching existing codebase pattern (FixedEnumFile, ClientFile, etc.). Rejected JSX DocComment components as it would require full refactor.
+
+Added 3 new unit tests in `extensible-enum.test.ts`:
+- String-backed XML docs (all acceptance criteria)
+- Int-backed XML docs (no exception tag, empty struct summary)
+- Custom @doc descriptions flow through to member summaries
+
+Updated scenario test `test/scenarios/enums/extensible_enum.md` to match new output.
+
+All 1,290 tests pass, build succeeds. Lint has pre-existing errors in unrelated files.

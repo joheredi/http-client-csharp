@@ -4,8 +4,12 @@ import {
   StructDeclaration,
   useCSharpNamePolicy,
 } from "@alloy-js/csharp";
-import type { SdkEnumType } from "@azure-tools/typespec-client-generator-core";
+import type {
+  SdkEnumType,
+  SdkEnumValueType,
+} from "@azure-tools/typespec-client-generator-core";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
+import { ensureTrailingPeriod, formatDocLines } from "../../utils/doc.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { efCsharpRefkey } from "../../utils/refkey.js";
 
@@ -73,15 +77,34 @@ function formatValueLiteral(value: string | number, kind: string): string {
 }
 
 /**
- * Returns the description for an enum member.
+ * Returns the XML doc description for an extensible enum type declaration,
+ * or `undefined` when the TypeSpec definition has no documentation.
+ *
+ * Uses the TCGC summary or doc string, applying `ensureTrailingPeriod` to
+ * match the legacy emitter's `XmlDocStatement.GetPeriodOrEmpty()` behavior.
+ *
+ * @param sdkEnum - The TCGC enum type to extract documentation from.
+ * @returns A description string with trailing period, or `undefined` if no doc exists.
+ */
+function getEnumDescription(sdkEnum: SdkEnumType): string | undefined {
+  const raw = sdkEnum.summary ?? sdkEnum.doc;
+  return raw ? ensureTrailingPeriod(raw) : undefined;
+}
+
+/**
+ * Returns the XML doc description for an enum member.
  *
  * Uses the TCGC summary or doc string when available, falling back to
  * the member name followed by a period — matching the legacy C# generator's
  * `DocHelpers.GetFormattableDescription()` behavior.
  *
  * @param member - The TCGC enum value type to extract documentation from.
- * @returns A description string suitable for use in documentation.
+ * @returns A description string suitable for use in a `<summary>` XML doc tag.
  */
+function getEnumMemberDescription(member: SdkEnumValueType): string {
+  return member.summary ?? member.doc ?? `${member.name}.`;
+}
+
 /**
  * Props for the {@link ExtensibleEnumFile} component.
  */
@@ -140,6 +163,7 @@ export function ExtensibleEnumFile(props: ExtensibleEnumFileProps) {
   const enumName = namePolicy.getName(props.type.name, "enum");
   const isString = props.type.valueType.kind === "string";
   const typeInfo = getCSharpTypeInfo(props.type.valueType.kind);
+  const structDescription = getEnumDescription(props.type);
 
   let usings = "using System;\nusing System.ComponentModel;";
   if (!isString) {
@@ -151,6 +175,7 @@ export function ExtensibleEnumFile(props: ExtensibleEnumFileProps) {
       {header}
       {`\n\n${usings}\n\n`}
       <Namespace name={props.type.namespace}>
+        {`/// <summary>${structDescription ? ` ${formatDocLines(structDescription)} ` : ""}</summary>\n`}
         <StructDeclaration
           public
           readonly
@@ -232,6 +257,13 @@ function EnumConstructor(props: {
 
   return (
     <>
+      {`/// <summary> Initializes a new instance of <see cref="${enumName}"/>. </summary>`}
+      {"\n"}
+      {`/// <param name="value"> The value. </param>`}
+      {isString
+        ? `\n/// <exception cref="ArgumentNullException"> <paramref name="value"/> is null. </exception>`
+        : ""}
+      {"\n"}
       {`public ${enumName}(${typeInfo.keyword} value)`}
       {"\n"}
       {"{"}
@@ -257,7 +289,8 @@ function EnumStaticProperties(props: { type: SdkEnumType; enumName: string }) {
 
   const properties = type.values.map((member) => {
     const memberName = namePolicy.getName(member.name, "enum-member");
-    return `public static ${enumName} ${memberName} { get; } = new ${enumName}(${memberName}Value);`;
+    const description = getEnumMemberDescription(member);
+    return `/// <summary> Gets the ${description} </summary>\npublic static ${enumName} ${memberName} { get; } = new ${enumName}(${memberName}Value);`;
   });
 
   return <>{properties.join("\n\n")}</>;
@@ -273,8 +306,20 @@ function EqualityOperators(props: { enumName: string }) {
 
   return (
     <>
+      {`/// <summary> Determines if two <see cref="${enumName}"/> values are the same. </summary>`}
+      {"\n"}
+      {`/// <param name="left"> The left value to compare. </param>`}
+      {"\n"}
+      {`/// <param name="right"> The right value to compare. </param>`}
+      {"\n"}
       {`public static bool operator ==(${enumName} left, ${enumName} right) => left.Equals(right);`}
       {"\n\n"}
+      {`/// <summary> Determines if two <see cref="${enumName}"/> values are not the same. </summary>`}
+      {"\n"}
+      {`/// <param name="left"> The left value to compare. </param>`}
+      {"\n"}
+      {`/// <param name="right"> The right value to compare. </param>`}
+      {"\n"}
       {`public static bool operator !=(${enumName} left, ${enumName} right) => !left.Equals(right);`}
     </>
   );
@@ -296,9 +341,13 @@ function ImplicitConversionOperators(props: {
 
   return (
     <>
+      {`/// <summary> Converts a string to a <see cref="${enumName}"/>. </summary>`}
+      {"\n"}
+      {`/// <param name="value"> The value. </param>`}
+      {"\n"}
       {`public static implicit operator ${enumName}(${typeInfo.keyword} value) => new ${enumName}(value);`}
       {isString
-        ? `\n\npublic static implicit operator ${enumName}?(${typeInfo.keyword} value) => value == null ? null : new ${enumName}(value);`
+        ? `\n\n/// <summary> Converts a string to a <see cref="${enumName}"/>. </summary>\n/// <param name="value"> The value. </param>\npublic static implicit operator ${enumName}?(${typeInfo.keyword} value) => value == null ? null : new ${enumName}(value);`
         : ""}
     </>
   );
@@ -316,6 +365,8 @@ function EqualsObjectMethod(props: { enumName: string }) {
 
   return (
     <>
+      {"/// <inheritdoc/>"}
+      {"\n"}
       {"[EditorBrowsable(EditorBrowsableState.Never)]"}
       {"\n"}
       {`public override bool Equals(object obj) => obj is ${enumName} other && Equals(other);`}
@@ -337,7 +388,7 @@ function EqualsTypeMethod(props: { enumName: string; isString: boolean }) {
     ? `string.Equals(_value, other._value, StringComparison.InvariantCultureIgnoreCase)`
     : `Equals(_value, other._value)`;
 
-  return <>{`public bool Equals(${enumName} other) => ${body};`}</>;
+  return <>{`/// <inheritdoc/>\npublic bool Equals(${enumName} other) => ${body};`}</>;
 }
 
 /**
@@ -358,6 +409,8 @@ function GetHashCodeMethod(props: { isString: boolean }) {
 
   return (
     <>
+      {"/// <inheritdoc/>"}
+      {"\n"}
       {"[EditorBrowsable(EditorBrowsableState.Never)]"}
       {"\n"}
       {`public override int GetHashCode() => ${body};`}
@@ -376,13 +429,13 @@ function ToStringMethod(props: { isString: boolean }) {
   const { isString } = props;
 
   if (isString) {
-    return <>{"public override string ToString() => _value;"}</>;
+    return <>{"/// <inheritdoc/>\npublic override string ToString() => _value;"}</>;
   }
 
   return (
     <>
       {
-        "public override string ToString() => _value.ToString(CultureInfo.InvariantCulture);"
+        "/// <inheritdoc/>\npublic override string ToString() => _value.ToString(CultureInfo.InvariantCulture);"
       }
     </>
   );

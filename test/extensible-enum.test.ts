@@ -537,4 +537,186 @@ describe("ExtensibleEnumFile", () => {
     });
     expect(structFiles).toHaveLength(0);
   });
+
+  /**
+   * Validates that XML doc comments are generated on all extensible enum members,
+   * operators, and standard methods for a string-backed enum. This is the primary
+   * acceptance test for task 13.4.
+   *
+   * Why this test matters:
+   * - Golden files require XML docs on every member, operator, and method.
+   * - Constructor must have <summary>, <param>, and <exception> (string only).
+   * - Static properties must have <summary> with "Gets the {Name}." pattern.
+   * - Equality/inequality operators must have <summary> and <param> docs.
+   * - Implicit conversion operators must have <summary> and <param> docs.
+   * - Equals, GetHashCode, ToString must use <inheritdoc/>.
+   * - Struct-level doc uses the @doc decorator text when available.
+   */
+  it("generates XML doc comments on all members for string-backed enums", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @doc("Days of the week.")
+      union DaysOfWeek {
+        string,
+        Monday: "Monday",
+        Tuesday: "Tuesday",
+      }
+
+      @route("/test")
+      op test(@query day: DaysOfWeek): void;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const enumFileKey = Object.keys(outputs).find((k) =>
+      k.includes("DaysOfWeek"),
+    );
+    expect(enumFileKey).toBeDefined();
+    const enumFile = outputs[enumFileKey!];
+
+    // Struct-level doc from @doc decorator
+    expect(enumFile).toContain("/// <summary> Days of the week. </summary>");
+
+    // Constructor docs
+    expect(enumFile).toContain(
+      '/// <summary> Initializes a new instance of <see cref="DaysOfWeek"/>. </summary>',
+    );
+    expect(enumFile).toContain('/// <param name="value"> The value. </param>');
+    expect(enumFile).toContain(
+      '/// <exception cref="ArgumentNullException"> <paramref name="value"/> is null. </exception>',
+    );
+
+    // Static property docs
+    expect(enumFile).toContain("/// <summary> Gets the Monday. </summary>");
+    expect(enumFile).toContain("/// <summary> Gets the Tuesday. </summary>");
+
+    // Equality operator docs
+    expect(enumFile).toContain(
+      '/// <summary> Determines if two <see cref="DaysOfWeek"/> values are the same. </summary>',
+    );
+    expect(enumFile).toContain(
+      '/// <summary> Determines if two <see cref="DaysOfWeek"/> values are not the same. </summary>',
+    );
+    expect(enumFile).toContain(
+      '/// <param name="left"> The left value to compare. </param>',
+    );
+    expect(enumFile).toContain(
+      '/// <param name="right"> The right value to compare. </param>',
+    );
+
+    // Implicit conversion operator docs
+    expect(enumFile).toContain(
+      '/// <summary> Converts a string to a <see cref="DaysOfWeek"/>. </summary>',
+    );
+
+    // Standard methods use <inheritdoc/>
+    expect(enumFile).toContain("/// <inheritdoc/>");
+    // Verify <inheritdoc/> appears before the methods
+    const inheritdocCount = (enumFile.match(/\/\/\/ <inheritdoc\/>/g) || [])
+      .length;
+    expect(inheritdocCount).toBe(4); // Equals(object), Equals(T), GetHashCode, ToString
+  });
+
+  /**
+   * Validates that XML doc comments are generated correctly for int-backed
+   * extensible enums. Key differences from string-backed:
+   * - Constructor has <summary> and <param> but NO <exception> (int is value type).
+   * - No nullable implicit conversion operator (only non-nullable).
+   * - Member names used as description fallback when no @doc is present.
+   */
+  it("generates XML doc comments on all members for int-backed enums", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      union Priority {
+        int32,
+        Low: 1,
+        High: 2,
+      }
+
+      @route("/test")
+      op test(@query priority: Priority): void;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const enumFileKey = Object.keys(outputs).find((k) =>
+      k.includes("Priority"),
+    );
+    expect(enumFileKey).toBeDefined();
+    const enumFile = outputs[enumFileKey!];
+
+    // Struct-level doc (no @doc → empty summary)
+    expect(enumFile).toContain("/// <summary></summary>");
+
+    // Constructor docs (no exception for value types)
+    expect(enumFile).toContain(
+      '/// <summary> Initializes a new instance of <see cref="Priority"/>. </summary>',
+    );
+    expect(enumFile).toContain('/// <param name="value"> The value. </param>');
+    expect(enumFile).not.toContain("ArgumentNullException");
+
+    // Static property docs (fallback to member name)
+    expect(enumFile).toContain("/// <summary> Gets the Low. </summary>");
+    expect(enumFile).toContain("/// <summary> Gets the High. </summary>");
+
+    // Operator docs
+    expect(enumFile).toContain(
+      '/// <summary> Determines if two <see cref="Priority"/> values are the same. </summary>',
+    );
+
+    // Implicit conversion docs
+    expect(enumFile).toContain(
+      '/// <summary> Converts a string to a <see cref="Priority"/>. </summary>',
+    );
+
+    // Standard methods use <inheritdoc/>
+    const inheritdocCount = (enumFile.match(/\/\/\/ <inheritdoc\/>/g) || [])
+      .length;
+    expect(inheritdocCount).toBe(4);
+  });
+
+  /**
+   * Validates that custom @doc descriptions on enum members are used in the
+   * generated XML doc comments instead of the fallback member name pattern.
+   * This ensures TCGC summary/doc strings flow through to the output.
+   */
+  it("uses @doc descriptions for member summaries when available", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      union Status {
+        string,
+        @doc("The item is currently active.")
+        Active: "Active",
+        Inactive: "Inactive",
+      }
+
+      @route("/test")
+      op test(@query status: Status): void;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const enumFileKey = Object.keys(outputs).find((k) => k.includes("Status"));
+    expect(enumFileKey).toBeDefined();
+    const enumFile = outputs[enumFileKey!];
+
+    // Member with @doc uses the custom description
+    expect(enumFile).toContain(
+      "/// <summary> Gets the The item is currently active. </summary>",
+    );
+    // Member without @doc falls back to name
+    expect(enumFile).toContain("/// <summary> Gets the Inactive. </summary>");
+  });
 });

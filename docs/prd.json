@@ -4877,7 +4877,7 @@
           "title": "Add missing XML documentation on extensible enum members and operators",
           "description": "Golden extensible enum files have XML doc comments on member properties, operators, and standard methods that the new emitter omits:\n\n```csharp\n/// <summary> Gets the Monday. </summary>\npublic static DaysOfWeekExtensibleEnum Monday { get; } = ...\n\n/// <summary> Determines if two <see cref=\"DaysOfWeekExtensibleEnum\"/> values are the same. </summary>\n/// <param name=\"left\"> The left value to compare. </param>\n/// <param name=\"right\"> The right value to compare. </param>\npublic static bool operator ==(DaysOfWeekExtensibleEnum left, DaysOfWeekExtensibleEnum right)\n```\n\nMissing docs: constructor summary/param/exception, member property summaries, operator docs, implicit conversion docs, Equals/GetHashCode/ToString `<inheritdoc/>` tags. Affects all extensible enum files. When in doubt, the legacy output wins.",
           "phase": "phase-13",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],
