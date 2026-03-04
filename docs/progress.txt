@@ -3516,3 +3516,17 @@ When TypeSpec `@doc` decorators contain multiline text (using triple-quoted stri
 - The same pattern applies to `buildMethodParams` which also uses `p.name` for parameter declarations — but this is safe because the `<Method>` component applies the name policy to those names
 - 1193 tests passing (was 1192), lint clean
 - For onClient params, the field name is now `_${getParamName(param.name)}` which is more correct
+
+## 2026-03-04 — Task 12.2.8: Fix namespace mismatch between client code and infrastructure in versioned projects
+
+**What was done:**
+- Added `resolveRootNamespace()` to `src/utils/package-name.ts` — derives namespace from TCGC, ignoring the explicit `package-name` option
+- Updated `src/emitter.tsx` to compute `rootNamespace` and pass it to all infrastructure files (ArgumentFile, OptionalFile, ChangeTrackingListFile, etc.) and model factory/context files instead of `packageName`
+- `packageName` is still used for ProjectFile and SolutionFile (project naming)
+- Added 5 unit tests for `resolveRootNamespace` in `test/package-name.test.ts`
+
+**Root cause:** For versioned projects, `package-name` includes a version suffix (e.g., `Versioning.ReturnTypeChangedFrom.V2`) used for project naming. Infrastructure files used this for their C# namespace, but TCGC client namespaces don't include the suffix (`Versioning.ReturnTypeChangedFrom`). This caused CS0234/CS0246 errors.
+
+**Verification:** Generated a versioned project and confirmed both Argument.cs (infrastructure) and ReturnTypeChangedFromClient.cs (client) use `Versioning.ReturnTypeChangedFrom` namespace, while the csproj is still named `Versioning.ReturnTypeChangedFrom.V2.csproj`.
+
+**All 64 test files pass (1198 tests).**

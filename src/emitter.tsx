@@ -70,7 +70,10 @@ import { $lib } from "./lib.js";
 import { type CSharpEmitterOptions, resolveOptions } from "./options.js";
 import { getAllClients } from "./utils/clients.js";
 import { scanCustomCode } from "./utils/custom-code-scanner.js";
-import { resolvePackageName } from "./utils/package-name.js";
+import {
+  resolvePackageName,
+  resolveRootNamespace,
+} from "./utils/package-name.js";
 import { applyUnreferencedTypeHandling } from "./utils/unreferenced-types.js";
 
 /**
@@ -123,6 +126,12 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
   // Resolve the package name for the generated library
   const packageName = resolvePackageName(sdkContext, options["package-name"]);
 
+  // Resolve the root namespace for generated code. This is derived from TCGC
+  // and ignores the explicit package-name option, ensuring infrastructure files
+  // share the same namespace as client code (important for versioned projects
+  // where package-name includes a version suffix that clients don't use).
+  const rootNamespace = resolveRootNamespace(sdkContext);
+
   // Determine whether to generate project scaffolding (.csproj, .sln).
   // Skip if the .csproj already exists and user hasn't set new-project: true.
   const csprojPath = resolvePath(
@@ -150,35 +159,35 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
         <ProjectFile packageName={packageName} options={options} />
       )}
       {shouldGenerateProject && <SolutionFile packageName={packageName} />}
-      <ArgumentFile packageName={packageName} options={options} />
-      <OptionalFile packageName={packageName} options={options} />
-      <ChangeTrackingListFile packageName={packageName} options={options} />
+      <ArgumentFile packageName={rootNamespace} options={options} />
+      <OptionalFile packageName={rootNamespace} options={options} />
+      <ChangeTrackingListFile packageName={rootNamespace} options={options} />
       <ChangeTrackingDictionaryFile
-        packageName={packageName}
+        packageName={rootNamespace}
         options={options}
       />
       <CancellationTokenExtensionsFile
-        packageName={packageName}
+        packageName={rootNamespace}
         options={options}
       />
-      <ErrorResultFile packageName={packageName} options={options} />
-      <SerializationFormatFile packageName={packageName} options={options} />
-      <TypeFormattersFile packageName={packageName} options={options} />
-      <ClientUriBuilderFile packageName={packageName} options={options} />
+      <ErrorResultFile packageName={rootNamespace} options={options} />
+      <SerializationFormatFile packageName={rootNamespace} options={options} />
+      <TypeFormattersFile packageName={rootNamespace} options={options} />
+      <ClientUriBuilderFile packageName={rootNamespace} options={options} />
       <ModelSerializationExtensionsFile
-        packageName={packageName}
+        packageName={rootNamespace}
         options={options}
         hasDynamicModels={models.some((m) => isDynamicModel(m))}
       />
       <ClientPipelineExtensionsFile
-        packageName={packageName}
+        packageName={rootNamespace}
         options={options}
       />
-      <Utf8JsonBinaryContentFile packageName={packageName} options={options} />
-      <BinaryContentHelperFile packageName={packageName} options={options} />
-      <MultiPartFormDataBinaryContentFile packageName={packageName} />
+      <Utf8JsonBinaryContentFile packageName={rootNamespace} options={options} />
+      <BinaryContentHelperFile packageName={rootNamespace} options={options} />
+      <MultiPartFormDataBinaryContentFile packageName={rootNamespace} />
       <PipelineRequestHeadersExtensionsFile
-        packageName={packageName}
+        packageName={rootNamespace}
         options={options}
       />
       <CodeGenAttributeFiles options={options} />
@@ -280,12 +289,12 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
         })}
         <ModelFactoryFile
           models={models}
-          packageName={packageName}
+          packageName={rootNamespace}
           options={options}
         />
         <ModelReaderWriterContextFile
           models={models}
-          packageName={packageName}
+          packageName={rootNamespace}
           options={options}
         />
       </CSharpScalarOverrides>

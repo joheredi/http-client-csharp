@@ -74,6 +74,27 @@ export function resolvePackageName(
     return toNamespace(packageNameOption);
   }
 
+  return resolveRootNamespace(sdkContext);
+}
+
+/**
+ * Resolves the root C# namespace for generated code.
+ *
+ * Unlike {@link resolvePackageName}, this ignores the explicit `package-name` emitter option
+ * and always derives the namespace from the TCGC SdkPackage. This is important for versioned
+ * projects where `package-name` includes a version suffix (e.g., `Versioning.Foo.V2`) but
+ * the TCGC client namespace does not (e.g., `Versioning.Foo`).
+ *
+ * Infrastructure helper files (Argument.cs, Optional.cs, etc.) must use this namespace so
+ * they are accessible from client code without extra `using` directives.
+ *
+ * Resolution priority:
+ * 1. First client namespace from TCGC SdkPackage
+ * 2. First namespace from TCGC SdkPackage
+ * 3. Cross-language package ID from TCGC
+ * 4. Fallback to `"UnknownPackage"`
+ */
+export function resolveRootNamespace(sdkContext: SdkContext): string {
   const clients = sdkContext.sdkPackage.clients;
   if (clients.length > 0 && clients[0].namespace) {
     return clients[0].namespace;

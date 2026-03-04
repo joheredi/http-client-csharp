@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   toNamespace,
   getInvalidNamespaceSegments,
+  resolveRootNamespace,
+  resolvePackageName,
 } from "../src/utils/package-name.js";
 
 /**
@@ -125,3 +127,104 @@ describe("getInvalidNamespaceSegments", () => {
     expect(getInvalidNamespaceSegments("My.array.Service")).toEqual([]);
   });
 });
+
+/**
+ * Tests for resolveRootNamespace and resolvePackageName (task 12.2.8).
+ *
+ * These tests verify that infrastructure files get the correct namespace when
+ * generating versioned projects. The `package-name` option includes a version
+ * suffix (e.g., "Versioning.Foo.V2") for project file naming, but the code
+ * namespace must come from TCGC to match the client code namespace.
+ *
+ * resolveRootNamespace ignores the explicit package-name option and always
+ * uses the TCGC-derived namespace. This ensures infrastructure files
+ * (Argument.cs, Optional.cs, etc.) are in the same namespace as client code.
+ */
+describe("resolveRootNamespace", () => {
+  /**
+   * When TCGC provides a client namespace, resolveRootNamespace should use it,
+   * ignoring any explicit package-name option. This is the core fix for the
+   * versioned project namespace mismatch (task 12.2.8).
+   */
+  it("uses TCGC client namespace, ignoring explicit package-name", () => {
+    const mockContext = createMockSdkContext({
+      clientNamespace: "Versioning.ReturnTypeChangedFrom",
+    });
+
+    // resolvePackageName with explicit option uses the option
+    expect(
+      resolvePackageName(mockContext, "Versioning.ReturnTypeChangedFrom.V2"),
+    ).toBe("Versioning.ReturnTypeChangedFrom.V2");
+
+    // resolveRootNamespace always uses TCGC namespace
+    expect(resolveRootNamespace(mockContext)).toBe(
+      "Versioning.ReturnTypeChangedFrom",
+    );
+  });
+
+  /**
+   * When no explicit package-name is set, resolvePackageName and
+   * resolveRootNamespace should return the same value (TCGC client namespace).
+   */
+  it("matches resolvePackageName when no explicit option is set", () => {
+    const mockContext = createMockSdkContext({
+      clientNamespace: "MyService",
+    });
+
+    expect(resolvePackageName(mockContext)).toBe("MyService");
+    expect(resolveRootNamespace(mockContext)).toBe("MyService");
+  });
+
+  /**
+   * When TCGC has no clients, falls back to sdkPackage.namespaces.
+   */
+  it("falls back to sdkPackage namespace when no clients exist", () => {
+    const mockContext = createMockSdkContext({
+      namespaceName: "Versioning.Added",
+    });
+
+    expect(resolveRootNamespace(mockContext)).toBe("Versioning.Added");
+  });
+
+  /**
+   * When TCGC has neither clients nor namespaces, falls back to crossLanguagePackageId.
+   */
+  it("falls back to crossLanguagePackageId when no clients or namespaces", () => {
+    const mockContext = createMockSdkContext({
+      crossLanguagePackageId: "my-cross-lang-id",
+    });
+
+    expect(resolveRootNamespace(mockContext)).toBe("my-cross-lang-id");
+  });
+
+  /**
+   * When TCGC provides nothing, falls back to "UnknownPackage".
+   */
+  it('falls back to "UnknownPackage" when no metadata available', () => {
+    const mockContext = createMockSdkContext({});
+
+    expect(resolveRootNamespace(mockContext)).toBe("UnknownPackage");
+  });
+});
+
+/**
+ * Minimal mock for SdkContext that provides just enough structure
+ * for resolvePackageName and resolveRootNamespace to work.
+ */
+function createMockSdkContext(opts: {
+  clientNamespace?: string;
+  namespaceName?: string;
+  crossLanguagePackageId?: string;
+}): any {
+  return {
+    sdkPackage: {
+      clients: opts.clientNamespace
+        ? [{ namespace: opts.clientNamespace }]
+        : [],
+      namespaces: opts.namespaceName
+        ? [{ fullName: opts.namespaceName }]
+        : [],
+      crossLanguagePackageId: opts.crossLanguagePackageId ?? undefined,
+    },
+  };
+}

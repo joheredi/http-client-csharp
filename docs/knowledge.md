@@ -2166,3 +2166,19 @@ The TCGC SDK returns `param.name` as the raw TypeSpec parameter name (may contai
 - **Method signatures**: The `<Method>` component applies the C# name policy automatically
 - **Body code**: Must explicitly apply the name policy via `getParamName()` or `namePolicy.getName(name, "parameter")`
 - **Wire names**: Always use `param.serializedName` in string literals for `AppendQuery()`, `Headers.Set()`, etc.
+
+### Versioned project namespace mismatch: packageName vs rootNamespace
+
+When `package-name` includes a version suffix (e.g., `Versioning.Foo.V2`), `resolvePackageName()` returns the version-suffixed name. But TCGC client namespaces don't include the version suffix (e.g., `Versioning.Foo`). Infrastructure files used `packageName` for their namespace, causing CS0234/CS0246 errors because client code couldn't find `Argument`, `ClientUriBuilder`, etc.
+
+**Fix:** Added `resolveRootNamespace()` in `src/utils/package-name.ts` which always derives the namespace from TCGC (skipping the explicit `package-name` option). Infrastructure files now use `rootNamespace` instead of `packageName`. Project files (csproj, sln) still use `packageName` for naming.
+
+**Rule:** Use `packageName` for project metadata/file naming. Use `rootNamespace` for C# code namespaces in infrastructure files.
+
+## Design Decisions
+
+### Task 12.2.8: Separate packageName from rootNamespace
+
+**Chosen approach:** Compute `rootNamespace` from TCGC (ignoring explicit `package-name`), pass to infrastructure files. Keep `packageName` for project files.
+
+**Rejected approach:** Override client namespace with `packageName` — rejected because legacy emitter generates client code in the TCGC-derived namespace (without version suffix), and our output must match.
