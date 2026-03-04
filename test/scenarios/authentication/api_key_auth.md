@@ -36,7 +36,9 @@ public partial class ApiKeyClient
         private const string AuthorizationHeader = "x-ms-api-key";
 
         /// <summary> Initializes a new instance of ApiKeyClient for mocking. </summary>
-        protected ApiKeyClient() {}
+        protected ApiKeyClient()
+        {
+        }
 
         /// <summary> Initializes a new instance of ApiKeyClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
@@ -44,7 +46,9 @@ public partial class ApiKeyClient
         public ApiKeyClient(
             Uri endpoint,
             ApiKeyCredential credential
-        ) : this(endpoint, credential, new ClientPipelineOptions()) {}
+        ) : this(endpoint, credential, new ClientPipelineOptions())
+        {
+        }
 
         /// <summary> Initializes a new instance of ApiKeyClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>

@@ -43,11 +43,15 @@ public partial class ContentNegotiationClient
         private SameBody _cachedSameBody;
 
         /// <summary> Initializes a new instance of ContentNegotiationClient for mocking. </summary>
-        protected ContentNegotiationClient() {}
+        protected ContentNegotiationClient()
+        {
+        }
 
         /// <summary> Initializes a new instance of ContentNegotiationClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
-        public ContentNegotiationClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions()) {}
+        public ContentNegotiationClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions())
+        {
+        }
 
         /// <summary> Initializes a new instance of ContentNegotiationClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
@@ -83,7 +87,9 @@ public partial class SameBody
         private readonly Uri _endpoint;
 
         /// <summary> Initializes a new instance of SameBody for mocking. </summary>
-        protected SameBody() {}
+        protected SameBody()
+        {
+        }
 
         /// <summary> Initializes a new instance of SameBody. </summary>
         /// <param name="pipeline"> The HTTP pipeline for sending and receiving REST requests and responses. </param>

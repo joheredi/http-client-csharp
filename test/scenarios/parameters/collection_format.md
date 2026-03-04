@@ -48,11 +48,15 @@ public partial class CollectionFormatClient
         private Header _cachedHeader;
 
         /// <summary> Initializes a new instance of CollectionFormatClient for mocking. </summary>
-        protected CollectionFormatClient() {}
+        protected CollectionFormatClient()
+        {
+        }
 
         /// <summary> Initializes a new instance of CollectionFormatClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
-        public CollectionFormatClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions()) {}
+        public CollectionFormatClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions())
+        {
+        }
 
         /// <summary> Initializes a new instance of CollectionFormatClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
@@ -94,7 +98,9 @@ public partial class Query
         private readonly Uri _endpoint;
 
         /// <summary> Initializes a new instance of Query for mocking. </summary>
-        protected Query() {}
+        protected Query()
+        {
+        }
 
         /// <summary> Initializes a new instance of Query. </summary>
         /// <param name="pipeline"> The HTTP pipeline for sending and receiving REST requests and responses. </param>
@@ -396,7 +402,9 @@ public partial class Header
         private readonly Uri _endpoint;
 
         /// <summary> Initializes a new instance of Header for mocking. </summary>
-        protected Header() {}
+        protected Header()
+        {
+        }
 
         /// <summary> Initializes a new instance of Header. </summary>
         /// <param name="pipeline"> The HTTP pipeline for sending and receiving REST requests and responses. </param>

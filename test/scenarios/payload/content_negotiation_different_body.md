@@ -43,11 +43,15 @@ public partial class ContentNegotiationClient
         private DifferentBody _cachedDifferentBody;
 
         /// <summary> Initializes a new instance of ContentNegotiationClient for mocking. </summary>
-        protected ContentNegotiationClient() {}
+        protected ContentNegotiationClient()
+        {
+        }
 
         /// <summary> Initializes a new instance of ContentNegotiationClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
-        public ContentNegotiationClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions()) {}
+        public ContentNegotiationClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions())
+        {
+        }
 
         /// <summary> Initializes a new instance of ContentNegotiationClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
@@ -83,7 +87,9 @@ public partial class DifferentBody
         private readonly Uri _endpoint;
 
         /// <summary> Initializes a new instance of DifferentBody for mocking. </summary>
-        protected DifferentBody() {}
+        protected DifferentBody()
+        {
+        }
 
         /// <summary> Initializes a new instance of DifferentBody. </summary>
         /// <param name="pipeline"> The HTTP pipeline for sending and receiving REST requests and responses. </param>

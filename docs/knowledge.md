@@ -2350,3 +2350,11 @@ This applies anywhere `code` templates are used in `Children[]` arrays for state
 **Why:** The base constructor is only callable from derived classes. Validating in both base and derived causes double-validation. The golden output confirms this pattern: Animal's base constructor just assigns, while Pet and Dog validate all string parameters (including inherited `name`).
 
 **Rejected approach:** A shared helper function that encapsulates the null check decision based on model type — over-engineering for what amounts to a 2-line conditional change.
+
+## Design Decisions
+
+### Empty Constructor/Class Body Brace Style (Task 13.13)
+- **Approach chosen**: Bypass `<Block>` component for empty constructor bodies; use `"\n{\n}"` string literal. For empty class bodies, use regex post-processing.
+- **Why**: `<Block>` from `@alloy-js/core` renders empty content as `{}` (framework limitation). `ClassDeclaration` from `@alloy-js/csharp` renders no-children classes as `;` (file-scoped). Both are framework components we cannot modify.
+- **Rejected approaches**: (1) Passing invisible children to trick `ContentSlot.hasContent` — too fragile, depends on framework internals. (2) Using `code` templates — they strip leading whitespace per knowledge.md gotcha.
+- **Key insight**: `"\n{\n}"` in JSX string children works because Alloy's rendering engine handles `\n` as line breaks with proper indentation from parent context.

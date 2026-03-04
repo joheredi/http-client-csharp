@@ -43,7 +43,9 @@ public partial class OAuth2Client
         private static readonly string[] AuthorizationScopes = new string[] { "https://security.microsoft.com/.default" };
 
         /// <summary> Initializes a new instance of OAuth2Client for mocking. </summary>
-        protected OAuth2Client() {}
+        protected OAuth2Client()
+        {
+        }
 
         /// <summary> Initializes a new instance of OAuth2Client. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
@@ -51,7 +53,9 @@ public partial class OAuth2Client
         public OAuth2Client(
             Uri endpoint,
             AuthenticationTokenProvider tokenProvider
-        ) : this(endpoint, tokenProvider, new ClientPipelineOptions()) {}
+        ) : this(endpoint, tokenProvider, new ClientPipelineOptions())
+        {
+        }
 
         /// <summary> Initializes a new instance of OAuth2Client. </summary>
         /// <param name="endpoint"> Service endpoint. </param>

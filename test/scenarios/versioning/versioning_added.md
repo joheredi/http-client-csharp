@@ -189,11 +189,15 @@ public partial class AddedClient
         private InterfaceV2 _cachedInterfaceV2;
 
         /// <summary> Initializes a new instance of AddedClient for mocking. </summary>
-        protected AddedClient() {}
+        protected AddedClient()
+        {
+        }
 
         /// <summary> Initializes a new instance of AddedClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
-        public AddedClient(Uri endpoint) : this(endpoint, new AddedClientOptions()) {}
+        public AddedClient(Uri endpoint) : this(endpoint, new AddedClientOptions())
+        {
+        }
 
         /// <summary> Initializes a new instance of AddedClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
@@ -388,7 +392,9 @@ public partial class InterfaceV2
         private readonly Uri _endpoint;
 
         /// <summary> Initializes a new instance of InterfaceV2 for mocking. </summary>
-        protected InterfaceV2() {}
+        protected InterfaceV2()
+        {
+        }
 
         /// <summary> Initializes a new instance of InterfaceV2. </summary>
         /// <param name="pipeline"> The HTTP pipeline for sending and receiving REST requests and responses. </param>

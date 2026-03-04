@@ -37,11 +37,15 @@ public partial class CustomClient
         private readonly Uri _endpoint;
 
         /// <summary> Initializes a new instance of CustomClient for mocking. </summary>
-        protected CustomClient() {}
+        protected CustomClient()
+        {
+        }
 
         /// <summary> Initializes a new instance of CustomClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
-        public CustomClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions()) {}
+        public CustomClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions())
+        {
+        }
 
         /// <summary> Initializes a new instance of CustomClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>

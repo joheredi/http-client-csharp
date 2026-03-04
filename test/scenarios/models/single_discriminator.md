@@ -135,6 +135,8 @@ internal partial class UnknownBird : Bird
             string kind,
             int wingspan,
             IDictionary<string, BinaryData> additionalBinaryDataProperties
-        ) : base(kind ?? "unknown", wingspan, additionalBinaryDataProperties) {}
+        ) : base(kind ?? "unknown", wingspan, additionalBinaryDataProperties)
+        {
+        }
     }
 ```

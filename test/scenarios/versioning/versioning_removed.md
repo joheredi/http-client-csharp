@@ -207,11 +207,15 @@ public partial class RemovedClient
         private readonly Uri _endpoint;
 
         /// <summary> Initializes a new instance of RemovedClient for mocking. </summary>
-        protected RemovedClient() {}
+        protected RemovedClient()
+        {
+        }
 
         /// <summary> Initializes a new instance of RemovedClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
-        public RemovedClient(Uri endpoint) : this(endpoint, new RemovedClientOptions()) {}
+        public RemovedClient(Uri endpoint) : this(endpoint, new RemovedClientOptions())
+        {
+        }
 
         /// <summary> Initializes a new instance of RemovedClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>

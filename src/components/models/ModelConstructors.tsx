@@ -645,7 +645,11 @@ export function OverloadConstructor(props: ModelConstructorProps) {
         {props.thisInitializer !== undefined && (
           <> : this({props.thisInitializer})</>
         )}
-        <Block newline>{props.children}</Block>
+        {props.children != null ? (
+          <Block newline>{props.children}</Block>
+        ) : (
+          <>{"\n{\n}"}</>
+        )}
       </MethodScope>
     </MemberDeclaration>
   );

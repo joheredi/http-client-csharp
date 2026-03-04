@@ -129,6 +129,43 @@ describe("ModelReaderWriterContextFile", () => {
   });
 
   /**
+   * Verifies the empty class body uses multiline brace style (Allman style)
+   * instead of file-scoped `;` syntax. The golden files use:
+   *
+   * ```csharp
+   * public partial class FooContext : ModelReaderWriterContext
+   * {
+   * }
+   * ```
+   *
+   * This matters because C# file-scoped class declarations (`;`) are a newer
+   * feature and the legacy emitter always uses block-body style.
+   */
+  it("uses multiline brace style for empty class body", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    const content = outputs["src/Generated/Models/TestNamespaceContext.cs"];
+    // Should NOT end with semicolon (file-scoped declaration)
+    expect(content).not.toContain("ModelReaderWriterContext;");
+    // Should use block-body style with braces on separate lines
+    expect(content).toContain(
+      "ModelReaderWriterContext\n    {\n    }",
+    );
+  });
+
+  /**
    * Verifies that the context includes a `using System.ClientModel.Primitives;`
    * directive, which is needed for `ModelReaderWriterContext` and
    * `ModelReaderWriterBuildableAttribute`.

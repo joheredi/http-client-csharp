@@ -36,11 +36,15 @@ public partial class SingleClient
         private readonly Uri _endpoint;
 
         /// <summary> Initializes a new instance of SingleClient for mocking. </summary>
-        protected SingleClient() {}
+        protected SingleClient()
+        {
+        }
 
         /// <summary> Initializes a new instance of SingleClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
-        public SingleClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions()) {}
+        public SingleClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions())
+        {
+        }
 
         /// <summary> Initializes a new instance of SingleClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>

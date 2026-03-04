@@ -43,7 +43,9 @@ public partial class ContinuationToken
         private readonly Uri _endpoint;
 
         /// <summary> Initializes a new instance of ContinuationToken for mocking. </summary>
-        protected ContinuationToken() {}
+        protected ContinuationToken()
+        {
+        }
 
         /// <summary> Initializes a new instance of ContinuationToken. </summary>
         /// <param name="pipeline"> The HTTP pipeline for sending and receiving REST requests and responses. </param>

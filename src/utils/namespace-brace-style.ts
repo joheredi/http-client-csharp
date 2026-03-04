@@ -42,7 +42,43 @@ export function fixNamespaceBraceStyle(content: string): string {
 }
 
 /**
- * Walks an output directory tree and fixes namespace brace style in all .cs files.
+ * Converts file-scoped class declarations (ending with `;`) to block-body
+ * style with empty braces on separate lines.
+ *
+ * The Alloy C# `ClassDeclaration` component renders an empty class (no children)
+ * as a file-scoped declaration ending with `;`:
+ *
+ * ```csharp
+ *     public partial class FooContext : ModelReaderWriterContext;
+ * ```
+ *
+ * The legacy emitter golden files use block-body style with empty braces:
+ *
+ * ```csharp
+ *     public partial class FooContext : ModelReaderWriterContext
+ *     {
+ *     }
+ * ```
+ *
+ * @param content - The rendered C# file content to fix.
+ * @returns The content with block-body empty class declarations.
+ */
+export function fixEmptyClassBody(content: string): string {
+  // Match class declarations ending with `;` (file-scoped style).
+  // The regex captures:
+  //   $1 = leading horizontal whitespace
+  //   $2 = the full class declaration (modifiers + class + name + base/interfaces)
+  // Excludes lines that are clearly not class declarations by requiring
+  // the `class` keyword preceded by at least one modifier.
+  return content.replace(
+    /^([ \t]*)((?:(?:public|internal|private|protected|abstract|static|partial|sealed)\s+)*class\s+\w+[^;\n]*);[ \t]*$/gm,
+    "$1$2\n$1{\n$1}",
+  );
+}
+
+/**
+ * Walks an output directory tree and fixes namespace brace style and
+ * empty class body style in all .cs files.
  *
  * @param dir - The output directory tree from Alloy's `renderAsync`.
  */
@@ -60,9 +96,10 @@ export function fixAllNamespaceBraceStyles(
         typeof item.contents === "string" &&
         item.path.endsWith(".cs")
       ) {
-        // C# source file — fix namespace brace style
-        (item as import("@alloy-js/core").ContentOutputFile).contents =
-          fixNamespaceBraceStyle(item.contents);
+        // C# source file — fix brace styles
+        let fixed = fixNamespaceBraceStyle(item.contents);
+        fixed = fixEmptyClassBody(fixed);
+        (item as import("@alloy-js/core").ContentOutputFile).contents = fixed;
       }
     }
   }

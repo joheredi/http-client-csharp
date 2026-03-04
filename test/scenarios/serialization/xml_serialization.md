@@ -132,7 +132,9 @@ public partial class SimpleXmlModel : IPersistableModel<SimpleXmlModel>
         string IPersistableModel<SimpleXmlModel>.GetFormatFromOptions(ModelReaderWriterOptions options) => "X";
 
         /// <summary> Initializes a new instance of <see cref="SimpleXmlModel"/> for deserialization. </summary>
-        internal SimpleXmlModel() {}
+        internal SimpleXmlModel()
+        {
+        }
 
         public static implicit operator BinaryContent(SimpleXmlModel simpleXmlModel)
         {
@@ -299,7 +301,9 @@ public partial class XmlModelWithOptionalField : IPersistableModel<XmlModelWithO
         string IPersistableModel<XmlModelWithOptionalField>.GetFormatFromOptions(ModelReaderWriterOptions options) => "X";
 
         /// <summary> Initializes a new instance of <see cref="XmlModelWithOptionalField"/> for deserialization. </summary>
-        internal XmlModelWithOptionalField() {}
+        internal XmlModelWithOptionalField()
+        {
+        }
 
         public static implicit operator BinaryContent(XmlModelWithOptionalField xmlModelWithOptionalField)
         {
@@ -506,7 +510,9 @@ public partial class DualFormatModel : IJsonModel<DualFormatModel>
         }
 
         /// <summary> Initializes a new instance of <see cref="DualFormatModel"/> for deserialization. </summary>
-        internal DualFormatModel() {}
+        internal DualFormatModel()
+        {
+        }
 
         internal static DualFormatModel DeserializeDualFormatModel(JsonElement element, ModelReaderWriterOptions options)
         {

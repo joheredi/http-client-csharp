@@ -160,7 +160,9 @@ internal partial class UnknownDog : Dog
             DogKind kind,
             int weight,
             IDictionary<string, BinaryData> additionalBinaryDataProperties
-        ) : base(kind != default ? kind : "unknown", weight, additionalBinaryDataProperties) {}
+        ) : base(kind != default ? kind : "unknown", weight, additionalBinaryDataProperties)
+        {
+        }
     }
 ```
 
@@ -173,6 +175,8 @@ internal partial class UnknownSnake : Snake
             SnakeKind kind,
             int length,
             IDictionary<string, BinaryData> additionalBinaryDataProperties
-        ) : base(kind != default ? kind : "unknown", length, additionalBinaryDataProperties) {}
+        ) : base(kind != default ? kind : "unknown", length, additionalBinaryDataProperties)
+        {
+        }
     }
 ```

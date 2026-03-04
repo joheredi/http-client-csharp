@@ -34,7 +34,9 @@ public partial class ExplicitBody
         private readonly Uri _endpoint;
 
         /// <summary> Initializes a new instance of ExplicitBody for mocking. </summary>
-        protected ExplicitBody() {}
+        protected ExplicitBody()
+        {
+        }
 
         /// <summary> Initializes a new instance of ExplicitBody. </summary>
         /// <param name="pipeline"> The HTTP pipeline for sending and receiving REST requests and responses. </param>

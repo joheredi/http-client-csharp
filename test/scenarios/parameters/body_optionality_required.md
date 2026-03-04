@@ -44,11 +44,15 @@ public partial class BodyOptionalityClient
         private OptionalExplicit _cachedOptionalExplicit;
 
         /// <summary> Initializes a new instance of BodyOptionalityClient for mocking. </summary>
-        protected BodyOptionalityClient() {}
+        protected BodyOptionalityClient()
+        {
+        }
 
         /// <summary> Initializes a new instance of BodyOptionalityClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
-        public BodyOptionalityClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions()) {}
+        public BodyOptionalityClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions())
+        {
+        }
 
         /// <summary> Initializes a new instance of BodyOptionalityClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
@@ -225,7 +229,9 @@ public partial class OptionalExplicit
         private readonly Uri _endpoint;
 
         /// <summary> Initializes a new instance of OptionalExplicit for mocking. </summary>
-        protected OptionalExplicit() {}
+        protected OptionalExplicit()
+        {
+        }
 
         /// <summary> Initializes a new instance of OptionalExplicit. </summary>
         /// <param name="pipeline"> The HTTP pipeline for sending and receiving REST requests and responses. </param>

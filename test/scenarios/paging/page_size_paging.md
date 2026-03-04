@@ -46,7 +46,9 @@ public partial class PageSize
         private readonly Uri _endpoint;
 
         /// <summary> Initializes a new instance of PageSize for mocking. </summary>
-        protected PageSize() {}
+        protected PageSize()
+        {
+        }
 
         /// <summary> Initializes a new instance of PageSize. </summary>
         /// <param name="pipeline"> The HTTP pipeline for sending and receiving REST requests and responses. </param>

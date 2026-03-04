@@ -34,11 +34,15 @@ public partial class TestServiceClient
         private readonly Uri _endpoint;
 
         /// <summary> Initializes a new instance of TestServiceClient for mocking. </summary>
-        protected TestServiceClient() {}
+        protected TestServiceClient()
+        {
+        }
 
         /// <summary> Initializes a new instance of TestServiceClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
-        public TestServiceClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions()) {}
+        public TestServiceClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions())
+        {
+        }
 
         /// <summary> Initializes a new instance of TestServiceClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>

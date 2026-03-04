@@ -43,7 +43,9 @@ public partial class UnionClient
         private static readonly string[] AuthorizationScopes = new string[] { "https://security.microsoft.com/.default" };
 
         /// <summary> Initializes a new instance of UnionClient for mocking. </summary>
-        protected UnionClient() {}
+        protected UnionClient()
+        {
+        }
 
         /// <summary> Initializes a new instance of UnionClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
@@ -51,7 +53,9 @@ public partial class UnionClient
         public UnionClient(
             Uri endpoint,
             AuthenticationTokenProvider tokenProvider
-        ) : this(endpoint, tokenProvider, new ClientPipelineOptions()) {}
+        ) : this(endpoint, tokenProvider, new ClientPipelineOptions())
+        {
+        }
 
         /// <summary> Initializes a new instance of UnionClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>

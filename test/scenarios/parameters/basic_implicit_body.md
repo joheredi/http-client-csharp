@@ -28,7 +28,9 @@ public partial class ImplicitBody
         private readonly Uri _endpoint;
 
         /// <summary> Initializes a new instance of ImplicitBody for mocking. </summary>
-        protected ImplicitBody() {}
+        protected ImplicitBody()
+        {
+        }
 
         /// <summary> Initializes a new instance of ImplicitBody. </summary>
         /// <param name="pipeline"> The HTTP pipeline for sending and receiving REST requests and responses. </param>

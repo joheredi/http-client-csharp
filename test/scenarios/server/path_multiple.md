@@ -48,11 +48,15 @@ public partial class MultipleClient
         private readonly Uri _endpoint;
 
         /// <summary> Initializes a new instance of MultipleClient for mocking. </summary>
-        protected MultipleClient() {}
+        protected MultipleClient()
+        {
+        }
 
         /// <summary> Initializes a new instance of MultipleClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
-        public MultipleClient(Uri endpoint) : this(endpoint, new MultipleClientOptions()) {}
+        public MultipleClient(Uri endpoint) : this(endpoint, new MultipleClientOptions())
+        {
+        }
 
         /// <summary> Initializes a new instance of MultipleClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>

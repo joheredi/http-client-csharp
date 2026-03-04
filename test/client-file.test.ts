@@ -813,6 +813,44 @@ describe("ClientFile", () => {
   });
 
   /**
+   * Verifies empty constructors use multiline brace style (Allman style) instead
+   * of single-line `{ }` or `{}`. The golden files always use multiline empty
+   * bodies for constructors:
+   *
+   * ```csharp
+   * protected TestServiceClient()
+   * {
+   * }
+   * ```
+   *
+   * This matters because the legacy emitter consistently uses this style and
+   * diff tools would flag the formatting difference as a change.
+   */
+  it("uses multiline brace style for empty constructor bodies", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+      @service
+      namespace TestService;
+      @route("/test")
+      @get op testOp(): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Protected mocking constructor should have multiline empty body
+    expect(clientFile).toContain(
+      "protected TestServiceClient()\n        {\n        }",
+    );
+
+    // Secondary constructor with :this() should also have multiline empty body
+    expect(clientFile).toContain(
+      ": this(endpoint, new ClientPipelineOptions())\n        {\n        }",
+    );
+  });
+
+  /**
    * Verifies that a root client with sub-clients generates thread-safe lazy
    * factory methods using the Volatile.Read + Interlocked.CompareExchange pattern.
    *

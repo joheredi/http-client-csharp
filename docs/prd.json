@@ -5091,7 +5091,7 @@
           "title": "Fix empty constructor brace style: multiline body instead of single-line",
           "description": "Golden files use multiline empty bodies for protected constructors:\n\n```csharp\nprotected SampleTypeSpecClient()\n{\n}\n```\n\nThe new emitter generates single-line:\n```csharp\nprotected SampleTypeSpecClient() {}\n```\n\nAffects protected mock constructors on all client and sub-client files. Also affects empty class bodies (SampleTypeSpecContext uses `{ }` not `;`). When in doubt, the legacy output wins.",
           "phase": "phase-13",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],

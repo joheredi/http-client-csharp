@@ -50,7 +50,9 @@ public partial class ServerDrivenPagination
         private readonly Uri _endpoint;
 
         /// <summary> Initializes a new instance of ServerDrivenPagination for mocking. </summary>
-        protected ServerDrivenPagination() {}
+        protected ServerDrivenPagination()
+        {
+        }
 
         /// <summary> Initializes a new instance of ServerDrivenPagination. </summary>
         /// <param name="pipeline"> The HTTP pipeline for sending and receiving REST requests and responses. </param>

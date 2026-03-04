@@ -163,7 +163,9 @@ public partial class Query
         private readonly Uri _endpoint;
 
         /// <summary> Initializes a new instance of Query for mocking. </summary>
-        protected Query() {}
+        protected Query()
+        {
+        }
 
         /// <summary> Initializes a new instance of Query. </summary>
         /// <param name="pipeline"> The HTTP pipeline for sending and receiving REST requests and responses. </param>

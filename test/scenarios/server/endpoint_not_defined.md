@@ -28,11 +28,15 @@ public partial class NotDefinedClient
         private readonly Uri _endpoint;
 
         /// <summary> Initializes a new instance of NotDefinedClient for mocking. </summary>
-        protected NotDefinedClient() {}
+        protected NotDefinedClient()
+        {
+        }
 
         /// <summary> Initializes a new instance of NotDefinedClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
-        public NotDefinedClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions()) {}
+        public NotDefinedClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions())
+        {
+        }
 
         /// <summary> Initializes a new instance of NotDefinedClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>

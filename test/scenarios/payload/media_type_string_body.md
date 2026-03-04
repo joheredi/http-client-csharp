@@ -50,11 +50,15 @@ public partial class MediaTypeClient
         private StringBody _cachedStringBody;
 
         /// <summary> Initializes a new instance of MediaTypeClient for mocking. </summary>
-        protected MediaTypeClient() {}
+        protected MediaTypeClient()
+        {
+        }
 
         /// <summary> Initializes a new instance of MediaTypeClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
-        public MediaTypeClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions()) {}
+        public MediaTypeClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions())
+        {
+        }
 
         /// <summary> Initializes a new instance of MediaTypeClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
@@ -90,7 +94,9 @@ public partial class StringBody
         private readonly Uri _endpoint;
 
         /// <summary> Initializes a new instance of StringBody for mocking. </summary>
-        protected StringBody() {}
+        protected StringBody()
+        {
+        }
 
         /// <summary> Initializes a new instance of StringBody. </summary>
         /// <param name="pipeline"> The HTTP pipeline for sending and receiving REST requests and responses. </param>

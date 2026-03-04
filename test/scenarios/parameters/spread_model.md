@@ -49,11 +49,15 @@ public partial class SpreadClient
         private Model _cachedModel;
 
         /// <summary> Initializes a new instance of SpreadClient for mocking. </summary>
-        protected SpreadClient() {}
+        protected SpreadClient()
+        {
+        }
 
         /// <summary> Initializes a new instance of SpreadClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
-        public SpreadClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions()) {}
+        public SpreadClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions())
+        {
+        }
 
         /// <summary> Initializes a new instance of SpreadClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
@@ -89,7 +93,9 @@ public partial class Model
         private readonly Uri _endpoint;
 
         /// <summary> Initializes a new instance of Model for mocking. </summary>
-        protected Model() {}
+        protected Model()
+        {
+        }
 
         /// <summary> Initializes a new instance of Model. </summary>
         /// <param name="pipeline"> The HTTP pipeline for sending and receiving REST requests and responses. </param>
