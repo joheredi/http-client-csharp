@@ -14,6 +14,7 @@ import type { SdkModelPropertyType } from "@azure-tools/typespec-client-generato
 import { UsageFlags } from "@azure-tools/typespec-client-generator-core";
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import { renderCollectionPropertyType } from "../../utils/collection-type-expression.js";
+import { ensureTrailingPeriod } from "../../utils/doc.js";
 import {
   isCollectionType,
   isPropertyNullable,
@@ -128,7 +129,9 @@ export function ModelProperty(props: ModelPropertyProps) {
     ? true
     : propertyHasSetter(property, modelUsage);
   const doc = property.doc ?? property.summary;
-  const formattedDoc = doc ? `<summary> ${doc} </summary>` : undefined;
+  const formattedDoc = doc
+    ? `<summary> ${ensureTrailingPeriod(doc)} </summary>`
+    : undefined;
 
   // Collection types (arrays, dicts) render as IList<T>/IReadOnlyList<T> or
   // IDictionary<string,T>/IReadOnlyDictionary<string,T> instead of T[] or the

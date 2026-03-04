@@ -4970,7 +4970,7 @@
           "title": "Fix property summary doc trailing period",
           "description": "Golden files end property summary docs with a period (`.`) but the new emitter omits the trailing period:\n\nGolden: `/// <summary> Name of the animal. </summary>`\nGenerated: `/// <summary> Name of the animal </summary>`\n\nThis is a small but widespread difference affecting property doc comments across all model files. When in doubt, the legacy output wins.",
           "phase": "phase-13",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],
@@ -5383,6 +5383,34 @@
           "acceptance_criteria": [
             "System.Linq is included when client methods use LINQ operations",
             "Matches golden file using directives"
+          ]
+        },
+        {
+          "id": "13.26",
+          "title": "Remove namespace brace style and header reorder post-processing workarounds",
+          "description": "The emitter currently applies two cosmetic post-processing steps to rendered output:\n\n1. **Namespace brace style** (`src/utils/namespace-brace-style.ts`): Converts K&R-style namespace braces to Allman style via regex after rendering. This works around the Alloy C# `Namespace` component always rendering K&R style.\n\n2. **Header reordering** (`src/utils/reorder-header.ts`): Moves the license/auto-generated header before `using` directives after rendering. This works around the Alloy C# `SourceFile` component rendering usings before children.\n\nBoth are cosmetic workarounds tracked in `docs/alloy-issues.md`. Once Alloy supports Allman brace style for namespaces and header ordering in `SourceFile`, these post-processing utilities and their tests should be removed, and the emitter should use the native Alloy features instead.\n\nThis task is blocked on upstream Alloy fixes.",
+          "phase": "phase-13",
+          "status": "blocked",
+          "dependencies": [],
+          "files": {
+            "create": [],
+            "modify": [
+              "src/emitter.tsx"
+            ],
+            "reference": [
+              "src/utils/namespace-brace-style.ts",
+              "src/utils/reorder-header.ts",
+              "test/namespace-brace-style.test.ts",
+              "test/reorder-header.test.ts",
+              "docs/alloy-issues.md"
+            ]
+          },
+          "acceptance_criteria": [
+            "src/utils/namespace-brace-style.ts and its test are removed",
+            "src/utils/reorder-header.ts and its test are removed",
+            "fixAllNamespaceBraceStyles and reorderAllFileHeaders calls removed from src/emitter.tsx",
+            "Alloy native features used instead for brace style and header ordering",
+            "All scenario tests still pass with correct golden file output"
           ]
         }
       ]

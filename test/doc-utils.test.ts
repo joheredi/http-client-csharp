@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDocLines } from "../src/utils/doc.js";
+import { ensureTrailingPeriod, formatDocLines } from "../src/utils/doc.js";
 
 /**
  * Tests for the formatDocLines utility (src/utils/doc.ts).
@@ -74,5 +74,67 @@ describe("formatDocLines", () => {
    */
   it("handles trailing newline", () => {
     expect(formatDocLines("text\n")).toBe("text\n/// ");
+  });
+});
+
+/**
+ * Tests for the ensureTrailingPeriod utility (src/utils/doc.ts).
+ *
+ * The legacy emitter (XmlDocStatement.GetPeriodOrEmpty) always terminates
+ * single-line summary comments with a period. TCGC's doc/summary fields
+ * carry the raw TypeSpec text which may or may not already include a period.
+ * These tests verify the utility correctly normalises text so the generated
+ * C# matches the golden file convention.
+ *
+ * Why these tests matter:
+ * - Every property and member summary in the golden output ends with a period.
+ *   Missing periods cause diff failures in scenario tests and break SDK
+ *   documentation consistency.
+ */
+describe("ensureTrailingPeriod", () => {
+  /**
+   * Text without a period should get one appended. This is the primary
+   * case: TCGC returns "Name of the animal" and the golden file expects
+   * "Name of the animal."
+   */
+  it("appends a period when text does not end with one", () => {
+    expect(ensureTrailingPeriod("Name of the animal")).toBe(
+      "Name of the animal.",
+    );
+  });
+
+  /**
+   * Text that already ends with a period should not get a second one.
+   * This avoids producing "Name of the animal.." in summaries.
+   */
+  it("does not double-add a period when text already ends with one", () => {
+    expect(ensureTrailingPeriod("Name of the animal.")).toBe(
+      "Name of the animal.",
+    );
+  });
+
+  /**
+   * Empty string edge case — should return empty string without error.
+   * An empty doc value should not produce a lone period.
+   */
+  it("returns empty string unchanged", () => {
+    expect(ensureTrailingPeriod("")).toBe("");
+  });
+
+  /**
+   * Single word without period — verifies the simplest non-empty case.
+   */
+  it("appends period to single word", () => {
+    expect(ensureTrailingPeriod("Widget")).toBe("Widget.");
+  });
+
+  /**
+   * Text ending with other punctuation (e.g., question mark) should
+   * still get a period, matching the legacy emitter's behaviour.
+   */
+  it("appends period even when text ends with other punctuation", () => {
+    expect(ensureTrailingPeriod("Is this a widget?")).toBe(
+      "Is this a widget?.",
+    );
   });
 });

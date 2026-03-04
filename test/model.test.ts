@@ -700,6 +700,53 @@ describe("ModelProperty", () => {
   });
 
   /**
+   * Validates that property doc comments always end with a trailing period,
+   * even when the TypeSpec @doc text does not include one. The legacy emitter
+   * (XmlDocStatement.GetPeriodOrEmpty) always ensures a trailing period in
+   * single-line summary comments. This test uses doc strings WITHOUT trailing
+   * periods to verify the new emitter normalises them.
+   *
+   * Why this matters:
+   * - Golden files universally end property summaries with a period.
+   * - TCGC passes through the raw doc text which may not include one.
+   * - Mismatched punctuation causes diff failures in scenario tests.
+   */
+  it("adds trailing period to doc comments when source omits it", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        /** The display name of the widget */
+        name: string;
+        /** Optional description for the widget */
+        description?: string;
+      }
+
+      @route("/widgets")
+      op getWidget(): Widget;
+      @route("/create")
+      op createWidget(@body body: Widget): void;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
+    expect(modelFile).toBeDefined();
+    const content = outputs[modelFile!];
+
+    // Doc comments should end with a period even though source text does not
+    expect(content).toContain(
+      "/// <summary> The display name of the widget. </summary>",
+    );
+    expect(content).toContain(
+      "/// <summary> Optional description for the widget. </summary>",
+    );
+  });
+
+  /**
    * Validates that property names follow PascalCase convention in C#.
    * TypeSpec uses camelCase for property names, but C# conventions require
    * PascalCase for public properties. The Alloy naming policy handles this

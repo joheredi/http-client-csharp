@@ -3718,3 +3718,23 @@ Fixed namespace brace style in all generated C# files from K&R (`namespace Foo {
 - **Fix**: Separated `"\n"` into a standalone plain string pushed before the `code` template literal. Applied to 4 locations: PipelineMessage creation, PipelineRequest extraction, repeatability-request-id header, and repeatability-first-sent header.
 - **Pattern**: When using `code` template literals from Alloy with newlines, always push `"\n"` as a separate plain string argument rather than embedding it inside the template literal.
 - **Tests**: Added regression assertion in rest-client.test.ts to catch concatenated statements. All 1241 unit tests + 102 scenario tests pass.
+
+---
+
+## 2026-03-04: Task 13.8 — Fix property summary doc trailing period
+
+Added `ensureTrailingPeriod()` utility to `src/utils/doc.ts` and applied it in `ModelProperty.tsx` to ensure all property XML doc summaries end with a period, matching the golden file convention.
+
+**Root cause**: TCGC's `doc`/`summary` fields carry raw TypeSpec text without guaranteed trailing periods, but the legacy emitter's `XmlDocStatement.GetPeriodOrEmpty()` always adds one. The new emitter was passing text through without normalisation.
+
+**Files modified**:
+- `src/utils/doc.ts` — Added `ensureTrailingPeriod(text)` utility
+- `src/components/models/ModelProperty.tsx` — Applied `ensureTrailingPeriod` to doc text before wrapping in `<summary>` tags
+
+**Tests added**:
+- `test/doc-utils.test.ts` — 5 new tests for `ensureTrailingPeriod` (no period → adds, has period → no double, empty string, single word, other punctuation)
+- `test/model.test.ts` — 1 new test "adds trailing period to doc comments when source omits it" using TypeSpec `/** text */` without period
+
+**Pattern for future tasks**: The `ensureTrailingPeriod` utility should be applied in any component generating `<summary>` tags from dynamic TCGC content. Other affected files (ClientFile.tsx, ConvenienceMethod.tsx, enum files) have their own tasks (13.3-13.7, 13.24).
+
+All 1247 tests pass (66 test files). Build succeeds.
