@@ -1,6 +1,6 @@
 import { type Children } from "@alloy-js/core";
 import { Reference } from "@alloy-js/csharp";
-import type { IntrinsicType, Scalar, Union, UnionVariant } from "@typespec/compiler";
+import type { IntrinsicType, Scalar, Type, Union, UnionVariant } from "@typespec/compiler";
 import {
   Experimental_ComponentOverrides,
   Experimental_ComponentOverridesConfig,
@@ -105,21 +105,63 @@ function hasNullVariant(union: Union): boolean {
 }
 
 /**
- * Checks whether a named TypeSpec Union represents a multi-type union
- * (e.g., `union Foo { string, int32 }`) rather than an extensible enum
- * (e.g., `union Bar { string, "a", "b" }`).
+ * Returns the base kind category of a TypeSpec type for union diversity checking.
  *
- * Multi-type named unions have variants with different underlying scalar
- * types (e.g., string + integer). C# has no equivalent union type, so these
- * are mapped to BinaryData. Extensible enums have all variants based on the
- * same scalar type and are handled by the existing enum generation.
+ * Maps each type to one of three base categories — "string", "boolean", or
+ * "numeric" — for scalars and literals. Other type kinds (Model, Union, etc.)
+ * return their own kind string, ensuring they are always treated as distinct.
+ *
+ * This categorization groups types that can coexist in a single extensible enum
+ * (e.g., `string` scalar + `"red"` literal → both "string"), while separating
+ * types that cannot (e.g., `"a"` string + `2` number → "string" vs "numeric").
+ *
+ * @param type - A TypeSpec type (variant type from a union).
+ * @returns A category string used to determine union type diversity.
+ */
+function getVariantBaseKind(type: Type): string {
+  if (type.kind === "String") return "string";
+  if (type.kind === "Number") return "numeric";
+  if (type.kind === "Boolean") return "boolean";
+  if (type.kind === "Scalar") {
+    let current: Scalar = type;
+    while (current.baseScalar) {
+      current = current.baseScalar;
+    }
+    if (current.name === "string") return "string";
+    if (current.name === "boolean") return "boolean";
+    // All numeric root scalars (integer, float, numeric, decimal) → "numeric"
+    return "numeric";
+  }
+  // Model, Union, Tuple, etc. — each is unique / multi-type
+  return type.kind;
+}
+
+/**
+ * Checks whether a TypeSpec Union represents a multi-type union rather than
+ * an extensible enum. Works for both named and unnamed (aliased/inline) unions.
+ *
+ * A multi-type union has variants with different underlying base kinds — e.g.,
+ * `Cat | "a" | int32 | boolean` mixes Model + string + numeric + boolean.
+ * C# has no equivalent union type, so these are mapped to BinaryData.
+ *
+ * Extensible enums have all variants based on the same base kind (e.g.,
+ * `"red" | "blue"` are all string) and are handled by enum generation.
+ *
+ * Examples of multi-type unions (→ BinaryData):
+ * - `Cat | "a" | int32 | boolean` — Model + mixed literals
+ * - `"a" | 2 | 3.3 | true` — mixed literal types
+ * - `string | string[]` — scalar + array model
+ * - `Cat | Dog` — all Model variants (not a scalar/literal extensible enum)
+ *
+ * Examples of single-type unions (→ extensible enum):
+ * - `"red" | "blue"` — all string literals
+ * - `1 | 2 | 3` — all numeric literals
+ * - `string | "red" | "blue"` — all string-based
  *
  * @param union - A TypeSpec Union type.
- * @returns `true` if the union has variants with different root scalar types.
+ * @returns `true` if the union has variants with different base kinds.
  */
-function isMultiTypeNamedUnion(union: Union): boolean {
-  if (!union.name) return false;
-
+function isMultiTypeUnion(union: Union): boolean {
   const variants = [...union.variants.values()]
     .map((v) => v.type)
     .filter(
@@ -133,35 +175,17 @@ function isMultiTypeNamedUnion(union: Union): boolean {
 
   if (variants.length <= 1) return false;
 
-  // Non-scalar, non-literal variants (Model, nested Union, etc.) → multi-type
-  if (
-    variants.some(
-      (t) =>
-        t.kind !== "Scalar" &&
-        t.kind !== "String" &&
-        t.kind !== "Number" &&
-        t.kind !== "Boolean",
-    )
-  ) {
-    return true;
-  }
+  const baseKinds = new Set(variants.map(getVariantBaseKind));
 
-  // Check if scalar variants have different root types
-  const scalarVariants = variants.filter(
-    (t): t is Scalar => t.kind === "Scalar",
-  );
-  if (scalarVariants.length <= 1) return false;
+  // Different base kinds → definitely multi-type (e.g., string + numeric + boolean)
+  if (baseKinds.size > 1) return true;
 
-  const rootNames = new Set<string>();
-  for (const s of scalarVariants) {
-    let current: Scalar = s;
-    while (current.baseScalar) {
-      current = current.baseScalar;
-    }
-    rootNames.add(current.name);
-  }
-
-  return rootNames.size > 1;
+  // All variants share the same base kind. If that kind is a scalar/literal
+  // category (string, numeric, boolean), it can be an extensible enum.
+  // Any other kind (Model, Union, Tuple, etc.) cannot, so it's multi-type.
+  // Example: Cat | Dog → all "Model" → multi-type → BinaryData.
+  const singleKind = [...baseKinds][0];
+  return singleKind !== "string" && singleKind !== "numeric" && singleKind !== "boolean";
 }
 
 /**
@@ -170,13 +194,18 @@ function isMultiTypeNamedUnion(union: Union): boolean {
  * Overrides TypeExpression's type rendering for:
  *
  * **Unions**:
- * - Multi-type named unions (e.g., `union Foo { string, int32 }`) map to
- *   BinaryData since C# has no equivalent union type.
- * - Named single-type unions (extensible enums) and nullable unions delegate
- *   to the default TypeExpression.
- * - Unnamed non-nullable unions (e.g., `"red" | "blue"`) are inline string
- *   literal unions that TCGC converts to `SdkEnumType`. These are referenced
- *   via `efCsharpRefkey` to resolve to the generated enum declaration.
+ * - Nullable unions (e.g., `T | null`) delegate to the default TypeExpression.
+ * - Multi-type unions (variants with different base kinds) map to BinaryData
+ *   since C# has no equivalent union type. This covers both named unions
+ *   (e.g., `union Foo { string, int32 }`) and unnamed unions from aliases
+ *   or inline expressions (e.g., `Cat | "a" | int32`, `string | string[]`,
+ *   `"a" | 2 | 3.3 | true`).
+ * - Named single-type unions (extensible enums) delegate to the default
+ *   TypeExpression.
+ * - Unnamed single-type non-nullable unions (e.g., `"red" | "blue"`) are
+ *   inline string literal unions that TCGC converts to `SdkEnumType`. These
+ *   are referenced via `efCsharpRefkey` to resolve to the generated enum
+ *   declaration.
  *
  * **UnionVariants**:
  * - A UnionVariant used as a property type (e.g., `ExtendedEnum.EnumValue2`)
@@ -197,20 +226,29 @@ function isMultiTypeNamedUnion(union: Union): boolean {
 const csharpTypeOverrides = Experimental_ComponentOverridesConfig()
   .forTypeKind("Union", {
     reference: (props) => {
-      // Multi-type named unions (e.g., `union Foo { string, int32 }`) have
-      // no single C# type equivalent — map to BinaryData.
-      if (isMultiTypeNamedUnion(props.type)) {
-        return System.BinaryData;
-      }
-
-      // Named unions (extensible enums) and nullable unions are handled
-      // correctly by the default TypeExpression — delegate to it.
-      if (props.type.name || hasNullVariant(props.type)) {
+      // Nullable unions (e.g., `T | null`) are handled correctly by the
+      // default TypeExpression — delegate to it.
+      if (hasNullVariant(props.type)) {
         return props.default;
       }
 
-      // Unnamed non-nullable unions are inline string literal unions
-      // (e.g., `"red" | "blue"`) that TCGC converts to SdkEnumType.
+      // Multi-type unions (variants with different base kinds) have no single
+      // C# type equivalent — map to BinaryData. This covers named unions,
+      // unnamed aliases (e.g., `alias Foo = Cat | "a" | int32`), mixed
+      // literals (e.g., `"a" | 2 | 3.3 | true`), and inline unions
+      // (e.g., `string | string[]`).
+      if (isMultiTypeUnion(props.type)) {
+        return System.BinaryData;
+      }
+
+      // Named single-type unions (extensible enums) are handled correctly
+      // by the default TypeExpression — delegate to it.
+      if (props.type.name) {
+        return props.default;
+      }
+
+      // Unnamed single-type non-nullable unions are inline string literal
+      // unions (e.g., `"red" | "blue"`) that TCGC converts to SdkEnumType.
       // The enum declarations register efCsharpRefkey(rawType), so we
       // reference the same key to resolve to the generated enum type.
       return <Reference refkey={efCsharpRefkey(props.type)} />;

@@ -196,6 +196,116 @@ describe("CSharpScalarOverrides", () => {
       const content = renderType(type);
       expect(content).toContain("BinaryData");
     });
+
+    /**
+     * Unnamed multi-type unions created via TypeSpec aliases (e.g.,
+     * `alias MixedTypesUnion = Cat | "a" | int32 | boolean`) should map to
+     * BinaryData. TypeSpec aliases are transparent — the union has no `name`.
+     * Without this fix, the override falls through to `efCsharpRefkey` which
+     * creates an unresolved symbol.
+     *
+     * This is the primary fix for task 12.2.5: the type/union spec uses
+     * aliases like `MixedTypesUnion`, `MixedLiteralsUnion`, etc. that
+     * produce unnamed multi-type unions.
+     */
+    it("maps unnamed multi-type alias union to BinaryData", async () => {
+      const { test } = await runner.compile(`
+        model Cat {
+          name: string;
+        }
+        alias MixedTypesUnion = Cat | "a" | int32 | boolean;
+        model Test {
+          @test test: MixedTypesUnion;
+        }
+      `);
+      const type = (test as ModelProperty).type;
+      const content = renderType(type);
+      expect(content).toContain("BinaryData");
+      expect(content).not.toContain("Unresolved");
+    });
+
+    /**
+     * Mixed literal unions (e.g., `"a" | 2 | 3.3 | true`) combine string,
+     * number, and boolean literals. These have different base kinds so they
+     * should map to BinaryData. The legacy emitter maps MixedLiteralsCases
+     * properties to BinaryData.
+     *
+     * Without this fix, all four properties of MixedLiteralsCases would
+     * contain unresolved refkey symbols.
+     */
+    it("maps mixed literal type union to BinaryData", async () => {
+      const { test } = await runner.compile(`
+        alias MixedLiterals = "a" | 2 | 3.3 | true;
+        model Test {
+          @test test: MixedLiterals;
+        }
+      `);
+      const type = (test as ModelProperty).type;
+      const content = renderType(type);
+      expect(content).toContain("BinaryData");
+      expect(content).not.toContain("Unresolved");
+    });
+
+    /**
+     * Inline unions mixing a scalar with an array type (e.g., `string | string[]`)
+     * should map to BinaryData. The `string` variant is a scalar (kind "string")
+     * and `string[]` is a Model (templated Array), so they have different base
+     * kinds.
+     *
+     * The type/union spec's StringAndArrayCases model uses this pattern.
+     */
+    it("maps inline scalar+array union to BinaryData", async () => {
+      const { test } = await runner.compile(`
+        model Test {
+          @test test: string | string[];
+        }
+      `);
+      const type = (test as ModelProperty).type;
+      const content = renderType(type);
+      expect(content).toContain("BinaryData");
+      expect(content).not.toContain("Unresolved");
+    });
+
+    /**
+     * Single-type unnamed unions (e.g., `"red" | "blue"`) where all variants
+     * share the same base kind should NOT map to BinaryData. These are
+     * extensible enum patterns that TCGC converts to SdkEnumType.
+     * This test ensures the fix for multi-type unions doesn't break
+     * single-type union handling.
+     */
+    it("does not map single-type literal union to BinaryData", async () => {
+      const { test } = await runner.compile(`
+        model Test {
+          @test test: "red" | "blue" | "green";
+        }
+      `);
+      const type = (test as ModelProperty).type;
+      const content = renderType(type);
+      expect(content).not.toContain("BinaryData");
+    });
+
+    /**
+     * Union of multiple model types (e.g., `Cat | Dog`) should map to
+     * BinaryData. Even though all variants share the Model base kind,
+     * model unions cannot be extensible enums. The legacy emitter maps
+     * `ModelsOnlyUnion = Cat | Dog` to BinaryData.
+     *
+     * Without this, GetResponse5.Prop in the type/union spec would have
+     * unresolved refkey symbols.
+     */
+    it("maps model-only union to BinaryData", async () => {
+      const { test } = await runner.compile(`
+        model Cat { name: string; }
+        model Dog { bark: string; }
+        model Test {
+          @test test: Cat | Dog;
+        }
+      `);
+      const type = (test as ModelProperty).type;
+      const content = renderType(type);
+      expect(content).toContain("BinaryData");
+      expect(content).not.toContain("Unresolved");
+    });
   });
 
   describe("BinaryData library declaration", () => {

@@ -4544,7 +4544,7 @@
           "title": "Fix unresolved refkey symbols in union type deserialization",
           "description": "Union type deserialization generates unresolved Alloy refkey symbols in the output C# code, producing invalid syntax like `<Unresolved Symbol: refkey[...]>`.\n\nExample of broken generated code (type/union/Models/GetResponse5.Serialization.cs):\n```csharp\n<Unresolved Symbol: refkey[sSymbol(emitter-framework:csharp)\u2063o200]> prop = default;\n```\n\nThis indicates that a refkey reference in the deserialization component tree is not being resolved during rendering. The issue likely involves how union property types are referenced in the deserialization code \u2014 the refkey for the type declaration is created but the target declaration doesn't exist or is in a different scope.\n\nThis affects the `type/union` spec which has complex union types including mixed literals, string+array combinations, and discriminated unions.\n\nCheck:\n- `src/components/` for union deserialization handling\n- How union property types create refkeys\n- Whether the target type declarations are properly registered in the Alloy scope\n\nTo reproduce: `dotnet build temp/e2e/Spector/http/type/union/src/Type.Union.csproj`",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],

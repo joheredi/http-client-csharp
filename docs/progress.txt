@@ -3389,3 +3389,24 @@ The crash had two root causes: (1) TypeExpression didn't handle `UnionVariant` t
 **Test added:** New test in `test/model-factory.test.ts` — "strips dots from package name in factory class name" validates: file path, class name (no dots), and namespace (still dotted).
 
 **Impact:** Affects ALL generated projects since every project with models gets a ModelFactory. The file path and class declaration are both derived from the same `factoryClassName` variable.
+
+## 2026-03-04: Task 12.2.5 — Fix unresolved refkey symbols in union type deserialization (complete)
+
+**What was done:** Fixed `CSharpTypeExpression.tsx` to correctly map all multi-type unions to `BinaryData`, not just named ones. The root cause was `isMultiTypeNamedUnion` rejecting unnamed unions (`if (!union.name) return false`), causing TypeSpec aliases (`MixedTypesUnion = Cat | "a" | int32 | boolean`), mixed literals (`"a" | 2 | 3.3 | true`), inline unions (`string | string[]`), and model unions (`Cat | Dog`) to fall through to `efCsharpRefkey()` which created unresolved references.
+
+**Changes:**
+1. **Renamed `isMultiTypeNamedUnion` → `isMultiTypeUnion`** — removed the name check so both named and unnamed unions are evaluated.
+2. **Added `getVariantBaseKind` helper** — categorizes each variant type into "string", "numeric", "boolean", or its own kind. This correctly handles mixed literals (String + Number + Boolean kinds).
+3. **Added non-extensible-enum check** — if all variants share the same base kind but that kind is NOT a scalar/literal category (e.g., `Cat | Dog` → both "Model"), it's still multi-type → BinaryData.
+4. **Reordered override logic** — nullable unions checked first (delegated to default), then multi-type (→ BinaryData), then named extensible enums (→ default), then unnamed extensible enums (→ efCsharpRefkey).
+
+**Tests added:** 5 new tests in `test/type-expression.test.tsx`:
+- "maps unnamed multi-type alias union to BinaryData" (Cat | "a" | int32 | boolean alias)
+- "maps mixed literal type union to BinaryData" ("a" | 2 | 3.3 | true)
+- "maps inline scalar+array union to BinaryData" (string | string[])
+- "does not map single-type literal union to BinaryData" ("red" | "blue" | "green")
+- "maps model-only union to BinaryData" (Cat | Dog)
+
+**Impact:** Fixed all unresolved refkey symbols in type/union spec: MixedTypesCases, MixedLiteralsCases, StringAndArrayCases, GetResponse5, SendRequest5, and the ModelFactory. Went from 65 unresolved symbols to 0 (excluding stale file from old naming).
+
+**Result:** 1168 tests pass (5 new), 128 skipped, 62 test files. Build and lint clean.

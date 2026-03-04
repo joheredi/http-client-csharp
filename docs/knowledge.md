@@ -2085,3 +2085,23 @@ The emitter-framework's C# `TypeExpression` component does NOT handle `UnionVari
 - **Rejected**: Preprocess types before TypeExpression calls — too invasive, requires changes across 12+ files
 - For named union variants: reference parent union via `efCsharpRefkey(variant.union)` — matches legacy emitter behavior where `ExtendedEnum.EnumValue2` → C# type `ExtendedEnum`
 - For unnamed variants: fall back to `<TypeExpression type={variant.type} />` to unwrap to inner type
+
+## Union Type Override Logic (CSharpTypeExpression.tsx)
+
+### Design Decision: isMultiTypeUnion check order
+**Approach chosen:** Check nullable first, then multi-type, then named, then unnamed. This order is critical:
+1. **Nullable unions** — must be checked first because `T | null` should delegate to default (renders `T?`)
+2. **Multi-type unions** — checked before named/unnamed split because a named multi-type union (e.g., `union Foo { string, int32 }`) should map to BinaryData, not be treated as an extensible enum
+3. **Named single-type unions** — extensible enums, delegate to default
+4. **Unnamed single-type unions** — inline extensible enums, use efCsharpRefkey
+
+**Rejected approach:** Checking `isMultiTypeNamedUnion` (name check first) — this breaks for TypeSpec aliases which create unnamed unions that still need BinaryData mapping.
+
+### Gotcha: TypeSpec aliases create unnamed unions
+When TypeSpec uses `alias MixedTypesUnion = Cat | "a" | int32 | boolean`, the alias is transparent — the resulting Union type has NO `name` property. Any logic that checks `union.name` will treat it as an unnamed inline union. Multi-type detection must work for both named and unnamed unions.
+
+### Gotcha: Model-only unions are multi-type
+A union like `Cat | Dog` has all variants with the same TypeSpec kind ("Model"), but it's NOT an extensible enum. The `isMultiTypeUnion` function must also check that the single shared base kind is a scalar/literal category ("string", "numeric", "boolean"). If it's "Model" or any other non-scalar kind, the union is multi-type → BinaryData.
+
+### Gotcha: Stale files in temp/e2e/ after name changes
+When a generated file's name changes (e.g., `Type.UnionModelFactory.cs` → `TypeUnionModelFactory.cs`), the old file persists in `temp/e2e/` because the generate script doesn't clean up files with different names. Use `--clean` flag or manually delete old files. Don't trust grep results on `temp/e2e/` without checking timestamps.
