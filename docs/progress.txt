@@ -3379,3 +3379,13 @@ The crash had two root causes: (1) TypeExpression didn't handle `UnionVariant` t
 
 ### Result
 1162 tests pass (1 new), 128 skipped, 62 test files. Build and lint clean.
+
+## 2026-03-04: Task 12.2.1 — Fix ModelFactory class name containing dots (complete)
+
+**What was done:** Fixed `ModelFactoryFile.tsx` line 72 to strip dots from `packageName` when constructing the factory class name. Changed `${props.packageName}ModelFactory` to `${props.packageName.replace(/\./g, "")}ModelFactory`.
+
+**Pattern:** Dotted namespace like `Authentication.ApiKey` now produces `AuthenticationApiKeyModelFactory` (valid C# identifier) instead of the invalid `Authentication.ApiKeyModelFactory`.
+
+**Test added:** New test in `test/model-factory.test.ts` — "strips dots from package name in factory class name" validates: file path, class name (no dots), and namespace (still dotted).
+
+**Impact:** Affects ALL generated projects since every project with models gets a ModelFactory. The file path and class declaration are both derived from the same `factoryClassName` variable.

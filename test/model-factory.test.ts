@@ -440,6 +440,45 @@ describe("ModelFactoryFile", () => {
   });
 
   /**
+   * Validates that dotted namespace names (e.g., "Authentication.ApiKey") have
+   * dots stripped when forming the factory class name, producing valid C#
+   * identifiers like `AuthenticationApiKeyModelFactory` instead of the invalid
+   * `Authentication.ApiKeyModelFactory`.
+   *
+   * This is critical because C# class names cannot contain dots. The legacy
+   * emitter uses ServiceName (dots removed) for the factory class name.
+   */
+  it("strips dots from package name in factory class name", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace Authentication.ApiKey;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    const factoryFileKey = Object.keys(outputs).find((k) =>
+      k.includes("ModelFactory"),
+    );
+    expect(factoryFileKey).toBeDefined();
+    // File path should not contain dots in the class name portion
+    expect(factoryFileKey).toContain("AuthenticationApiKeyModelFactory.cs");
+    // Class name should not contain dots
+    const factoryFile = outputs[factoryFileKey!];
+    expect(factoryFile).toContain(
+      "public static partial class AuthenticationApiKeyModelFactory",
+    );
+    // Namespace should still use dots
+    expect(factoryFile).toContain("namespace Authentication.ApiKey");
+  });
+
+  /**
    * Validates that abstract models (discriminated base types) instantiate the
    * Unknown variant in the factory method instead of the abstract class itself.
    *

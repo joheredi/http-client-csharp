@@ -69,7 +69,9 @@ export function ModelFactoryFile(props: ModelFactoryFileProps) {
 
   if (publicModels.length === 0) return false;
 
-  const factoryClassName = `${props.packageName}ModelFactory`;
+  // Strip dots from the package name to form a valid C# identifier.
+  // E.g., "Authentication.ApiKey" → "AuthenticationApiKeyModelFactory"
+  const factoryClassName = `${props.packageName.replace(/\./g, "")}ModelFactory`;
 
   return (
     <SourceFile

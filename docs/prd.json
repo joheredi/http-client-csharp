@@ -4447,7 +4447,7 @@
           "title": "Fix ModelFactory class name containing dots",
           "description": "The ModelFactory component generates class names with dots (e.g., `Authentication.ApiKeyModelFactory`) which are invalid C# identifiers. The class name should use the package name without dots, like `AuthenticationApiKeyModelFactory` or similar. This affects ALL generated projects (60+ scenarios) since every project with models gets a ModelFactory.\n\nExample of broken generated code (temp/e2e/Spector/http/authentication/api-key/src/Generated/Authentication.ApiKeyModelFactory.cs):\n```csharp\npublic static partial class Authentication.ApiKeyModelFactory  // INVALID: dots in class name\n```\n\nShould be:\n```csharp\npublic static partial class AuthenticationApiKeyModelFactory\n```\n\nThe legacy emitter generates `AuthenticationApiKeyModelFactory` (dots removed). Check how the ModelFactory file name and class name are constructed in `src/components/model-factory/ModelFactoryFile.tsx`. The class name should strip dots from the package/namespace name when constructing the identifier.",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],
