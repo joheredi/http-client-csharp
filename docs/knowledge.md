@@ -2723,7 +2723,8 @@ Unit tests and build are green. These errors only surface during the full E2E pi
 
 **Problem**: Infrastructure helper classes (Argument, Optional, etc.) are generated in the root namespace. When model files are in different namespaces (e.g., Azure.Core.Foundations), raw string references like `"Argument.AssertNotNull(...)"` don't trigger Alloy's automatic `using` directive generation.
 
-**Fix Pattern**: 
+**Fix Pattern**:
+
 1. Declare a stable refkey using `Symbol.for()` in `src/utils/refkey.ts`
 2. Register the refkey on the `ClassDeclaration` in the infrastructure file
 3. Use `code` templates with the refkey interpolated (e.g., `code\`${argumentRefkey()}.AssertNotNull(...)\``) instead of plain strings
@@ -2736,6 +2737,7 @@ Unit tests and build are green. These errors only surface during the full E2E pi
 ## Non-Discriminated Derived Model Constructors (Task 14.3)
 
 **Gotcha:** Any function that recursively walks the model hierarchy for derived models (constructors, serialization, deserialization) must check `model.baseModel` (not `isDerivedDiscriminatedModel`) to handle non-discriminated inheritance. Functions that were updated:
+
 - `computePublicCtorParams` — constructor parameter computation
 - `computeSerializationCtorParams` — serialization constructor params
 - `collectSerializationParamDocs` — param doc generation
@@ -2763,6 +2765,7 @@ Unit tests and build are green. These errors only surface during the full E2E pi
 **Chosen approach:** Utility function `resolvePropertyName(propertyName, modelName)` in `src/utils/property.ts` that appends "Property" suffix when raw TCGC property name equals raw TCGC model name.
 
 **Why this approach:**
+
 - Matches legacy emitter's PropertyProvider.cs (lines 104–106) exactly
 - Uses raw name comparison (case-sensitive), not post-namePolicy comparison
 - Centralizes logic in one function used across 14+ files
@@ -2809,9 +2812,10 @@ serialization support).
 
 **Gotcha**: Concrete collection classes (`List<T>`, `Dictionary<K,V>`) used in deserialization code also need refkeys. The `SystemCollectionsGeneric` builtins originally only had interfaces (IDictionary, IList, etc.). Added `List` and `Dictionary` concrete classes to the builtins for use in `PropertyMatchingLoop.tsx`.
 
-**Gotcha**: For convenience method parameters, dict types must build their type expression using `code\`\${SystemCollectionsGeneric.IDictionary}<string, \${valueExpr}>\`` (like arrays use `IEnumerable`), NOT `<TypeExpression type={unwrapped.__raw!} />` which doesn't generate using directives.
+**Gotcha**: For convenience method parameters, dict types must build their type expression using `code\`\${SystemCollectionsGeneric.IDictionary}<string, \${valueExpr}>\``(like arrays use`IEnumerable`), NOT `<TypeExpression type={unwrapped.__raw!} />` which doesn't generate using directives.
 
 ## Design Decision: service/multi-service and client/structure/client-operation-group
+
 These specs build clean individually but fail in the E2E combined build because internal infrastructure types (ClientUriBuilder, Argument, extension methods) are generated in one namespace but referenced from sub-clients in a different namespace. This is a separate multi-namespace scope issue, not a using directive problem.
 
 ## CS0120: Property name shadows type name in static deserialization methods
@@ -2823,3 +2827,32 @@ When a model property's PascalCase C# name matches a type name referenced in a s
 **Gotcha**: The C# naming policy context for PascalCase property names is `"class-property"`, NOT `"property"`. Using `"property"` returns camelCase (the default case in `createCSharpNamePolicy()`). This caused a silent bug where collision detection failed.
 
 **Scope**: Affects `PropertyMatchingLoop.tsx` (getReadExpression, renderArrayDeserialization, renderDictionaryDeserialization) and `CastOperators.tsx` (explicit operator). Both generate `ModelName.DeserializeModelName(...)` calls in static contexts.
+
+## Argument refkey and self-referencing usings (Task 12.23)
+
+**Gotcha**: Using `argumentRefkey()` in a `code` template within `ExtensibleEnumFile.tsx` or
+`LiteralTypeFile.tsx` causes Alloy to add a self-referencing `using` directive (e.g., `using X;`
+inside `namespace X`). This is because these files manually inject usings as raw strings, and Alloy's
+auto-using system adds its own usings separately without checking for self-references.
+
+**Solution**: For components that manually manage usings as raw strings (extensible enum and literal
+type files), use manual conditional `using` directives instead of `argumentRefkey()`. Pass the root
+namespace (`packageName`) as a prop, normalize it via `useCSharpNamePolicy().getName(seg, "namespace")`
+for PascalCase, and only add the using when the type's namespace is NOT the root or a sub-namespace
+of it. C# resolves types by searching parent namespaces, so sub-namespaces don't need explicit usings.
+
+**Design Decision**: Chose manual conditional using over `argumentRefkey()` because:
+
+- `argumentRefkey()` causes self-referencing usings in the common same-namespace case
+- Manual usings integrate cleanly with the existing raw-string using approach in these files
+- The `normalizeNamespace()` helper ensures casing matches what `<Namespace>` renders
+- Rejected: Changing all usings to Alloy's auto-managed system would require refactoring raw string
+  code generation to use Alloy components for all C# constructs in these files
+
+## Namespace casing: resolveRootNamespace vs <Namespace> rendering (Task 12.23)
+
+**Gotcha**: `resolveRootNamespace()` returns raw casing from TCGC (e.g., `client.clientnamespace`),
+but Alloy's `<Namespace>` component applies PascalCase via the naming policy (e.g., `Client.Clientnamespace`).
+When generating `using` directives as raw strings, you MUST normalize namespace segments through
+`useCSharpNamePolicy().getName(seg, "namespace")` to get the rendered PascalCase form. Otherwise the
+using directive won't match the actual namespace.

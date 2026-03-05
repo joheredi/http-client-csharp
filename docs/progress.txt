@@ -4702,3 +4702,36 @@ Fixed CS0120 errors in recursive model deserialization where a property name (Pa
 **Key learning**: The C# naming policy context for PascalCase properties is `"class-property"`, not `"property"`. The `"property"` context falls through to camelCase. This distinction is critical for collision detection.
 
 **Pattern**: This fix also applies to non-recursive models (e.g., `widget.pet: Pet` → `Pet` property shadows `Pet` type). The fix is general and handles all such cases.
+
+## Task 12.23: Fix missing Argument helper class reference in LRO models (2026-03-05)
+
+**Problem**: Extensible enums in cross-namespace scenarios (e.g., `OperationState` in `Azure.Core.Foundations`)
+couldn't find the `Argument` helper class because the `using` directive for the root namespace was missing.
+`ExtensibleEnumFile.tsx` and `LiteralTypeFile.tsx` used raw string `"Argument.AssertNotNull(...)"` which
+prevented Alloy from auto-generating the `using` directive.
+
+**Root Cause**: The extensible enum and literal type components generated `Argument.AssertNotNull` as raw
+strings rather than using Alloy's refkey system. When the struct's namespace differed from the root
+namespace, no `using` was generated for the Argument class's namespace.
+
+**Fix**: Added `packageName` prop to `ExtensibleEnumFile` and `LiteralTypeFile` components, representing
+the root namespace where `Argument` is declared. When the struct is in a namespace that is NOT the root
+or a sub-namespace of it, a `using` directive is conditionally added. Namespace comparison uses
+`useCSharpNamePolicy().getName(seg, "namespace")` to normalize casing (PascalCase) to match what
+Alloy's `<Namespace>` component renders.
+
+**Key learnings**:
+- Using `argumentRefkey()` in a `code` template inside `SourceFile` causes self-referencing `using`
+  directives (e.g., `using X;` inside `namespace X`). This is because Alloy adds auto-usings from
+  refkeys but doesn't suppress self-referencing ones. Avoid using refkeys in components that manually
+  manage usings as raw strings.
+- C# automatically searches parent namespaces during name resolution, so sub-namespaces of the root
+  DON'T need a `using` directive to find types in the root namespace.
+- `resolveRootNamespace()` returns raw casing (may be lowercase), but `<Namespace>` applies PascalCase.
+  Always normalize namespace strings via naming policy before using them in `using` directives.
+
+**Files changed**:
+- `src/components/enums/ExtensibleEnumFile.tsx` — Added `packageName` prop, conditional `using` with namespace normalization
+- `src/components/literal-types/LiteralTypeFile.tsx` — Same fix
+- `src/emitter.tsx` — Pass `rootNamespace` as `packageName` to both components
+- `test/e2e/.testignore` — Removed `azure/core/lro/rpc` and `azure/core/lro/standard`

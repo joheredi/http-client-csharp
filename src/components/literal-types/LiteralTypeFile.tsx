@@ -124,6 +124,20 @@ function getMemberName(value: string | number, kind: string): string {
 }
 
 /**
+ * Normalizes a raw namespace string to match the PascalCase form that Alloy's
+ * `<Namespace>` component renders.
+ */
+function normalizeNamespace(
+  ns: string,
+  namePolicy: ReturnType<typeof useCSharpNamePolicy>,
+): string {
+  return ns
+    .split(".")
+    .map((seg) => namePolicy.getName(seg, "namespace"))
+    .join(".");
+}
+
+/**
  * Props for the {@link LiteralTypeFile} component.
  */
 export interface LiteralTypeFileProps {
@@ -133,6 +147,13 @@ export interface LiteralTypeFileProps {
   namespace: string;
   /** Resolved emitter options used for generating the file header. */
   options: ResolvedCSharpEmitterOptions;
+  /**
+   * Root package namespace where the `Argument` helper class is declared.
+   *
+   * When the struct's namespace differs from this value, a `using` directive
+   * is added so that `Argument.AssertNotNull` resolves correctly.
+   */
+  packageName: string;
 }
 
 /**
@@ -169,7 +190,23 @@ export function LiteralTypeFile(props: LiteralTypeFileProps) {
     props.type.valueType.kind,
   );
 
-  let usings = "using System;\nusing System.ComponentModel;";
+  let usings = "";
+  // String-backed literal structs use Argument.AssertNotNull in their constructor.
+  // When the struct is in a different namespace hierarchy than the root (where
+  // Argument is declared), add a using directive so the Argument class resolves.
+  // Sub-namespaces of the root don't need a using because C# automatically
+  // searches parent namespaces during name resolution.
+  if (isString) {
+    const normalizedPkg = normalizeNamespace(props.packageName, namePolicy);
+    const normalizedNs = normalizeNamespace(props.namespace, namePolicy);
+    if (
+      normalizedNs !== normalizedPkg &&
+      !normalizedNs.startsWith(normalizedPkg + ".")
+    ) {
+      usings += `using ${normalizedPkg};\n`;
+    }
+  }
+  usings += "using System;\nusing System.ComponentModel;";
   if (!isString) {
     usings += "\nusing System.Globalization;";
   }

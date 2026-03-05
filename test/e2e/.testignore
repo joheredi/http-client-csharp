@@ -97,8 +97,6 @@ routes
 special-words
 
 # CS0103: 'Argument' helper class not found (missing infrastructure using)
-azure/core/lro/rpc
-azure/core/lro/standard
 
 # CS1501: Wrong number of method arguments in overloaded convenience methods
 client/overload

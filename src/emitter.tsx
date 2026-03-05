@@ -239,10 +239,7 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
         packageName={rootNamespace}
         options={options}
       />
-      <BinaryContentHelperFile
-        packageName={rootNamespace}
-        options={options}
-      />
+      <BinaryContentHelperFile packageName={rootNamespace} options={options} />
       <CodeGenAttributeFiles options={options} />
       <CSharpScalarOverrides>
         {clients.map((c) => (
@@ -264,7 +261,11 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
           <FixedEnumSerializationFile type={e} options={options} />
         ))}
         {extensibleEnums.map((e) => (
-          <ExtensibleEnumFile type={e} options={options} />
+          <ExtensibleEnumFile
+            type={e}
+            options={options}
+            packageName={rootNamespace}
+          />
         ))}
         {extensibleEnums
           .filter((e) => e.valueType.kind !== "string")
@@ -276,6 +277,7 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
             type={lt.constantType}
             namespace={lt.namespace}
             options={options}
+            packageName={rootNamespace}
           />
         ))}
         {literalTypes
@@ -296,7 +298,9 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
             <UnknownDiscriminatorModelFile type={m} options={options} />
           ))}
         {models
-          .filter((m) => hasDiscriminatedSubtypes(m) && modelNeedsSerialization(m))
+          .filter(
+            (m) => hasDiscriminatedSubtypes(m) && modelNeedsSerialization(m),
+          )
           .map((m) => (
             <UnknownDiscriminatorModelSerializationFile
               type={m}

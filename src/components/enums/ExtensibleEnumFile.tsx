@@ -106,6 +106,25 @@ function getEnumMemberDescription(member: SdkEnumValueType): string {
 }
 
 /**
+ * Normalizes a raw namespace string to match the PascalCase form that Alloy's
+ * `<Namespace>` component renders.
+ *
+ * The `<Namespace>` component applies the C# naming policy (PascalCase) to each
+ * dot-separated segment. This function replicates that transformation so that
+ * raw namespace values (e.g., from `resolveRootNamespace`) can be compared with
+ * rendered namespace values and used in `using` directives.
+ */
+function normalizeNamespace(
+  ns: string,
+  namePolicy: ReturnType<typeof useCSharpNamePolicy>,
+): string {
+  return ns
+    .split(".")
+    .map((seg) => namePolicy.getName(seg, "namespace"))
+    .join(".");
+}
+
+/**
  * Props for the {@link ExtensibleEnumFile} component.
  */
 export interface ExtensibleEnumFileProps {
@@ -113,6 +132,15 @@ export interface ExtensibleEnumFileProps {
   type: SdkEnumType;
   /** Resolved emitter options used for generating the file header. */
   options: ResolvedCSharpEmitterOptions;
+  /**
+   * Root package namespace where the `Argument` helper class is declared.
+   *
+   * When the enum's namespace differs from this value (e.g., Azure.Core.Foundations
+   * vs the root namespace), a `using` directive is added so that `Argument.AssertNotNull`
+   * resolves correctly. When the enum is already in the root namespace, no extra using
+   * is needed.
+   */
+  packageName: string;
 }
 
 /**
@@ -165,7 +193,26 @@ export function ExtensibleEnumFile(props: ExtensibleEnumFileProps) {
   const typeInfo = getCSharpTypeInfo(props.type.valueType.kind);
   const structDescription = getEnumDescription(props.type);
 
-  let usings = "using System;\nusing System.ComponentModel;";
+  let usings = "";
+  // String-backed enums use Argument.AssertNotNull in their constructor.
+  // When the enum is in a different namespace hierarchy than the root (where
+  // Argument is declared), add a using directive so the Argument class resolves.
+  // Sub-namespaces of the root don't need a using because C# automatically
+  // searches parent namespaces during name resolution.
+  if (isString) {
+    const normalizedPkg = normalizeNamespace(props.packageName, namePolicy);
+    const normalizedTypeNs = normalizeNamespace(
+      props.type.namespace,
+      namePolicy,
+    );
+    if (
+      normalizedTypeNs !== normalizedPkg &&
+      !normalizedTypeNs.startsWith(normalizedPkg + ".")
+    ) {
+      usings += `using ${normalizedPkg};\n`;
+    }
+  }
+  usings += "using System;\nusing System.ComponentModel;";
   if (!isString) {
     usings += "\nusing System.Globalization;";
   }
