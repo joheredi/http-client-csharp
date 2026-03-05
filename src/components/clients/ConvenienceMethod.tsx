@@ -23,6 +23,7 @@ import {
 } from "../../builtins/system-threading.js";
 import { System } from "../../builtins/system.js";
 import { isConvenienceParamValueType } from "../../utils/nullable.js";
+import { escapeCSharpKeyword } from "../../utils/csharp-keywords.js";
 import {
   buildSiblingNameSet,
   cleanOperationName,
@@ -481,14 +482,15 @@ function buildSpreadProtocolCallExpr(
   for (let i = 0; i < bodyParams.length; i++) {
     if (i > 0) spreadArgs.push(", ");
     const bp = bodyParams[i];
+    const escapedName = escapeCSharpKeyword(bp.name);
     if (bp.collectionElementExpr) {
       // Collection param: convert IEnumerable<T> → IList<T> with null-safety.
       // Pattern: paramName?.ToList() as IList<T> ?? new ChangeTrackingList<T>()
       spreadArgs.push(
-        code`${bp.name}?.ToList() as ${SystemCollectionsGeneric.IList}<${bp.collectionElementExpr}> ?? new ChangeTrackingList<${bp.collectionElementExpr}>()`,
+        code`${escapedName}?.ToList() as ${SystemCollectionsGeneric.IList}<${bp.collectionElementExpr}> ?? new ChangeTrackingList<${bp.collectionElementExpr}>()`,
       );
     } else {
-      spreadArgs.push(bp.name);
+      spreadArgs.push(escapedName);
     }
   }
 
@@ -679,22 +681,23 @@ function getConvenienceTypeInfo(type: SdkType): {
  * the conversion from the model type to BinaryContent.
  */
 export function getProtocolCallArg(name: string, type: SdkType): string {
+  const escaped = escapeCSharpKeyword(name);
   const unwrapped = unwrapType(type);
 
   if (unwrapped.kind === "enum") {
     const valueKind = unwrapType(unwrapped.valueType).kind;
     if (valueKind === "string") {
-      return `${name}.ToString()`;
+      return `${escaped}.ToString()`;
     }
     // For integer-backed enums, cast to the underlying type
-    return `(${getIntegerKeyword(valueKind)})${name}`;
+    return `(${getIntegerKeyword(valueKind)})${escaped}`;
   }
 
   if (unwrapped.kind === "enumvalue") {
     return getProtocolCallArg(name, unwrapped.enumType);
   }
 
-  return name;
+  return escaped;
 }
 
 /**
@@ -791,7 +794,8 @@ export function buildConvenienceValidation(
 
   return assertableParams.map((p, i) => {
     const assertFn = p.isStringType ? "AssertNotNullOrEmpty" : "AssertNotNull";
-    const line = `Argument.${assertFn}(${p.name}, nameof(${p.name}));`;
+    const escapedName = escapeCSharpKeyword(p.name);
+    const line = `Argument.${assertFn}(${escapedName}, nameof(${escapedName}));`;
     return i === 0 ? line : `\n${line}`;
   });
 }

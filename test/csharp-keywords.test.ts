@@ -242,5 +242,17 @@ describe("C# keyword escaping", () => {
       expect(escapeCSharpKeyword("IF")).toBe("IF");
       expect(escapeCSharpKeyword("FOR")).toBe("FOR");
     });
+
+    /**
+     * Validates that already-escaped names (with `@` prefix) pass through
+     * unchanged. This is important because the name policy now includes
+     * keyword escaping, so applying escapeCSharpKeyword a second time
+     * should be a no-op (idempotent).
+     */
+    it("is idempotent — already-escaped names pass through unchanged", () => {
+      expect(escapeCSharpKeyword("@class")).toBe("@class");
+      expect(escapeCSharpKeyword("@as")).toBe("@as");
+      expect(escapeCSharpKeyword("@return")).toBe("@return");
+    });
   });
 });

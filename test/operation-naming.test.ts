@@ -352,11 +352,7 @@ describe("buildSiblingNameSet", () => {
     const getName = (n: string) => n.charAt(0).toUpperCase() + n.slice(1);
     const result = buildSiblingNameSet(methods, getName);
     expect(result).toEqual(
-      new Set([
-        "GetByResourceGroup",
-        "ListByResourceGroup",
-        "CreateOrUpdate",
-      ]),
+      new Set(["GetByResourceGroup", "ListByResourceGroup", "CreateOrUpdate"]),
     );
   });
 });

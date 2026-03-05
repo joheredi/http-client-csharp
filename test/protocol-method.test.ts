@@ -467,4 +467,51 @@ describe("ProtocolMethod", () => {
     expect(clientFile).not.toContain("repeatabilityRequestId");
     expect(clientFile).not.toContain("repeatabilityFirstSent");
   });
+
+  /**
+   * Validates that C# reserved keyword parameter names are escaped with `@` prefix.
+   *
+   * This is critical because TypeSpec specs (e.g., special-words) can define
+   * parameters named `and`, `as`, `class`, `for`, `return`, etc. These are
+   * C# reserved keywords and produce syntax errors if emitted without `@`:
+   *   `string class` → CS1001 syntax error
+   *   `string @class` → valid C#
+   *
+   * The fix requires escaping in THREE places:
+   * 1. Parameter declarations (via name policy in `<Parameter>` component)
+   * 2. Argument lists in method body (e.g., `CreateRequest(@class, options)`)
+   * 3. Validation statements (e.g., `Argument.AssertNotNullOrEmpty(@class, nameof(@class))`)
+   */
+  it("escapes C# reserved keyword parameter names with @ prefix", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/test/{class}")
+      @get op testOp(@path \`class\`: string): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Parameter declaration must use @class (escaped keyword)
+    expect(clientFile).toContain("string @class, RequestOptions options");
+
+    // Argument list in method body must use @class
+    expect(clientFile).toContain("CreateTestOpRequest(@class, options)");
+
+    // Validation must use @class
+    expect(clientFile).toContain(
+      "Argument.AssertNotNullOrEmpty(@class, nameof(@class))",
+    );
+
+    // RestClient method should also have @class in parameter
+    const restClientFile =
+      outputs["src/Generated/TestServiceClient.RestClient.cs"];
+    expect(restClientFile).toBeDefined();
+    expect(restClientFile).toContain("string @class");
+  });
 });

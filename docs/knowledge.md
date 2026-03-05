@@ -2608,6 +2608,7 @@ the C# naming policy to each segment. The standard `createCSharpNamePolicy()` us
 ### Fix: Custom name policy preserves underscore-prefixed namespace segments
 
 Added a check in `createHttpClientNamePolicy()` (HttpClientCSharpOutput.tsx):
+
 ```typescript
 if (element === "namespace" && name.startsWith("_")) {
   return name; // Preserve intentional underscore prefix
@@ -2633,3 +2634,15 @@ legacy emitter's behavior documented in knowledge.md's "Namespace differences wi
 **Why this approach:** Simple, non-breaking (existing behavior unchanged when `siblingNames` is omitted), O(1) per method call, and handles the specific conflict pattern without overengineering. The alternative of post-processing all names with a map was rejected as it would require shared state across independently rendered components.
 
 **Edge case not handled:** Two different `List*` methods both mapping to the same `Get*` name (e.g., `List` and `ListAll` both → `GetAll`) — this requires a second pass and is unlikely in practice. If encountered, add a post-processing deduplication step.
+
+## Design Decisions
+
+### C# keyword escaping — name policy approach (Task 12.10, supersedes 12.2.2)
+
+**Chosen approach:** Integrate `escapeCSharpKeyword()` directly into the custom name policy (`createHttpClientNamePolicy()` in HttpClientCSharpOutput.tsx). The name policy calls `escapeCSharpKeyword(base.getName(name, element))` after case conversion, so ALL naming contexts automatically get keyword-escaped results.
+
+**Why this supersedes 12.2.2:** The previous iteration (12.2.2) chose a call-site-only approach with the utility function. This was incomplete because `<Parameter>` component declarations go through the name policy internally — there's no way to inject `@` prefix before the name policy without the name policy stripping it via `camelCase()`. The name policy approach fixes both JSX component declarations AND raw string interpolation (via `getParamName`/`namePolicy.getName`).
+
+**Analysis of Alloy internals confirming safety:** Alloy's `OutputSymbol.name` setter stores the policy-transformed name as a plain string. `<Name />` renders `symbol.name` directly with no post-processing. Symbol lookup uses the symbol object reference (via refkey), not name matching. Therefore, `@class` as a symbol name causes zero issues with Alloy's resolution pipeline.
+
+**Important:** Raw string interpolation sites (validation statements, argLists, protocolCallArg) still need explicit `escapeCSharpKeyword(p.name)` because they use the raw TCGC parameter name directly, not the name policy. The name policy fix handles `<Parameter>` JSX declarations; the utility function handles everything else.

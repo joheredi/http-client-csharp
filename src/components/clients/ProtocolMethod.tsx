@@ -21,6 +21,7 @@ import { System } from "../../builtins/system.js";
 import { formatDocLines } from "../../utils/doc.js";
 import { SystemThreadingTasks } from "../../builtins/system-threading.js";
 import { isProtocolParamValueType } from "../../utils/nullable.js";
+import { escapeCSharpKeyword } from "../../utils/csharp-keywords.js";
 import {
   buildSiblingNameSet,
   cleanOperationName,
@@ -127,7 +128,10 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
         const params = buildProtocolParams(operation);
         const hasOptionalParams = params.some((p) => p.optional);
         const requiredParams = params.filter((p) => !p.optional);
-        const argList = [...params.map((p) => p.name), "options"].join(", ");
+        const argList = [
+          ...params.map((p) => escapeCSharpKeyword(p.name)),
+          "options",
+        ].join(", ");
 
         // Build <Method> parameter props with defaults for optional params
         const methodParams = [
@@ -412,7 +416,8 @@ export function buildValidation(requiredParams: ProtocolParam[]): Children {
 
   return requiredParams.map((p, i) => {
     const assertFn = p.isStringType ? "AssertNotNullOrEmpty" : "AssertNotNull";
-    const line = `Argument.${assertFn}(${p.name}, nameof(${p.name}));`;
+    const escapedName = escapeCSharpKeyword(p.name);
+    const line = `Argument.${assertFn}(${escapedName}, nameof(${escapedName}));`;
     return i === 0 ? line : `\n${line}`;
   });
 }

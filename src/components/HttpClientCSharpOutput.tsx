@@ -1,5 +1,6 @@
 import { createCSharpNamePolicy, type CSharpElements } from "@alloy-js/csharp";
 import { createNamePolicy, type Children } from "@alloy-js/core";
+import { escapeCSharpKeyword } from "../utils/csharp-keywords.js";
 import type {
   SdkContext,
   SdkHttpOperation,
@@ -160,6 +161,12 @@ const typeContexts: ReadonlySet<string> = new Set<CSharpElements>([
  * an uppercase letter) in type-level contexts and preserves them. Names
  * starting with a lowercase letter are still transformed to PascalCase,
  * which handles cases like method names being PascalCased for C#.
+ *
+ * Additionally, this policy escapes C# reserved keywords by prefixing them
+ * with `@` (e.g., `class` → `@class`, `as` → `@as`). This is applied after
+ * case conversion so that parameter names like "class" correctly become
+ * `@class` in generated code. PascalCase names (e.g., "Class") are not
+ * keywords and are unaffected.
  */
 function createHttpClientNamePolicy() {
   const base = createCSharpNamePolicy();
@@ -178,6 +185,10 @@ function createHttpClientNamePolicy() {
     if (element === "namespace" && name.startsWith("_")) {
       return name;
     }
-    return base.getName(name, element);
+    // Apply base policy (case conversion), then escape C# keywords.
+    // This ensures parameter/variable names like "class" become "@class".
+    // PascalCase results (type names, method names) are not keywords and
+    // pass through escapeCSharpKeyword unchanged.
+    return escapeCSharpKeyword(base.getName(name, element));
   });
 }

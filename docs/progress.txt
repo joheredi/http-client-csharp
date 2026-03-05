@@ -4325,3 +4325,28 @@ Check the NuGet package XML docs: `grep "T:Full.Type.Name" ~/.nuget/packages/{pk
 **Key pattern:** Sibling names are PascalCase names BEFORE cleaning, so pre-existing `GetXxx` names are visible as collision targets. The check is: if `cleanedName !== name && siblingNames.has(cleanedName)`, skip the rename.
 
 **All 1,290 tests pass, build succeeds.**
+
+## 2026-03-05 — Task 12.10: Fix C# reserved keyword escaping in generated parameter names
+
+**Problem:** TypeSpec specs with parameters named after C# reserved keywords (class, as, for, return, etc.) produce syntax errors (~1052) because parameter names lack the required `@` prefix.
+
+**Root Cause:** The Alloy C# name policy only does case conversion (camelCase for params), not keyword escaping. The `escapeCSharpKeyword()` utility existed but was only used in CastOperators.tsx. Raw string interpolation sites in ProtocolMethod.tsx and ConvenienceMethod.tsx used `p.name` directly without escaping.
+
+**Solution (two-pronged):**
+1. Modified `createHttpClientNamePolicy()` in HttpClientCSharpOutput.tsx to call `escapeCSharpKeyword()` after the base policy's case conversion. This ensures `<Parameter>` declarations automatically render `@class` instead of `class`.
+2. Applied `escapeCSharpKeyword()` at all raw C# string interpolation sites where parameter names appear outside JSX:
+   - ProtocolMethod.tsx: argList (method call arguments), buildValidation
+   - ConvenienceMethod.tsx: getProtocolCallArg, buildConvenienceValidation, buildSpreadProtocolCallExpr
+
+**Files modified:**
+- `src/components/HttpClientCSharpOutput.tsx` — name policy now includes keyword escaping
+- `src/components/clients/ProtocolMethod.tsx` — imported escapeCSharpKeyword, fixed argList and buildValidation
+- `src/components/clients/ConvenienceMethod.tsx` — imported escapeCSharpKeyword, fixed getProtocolCallArg, buildConvenienceValidation, buildSpreadProtocolCallExpr
+- `src/components/serialization/CastOperators.tsx` — removed now-redundant explicit escapeCSharpKeyword call (name policy handles it)
+- `test/protocol-method.test.ts` — added keyword escaping test
+- `test/convenience-method.test.ts` — added keyword escaping test
+- `test/csharp-keywords.test.ts` — added idempotency test
+
+**Design Decision:** Previous iteration (12.2.2) rejected the name policy approach due to concerns about "unexpected interactions with Alloy's internal name resolution." Analysis of Alloy's source code (OutputSymbol name setter, Name component, createParameterSymbol) showed no actual risk — the `@` prefix is just part of the name string and doesn't affect symbol resolution. The name policy approach is strictly better because it automatically fixes all `<Parameter>` declarations, which can't be fixed by the call-site-only approach (camelCase strips `@` prefix).
+
+**All 1,293 tests pass (3 new), build succeeds.**

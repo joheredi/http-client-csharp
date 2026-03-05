@@ -119,7 +119,7 @@
           "title": "Fix C# reserved keyword escaping in generated parameter names",
           "description": "The special-words Spector spec generates C# code with C# reserved keywords (continue, break, class, async, await, etc.) used as parameter and variable names without the required @ prefix. This produces ~1052 syntax errors (CS1002, CS1513, CS1026, CS1001, CS1003) in the special-words spec alone. The Alloy C# naming policy should escape these, but it appears to be bypassed for some code paths (e.g., raw string interpolation in RestClient request-building methods, parameter declarations in protocol/convenience methods).\n\nTask 12.2.2 was previously marked done but the fix is incomplete \u2014 the escaping works for some paths but not all. Audit all code paths that emit parameter names (ProtocolMethod, ConvenienceMethod, RestClientFile CreateRequest methods) and ensure they pass through the C# naming policy or explicitly apply @ prefix escaping.\n\nTo reproduce: pnpm test:e2e, check errors in special-words/src/Generated/Parameters.RestClient.cs.",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

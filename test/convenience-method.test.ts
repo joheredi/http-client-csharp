@@ -1125,4 +1125,37 @@ describe("ConvenienceMethod", () => {
     // System.Linq is required for .ToList() extension method
     expect(clientFile).toContain("using System.Linq;");
   });
+
+  /**
+   * Validates that C# reserved keyword parameter names are escaped with `@`
+   * in convenience method signatures and validation statements.
+   *
+   * When a TypeSpec operation has parameters named after C# keywords (e.g.,
+   * "class", "async", "return"), the convenience method must escape them with
+   * `@` prefix in all positions: declaration, validation, and protocol call args.
+   * Without escaping, the generated C# won't compile (CS1001, CS1002 errors).
+   */
+  it("escapes C# reserved keyword parameter names with @ prefix", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/test/{class}")
+      @get op testOp(@path \`class\`: string): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Convenience method parameter declaration must use @class
+    expect(clientFile).toContain("string @class, CancellationToken");
+
+    // Convenience method validation must use @class
+    expect(clientFile).toContain(
+      "Argument.AssertNotNullOrEmpty(@class, nameof(@class))",
+    );
+  });
 });
