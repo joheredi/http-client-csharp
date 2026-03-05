@@ -146,6 +146,8 @@ export function PagingMethods(props: PagingMethodsProps) {
           }
         }
 
+        const getParamName = (name: string) =>
+          namePolicy.getName(name, "parameter");
         const result: Children[] = [];
 
         // Protocol methods (sync + async)
@@ -158,6 +160,7 @@ export function PagingMethods(props: PagingMethodsProps) {
             description,
             operation,
             tokenParamName,
+            getParamName,
           ),
         );
 
@@ -173,6 +176,7 @@ export function PagingMethods(props: PagingMethodsProps) {
               operation,
               itemTypeExpr,
               tokenParamName,
+              getParamName,
             ),
           );
         }
@@ -198,9 +202,10 @@ function renderProtocolPagingMethods(
   description: string,
   operation: SdkHttpOperation,
   tokenParamName: string | undefined,
+  getParamName: (name: string) => string,
 ): Children[] {
   const params = reorderTokenFirst(
-    buildProtocolParams(operation),
+    buildProtocolParams(operation, getParamName),
     tokenParamName,
   );
   const hasOptionalParams = params.some((p) => p.optional);
@@ -284,8 +289,9 @@ function renderConveniencePagingMethods(
   operation: SdkHttpOperation,
   itemTypeExpr: Children,
   tokenParamName: string | undefined,
+  getParamName: (name: string) => string,
 ): Children[] {
-  const { params } = buildConvenienceParams(operation);
+  const { params } = buildConvenienceParams(operation, getParamName);
   const reorderedParams = reorderTokenFirst(params, tokenParamName);
 
   // Build constructor args: this, ...convertedParams, cancellationToken.ToRequestOptions()

@@ -1158,4 +1158,52 @@ describe("ConvenienceMethod", () => {
       "Argument.AssertNotNullOrEmpty(@class, nameof(@class))",
     );
   });
+
+  /**
+   * Validates that hyphenated HTTP header parameter names are converted to valid
+   * camelCase C# identifiers in all usage sites: parameter declarations, validation
+   * statements, protocol call arguments, and XML documentation.
+   *
+   * Without this conversion, a header like `x-ms-test-header` would appear as
+   * `x-ms-test-header` in the generated C#, which the compiler interprets as
+   * `x - ms - test - header` (subtraction expressions), producing CS0103 errors
+   * for each segment.
+   *
+   * This test covers the fix for task 12.11: ensuring the C# naming policy is
+   * applied to parameter names not just at declaration sites (where Alloy handles it)
+   * but also in method bodies where raw strings are interpolated.
+   */
+  it("converts hyphenated header param names to camelCase in all usage sites", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/test/{id}")
+      @post op testOp(@path id: string, @header("x-ms-test-header") xMsTestHeader: string, name: string): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Convenience method declaration: hyphenated name becomes camelCase
+    expect(clientFile).toContain(
+      "string xMsTestHeader",
+    );
+
+    // Convenience method validation: uses camelCase name
+    expect(clientFile).toContain(
+      "Argument.AssertNotNullOrEmpty(xMsTestHeader, nameof(xMsTestHeader))",
+    );
+
+    // Protocol method call argument: uses camelCase name (not x-ms-test-header)
+    expect(clientFile).not.toMatch(/\bx-ms-test-header\b/);
+
+    // XML doc param reference: uses camelCase name
+    expect(clientFile).toContain(
+      '<param name="xMsTestHeader">',
+    );
+  });
 });

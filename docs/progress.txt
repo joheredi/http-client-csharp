@@ -4413,3 +4413,11 @@ Fixed the emit-e2e.ts script to clean stale output directories from testignored 
 2. Added defense-in-depth filtering in generateProjectReferences() that skips .csproj files under ignored spec paths (pass ignoreList parameter)
 
 Result: GeneratedProjectReferences.props no longer includes stale resource-manager project references. The 9 ignored ARM specs no longer cause ~56 CS errors during dotnet build. All 111 non-ignored specs compile successfully.
+
+2026-03-05 — Task 12.11: Fix hyphenated HTTP header parameter names not converted to valid C# identifiers (complete)
+- Root cause: buildConvenienceParams and buildProtocolParams stored raw TypeSpec parameter names (e.g., "x-ms-test-header") in param.name. While Alloy's <Method> component applies the naming policy for declarations, method bodies used raw names for validation, protocol call args, and XML docs.
+- Fix: Added getParamName callback (namePolicy.getName(name, "parameter")) to both buildConvenienceParams and buildProtocolParams. All parameter names are now converted to valid camelCase C# identifiers (e.g., "xMsTestHeader") before being stored.
+- Updated callers: ConvenienceMethods, ProtocolMethods, PagingMethods (renderProtocolPagingMethods, renderConveniencePagingMethods), CollectionResultFile.
+- Added tests: convenience-method.test.ts and protocol-method.test.ts both have new tests validating hyphenated header names are converted in all usage sites.
+- Verified: parameters/spread spec now compiles successfully in e2e. Zero CS0103 errors from hyphenated names.
+- Pattern: Follow RestClientFile.tsx's getParamName pattern — create the callback in the component, pass it to builder functions.

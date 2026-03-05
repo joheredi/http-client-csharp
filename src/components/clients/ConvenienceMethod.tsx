@@ -136,7 +136,9 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
         const description = method.doc ?? method.summary ?? "";
         const responseType = method.response.type;
 
-        const params = buildConvenienceParams(operation);
+        const getParamName = (name: string) =>
+          namePolicy.getName(name, "parameter");
+        const params = buildConvenienceParams(operation, getParamName);
         const requiredParams = params.params.filter((p) => !p.optional);
         const assertableParams = requiredParams.filter((p) => p.needsAssertion);
 
@@ -301,6 +303,7 @@ export interface ConvenienceParamsResult {
  */
 export function buildConvenienceParams(
   operation: SdkHttpOperation,
+  getParamName: (name: string) => string,
 ): ConvenienceParamsResult {
   const pathParams = operation.parameters.filter(
     (p): p is SdkPathParameter => p.kind === "path",
@@ -321,15 +324,16 @@ export function buildConvenienceParams(
   for (const p of pathParams) {
     if (isConstantType(p.type) || p.onClient) continue;
     const convInfo = getConvenienceTypeInfo(p.type);
+    const csharpName = getParamName(p.name);
     params.push({
-      name: p.name,
+      name: csharpName,
       type: convInfo.expression,
       optional: false,
       isBody: false,
       needsAssertion: convInfo.needsAssertion,
       isStringType: convInfo.isString,
       doc: p.doc ?? p.summary,
-      protocolCallArg: getProtocolCallArg(p.name, p.type),
+      protocolCallArg: getProtocolCallArg(csharpName, p.type),
       priority: 0,
       index: index++,
     });
@@ -342,15 +346,16 @@ export function buildConvenienceParams(
     if (isSpecialHeaderParam(p)) continue;
     const convInfo = getConvenienceTypeInfo(p.type);
     const typeExpr = maybeNullable(convInfo.expression, p.type, p.optional);
+    const csharpName = getParamName(p.name);
     params.push({
-      name: p.name,
+      name: csharpName,
       type: typeExpr,
       optional: p.optional,
       isBody: false,
       needsAssertion: convInfo.needsAssertion,
       isStringType: convInfo.isString,
       doc: p.doc ?? p.summary,
-      protocolCallArg: getProtocolCallArg(p.name, p.type),
+      protocolCallArg: getProtocolCallArg(csharpName, p.type),
       priority: p.optional ? 400 : 100,
       index: index++,
     });
@@ -361,15 +366,16 @@ export function buildConvenienceParams(
     if (isConstantType(p.type) || p.onClient) continue;
     const convInfo = getConvenienceTypeInfo(p.type);
     const typeExpr = maybeNullable(convInfo.expression, p.type, p.optional);
+    const csharpName = getParamName(p.name);
     params.push({
-      name: p.name,
+      name: csharpName,
       type: typeExpr,
       optional: p.optional,
       isBody: false,
       needsAssertion: convInfo.needsAssertion,
       isStringType: convInfo.isString,
       doc: p.doc ?? p.summary,
-      protocolCallArg: getProtocolCallArg(p.name, p.type),
+      protocolCallArg: getProtocolCallArg(csharpName, p.type),
       priority: p.optional ? 400 : 100,
       index: index++,
     });
@@ -405,14 +411,14 @@ export function buildConvenienceParams(
         }
 
         params.push({
-          name: mp.name,
+          name: getParamName(mp.name),
           type: typeExpr,
           optional: mpOptional,
           isBody: true,
           needsAssertion: convInfo.needsAssertion,
           isStringType: convInfo.isString,
           doc: mp.doc ?? mp.summary,
-          protocolCallArg: getProtocolCallArg(mp.name, mp.type),
+          protocolCallArg: getProtocolCallArg(getParamName(mp.name), mp.type),
           collectionElementExpr,
           priority: mp.optional ? 300 : 200,
           index: index++,
@@ -421,7 +427,7 @@ export function buildConvenienceParams(
     } else {
       // Non-spread body: single typed model parameter.
       const priority = bodyParam.optional ? 300 : 200;
-      const bodyName = getBodyParamName(bodyParam);
+      const bodyName = getParamName(getBodyParamName(bodyParam));
       const convInfo = getConvenienceTypeInfo(bodyParam.type);
       const bodyOptional = bodyParam.optional ?? false;
       const typeExpr = maybeNullable(

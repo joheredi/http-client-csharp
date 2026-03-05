@@ -514,4 +514,53 @@ describe("ProtocolMethod", () => {
     expect(restClientFile).toBeDefined();
     expect(restClientFile).toContain("string @class");
   });
+
+  /**
+   * Validates that hyphenated HTTP header parameter names are converted to valid
+   * camelCase C# identifiers in protocol method bodies.
+   *
+   * Protocol methods use raw string interpolation for argument lists passed to
+   * CreateXxxRequest() and Argument.Assert* validation. Without applying the
+   * C# naming policy, a header like `x-ms-test-header` would appear as-is,
+   * which C# interprets as `x - ms - test - header` (subtraction), causing
+   * CS0103 errors for each segment.
+   *
+   * This test ensures the naming policy is applied consistently in:
+   * - Parameter declarations (handled by Alloy's Method component)
+   * - Validation statements (raw string in method body)
+   * - CreateXxxRequest argument list (raw string in method body)
+   * - XML documentation
+   */
+  it("converts hyphenated header param names to camelCase in protocol methods", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/test/{id}")
+      @get op testOp(@path id: string, @header("x-ms-test-header") xMsTestHeader: string): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Protocol method parameter declaration uses camelCase
+    expect(clientFile).toContain("string xMsTestHeader");
+
+    // Validation uses camelCase name
+    expect(clientFile).toContain(
+      "Argument.AssertNotNullOrEmpty(xMsTestHeader, nameof(xMsTestHeader))",
+    );
+
+    // CreateRequest call uses camelCase name
+    expect(clientFile).toContain("CreateTestOpRequest(id, xMsTestHeader,");
+
+    // No raw hyphenated name should appear as an identifier
+    expect(clientFile).not.toMatch(/\bx-ms-test-header\b/);
+
+    // XML doc param reference uses camelCase name
+    expect(clientFile).toContain('<param name="xMsTestHeader">');
+  });
 });

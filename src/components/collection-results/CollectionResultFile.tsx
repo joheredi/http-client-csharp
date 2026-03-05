@@ -284,8 +284,13 @@ function CollectionResultFile(props: CollectionResultFileProps) {
     : undefined;
 
   // Reorder params to put the continuation token first (matching legacy emitter).
+  const getParamName = (name: string) =>
+    namePolicy.getName(name, "parameter");
   const operationParams = hasContinuationToken
-    ? reorderTokenFirst(buildProtocolParams(method.operation), tokenParamName)
+    ? reorderTokenFirst(
+        buildProtocolParams(method.operation, getParamName),
+        tokenParamName,
+      )
     : [];
 
   // Base type: generic for convenience, non-generic for protocol

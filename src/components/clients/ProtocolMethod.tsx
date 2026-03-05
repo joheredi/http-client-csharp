@@ -125,7 +125,9 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
         const access = method.access ?? "public";
         const description = method.doc ?? method.summary ?? "";
 
-        const params = buildProtocolParams(operation);
+        const getParamName = (name: string) =>
+          namePolicy.getName(name, "parameter");
+        const params = buildProtocolParams(operation, getParamName);
         const hasOptionalParams = params.some((p) => p.optional);
         const requiredParams = params.filter((p) => !p.optional);
         const argList = [
@@ -215,6 +217,7 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
  */
 export function buildProtocolParams(
   operation: SdkHttpOperation,
+  getParamName: (name: string) => string,
 ): ProtocolParam[] {
   const pathParams = operation.parameters.filter(
     (p): p is SdkPathParameter => p.kind === "path",
@@ -235,7 +238,7 @@ export function buildProtocolParams(
     if (isConstantType(p.type) || p.onClient) continue;
     const typeInfo = getTypeInfo(p.type);
     params.push({
-      name: p.name,
+      name: getParamName(p.name),
       type: typeInfo.expression,
       optional: false,
       isStringType: typeInfo.isString,
@@ -254,7 +257,7 @@ export function buildProtocolParams(
     const typeInfo = getTypeInfo(p.type);
     const typeExpr = maybeNullable(typeInfo.expression, p.type, p.optional);
     params.push({
-      name: p.name,
+      name: getParamName(p.name),
       type: typeExpr,
       optional: p.optional,
       isStringType: typeInfo.isString,
@@ -271,7 +274,7 @@ export function buildProtocolParams(
     const typeInfo = getTypeInfo(p.type);
     const typeExpr = maybeNullable(typeInfo.expression, p.type, p.optional);
     params.push({
-      name: p.name,
+      name: getParamName(p.name),
       type: typeExpr,
       optional: p.optional,
       isStringType: typeInfo.isString,

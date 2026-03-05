@@ -142,7 +142,7 @@
           "title": "Fix hyphenated HTTP header parameter names not converted to valid C# identifiers",
           "description": "HTTP header parameter names containing hyphens (e.g., x-ms-test-header) are emitted as-is in generated C# code instead of being converted to valid camelCase identifiers (e.g., xMsTestHeader). This produces CS0103 errors ('x', 'ms', 'test', 'header' not found, ~192 errors) because C# interprets hyphens as minus operators. The issue appears in convenience method bodies where parameter names from the operation are used directly without applying the C# naming policy.\n\nTask 12.2.4 was previously marked done but the fix is incomplete \u2014 the naming conversion works for parameter declarations but not for parameter usage sites in method bodies (argument validation, protocol method call arguments).\n\nAffected specs: parameters/spread (Alias.cs), documentation, and others with header parameters.\n\nTo reproduce: pnpm test:e2e, check errors in parameters/spread/src/Generated/Alias.cs around x-ms-test-header.",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [
