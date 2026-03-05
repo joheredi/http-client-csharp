@@ -5747,9 +5747,11 @@ describe("PropertyMatchingLoop", () => {
     expect(fileKey).toBeDefined();
     const content = outputs[fileKey!];
 
-    // Should match the JSON property name and call the nested model's Deserialize method
+    // Should match the JSON property name and call the nested model's Deserialize method.
+    // The type reference is namespace-qualified because the property name 'Pet' (PascalCase
+    // of 'pet') shadows the type 'Pet' in the static DeserializeWidget method (CS0120).
     expect(content).toContain('if (jsonProperty.NameEquals("pet"u8))');
-    expect(content).toContain("pet = Pet.DeserializePet(jsonProperty.Value, options);");
+    expect(content).toContain("pet = TestNamespace.Pet.DeserializePet(jsonProperty.Value, options);");
     expect(content).toContain("continue;");
   });
 
@@ -5801,9 +5803,11 @@ describe("PropertyMatchingLoop", () => {
       "home = Address.DeserializeAddress(jsonProperty.Value, options);",
     );
 
+    // 'contact' property (PascalCase: 'Contact') shadows the type 'Contact' in the
+    // static DeserializePerson method, so the type reference must be namespace-qualified (CS0120).
     expect(content).toContain('if (jsonProperty.NameEquals("contact"u8))');
     expect(content).toContain(
-      "contact = Contact.DeserializeContact(jsonProperty.Value, options);",
+      "contact = TestNamespace.Contact.DeserializeContact(jsonProperty.Value, options);",
     );
 
     // Primitive property should still use the simple getter
@@ -5854,15 +5858,87 @@ describe("PropertyMatchingLoop", () => {
     expect(fileKey).toBeDefined();
     const content = outputs[fileKey!];
 
-    // The derived model's deserialization should include the base model's nested model property
+    // The derived model's deserialization should include the base model's nested model property.
+    // 'metadata' property (PascalCase: 'Metadata') shadows the type 'Metadata' in the
+    // static DeserializeCircle method, so the type reference must be namespace-qualified (CS0120).
     expect(content).toContain('if (jsonProperty.NameEquals("metadata"u8))');
     expect(content).toContain(
-      "metadata = Metadata.DeserializeMetadata(jsonProperty.Value, options);",
+      "metadata = TestNamespace.Metadata.DeserializeMetadata(jsonProperty.Value, options);",
     );
 
     // Own primitive property should also be present
     expect(content).toContain('if (jsonProperty.NameEquals("radius"u8))');
     expect(content).toContain("radius = jsonProperty.Value.GetDouble();");
+  });
+
+  /**
+   * Validates that recursive model deserialization (where a model references
+   * itself through an inherited property) uses namespace-qualified type
+   * references to avoid CS0120 errors.
+   *
+   * In the recursive pattern, `Element` has property `extension: Extension[]`,
+   * and `Extension` extends `Element`. The PascalCase property name `Extension`
+   * shadows the type `Extension` in static `DeserializeXxx` methods of both
+   * `Element` and `Extension`. Without namespace qualification, the C# compiler
+   * resolves `Extension` to the instance property instead of the type, causing
+   * CS0120 ("An object reference is required for the non-static field").
+   *
+   * This test ensures both the base and derived model's deserialization methods
+   * use the namespace-qualified type reference for the `Extension` type, and
+   * that the explicit operator on the derived model is also qualified.
+   */
+  it("deserializes recursive model with namespace-qualified type references (CS0120)", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      @doc("element")
+      model Element {
+        extension?: Extension[];
+      }
+
+      @doc("extension")
+      model Extension extends Element {
+        level: int8;
+      }
+
+      @route("/test")
+      op test(): Extension;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    // Check Element.Serialization.cs — base model deserializing Extension[] property
+    const elementFileKey = Object.keys(outputs).find((k) =>
+      k.includes("Element.Serialization.cs"),
+    );
+    expect(elementFileKey).toBeDefined();
+    const elementContent = outputs[elementFileKey!];
+
+    // The Extension type reference must be namespace-qualified because the
+    // property 'Extension' (PascalCase of 'extension') shadows the type.
+    expect(elementContent).toContain(
+      "array0.Add(TestNamespace.Extension.DeserializeExtension(item, options));",
+    );
+
+    // Check Extension.Serialization.cs — derived model deserializing inherited Extension[] property
+    const extensionFileKey = Object.keys(outputs).find((k) =>
+      k.includes("Extension.Serialization.cs"),
+    );
+    expect(extensionFileKey).toBeDefined();
+    const extensionContent = outputs[extensionFileKey!];
+
+    // The inherited Extension[] property also requires qualification in Extension's static methods
+    expect(extensionContent).toContain(
+      "array0.Add(TestNamespace.Extension.DeserializeExtension(item, options));",
+    );
+
+    // The explicit operator must also use the qualified reference
+    expect(extensionContent).toContain(
+      "return TestNamespace.Extension.DeserializeExtension(document.RootElement, ModelSerializationExtensions.WireOptions);",
+    );
   });
 
   /**

@@ -2813,3 +2813,13 @@ serialization support).
 
 ## Design Decision: service/multi-service and client/structure/client-operation-group
 These specs build clean individually but fail in the E2E combined build because internal infrastructure types (ClientUriBuilder, Argument, extension methods) are generated in one namespace but referenced from sub-clients in a different namespace. This is a separate multi-namespace scope issue, not a using directive problem.
+
+## CS0120: Property name shadows type name in static deserialization methods
+
+When a model property's PascalCase C# name matches a type name referenced in a static `DeserializeXxx()` method, C# resolves the name to the instance property instead of the type, causing CS0120. Example: `Element.extension: Extension[]` → property `Extension` shadows class `Extension`.
+
+**Fix**: Use `collectPropertyCSharpNames()` from `src/utils/property.ts` to collect all PascalCase property names from the model hierarchy, then namespace-qualify the type reference when a collision is detected: `Namespace.TypeName.DeserializeTypeName(...)`.
+
+**Gotcha**: The C# naming policy context for PascalCase property names is `"class-property"`, NOT `"property"`. Using `"property"` returns camelCase (the default case in `createCSharpNamePolicy()`). This caused a silent bug where collision detection failed.
+
+**Scope**: Affects `PropertyMatchingLoop.tsx` (getReadExpression, renderArrayDeserialization, renderDictionaryDeserialization) and `CastOperators.tsx` (explicit operator). Both generate `ModelName.DeserializeModelName(...)` calls in static contexts.

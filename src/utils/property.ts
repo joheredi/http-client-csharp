@@ -18,8 +18,10 @@
 
 import type {
   SdkModelPropertyType,
+  SdkModelType,
   SdkType,
 } from "@azure-tools/typespec-client-generator-core";
+import type { NamePolicy } from "@alloy-js/core";
 import { Visibility } from "@typespec/http";
 import {
   isCollectionType,
@@ -210,4 +212,36 @@ export function resolvePropertyName(
     return propertyName + "Property";
   }
   return propertyName;
+}
+
+/**
+ * Collects all PascalCase C# property names from a model and all its base models.
+ *
+ * Used to detect CS0120 collisions: when a property name (PascalCase) matches
+ * a type name used in a static deserialization method, C# resolves the name to
+ * the instance property instead of the type, causing a compilation error.
+ *
+ * For example, if `Element` has property `Extension` (type `IList<Extension>`),
+ * inside `static DeserializeElement()`, writing `Extension.DeserializeExtension(...)`
+ * resolves `Extension` to the property, not the type. Detecting this collision
+ * allows the code generator to emit a namespace-qualified type reference instead.
+ *
+ * @param model - The TCGC model type whose property names to collect.
+ * @param namePolicy - C# naming policy for converting raw names to PascalCase.
+ * @returns A set of PascalCase C# property names from the model and all ancestors.
+ */
+export function collectPropertyCSharpNames(
+  model: SdkModelType,
+  namePolicy: NamePolicy<string>,
+): Set<string> {
+  const names = new Set<string>();
+  let current: SdkModelType | undefined = model;
+  while (current) {
+    for (const prop of current.properties) {
+      const resolved = resolvePropertyName(prop.name, current.name);
+      names.add(namePolicy.getName(resolved, "class-property"));
+    }
+    current = current.baseModel;
+  }
+  return names;
 }

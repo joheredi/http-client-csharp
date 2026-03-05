@@ -4683,3 +4683,22 @@ Fixed three root causes of missing `using` directives that caused CS0246 compila
   ensures the using directive is auto-generated. This is the pattern for duration, utcDateTime,
   offsetDateTime, url.
 
+
+## 2026-03-05 — Task 12.21: Fix non-static member access in recursive model serialization
+
+Fixed CS0120 errors in recursive model deserialization where a property name (PascalCase) shadows a type name in static methods.
+
+**Root cause**: When `Element` has property `extension: Extension[]`, the PascalCase property `Extension` shadows the class `Extension` in static `DeserializeXxx()` methods. C# resolves `Extension.DeserializeExtension(...)` to the instance property, not the type.
+
+**Fix**: Added `collectPropertyCSharpNames()` utility in `src/utils/property.ts` that collects all PascalCase property names from a model and its ancestors. When a model type name collides with a property name, the deserialization call uses a namespace-qualified type reference (e.g., `_Type.Model.Inheritance.Recursive.Extension.DeserializeExtension(...)`).
+
+**Files changed**:
+- `src/utils/property.ts` — Added `collectPropertyCSharpNames()` utility
+- `src/components/serialization/PropertyMatchingLoop.tsx` — Threaded collision detection through `getReadExpression`, `renderArrayDeserialization`, `renderDictionaryDeserialization`
+- `src/components/serialization/CastOperators.tsx` — Added collision detection for explicit operator
+- `test/model-serialization.test.ts` — Updated 3 existing tests, added 1 new recursive model test
+- `test/e2e/.testignore` — Removed `type/model/inheritance/recursive`
+
+**Key learning**: The C# naming policy context for PascalCase properties is `"class-property"`, not `"property"`. The `"property"` context falls through to camelCase. This distinction is critical for collision detection.
+
+**Pattern**: This fix also applies to non-recursive models (e.g., `widget.pet: Pet` → `Pet` property shadows `Pet` type). The fix is general and handles all such cases.

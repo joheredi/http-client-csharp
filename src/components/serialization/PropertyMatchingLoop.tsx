@@ -64,7 +64,7 @@ import {
   isPropertyNullable,
   unwrapNullableType,
 } from "../../utils/nullable.js";
-import { resolvePropertyName } from "../../utils/property.js";
+import { resolvePropertyName, collectPropertyCSharpNames } from "../../utils/property.js";
 import { isDynamicModel } from "../models/DynamicModel.js";
 import {
   isBaseDiscriminatorOverride,
@@ -540,12 +540,17 @@ function getEnumReadExpression(
  *   Required for model and enum type deserialization.
  * @param accessor - The C# expression for the JsonElement (e.g., `"prop.Value"` or `"item"`).
  *   Defaults to `"prop.Value"` for the standard property matching loop context.
+ * @param enclosingPropertyNames - Optional set of PascalCase property names from the
+ *   enclosing model and its ancestors. When provided and a model type name collides
+ *   with a property name, the type reference is namespace-qualified to avoid CS0120
+ *   errors in static deserialization methods.
  * @returns The C# expression string, or `null` if the type is not yet supported.
  */
 export function getReadExpression(
   type: SdkType,
   namePolicy?: NamePolicy<string>,
   accessor: string = "jsonProperty.Value",
+  enclosingPropertyNames?: Set<string>,
 ): string | null {
   let unwrapped = unwrapNullableType(type);
 
@@ -606,13 +611,20 @@ export function getReadExpression(
   // For dynamic models, pass the raw UTF-8 bytes as the BinaryData parameter:
   // ModelName.DeserializeModelName({accessor}, {accessor}.GetUtf8Bytes(), options)
   // This delegates deserialization to the nested model's own static method.
+  //
+  // When a property name on the enclosing model matches the target model type name,
+  // the type reference must be namespace-qualified to prevent CS0120 errors in
+  // static methods (C# resolves the unqualified name to the instance property).
   if (kind === "model" && namePolicy) {
     const modelType = unwrapped as SdkModelType;
     const modelName = namePolicy.getName(modelType.name, "class");
+    const typeRef = enclosingPropertyNames?.has(modelName)
+      ? `${modelType.namespace}.${modelName}`
+      : modelName;
     if (isDynamicModel(modelType)) {
-      return `${modelName}.Deserialize${modelName}(${accessor}, ${accessor}.GetUtf8Bytes(), options)`;
+      return `${typeRef}.Deserialize${modelName}(${accessor}, ${accessor}.GetUtf8Bytes(), options)`;
     }
-    return `${modelName}.Deserialize${modelName}(${accessor}, options)`;
+    return `${typeRef}.Deserialize${modelName}(${accessor}, options)`;
   }
 
   // Types handled by subsequent tasks return null
@@ -676,6 +688,8 @@ function getItemVarName(depth: number): string {
  * @param indent - Whitespace indentation prefix for the generated block.
  * @param namePolicy - C# name policy for resolving type names.
  * @param depth - Current nesting depth (0 for top-level collection).
+ * @param enclosingPropertyNames - Optional set of PascalCase property names for
+ *   CS0120 collision detection (see {@link getReadExpression}).
  * @returns JSX element with the array deserialization block, or `null` if
  *   the item type is not yet supported.
  */
@@ -685,6 +699,7 @@ function renderArrayDeserialization(
   indent: string,
   namePolicy: NamePolicy<string>,
   depth: number = 0,
+  enclosingPropertyNames?: Set<string>,
 ): Children | null {
   const itemType = arrayType.valueType;
   const unwrappedItemType = unwrapNullableType(itemType);
@@ -703,6 +718,7 @@ function renderArrayDeserialization(
       innerIndent,
       namePolicy,
       depth + 1,
+      enclosingPropertyNames,
     );
     if (!innerBlock) return null;
     const innerArrayVar = getArrayVarName(depth + 1);
@@ -730,7 +746,7 @@ function renderArrayDeserialization(
     );
   } else {
     // Leaf type — use getReadExpression for the item value
-    const itemReadExpr = getReadExpression(itemType, namePolicy, itemVar);
+    const itemReadExpr = getReadExpression(itemType, namePolicy, itemVar, enclosingPropertyNames);
     if (!itemReadExpr) return null;
 
     if (itemNeedsNullCheck(itemType)) {
@@ -822,6 +838,8 @@ function getDictionaryPropVarName(depth: number): string {
  * @param indent - Whitespace indentation prefix for the generated block.
  * @param namePolicy - C# name policy for resolving type names.
  * @param depth - Current nesting depth (0 for top-level dictionary).
+ * @param enclosingPropertyNames - Optional set of PascalCase property names for
+ *   CS0120 collision detection (see {@link getReadExpression}).
  * @returns JSX element with the dictionary deserialization block, or `null` if
  *   the value type is not yet supported.
  */
@@ -831,6 +849,7 @@ function renderDictionaryDeserialization(
   indent: string,
   namePolicy: NamePolicy<string>,
   depth: number = 0,
+  enclosingPropertyNames?: Set<string>,
 ): Children | null {
   const valueType = dictType.valueType;
   const unwrappedValueType = unwrapNullableType(valueType);
@@ -848,6 +867,7 @@ function renderDictionaryDeserialization(
       innerIndent,
       namePolicy,
       depth + 1,
+      enclosingPropertyNames,
     );
     if (!innerBlock) return null;
     const innerDictVar = getDictionaryVarName(depth + 1);
@@ -865,6 +885,7 @@ function renderDictionaryDeserialization(
       innerIndent,
       namePolicy,
       0,
+      enclosingPropertyNames,
     );
     if (!arrayBlock) return null;
     foreachBody = (
@@ -879,6 +900,7 @@ function renderDictionaryDeserialization(
       valueType,
       namePolicy,
       `${propVar}.Value`,
+      enclosingPropertyNames,
     );
     if (!valueReadExpr) return null;
 
@@ -961,6 +983,10 @@ function renderDictionaryDeserialization(
 export function PropertyMatchingLoop(props: PropertyMatchingLoopProps) {
   const namePolicy = useCSharpNamePolicy();
   const propertyInfos = computeMatchablePropertyInfos(props.type);
+  // Collect all PascalCase property names from the model hierarchy for CS0120
+  // collision detection. Passed to getReadExpression so that model type references
+  // that collide with property names are namespace-qualified.
+  const enclosingPropertyNames = collectPropertyCSharpNames(props.type, namePolicy);
 
   return (
     <>
@@ -983,6 +1009,7 @@ export function PropertyMatchingLoop(props: PropertyMatchingLoopProps) {
             "            ",
             namePolicy,
             0,
+            enclosingPropertyNames,
           );
           if (!arrayBlock) return null;
           return (
@@ -1007,6 +1034,7 @@ export function PropertyMatchingLoop(props: PropertyMatchingLoopProps) {
             "            ",
             namePolicy,
             0,
+            enclosingPropertyNames,
           );
           if (!dictBlock) return null;
           return (
@@ -1024,7 +1052,7 @@ export function PropertyMatchingLoop(props: PropertyMatchingLoopProps) {
         }
 
         // Simple expression-based deserialization for scalar types
-        const readExpr = getReadExpression(p.type, namePolicy);
+        const readExpr = getReadExpression(p.type, namePolicy, undefined, enclosingPropertyNames);
         if (!readExpr) return null;
 
         return (

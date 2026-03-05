@@ -92,8 +92,6 @@ type/scalar
 routes
 
 # === Model member / method issues ===
-# CS0120: Non-static member accessed from static context in recursive model
-type/model/inheritance/recursive
 
 # CS0542: Property name same as enclosing class name
 special-words

@@ -32,6 +32,7 @@ import {
 } from "../../builtins/system-client-model.js";
 import { SystemTextJson } from "../../builtins/system-text-json.js";
 import { SystemXmlLinq } from "../../builtins/system-xml-linq.js";
+import { collectPropertyCSharpNames } from "../../utils/property.js";
 
 /**
  * Props for the {@link ImplicitBinaryContentOperator} component.
@@ -246,14 +247,23 @@ export function ExplicitClientResultOperator(
   const namePolicy = useCSharpNamePolicy();
   const modelName = namePolicy.getName(type.name, "class");
 
+  // Detect CS0120 collisions: if the model class name matches any property name
+  // visible in this class (including inherited properties), the unqualified name
+  // resolves to the instance property in static operator context. Use the
+  // namespace-qualified type reference to disambiguate.
+  const propertyNames = collectPropertyCSharpNames(type, namePolicy);
+  const typeRef = propertyNames.has(modelName)
+    ? `${type.namespace}.${modelName}`
+    : modelName;
+
   // Select the appropriate operator body based on the model's serialization formats.
   // The dispatch mirrors the legacy emitter's GetExplicitFromClientResultMethod().
   if (supportsJson && supportsXml) {
-    return renderDualFormatOperator(modelName);
+    return renderDualFormatOperator(modelName, typeRef);
   } else if (supportsXml) {
-    return renderXmlOnlyOperator(modelName);
+    return renderXmlOnlyOperator(modelName, typeRef);
   } else {
-    return renderJsonOnlyOperator(modelName);
+    return renderJsonOnlyOperator(modelName, typeRef);
   }
 }
 
@@ -264,7 +274,7 @@ export function ExplicitClientResultOperator(
  * as a `JsonDocument`, and calls the model's `Deserialize` method with the root element.
  * The `response` variable is NOT declared with `using` (consistent with the legacy emitter).
  */
-function renderJsonOnlyOperator(modelName: string) {
+function renderJsonOnlyOperator(modelName: string, typeRef: string) {
   return (
     <>
       {`/// <param name="result"> The <see cref="ClientResult"/> to deserialize the <see cref="${modelName}"/> from. </param>`}
@@ -275,7 +285,7 @@ function renderJsonOnlyOperator(modelName: string) {
       {code`${SystemClientModelPrimitives.PipelineResponse} response = result.GetRawResponse();`}
       {"\n    "}
       {code`using ${SystemTextJson.JsonDocument} document = ${SystemTextJson.JsonDocument}.Parse(response.Content, ModelSerializationExtensions.JsonDocumentOptions);`}
-      {`\n    return ${modelName}.Deserialize${modelName}(document.RootElement, ModelSerializationExtensions.WireOptions);`}
+      {`\n    return ${typeRef}.Deserialize${modelName}(document.RootElement, ModelSerializationExtensions.WireOptions);`}
       {"\n}"}
     </>
   );
@@ -290,7 +300,7 @@ function renderJsonOnlyOperator(modelName: string) {
  *
  * The legacy emitter generates this in `BuildXmlExplicitFromClientResult()`.
  */
-function renderXmlOnlyOperator(modelName: string) {
+function renderXmlOnlyOperator(modelName: string, typeRef: string) {
   return (
     <>
       {`/// <param name="result"> The <see cref="ClientResult"/> to deserialize the <see cref="${modelName}"/> from. </param>`}
@@ -307,7 +317,7 @@ function renderXmlOnlyOperator(modelName: string) {
       {"\n    }"}
       {"\n"}
       {"\n    "}
-      {code`return ${modelName}.Deserialize${modelName}(${SystemXmlLinq.XElement}.Load(stream, ${SystemXmlLinq.LoadOptions}.PreserveWhitespace), ModelSerializationExtensions.WireOptions);`}
+      {code`return ${typeRef}.Deserialize${modelName}(${SystemXmlLinq.XElement}.Load(stream, ${SystemXmlLinq.LoadOptions}.PreserveWhitespace), ModelSerializationExtensions.WireOptions);`}
       {"\n}"}
     </>
   );
@@ -325,7 +335,7 @@ function renderXmlOnlyOperator(modelName: string) {
  *
  * The legacy emitter generates this in `BuildJsonAndXmlExplicitFromClientResult()`.
  */
-function renderDualFormatOperator(modelName: string) {
+function renderDualFormatOperator(modelName: string, typeRef: string) {
   return (
     <>
       {`/// <param name="result"> The <see cref="ClientResult"/> to deserialize the <see cref="${modelName}"/> from. </param>`}
@@ -340,7 +350,7 @@ function renderDualFormatOperator(modelName: string) {
       {"\n    {"}
       {"\n        "}
       {code`using ${SystemTextJson.JsonDocument} document = ${SystemTextJson.JsonDocument}.Parse(response.Content, ModelSerializationExtensions.JsonDocumentOptions);`}
-      {`\n        return ${modelName}.Deserialize${modelName}(document.RootElement, ModelSerializationExtensions.WireOptions);`}
+      {`\n        return ${typeRef}.Deserialize${modelName}(document.RootElement, ModelSerializationExtensions.WireOptions);`}
       {"\n    }"}
       {"\n"}
       {"\n    "}
@@ -351,7 +361,7 @@ function renderDualFormatOperator(modelName: string) {
       {"\n    }"}
       {"\n"}
       {"\n    "}
-      {code`return ${modelName}.Deserialize${modelName}(${SystemXmlLinq.XElement}.Load(stream, ${SystemXmlLinq.LoadOptions}.PreserveWhitespace), ModelSerializationExtensions.WireOptions);`}
+      {code`return ${typeRef}.Deserialize${modelName}(${SystemXmlLinq.XElement}.Load(stream, ${SystemXmlLinq.LoadOptions}.PreserveWhitespace), ModelSerializationExtensions.WireOptions);`}
       {"\n}"}
     </>
   );

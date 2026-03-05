@@ -361,7 +361,7 @@
           "title": "Fix non-static member access in recursive model serialization",
           "description": "In type/model/inheritance/recursive, the Extension model's serialization code accesses Element.Extension as if it were a static member from a static DeserializeExtension method, causing CS0120 errors (6 occurrences).\n\nThe generated code does something like:\n  Element.Extension (accessing instance property Extension on class Element)\ninstead of properly accessing the deserialized result.\n\nThe fix needs to ensure the deserialization code for recursive models correctly handles self-referential property access patterns.\n\nAffected spec: type/model/inheritance/recursive.\n\nTo reproduce: Remove this spec from test/e2e/.testignore, run pnpm emit:e2e --filter type/model/inheritance/recursive, then dotnet build.",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [
