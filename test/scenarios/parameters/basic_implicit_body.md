@@ -54,7 +54,7 @@ public partial class ImplicitBody
         {
             Argument.AssertNotNullOrEmpty(name, nameof(name));
 
-            return Simple(BinaryContentHelper.FromObject(new SimpleRequest(name)), cancellationToken.ToRequestOptions());
+            return Simple(BinaryContentHelper.FromObject(new SimpleRequest(name, default)), cancellationToken.ToRequestOptions());
         }
 
         /// <summary>  </summary>
@@ -67,7 +67,7 @@ public partial class ImplicitBody
         {
             Argument.AssertNotNullOrEmpty(name, nameof(name));
 
-            return await SimpleAsync(BinaryContentHelper.FromObject(new SimpleRequest(name)), cancellationToken.ToRequestOptions()).ConfigureAwait(false);
+            return await SimpleAsync(BinaryContentHelper.FromObject(new SimpleRequest(name, default)), cancellationToken.ToRequestOptions()).ConfigureAwait(false);
         }
 
         /// <summary>

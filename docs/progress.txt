@@ -4735,3 +4735,17 @@ Alloy's `<Namespace>` component renders.
 - `src/components/literal-types/LiteralTypeFile.tsx` — Same fix
 - `src/emitter.tsx` — Pass `rootNamespace` as `packageName` to both components
 - `test/e2e/.testignore` — Removed `azure/core/lro/rpc` and `azure/core/lro/standard`
+
+## Task 12.26 (2026-03-05): Fix spread parameter model constructor missing additionalBinaryDataProperties (DONE)
+
+**Problem**: Spread body convenience methods constructed models via `new BodyType(param1, param2, ...)` without passing `additionalBinaryDataProperties` (serialization constructor's last param), causing CS7036 errors. Additionally, args were in priority-sorted order (required first) instead of model property definition order, which would cause CS1503 for models with interleaved required/optional properties.
+
+**Fix**: Two changes in `ConvenienceMethod.tsx`:
+1. Added `spreadBodyParamsInOrder` to `ConvenienceParamsResult` — body params re-sorted by original index to recover model property order (matching serialization constructor).
+2. In `buildSpreadProtocolCallExpr`, use `bodyParamsInModelOrder` for correct arg ordering and append `default` for `additionalBinaryDataProperties` (conditional on `spreadBodyType.kind === "model"` to skip non-model spread bodies like string).
+
+**Key insight**: `isSpreadBody()` returns true for non-model types (e.g., string with `@body` decorator) due to reference inequality of type objects. The `default` addition must be conditional on model types.
+
+**Test added**: `passes spread model args in model property order with default for additionalBinaryDataProperties` — uses model with interleaved required/optional to validate both ordering and default parameter.
+
+**Files changed**: `src/components/clients/ConvenienceMethod.tsx`, 4 scenario test files updated expectations.

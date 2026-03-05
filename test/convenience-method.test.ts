@@ -1350,4 +1350,45 @@ describe("ConvenienceMethod", () => {
     // Should NOT be wrapped in BinaryContentHelper
     expect(clientFile).not.toContain("BinaryContentHelper");
   });
+
+  /**
+   * Verifies that spread model constructor calls include `default` for the
+   * additionalBinaryDataProperties parameter (the serialization constructor's
+   * last parameter). Without this, the generated C# code produces CS7036 errors
+   * because the spread body construction `new BodyType(param1, param2, ...)`
+   * doesn't match any constructor — the public constructor only accepts required
+   * params, and the serialization constructor requires additionalBinaryDataProperties.
+   *
+   * This test uses a model with interleaved required/optional properties to also
+   * verify that constructor arguments are in model property definition order
+   * (matching the serialization constructor), NOT in the convenience method's
+   * priority-sorted order (required first, optional second).
+   */
+  it("passes spread model args in model property order with default for additionalBinaryDataProperties", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model SpreadRequest {
+        requiredName: string;
+        optionalCount?: int32;
+        requiredTag: string;
+      }
+
+      @route("/items")
+      @post op createItem(...SpreadRequest): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"] ?? "";
+
+    // Spread model constructor must include `default` for additionalBinaryDataProperties
+    // AND arguments must be in model property order (requiredName, optionalCount, requiredTag)
+    // not in priority-sorted order (requiredName, requiredTag, optionalCount).
+    expect(clientFile).toContain(
+      "new SpreadRequest(requiredName, optionalCount, requiredTag, default)",
+    );
+  });
 });

@@ -121,7 +121,7 @@ public partial class Model
         {
             Argument.AssertNotNullOrEmpty(name, nameof(name));
 
-            return SpreadAsRequestBody(new BodyParameter(name), cancellationToken.ToRequestOptions());
+            return SpreadAsRequestBody(new BodyParameter(name, default), cancellationToken.ToRequestOptions());
         }
 
         /// <summary>  </summary>
@@ -137,7 +137,7 @@ public partial class Model
         {
             Argument.AssertNotNullOrEmpty(name, nameof(name));
 
-            return await SpreadAsRequestBodyAsync(new BodyParameter(name), cancellationToken.ToRequestOptions()).ConfigureAwait(false);
+            return await SpreadAsRequestBodyAsync(new BodyParameter(name, default), cancellationToken.ToRequestOptions()).ConfigureAwait(false);
         }
 
         /// <summary>  </summary>
@@ -271,7 +271,7 @@ public partial class Model
             Argument.AssertNotNullOrEmpty(testHeader, nameof(testHeader));
             Argument.AssertNotNullOrEmpty(prop, nameof(prop));
 
-            return SpreadCompositeRequestMix(name, testHeader, BinaryContentHelper.FromObject(new SpreadCompositeRequestMixRequest(prop)), cancellationToken.ToRequestOptions());
+            return SpreadCompositeRequestMix(name, testHeader, BinaryContentHelper.FromObject(new SpreadCompositeRequestMixRequest(prop, default)), cancellationToken.ToRequestOptions());
         }
 
         /// <summary>  </summary>
@@ -293,7 +293,7 @@ public partial class Model
             Argument.AssertNotNullOrEmpty(testHeader, nameof(testHeader));
             Argument.AssertNotNullOrEmpty(prop, nameof(prop));
 
-            return await SpreadCompositeRequestMixAsync(name, testHeader, BinaryContentHelper.FromObject(new SpreadCompositeRequestMixRequest(prop)), cancellationToken.ToRequestOptions()).ConfigureAwait(false);
+            return await SpreadCompositeRequestMixAsync(name, testHeader, BinaryContentHelper.FromObject(new SpreadCompositeRequestMixRequest(prop, default)), cancellationToken.ToRequestOptions()).ConfigureAwait(false);
         }
 
         /// <summary>

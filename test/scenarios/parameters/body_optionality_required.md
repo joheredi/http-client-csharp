@@ -109,7 +109,7 @@ public partial class BodyOptionalityClient
         {
             Argument.AssertNotNullOrEmpty(name, nameof(name));
 
-            return RequiredImplicit(new BodyModel(name), cancellationToken.ToRequestOptions());
+            return RequiredImplicit(new BodyModel(name, default), cancellationToken.ToRequestOptions());
         }
 
         /// <summary>  </summary>
@@ -125,7 +125,7 @@ public partial class BodyOptionalityClient
         {
             Argument.AssertNotNullOrEmpty(name, nameof(name));
 
-            return await RequiredImplicitAsync(new BodyModel(name), cancellationToken.ToRequestOptions()).ConfigureAwait(false);
+            return await RequiredImplicitAsync(new BodyModel(name, default), cancellationToken.ToRequestOptions()).ConfigureAwait(false);
         }
 
         /// <summary>

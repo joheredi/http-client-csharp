@@ -151,6 +151,7 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
           ? buildSpreadProtocolCallExpr(
               params.params,
               params.spreadBodyType as SdkModelType,
+              params.spreadBodyParamsInOrder!,
             )
           : [
               ...params.params.map((p) => p.protocolCallArg),
@@ -279,6 +280,13 @@ export interface ConvenienceParamsResult {
    * `new SpreadBodyType(param1, param2, ...)`.
    */
   spreadBodyType: SdkType | null;
+  /**
+   * Body params in model property order (matching the serialization constructor
+   * parameter order). Only set when `spreadBodyType` is non-null. This ordering
+   * differs from `params` which is sorted by required/optional priority for the
+   * method signature.
+   */
+  spreadBodyParamsInOrder?: ConvenienceParam[];
 }
 
 /**
@@ -460,6 +468,15 @@ export function buildConvenienceParams(
       ({ priority: _priority, index: _index, ...rest }) => rest,
     ),
     spreadBodyType,
+    // Body params re-sorted by original index to recover model property order
+    // (matching the serialization constructor parameter order). The priority sort
+    // reorders required before optional, but the constructor expects definition order.
+    spreadBodyParamsInOrder: spreadBodyType
+      ? params
+          .filter((p) => p.isBody)
+          .sort((a, b) => a.index - b.index)
+          .map(({ priority: _p, index: _i, ...rest }) => rest)
+      : undefined,
   };
 }
 
@@ -469,6 +486,12 @@ export function buildConvenienceParams(
  * Instead of passing a single model parameter (which would use implicit
  * BinaryContent conversion), this constructs the model from the individual
  * spread parameters: `new BodyType(param1, param2, ...)`.
+ *
+ * Arguments are ordered to match the model's serialization constructor
+ * parameter order (model property definition order + additionalBinaryDataProperties),
+ * NOT the convenience method's priority-sorted parameter order. The serialization
+ * constructor is targeted because it accepts all properties (required + optional),
+ * unlike the public constructor which only accepts required properties.
  *
  * Collection (array) parameters are converted from `IEnumerable<T>` to
  * `IList<T>` via `.ToList()`, matching the golden output pattern:
@@ -481,15 +504,16 @@ export function buildConvenienceParams(
 function buildSpreadProtocolCallExpr(
   params: ConvenienceParam[],
   spreadBodyType: SdkModelType,
+  bodyParamsInModelOrder: ConvenienceParam[],
 ): Children {
   const bodyTypeExpr = <TypeExpression type={spreadBodyType.__raw!} />;
-  const bodyParams = params.filter((p) => p.isBody);
 
-  // Build argument expressions for body params, converting collections with .ToList()
+  // Build argument expressions for body params in MODEL PROPERTY ORDER,
+  // matching the serialization constructor parameter order.
   const spreadArgs: Children[] = [];
-  for (let i = 0; i < bodyParams.length; i++) {
+  for (let i = 0; i < bodyParamsInModelOrder.length; i++) {
     if (i > 0) spreadArgs.push(", ");
-    const bp = bodyParams[i];
+    const bp = bodyParamsInModelOrder[i];
     const escapedName = escapeCSharpKeyword(bp.name);
     if (bp.collectionElementExpr) {
       // Collection param: convert IEnumerable<T> → IList<T> with null-safety.
@@ -500,6 +524,12 @@ function buildSpreadProtocolCallExpr(
     } else {
       spreadArgs.push(escapedName);
     }
+  }
+  // Only model types have serialization constructors with an additionalBinaryDataProperties
+  // (or patch for dynamic models) trailing parameter. Non-model spread body types
+  // (e.g., string primitives with @body decorator) don't have this parameter.
+  if (spreadBodyType.kind === "model") {
+    spreadArgs.push(", default");
   }
 
   // Determine whether the spread body model needs explicit BinaryContent conversion.

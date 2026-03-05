@@ -2856,3 +2856,17 @@ but Alloy's `<Namespace>` component applies PascalCase via the naming policy (e.
 When generating `using` directives as raw strings, you MUST normalize namespace segments through
 `useCSharpNamePolicy().getName(seg, "namespace")` to get the rendered PascalCase form. Otherwise the
 using directive won't match the actual namespace.
+
+## Spread Body Constructor Targeting (Task 12.26)
+
+**Gotcha**: `isSpreadBody()` returns `true` for non-model types (e.g., `@body text: string`) because it compares type object references (`bodyParam.type !== correspondingParams[0].type`), and TCGC may create separate type object instances for the same logical type. Any spread-specific constructor logic (like appending `additionalBinaryDataProperties`) must be conditional on `spreadBodyType.kind === "model"`.
+
+**Gotcha**: Spread body args in `buildSpreadProtocolCallExpr` were built from priority-sorted body params (required before optional), but the serialization constructor expects model property definition order. The fix collects body params sorted by their original `index` before priority sorting, preserving model property order.
+
+**Pattern**: Spread model constructor calls target the **serialization constructor** (all properties + `additionalBinaryDataProperties`), not the public constructor (required properties only). This matches the legacy emitter which finds the constructor with `Properties.Count + 1` parameters. Use `default` (not `null`) as the trailing arg — it works for both reference types (`IDictionary<string, BinaryData>`) and value types (`JsonPatch` for dynamic models).
+
+## Design Decisions
+
+### Spread body constructor arg ordering (Task 12.26)
+**Chosen**: Recover model property order by re-sorting filtered body params by original insertion `index` after the priority sort. This is computed in `buildConvenienceParams` and returned as `spreadBodyParamsInOrder`.
+**Rejected**: (a) Name-matching against `spreadBodyType.properties` — fragile due to naming policy transformations. (b) Adding `modelPropertyIndex` field to `ConvenienceParam` — pollutes the interface with spread-only metadata.
