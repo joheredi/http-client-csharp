@@ -290,7 +290,7 @@ function EnumStaticProperties(props: { type: SdkEnumType; enumName: string }) {
   const properties = type.values.map((member) => {
     const memberName = namePolicy.getName(member.name, "enum-member");
     const description = getEnumMemberDescription(member);
-    return `/// <summary> Gets the ${description} </summary>\npublic static ${enumName} ${memberName} { get; } = new ${enumName}(${memberName}Value);`;
+    return `/// <summary> Gets the ${formatDocLines(description)} </summary>\npublic static ${enumName} ${memberName} { get; } = new ${enumName}(${memberName}Value);`;
   });
 
   return <>{properties.join("\n\n")}</>;

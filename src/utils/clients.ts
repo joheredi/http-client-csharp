@@ -30,6 +30,21 @@ export function getAllClients(
 }
 
 /**
+ * Extracts the simple client name from a potentially namespace-qualified name.
+ *
+ * TCGC may provide client names with namespace prefixes (e.g., "SubNamespace.SecondClient").
+ * C# class names cannot contain dots, so this function strips the namespace prefix
+ * and returns just the last segment (e.g., "SecondClient").
+ *
+ * @param name - The raw client name from TCGC.
+ * @returns The simple class name without namespace prefix.
+ */
+export function getSimpleClientName(name: string): string {
+  const dotIndex = name.lastIndexOf(".");
+  return dotIndex >= 0 ? name.substring(dotIndex + 1) : name;
+}
+
+/**
  * Computes a unique filename prefix for a client based on its position in the
  * hierarchy. This prevents filename collisions when multiple sub-clients share
  * the same short name (e.g., "Standard", "Explode") at different levels.
@@ -53,7 +68,7 @@ export function getClientFileName(
 ): string {
   // Root clients: just use the class name directly
   if (!client.parent) {
-    return toClassName(client.name);
+    return toClassName(getSimpleClientName(client.name));
   }
 
   // Sub-clients: walk up the parent chain and concatenate all non-root names.
@@ -61,7 +76,7 @@ export function getClientFileName(
   const parts: string[] = [];
   let current: SdkClientType<SdkHttpOperation> | undefined = client;
   while (current && current.parent !== undefined) {
-    parts.unshift(toClassName(current.name));
+    parts.unshift(toClassName(getSimpleClientName(current.name)));
     current = current.parent;
   }
   return parts.join("");

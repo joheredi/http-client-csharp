@@ -28,7 +28,7 @@
 export function DynamicPatchRead() {
   return (
     <>
-      {`\n        patch.Set([.. "$."u8, .. Encoding.UTF8.GetBytes(prop.Name)], prop.Value.GetUtf8Bytes());`}
+      {`\n        patch.Set([.. "$."u8, .. Encoding.UTF8.GetBytes(jsonProperty.Name)], jsonProperty.Value.GetUtf8Bytes());`}
     </>
   );
 }

@@ -268,15 +268,15 @@ describe("null value handling in generated C#", () => {
     const content = outputs[fileKey!];
 
     // Required property (name) should NOT have a null check
-    expect(content).toContain('if (prop.NameEquals("name"u8))');
+    expect(content).toContain('if (jsonProperty.NameEquals("name"u8))');
     expect(content).not.toMatch(
       /NameEquals\("name"u8\).*?ValueKind == JsonValueKind\.Null.*?name = null/s,
     );
 
     // Optional property (description) should have: assign null and continue
-    expect(content).toContain('if (prop.NameEquals("description"u8))');
+    expect(content).toContain('if (jsonProperty.NameEquals("description"u8))');
     expect(content).toContain("description = null;");
-    expect(content).toContain("prop.Value.ValueKind == JsonValueKind.Null");
+    expect(content).toContain("jsonProperty.Value.ValueKind == JsonValueKind.Null");
   });
 
   /**
@@ -307,7 +307,7 @@ describe("null value handling in generated C#", () => {
     const content = outputs[fileKey!];
 
     // count is optional → null check with assign null
-    expect(content).toContain('if (prop.NameEquals("count"u8))');
+    expect(content).toContain('if (jsonProperty.NameEquals("count"u8))');
     expect(content).toContain("count = null;");
   });
 
@@ -340,16 +340,16 @@ describe("null value handling in generated C#", () => {
     const content = outputs[fileKey!];
 
     // The tags block should have a null check with continue (no assignment)
-    expect(content).toContain('if (prop.NameEquals("tags"u8))');
+    expect(content).toContain('if (jsonProperty.NameEquals("tags"u8))');
 
     // Extract the tags block to verify null check is before array deserialization
-    const tagsBlockStart = content.indexOf('if (prop.NameEquals("tags"u8))');
+    const tagsBlockStart = content.indexOf('if (jsonProperty.NameEquals("tags"u8))');
     const tagsBlock = content.substring(
       tagsBlockStart,
       content.indexOf("}", tagsBlockStart + 200) + 1,
     );
 
-    expect(tagsBlock).toContain("prop.Value.ValueKind == JsonValueKind.Null");
+    expect(tagsBlock).toContain("jsonProperty.Value.ValueKind == JsonValueKind.Null");
     // Should NOT contain "tags = null" — just continue
     expect(tagsBlock).not.toContain("tags = null");
   });
@@ -383,8 +383,8 @@ describe("null value handling in generated C#", () => {
     const content = outputs[fileKey!];
 
     // Extract the name block — should not have JsonValueKind.Null check
-    const nameStart = content.indexOf('if (prop.NameEquals("name"u8))');
-    const countStart = content.indexOf('if (prop.NameEquals("count"u8))');
+    const nameStart = content.indexOf('if (jsonProperty.NameEquals("name"u8))');
+    const countStart = content.indexOf('if (jsonProperty.NameEquals("count"u8))');
 
     // Get the name block (between name match and count match)
     const nameBlock = content.substring(nameStart, countStart);

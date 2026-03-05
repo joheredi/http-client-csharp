@@ -212,7 +212,7 @@ describe("DeserializeReturnStatement", () => {
 
     // The foreach loop should appear before the return statement
     const foreachIdx = content.indexOf(
-      "foreach (var prop in element.EnumerateObject())",
+      "foreach (var jsonProperty in element.EnumerateObject())",
     );
     const returnIdx = content.indexOf(
       "return new Widget(name, additionalBinaryDataProperties);",

@@ -118,8 +118,9 @@ function getMemberName(value: string | number, kind: string): string {
   if (kind === "string") {
     return String(value);
   }
-  // Numeric values: prefix with underscore, replace dots with empty string
-  return `_${String(value).replace(".", "")}`;
+  // Numeric values: prefix with "V" to create a valid C# identifier
+  // (e.g., 456 → "V456", 4.56 → "V456", 1 → "V1")
+  return `V${String(value).replace(".", "")}`;
 }
 
 /**

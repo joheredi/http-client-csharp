@@ -79,7 +79,7 @@ describe("ModelFactoryFile", () => {
    * - The method name matching the model class name
    * - Parameters matching the serialization constructor minus binary data
    * - All parameters defaulting to `= default`
-   * - A return statement calling `new ModelType(params..., additionalBinaryDataProperties: null)`
+   * - A return statement calling `new ModelType(params..., null)`
    */
   it("generates factory method with correct signature", async () => {
     const [{ outputs }] = await HttpTester.compileAndDiagnose(`
@@ -105,9 +105,9 @@ describe("ModelFactoryFile", () => {
     expect(factoryFile).toContain("string name = default");
     expect(factoryFile).toContain("int count = default");
 
-    // Verify constructor call with additionalBinaryDataProperties: null
+    // Verify constructor call with null
     expect(factoryFile).toContain("return new Widget(");
-    expect(factoryFile).toContain("additionalBinaryDataProperties: null");
+    expect(factoryFile).toContain("null");
   });
 
   /**
@@ -340,8 +340,8 @@ describe("ModelFactoryFile", () => {
     expect(factoryFile).toContain("tags.ToArray()");
     expect(factoryFile).not.toContain("metadata.ToArray()");
 
-    // Constructor call ends with additionalBinaryDataProperties: null
-    expect(factoryFile).toContain("additionalBinaryDataProperties: null");
+    // Constructor call ends with null
+    expect(factoryFile).toContain("null");
   });
 
   /**
@@ -376,7 +376,7 @@ describe("ModelFactoryFile", () => {
 
     // Still has the basic structure
     expect(factoryFile).toContain("return new Widget(");
-    expect(factoryFile).toContain("additionalBinaryDataProperties: null");
+    expect(factoryFile).toContain("null");
   });
 
   /**
@@ -436,7 +436,7 @@ describe("ModelFactoryFile", () => {
 
     // Should inject "cat" literal in constructor call instead of kind param
     expect(factoryFile).toContain('"cat"');
-    expect(factoryFile).toContain("additionalBinaryDataProperties: null");
+    expect(factoryFile).toContain("null");
   });
 
   /**
@@ -541,8 +541,8 @@ describe("ModelFactoryFile", () => {
     expect(factoryFile).toContain("new UnknownPet(");
     expect(factoryFile).not.toMatch(/new Pet\(/);
 
-    // UnknownPet gets all params plus additionalBinaryDataProperties: null
-    expect(factoryFile).toContain("additionalBinaryDataProperties: null");
+    // UnknownPet gets all params plus null
+    expect(factoryFile).toContain("null");
   });
 
   /**

@@ -3183,7 +3183,7 @@ describe("JsonDeserialize", () => {
 
     // Should NOT have property matching loop or variable declarations
     expect(petContent).not.toContain(
-      "foreach (var prop in element.EnumerateObject())",
+      "foreach (var jsonProperty in element.EnumerateObject())",
     );
     expect(petContent).not.toContain("string kind = default;");
   });
@@ -3226,7 +3226,7 @@ describe("JsonDeserialize", () => {
     // Should have standard deserialization body
     expect(content).toContain("string name = default;");
     expect(content).toContain(
-      "foreach (var prop in element.EnumerateObject())",
+      "foreach (var jsonProperty in element.EnumerateObject())",
     );
   });
 
@@ -3272,7 +3272,7 @@ describe("JsonDeserialize", () => {
 
     // Dog should have property matching loop
     expect(dogContent).toContain(
-      "foreach (var prop in element.EnumerateObject())",
+      "foreach (var jsonProperty in element.EnumerateObject())",
     );
     expect(dogContent).toContain('string kind = "dog";');
   });
@@ -4534,10 +4534,10 @@ describe("ModelSerialization", () => {
 /**
  * Tests for the PropertyMatchingLoop component.
  *
- * These tests verify that the emitter generates the `foreach (var prop in element.EnumerateObject())`
+ * These tests verify that the emitter generates the `foreach (var jsonProperty in element.EnumerateObject())`
  * loop that matches JSON properties by name and assigns their values to local variables.
  * This is the core deserialization pattern where each property in the JSON payload is
- * matched against known property names using `prop.NameEquals("name"u8)`, and the value
+ * matched against known property names using `jsonProperty.NameEquals("name"u8)`, and the value
  * is extracted using the appropriate `JsonElement.Get{Type}()` method.
  *
  * Why these tests matter:
@@ -4581,7 +4581,7 @@ describe("PropertyMatchingLoop", () => {
     const content = outputs[fileKey!];
 
     expect(content).toContain(
-      "foreach (var prop in element.EnumerateObject())",
+      "foreach (var jsonProperty in element.EnumerateObject())",
     );
   });
 
@@ -4590,7 +4590,7 @@ describe("PropertyMatchingLoop", () => {
    * and GetString() value extraction. String is the most common property type
    * and the simplest case — no format specifiers or type conversions needed.
    */
-  it("deserializes string property with prop.Value.GetString()", async () => {
+  it("deserializes string property with jsonProperty.Value.GetString()", async () => {
     const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
@@ -4612,8 +4612,8 @@ describe("PropertyMatchingLoop", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("name"u8))');
-    expect(content).toContain("name = prop.Value.GetString();");
+    expect(content).toContain('if (jsonProperty.NameEquals("name"u8))');
+    expect(content).toContain("name = jsonProperty.Value.GetString();");
     expect(content).toContain("continue;");
   });
 
@@ -4622,7 +4622,7 @@ describe("PropertyMatchingLoop", () => {
    * This tests the numeric type mapping where TCGC's `int32` maps to C#'s
    * `JsonElement.GetInt32()`.
    */
-  it("deserializes int32 property with prop.Value.GetInt32()", async () => {
+  it("deserializes int32 property with jsonProperty.Value.GetInt32()", async () => {
     const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
@@ -4644,14 +4644,14 @@ describe("PropertyMatchingLoop", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("count"u8))');
-    expect(content).toContain("count = prop.Value.GetInt32();");
+    expect(content).toContain('if (jsonProperty.NameEquals("count"u8))');
+    expect(content).toContain("count = jsonProperty.Value.GetInt32();");
   });
 
   /**
    * Validates that a boolean property uses GetBoolean() for value extraction.
    */
-  it("deserializes boolean property with prop.Value.GetBoolean()", async () => {
+  it("deserializes boolean property with jsonProperty.Value.GetBoolean()", async () => {
     const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
@@ -4673,14 +4673,14 @@ describe("PropertyMatchingLoop", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("enabled"u8))');
-    expect(content).toContain("enabled = prop.Value.GetBoolean();");
+    expect(content).toContain('if (jsonProperty.NameEquals("enabled"u8))');
+    expect(content).toContain("enabled = jsonProperty.Value.GetBoolean();");
   });
 
   /**
    * Validates that a float64 property uses GetDouble() for value extraction.
    */
-  it("deserializes float64 property with prop.Value.GetDouble()", async () => {
+  it("deserializes float64 property with jsonProperty.Value.GetDouble()", async () => {
     const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
@@ -4702,15 +4702,15 @@ describe("PropertyMatchingLoop", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("price"u8))');
-    expect(content).toContain("price = prop.Value.GetDouble();");
+    expect(content).toContain('if (jsonProperty.NameEquals("price"u8))');
+    expect(content).toContain("price = jsonProperty.Value.GetDouble();");
   });
 
   /**
    * Validates that an int64 property uses GetInt64() for value extraction.
    * This confirms that the mapping handles 64-bit integers correctly.
    */
-  it("deserializes int64 property with prop.Value.GetInt64()", async () => {
+  it("deserializes int64 property with jsonProperty.Value.GetInt64()", async () => {
     const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
@@ -4732,8 +4732,8 @@ describe("PropertyMatchingLoop", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("bigNumber"u8))');
-    expect(content).toContain("bigNumber = prop.Value.GetInt64();");
+    expect(content).toContain('if (jsonProperty.NameEquals("bigNumber"u8))');
+    expect(content).toContain("bigNumber = jsonProperty.Value.GetInt64();");
   });
 
   /**
@@ -4766,17 +4766,17 @@ describe("PropertyMatchingLoop", () => {
     const content = outputs[fileKey!];
 
     // All three properties must be present
-    expect(content).toContain('if (prop.NameEquals("name"u8))');
-    expect(content).toContain("name = prop.Value.GetString();");
-    expect(content).toContain('if (prop.NameEquals("count"u8))');
-    expect(content).toContain("count = prop.Value.GetInt32();");
-    expect(content).toContain('if (prop.NameEquals("enabled"u8))');
-    expect(content).toContain("enabled = prop.Value.GetBoolean();");
+    expect(content).toContain('if (jsonProperty.NameEquals("name"u8))');
+    expect(content).toContain("name = jsonProperty.Value.GetString();");
+    expect(content).toContain('if (jsonProperty.NameEquals("count"u8))');
+    expect(content).toContain("count = jsonProperty.Value.GetInt32();");
+    expect(content).toContain('if (jsonProperty.NameEquals("enabled"u8))');
+    expect(content).toContain("enabled = jsonProperty.Value.GetBoolean();");
 
     // Verify ordering: name before count before enabled
-    const nameIdx = content.indexOf('prop.NameEquals("name"u8)');
-    const countIdx = content.indexOf('prop.NameEquals("count"u8)');
-    const enabledIdx = content.indexOf('prop.NameEquals("enabled"u8)');
+    const nameIdx = content.indexOf('jsonProperty.NameEquals("name"u8)');
+    const countIdx = content.indexOf('jsonProperty.NameEquals("count"u8)');
+    const enabledIdx = content.indexOf('jsonProperty.NameEquals("enabled"u8)');
     expect(nameIdx).toBeLessThan(countIdx);
     expect(countIdx).toBeLessThan(enabledIdx);
   });
@@ -4811,9 +4811,9 @@ describe("PropertyMatchingLoop", () => {
     const content = outputs[fileKey!];
 
     // Must use the wire name, not the TypeSpec name
-    expect(content).toContain('if (prop.NameEquals("display_name"u8))');
+    expect(content).toContain('if (jsonProperty.NameEquals("display_name"u8))');
     // The variable name should be camelCase parameter convention
-    expect(content).toContain("displayName = prop.Value.GetString();");
+    expect(content).toContain("displayName = jsonProperty.Value.GetString();");
   });
 
   /**
@@ -4848,7 +4848,7 @@ describe("PropertyMatchingLoop", () => {
 
     // Each property block should have assignment followed by continue
     const foreachBlock = content.substring(
-      content.indexOf("foreach (var prop in element.EnumerateObject())"),
+      content.indexOf("foreach (var jsonProperty in element.EnumerateObject())"),
     );
     const continueCount = (foreachBlock.match(/continue;/g) || []).length;
     // Should have at least 2 continues (one for each property)
@@ -4892,18 +4892,18 @@ describe("PropertyMatchingLoop", () => {
     const content = outputs[fileKey!];
 
     // Base model properties must be in the derived model's loop
-    expect(content).toContain('if (prop.NameEquals("kind"u8))');
-    expect(content).toContain("kind = prop.Value.GetString();");
-    expect(content).toContain('if (prop.NameEquals("name"u8))');
-    expect(content).toContain("name = prop.Value.GetString();");
+    expect(content).toContain('if (jsonProperty.NameEquals("kind"u8))');
+    expect(content).toContain("kind = jsonProperty.Value.GetString();");
+    expect(content).toContain('if (jsonProperty.NameEquals("name"u8))');
+    expect(content).toContain("name = jsonProperty.Value.GetString();");
     // Own property must also be present
-    expect(content).toContain('if (prop.NameEquals("breed"u8))');
-    expect(content).toContain("breed = prop.Value.GetString();");
+    expect(content).toContain('if (jsonProperty.NameEquals("breed"u8))');
+    expect(content).toContain("breed = jsonProperty.Value.GetString();");
 
     // Verify ordering: base props before own props
-    const kindIdx = content.indexOf('prop.NameEquals("kind"u8)');
-    const nameIdx = content.indexOf('prop.NameEquals("name"u8)');
-    const breedIdx = content.indexOf('prop.NameEquals("breed"u8)');
+    const kindIdx = content.indexOf('jsonProperty.NameEquals("kind"u8)');
+    const nameIdx = content.indexOf('jsonProperty.NameEquals("name"u8)');
+    const breedIdx = content.indexOf('jsonProperty.NameEquals("breed"u8)');
     expect(kindIdx).toBeLessThan(nameIdx);
     expect(nameIdx).toBeLessThan(breedIdx);
   });
@@ -4939,14 +4939,14 @@ describe("PropertyMatchingLoop", () => {
 
     // 4 spaces: foreach keyword
     expect(content).toContain(
-      "    foreach (var prop in element.EnumerateObject())",
+      "    foreach (var jsonProperty in element.EnumerateObject())",
     );
     // 4 spaces: opening brace of foreach
-    expect(content).toMatch(/\n {4}\{[\s\S]*prop\.NameEquals/);
+    expect(content).toMatch(/\n {4}\{[\s\S]*jsonProperty\.NameEquals/);
     // 8 spaces: if block inside foreach
-    expect(content).toContain('        if (prop.NameEquals("name"u8))');
+    expect(content).toContain('        if (jsonProperty.NameEquals("name"u8))');
     // 12 spaces: assignment inside if block
-    expect(content).toContain("            name = prop.Value.GetString();");
+    expect(content).toContain("            name = jsonProperty.Value.GetString();");
     // 12 spaces: continue inside if block
     expect(content).toContain("            continue;");
   });
@@ -4981,7 +4981,7 @@ describe("PropertyMatchingLoop", () => {
     // Variable declarations should appear before the foreach loop
     const varDeclIdx = content.indexOf("string name = default;");
     const foreachIdx = content.indexOf(
-      "foreach (var prop in element.EnumerateObject())",
+      "foreach (var jsonProperty in element.EnumerateObject())",
     );
     expect(varDeclIdx).toBeGreaterThan(-1);
     expect(foreachIdx).toBeGreaterThan(-1);
@@ -4989,10 +4989,10 @@ describe("PropertyMatchingLoop", () => {
   });
 
   /**
-   * Validates that a URL property is deserialized with `new Uri(prop.Value.GetString())`.
+   * Validates that a URL property is deserialized with `new Uri(jsonProperty.Value.GetString())`.
    * URL types map to `System.Uri` in C# which requires constructing from a string.
    */
-  it("deserializes url property with new Uri(prop.Value.GetString())", async () => {
+  it("deserializes url property with new Uri(jsonProperty.Value.GetString())", async () => {
     const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
@@ -5014,8 +5014,8 @@ describe("PropertyMatchingLoop", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("endpoint"u8))');
-    expect(content).toContain("endpoint = new Uri(prop.Value.GetString());");
+    expect(content).toContain('if (jsonProperty.NameEquals("endpoint"u8))');
+    expect(content).toContain("endpoint = new Uri(jsonProperty.Value.GetString());");
   });
 
   /**
@@ -5057,9 +5057,9 @@ describe("PropertyMatchingLoop", () => {
     const petContent = outputs[petKey!];
 
     // Base model should NOT have property matching loop
-    expect(petContent).not.toContain('if (prop.NameEquals("kind"u8))');
+    expect(petContent).not.toContain('if (jsonProperty.NameEquals("kind"u8))');
     expect(petContent).not.toContain(
-      "foreach (var prop in element.EnumerateObject())",
+      "foreach (var jsonProperty in element.EnumerateObject())",
     );
 
     // Should have discriminator dispatch instead
@@ -5076,7 +5076,7 @@ describe("PropertyMatchingLoop", () => {
    * Validates that float32 property uses GetSingle() for value extraction.
    * C#'s `float` (System.Single) maps to JsonElement.GetSingle().
    */
-  it("deserializes float32 property with prop.Value.GetSingle()", async () => {
+  it("deserializes float32 property with jsonProperty.Value.GetSingle()", async () => {
     const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
@@ -5098,13 +5098,13 @@ describe("PropertyMatchingLoop", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("weight"u8))');
-    expect(content).toContain("weight = prop.Value.GetSingle();");
+    expect(content).toContain('if (jsonProperty.NameEquals("weight"u8))');
+    expect(content).toContain("weight = jsonProperty.Value.GetSingle();");
   });
 
   /**
    * Validates that a utcDateTime property with default encoding (RFC3339)
-   * is deserialized using `prop.Value.GetDateTimeOffset("O")`. The "O" format
+   * is deserialized using `jsonProperty.Value.GetDateTimeOffset("O")`. The "O" format
    * specifier delegates to the custom `ModelSerializationExtensions.GetDateTimeOffset`
    * method which parses ISO 8601 round-trip formatted dates.
    */
@@ -5130,13 +5130,13 @@ describe("PropertyMatchingLoop", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("createdAt"u8))');
-    expect(content).toContain('createdAt = prop.Value.GetDateTimeOffset("O");');
+    expect(content).toContain('if (jsonProperty.NameEquals("createdAt"u8))');
+    expect(content).toContain('createdAt = jsonProperty.Value.GetDateTimeOffset("O");');
   });
 
   /**
    * Validates that a utcDateTime property with RFC7231 encoding is deserialized
-   * using `prop.Value.GetDateTimeOffset("R")`. The "R" format specifier parses
+   * using `jsonProperty.Value.GetDateTimeOffset("R")`. The "R" format specifier parses
    * RFC 1123 format dates (e.g., "Wed, 12 Oct 2022 07:20:50 GMT"), commonly
    * used in HTTP headers.
    */
@@ -5163,15 +5163,15 @@ describe("PropertyMatchingLoop", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("lastModified"u8))');
+    expect(content).toContain('if (jsonProperty.NameEquals("lastModified"u8))');
     expect(content).toContain(
-      'lastModified = prop.Value.GetDateTimeOffset("R");',
+      'lastModified = jsonProperty.Value.GetDateTimeOffset("R");',
     );
   });
 
   /**
    * Validates that a utcDateTime property with Unix timestamp encoding is
-   * deserialized using `DateTimeOffset.FromUnixTimeSeconds(prop.Value.GetInt64())`.
+   * deserialized using `DateTimeOffset.FromUnixTimeSeconds(jsonProperty.Value.GetInt64())`.
    * Unlike RFC3339/RFC7231 which are string-based, Unix timestamps are numeric
    * (seconds since epoch), so the pattern uses GetInt64() and the framework's
    * static factory method.
@@ -5199,15 +5199,15 @@ describe("PropertyMatchingLoop", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("timestamp"u8))');
+    expect(content).toContain('if (jsonProperty.NameEquals("timestamp"u8))');
     expect(content).toContain(
-      "timestamp = DateTimeOffset.FromUnixTimeSeconds(prop.Value.GetInt64());",
+      "timestamp = DateTimeOffset.FromUnixTimeSeconds(jsonProperty.Value.GetInt64());",
     );
   });
 
   /**
    * Validates that a plainDate property is deserialized using
-   * `prop.Value.GetDateTimeOffset("D")`. The "D" format specifier produces
+   * `jsonProperty.Value.GetDateTimeOffset("D")`. The "D" format specifier produces
    * ISO 8601 date-only format (e.g., "2022-10-12"). plainDate maps to
    * DateTimeOffset in C# and uses the custom GetDateTimeOffset extension.
    */
@@ -5233,13 +5233,13 @@ describe("PropertyMatchingLoop", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("birthDate"u8))');
-    expect(content).toContain('birthDate = prop.Value.GetDateTimeOffset("D");');
+    expect(content).toContain('if (jsonProperty.NameEquals("birthDate"u8))');
+    expect(content).toContain('birthDate = jsonProperty.Value.GetDateTimeOffset("D");');
   });
 
   /**
    * Validates that a plainTime property is deserialized using
-   * `prop.Value.GetTimeSpan("T")`. The "T" format specifier parses
+   * `jsonProperty.Value.GetTimeSpan("T")`. The "T" format specifier parses
    * ISO 8601 time-only format. plainTime maps to TimeSpan in C# and uses
    * the custom GetTimeSpan extension method.
    */
@@ -5265,13 +5265,13 @@ describe("PropertyMatchingLoop", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("startTime"u8))');
-    expect(content).toContain('startTime = prop.Value.GetTimeSpan("T");');
+    expect(content).toContain('if (jsonProperty.NameEquals("startTime"u8))');
+    expect(content).toContain('startTime = jsonProperty.Value.GetTimeSpan("T");');
   });
 
   /**
    * Validates that a duration property with default ISO8601 encoding is
-   * deserialized using `prop.Value.GetTimeSpan("P")`. The "P" format
+   * deserialized using `jsonProperty.Value.GetTimeSpan("P")`. The "P" format
    * delegates to the custom GetTimeSpan extension which uses
    * TypeFormatters.ParseTimeSpan to parse ISO 8601 duration strings
    * like "P1DT2H3M4S".
@@ -5298,13 +5298,13 @@ describe("PropertyMatchingLoop", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("timeout"u8))');
-    expect(content).toContain('timeout = prop.Value.GetTimeSpan("P");');
+    expect(content).toContain('if (jsonProperty.NameEquals("timeout"u8))');
+    expect(content).toContain('timeout = jsonProperty.Value.GetTimeSpan("P");');
   });
 
   /**
    * Validates that a duration property encoded as seconds with a float64 wire
-   * type is deserialized using `TimeSpan.FromSeconds(prop.Value.GetDouble())`.
+   * type is deserialized using `TimeSpan.FromSeconds(jsonProperty.Value.GetDouble())`.
    * Float wire types use GetDouble() because TimeSpan.FromSeconds takes a double
    * and fractional seconds are meaningful.
    */
@@ -5331,15 +5331,15 @@ describe("PropertyMatchingLoop", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("delay"u8))');
+    expect(content).toContain('if (jsonProperty.NameEquals("delay"u8))');
     expect(content).toContain(
-      "delay = TimeSpan.FromSeconds(prop.Value.GetDouble());",
+      "delay = TimeSpan.FromSeconds(jsonProperty.Value.GetDouble());",
     );
   });
 
   /**
    * Validates that a duration property encoded as seconds with an int32 wire
-   * type is deserialized using `TimeSpan.FromSeconds(prop.Value.GetInt32())`.
+   * type is deserialized using `TimeSpan.FromSeconds(jsonProperty.Value.GetInt32())`.
    * Integer wire types use GetInt32() to match the legacy emitter's
    * Duration_Seconds format. This is the truncated (whole-second) variant.
    */
@@ -5366,15 +5366,15 @@ describe("PropertyMatchingLoop", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("ttl"u8))');
+    expect(content).toContain('if (jsonProperty.NameEquals("ttl"u8))');
     expect(content).toContain(
-      "ttl = TimeSpan.FromSeconds(prop.Value.GetInt32());",
+      "ttl = TimeSpan.FromSeconds(jsonProperty.Value.GetInt32());",
     );
   });
 
   /**
    * Validates that a duration property encoded as milliseconds with a float64
-   * wire type is deserialized using `TimeSpan.FromMilliseconds(prop.Value.GetDouble())`.
+   * wire type is deserialized using `TimeSpan.FromMilliseconds(jsonProperty.Value.GetDouble())`.
    * This covers APIs that measure durations in milliseconds with fractional precision.
    */
   it("deserializes duration property with milliseconds encoding (float)", async () => {
@@ -5400,15 +5400,15 @@ describe("PropertyMatchingLoop", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("latency"u8))');
+    expect(content).toContain('if (jsonProperty.NameEquals("latency"u8))');
     expect(content).toContain(
-      "latency = TimeSpan.FromMilliseconds(prop.Value.GetDouble());",
+      "latency = TimeSpan.FromMilliseconds(jsonProperty.Value.GetDouble());",
     );
   });
 
   /**
    * Validates that a duration property encoded as milliseconds with an int32
-   * wire type is deserialized using `TimeSpan.FromMilliseconds(prop.Value.GetInt32())`.
+   * wire type is deserialized using `TimeSpan.FromMilliseconds(jsonProperty.Value.GetInt32())`.
    * Integer millisecond durations are common in APIs that measure latency or
    * timeout values as whole milliseconds.
    */
@@ -5435,16 +5435,16 @@ describe("PropertyMatchingLoop", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("retryAfter"u8))');
+    expect(content).toContain('if (jsonProperty.NameEquals("retryAfter"u8))');
     expect(content).toContain(
-      "retryAfter = TimeSpan.FromMilliseconds(prop.Value.GetInt32());",
+      "retryAfter = TimeSpan.FromMilliseconds(jsonProperty.Value.GetInt32());",
     );
   });
 
   /**
    * Validates that a bytes property without explicit @encode decorator is
    * deserialized using base64 encoding, which is the default for bytes in
-   * TCGC. The result is `BinaryData.FromBytes(prop.Value.GetBytesFromBase64("D"))`.
+   * TCGC. The result is `BinaryData.FromBytes(jsonProperty.Value.GetBytesFromBase64("D"))`.
    * TCGC always assigns "base64" as the default encode for bytes types.
    */
   it("deserializes bytes property with default encoding (base64)", async () => {
@@ -5469,15 +5469,15 @@ describe("PropertyMatchingLoop", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("data"u8))');
+    expect(content).toContain('if (jsonProperty.NameEquals("data"u8))');
     expect(content).toContain(
-      'data = BinaryData.FromBytes(prop.Value.GetBytesFromBase64("D"));',
+      'data = BinaryData.FromBytes(jsonProperty.Value.GetBytesFromBase64("D"));',
     );
   });
 
   /**
    * Validates that a bytes property with base64 encoding is deserialized using
-   * `BinaryData.FromBytes(prop.Value.GetBytesFromBase64("D"))`. The "D" format
+   * `BinaryData.FromBytes(jsonProperty.Value.GetBytesFromBase64("D"))`. The "D" format
    * specifier triggers standard base64 decoding via the custom
    * GetBytesFromBase64 extension method.
    */
@@ -5504,15 +5504,15 @@ describe("PropertyMatchingLoop", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("data"u8))');
+    expect(content).toContain('if (jsonProperty.NameEquals("data"u8))');
     expect(content).toContain(
-      'data = BinaryData.FromBytes(prop.Value.GetBytesFromBase64("D"));',
+      'data = BinaryData.FromBytes(jsonProperty.Value.GetBytesFromBase64("D"));',
     );
   });
 
   /**
    * Validates that a bytes property with base64url encoding is deserialized using
-   * `BinaryData.FromBytes(prop.Value.GetBytesFromBase64("U"))`. The "U" format
+   * `BinaryData.FromBytes(jsonProperty.Value.GetBytesFromBase64("U"))`. The "U" format
    * specifier triggers URL-safe base64 decoding (no padding, `-` and `_` instead
    * of `+` and `/`), commonly used in JWTs and URL parameters.
    */
@@ -5539,15 +5539,15 @@ describe("PropertyMatchingLoop", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("token"u8))');
+    expect(content).toContain('if (jsonProperty.NameEquals("token"u8))');
     expect(content).toContain(
-      'token = BinaryData.FromBytes(prop.Value.GetBytesFromBase64("U"));',
+      'token = BinaryData.FromBytes(jsonProperty.Value.GetBytesFromBase64("U"));',
     );
   });
 
   /**
    * Validates that a required nested model property generates the static
-   * `DeserializeXxx` call pattern: `ModelName.DeserializeModelName(prop.Value, options)`.
+   * `DeserializeXxx` call pattern: `ModelName.DeserializeModelName(jsonProperty.Value, options)`.
    *
    * This is the core model deserialization pattern in System.ClientModel —
    * each model type has a static `DeserializeXxx` method that knows how to
@@ -5586,8 +5586,8 @@ describe("PropertyMatchingLoop", () => {
     const content = outputs[fileKey!];
 
     // Should match the JSON property name and call the nested model's Deserialize method
-    expect(content).toContain('if (prop.NameEquals("pet"u8))');
-    expect(content).toContain("pet = Pet.DeserializePet(prop.Value, options);");
+    expect(content).toContain('if (jsonProperty.NameEquals("pet"u8))');
+    expect(content).toContain("pet = Pet.DeserializePet(jsonProperty.Value, options);");
     expect(content).toContain("continue;");
   });
 
@@ -5634,19 +5634,19 @@ describe("PropertyMatchingLoop", () => {
     const content = outputs[fileKey!];
 
     // Each nested model property should use its own type's Deserialize method
-    expect(content).toContain('if (prop.NameEquals("home"u8))');
+    expect(content).toContain('if (jsonProperty.NameEquals("home"u8))');
     expect(content).toContain(
-      "home = Address.DeserializeAddress(prop.Value, options);",
+      "home = Address.DeserializeAddress(jsonProperty.Value, options);",
     );
 
-    expect(content).toContain('if (prop.NameEquals("contact"u8))');
+    expect(content).toContain('if (jsonProperty.NameEquals("contact"u8))');
     expect(content).toContain(
-      "contact = Contact.DeserializeContact(prop.Value, options);",
+      "contact = Contact.DeserializeContact(jsonProperty.Value, options);",
     );
 
     // Primitive property should still use the simple getter
-    expect(content).toContain('if (prop.NameEquals("name"u8))');
-    expect(content).toContain("name = prop.Value.GetString();");
+    expect(content).toContain('if (jsonProperty.NameEquals("name"u8))');
+    expect(content).toContain("name = jsonProperty.Value.GetString();");
   });
 
   /**
@@ -5693,21 +5693,21 @@ describe("PropertyMatchingLoop", () => {
     const content = outputs[fileKey!];
 
     // The derived model's deserialization should include the base model's nested model property
-    expect(content).toContain('if (prop.NameEquals("metadata"u8))');
+    expect(content).toContain('if (jsonProperty.NameEquals("metadata"u8))');
     expect(content).toContain(
-      "metadata = Metadata.DeserializeMetadata(prop.Value, options);",
+      "metadata = Metadata.DeserializeMetadata(jsonProperty.Value, options);",
     );
 
     // Own primitive property should also be present
-    expect(content).toContain('if (prop.NameEquals("radius"u8))');
-    expect(content).toContain("radius = prop.Value.GetDouble();");
+    expect(content).toContain('if (jsonProperty.NameEquals("radius"u8))');
+    expect(content).toContain("radius = jsonProperty.Value.GetDouble();");
   });
 
   /**
    * Validates that a string-backed fixed enum property generates the
    * `To{EnumName}()` extension method call during deserialization.
    *
-   * Fixed string enums use `prop.Value.GetString().To{EnumName}()` because
+   * Fixed string enums use `jsonProperty.Value.GetString().To{EnumName}()` because
    * the extension method validates and maps the wire string to the C# enum
    * value. This is the inverse of `ToSerialString()` used in the write path.
    */
@@ -5739,8 +5739,8 @@ describe("PropertyMatchingLoop", () => {
     expect(fileKey).toBeDefined();
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("status"u8))');
-    expect(content).toContain("status = prop.Value.GetString().ToStatus();");
+    expect(content).toContain('if (jsonProperty.NameEquals("status"u8))');
+    expect(content).toContain("status = jsonProperty.Value.GetString().ToStatus();");
     expect(content).toContain("continue;");
   });
 
@@ -5748,7 +5748,7 @@ describe("PropertyMatchingLoop", () => {
    * Validates that an int-backed fixed enum property generates the
    * `To{EnumName}()` extension method call during deserialization.
    *
-   * Int-backed fixed enums use `prop.Value.GetInt32().To{EnumName}()` because
+   * Int-backed fixed enums use `jsonProperty.Value.GetInt32().To{EnumName}()` because
    * the extension method validates the integer and maps it to the C# enum.
    * Unlike serialization (which uses a direct cast), deserialization always
    * needs the extension method for validation.
@@ -5782,15 +5782,15 @@ describe("PropertyMatchingLoop", () => {
     expect(fileKey).toBeDefined();
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("priority"u8))');
-    expect(content).toContain("priority = prop.Value.GetInt32().ToPriority();");
+    expect(content).toContain('if (jsonProperty.NameEquals("priority"u8))');
+    expect(content).toContain("priority = jsonProperty.Value.GetInt32().ToPriority();");
   });
 
   /**
    * Validates that a float-backed fixed enum property generates the
    * `To{EnumName}()` extension method call during deserialization.
    *
-   * Float-backed fixed enums use `prop.Value.GetSingle().To{EnumName}()`.
+   * Float-backed fixed enums use `jsonProperty.Value.GetSingle().To{EnumName}()`.
    * This mirrors the pattern of string-backed enums but uses the float getter.
    */
   it("deserializes float-backed fixed enum with To{EnumName}()", async () => {
@@ -5822,13 +5822,13 @@ describe("PropertyMatchingLoop", () => {
     expect(fileKey).toBeDefined();
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("rating"u8))');
-    expect(content).toContain("rating = prop.Value.GetSingle().ToRating();");
+    expect(content).toContain('if (jsonProperty.NameEquals("rating"u8))');
+    expect(content).toContain("rating = jsonProperty.Value.GetSingle().ToRating();");
   });
 
   /**
    * Validates that a string-backed extensible enum (union) generates a
-   * constructor call during deserialization: `new {EnumName}(prop.Value.GetString())`.
+   * constructor call during deserialization: `new {EnumName}(jsonProperty.Value.GetString())`.
    *
    * Extensible enums are readonly structs that accept any value, so deserialization
    * simply wraps the raw JSON value in the constructor. This is the inverse of
@@ -5864,14 +5864,14 @@ describe("PropertyMatchingLoop", () => {
     expect(fileKey).toBeDefined();
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("color"u8))');
-    expect(content).toContain("color = new Color(prop.Value.GetString());");
+    expect(content).toContain('if (jsonProperty.NameEquals("color"u8))');
+    expect(content).toContain("color = new Color(jsonProperty.Value.GetString());");
     expect(content).toContain("continue;");
   });
 
   /**
    * Validates that an int-backed extensible enum (union) generates a
-   * constructor call during deserialization: `new {EnumName}(prop.Value.GetInt32())`.
+   * constructor call during deserialization: `new {EnumName}(jsonProperty.Value.GetInt32())`.
    *
    * Numeric extensible enums use the same constructor pattern as string enums
    * but with the appropriate numeric getter method.
@@ -5906,8 +5906,8 @@ describe("PropertyMatchingLoop", () => {
     expect(fileKey).toBeDefined();
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("level"u8))');
-    expect(content).toContain("level = new Level(prop.Value.GetInt32());");
+    expect(content).toContain('if (jsonProperty.NameEquals("level"u8))');
+    expect(content).toContain("level = new Level(jsonProperty.Value.GetInt32());");
   });
 
   /**
@@ -5947,13 +5947,13 @@ describe("PropertyMatchingLoop", () => {
     expect(fileKey).toBeDefined();
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("tags"u8))');
-    expect(content).toContain("List<string> array = new List<string>();");
+    expect(content).toContain('if (jsonProperty.NameEquals("tags"u8))');
+    expect(content).toContain("List<string> array0 = new List<string>();");
     expect(content).toContain(
-      "foreach (var item in prop.Value.EnumerateArray())",
+      "foreach (var item in jsonProperty.Value.EnumerateArray())",
     );
-    expect(content).toContain("array.Add(item.GetString());");
-    expect(content).toContain("tags = array.ToArray();");
+    expect(content).toContain("array0.Add(item.GetString());");
+    expect(content).toContain("tags = array0.ToArray();");
     expect(content).toContain("continue;");
   });
 
@@ -5986,13 +5986,13 @@ describe("PropertyMatchingLoop", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("scores"u8))');
-    expect(content).toContain("List<int> array = new List<int>();");
+    expect(content).toContain('if (jsonProperty.NameEquals("scores"u8))');
+    expect(content).toContain("List<int> array0 = new List<int>();");
     expect(content).toContain(
-      "foreach (var item in prop.Value.EnumerateArray())",
+      "foreach (var item in jsonProperty.Value.EnumerateArray())",
     );
-    expect(content).toContain("array.Add(item.GetInt32());");
-    expect(content).toContain("scores = array.ToArray();");
+    expect(content).toContain("array0.Add(item.GetInt32());");
+    expect(content).toContain("scores = array0.ToArray();");
   });
 
   /**
@@ -6030,15 +6030,15 @@ describe("PropertyMatchingLoop", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("parts"u8))');
-    expect(content).toContain("List<Part> array = new List<Part>();");
+    expect(content).toContain('if (jsonProperty.NameEquals("parts"u8))');
+    expect(content).toContain("List<Part> array0 = new List<Part>();");
     expect(content).toContain(
-      "foreach (var item in prop.Value.EnumerateArray())",
+      "foreach (var item in jsonProperty.Value.EnumerateArray())",
     );
     expect(content).toContain(
-      "array.Add(Part.DeserializePart(item, options));",
+      "array0.Add(Part.DeserializePart(item, options));",
     );
-    expect(content).toContain("parts = array.ToArray();");
+    expect(content).toContain("parts = array0.ToArray();");
   });
 
   /**
@@ -6046,7 +6046,7 @@ describe("PropertyMatchingLoop", () => {
    * deserialization pattern using the enum constructor for each item.
    *
    * Extensible enums use `new EnumName(item.GetXxx())` — the accessor
-   * must be `item` (not `prop.Value`) because we're inside the foreach loop.
+   * must be `item` (not `jsonProperty.Value`) because we're inside the foreach loop.
    */
   it("deserializes extensible enum array with new constructor per item", async () => {
     const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
@@ -6076,9 +6076,9 @@ describe("PropertyMatchingLoop", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("priorities"u8))');
-    expect(content).toContain("array.Add(new Priority(item.GetString()));");
-    expect(content).toContain("priorities = array.ToArray();");
+    expect(content).toContain('if (jsonProperty.NameEquals("priorities"u8))');
+    expect(content).toContain("array0.Add(new Priority(item.GetString()));");
+    expect(content).toContain("priorities = array0.ToArray();");
   });
 
   /**
@@ -6114,17 +6114,17 @@ describe("PropertyMatchingLoop", () => {
     expect(fileKey).toBeDefined();
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("matrix"u8))');
+    expect(content).toContain('if (jsonProperty.NameEquals("matrix"u8))');
     // Outer loop
     expect(content).toContain(
-      "foreach (var item in prop.Value.EnumerateArray())",
+      "foreach (var item in jsonProperty.Value.EnumerateArray())",
     );
     // Inner loop with depth-suffixed variable names
-    expect(content).toContain("List<int> array0 = new List<int>();");
+    expect(content).toContain("List<int> array1 = new List<int>();");
     expect(content).toContain("foreach (var item0 in item.EnumerateArray())");
-    expect(content).toContain("array0.Add(item0.GetInt32());");
-    expect(content).toContain("array.Add(array0.ToArray());");
-    expect(content).toContain("matrix = array.ToArray();");
+    expect(content).toContain("array1.Add(item0.GetInt32());");
+    expect(content).toContain("array0.Add(array1.ToArray());");
+    expect(content).toContain("matrix = array0.ToArray();");
   });
 
   /**
@@ -6160,17 +6160,17 @@ describe("PropertyMatchingLoop", () => {
     expect(fileKey).toBeDefined();
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("metadata"u8))');
+    expect(content).toContain('if (jsonProperty.NameEquals("metadata"u8))');
     expect(content).toContain(
-      "Dictionary<string, string> dictionary = new Dictionary<string, string>();",
+      "Dictionary<string, string> dictionary0 = new Dictionary<string, string>();",
     );
     expect(content).toContain(
-      "foreach (var prop0 in prop.Value.EnumerateObject())",
+      "foreach (var prop0 in jsonProperty.Value.EnumerateObject())",
     );
     expect(content).toContain(
-      "dictionary.Add(prop0.Name, prop0.Value.GetString());",
+      "dictionary0.Add(prop0.Name, prop0.Value.GetString());",
     );
-    expect(content).toContain("metadata = dictionary;");
+    expect(content).toContain("metadata = dictionary0;");
     expect(content).toContain("continue;");
   });
 
@@ -6204,17 +6204,17 @@ describe("PropertyMatchingLoop", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("counts"u8))');
+    expect(content).toContain('if (jsonProperty.NameEquals("counts"u8))');
     expect(content).toContain(
-      "Dictionary<string, int> dictionary = new Dictionary<string, int>();",
+      "Dictionary<string, int> dictionary0 = new Dictionary<string, int>();",
     );
     expect(content).toContain(
-      "foreach (var prop0 in prop.Value.EnumerateObject())",
+      "foreach (var prop0 in jsonProperty.Value.EnumerateObject())",
     );
     expect(content).toContain(
-      "dictionary.Add(prop0.Name, prop0.Value.GetInt32());",
+      "dictionary0.Add(prop0.Name, prop0.Value.GetInt32());",
     );
-    expect(content).toContain("counts = dictionary;");
+    expect(content).toContain("counts = dictionary0;");
   });
 
   /**
@@ -6225,7 +6225,7 @@ describe("PropertyMatchingLoop", () => {
    * Model dictionary values are critical because they test recursive
    * deserialization delegation: each dictionary value is a full JSON object
    * deserialized by calling the nested model's own Deserialize method, using
-   * prop0.Value as the accessor instead of prop.Value.
+   * prop0.Value as the accessor instead of jsonProperty.Value.
    */
   it("deserializes model dictionary with DeserializeXxx per value", async () => {
     const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
@@ -6253,14 +6253,14 @@ describe("PropertyMatchingLoop", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("partMap"u8))');
+    expect(content).toContain('if (jsonProperty.NameEquals("partMap"u8))');
     expect(content).toContain(
-      "foreach (var prop0 in prop.Value.EnumerateObject())",
+      "foreach (var prop0 in jsonProperty.Value.EnumerateObject())",
     );
     expect(content).toContain(
-      "dictionary.Add(prop0.Name, Part.DeserializePart(prop0.Value, options));",
+      "dictionary0.Add(prop0.Name, Part.DeserializePart(prop0.Value, options));",
     );
-    expect(content).toContain("partMap = dictionary;");
+    expect(content).toContain("partMap = dictionary0;");
   });
 
   /**
@@ -6270,7 +6270,7 @@ describe("PropertyMatchingLoop", () => {
    *
    * Tests the intersection of dictionary and enum deserialization patterns.
    * Extensible enum values in a dictionary must use `new EnumName(getter())`
-   * with the prop0.Value accessor, not the outer prop.Value.
+   * with the prop0.Value accessor, not the outer jsonProperty.Value.
    */
   it("deserializes extensible enum dictionary with new constructor per value", async () => {
     const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
@@ -6301,14 +6301,14 @@ describe("PropertyMatchingLoop", () => {
     );
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("priorities"u8))');
+    expect(content).toContain('if (jsonProperty.NameEquals("priorities"u8))');
     expect(content).toContain(
-      "foreach (var prop0 in prop.Value.EnumerateObject())",
+      "foreach (var prop0 in jsonProperty.Value.EnumerateObject())",
     );
     expect(content).toContain(
-      "dictionary.Add(prop0.Name, new Priority(prop0.Value.GetString()));",
+      "dictionary0.Add(prop0.Name, new Priority(prop0.Value.GetString()));",
     );
-    expect(content).toContain("priorities = dictionary;");
+    expect(content).toContain("priorities = dictionary0;");
   });
 
   /**
@@ -6343,23 +6343,23 @@ describe("PropertyMatchingLoop", () => {
     expect(fileKey).toBeDefined();
     const content = outputs[fileKey!];
 
-    expect(content).toContain('if (prop.NameEquals("nested"u8))');
+    expect(content).toContain('if (jsonProperty.NameEquals("nested"u8))');
     // Outer dictionary loop
     expect(content).toContain(
-      "foreach (var prop0 in prop.Value.EnumerateObject())",
+      "foreach (var prop0 in jsonProperty.Value.EnumerateObject())",
     );
     // Inner dictionary with depth-suffixed variable names
     expect(content).toContain(
-      "Dictionary<string, string> dictionary0 = new Dictionary<string, string>();",
+      "Dictionary<string, string> dictionary1 = new Dictionary<string, string>();",
     );
     expect(content).toContain(
       "foreach (var prop1 in prop0.Value.EnumerateObject())",
     );
     expect(content).toContain(
-      "dictionary0.Add(prop1.Name, prop1.Value.GetString());",
+      "dictionary1.Add(prop1.Name, prop1.Value.GetString());",
     );
-    expect(content).toContain("dictionary.Add(prop0.Name, dictionary0);");
-    expect(content).toContain("nested = dictionary;");
+    expect(content).toContain("dictionary0.Add(prop0.Name, dictionary1);");
+    expect(content).toContain("nested = dictionary0;");
   });
 });
 
@@ -6384,13 +6384,13 @@ describe("PropertyMatchingLoop", () => {
 describe("AdditionalBinaryDataRead", () => {
   /**
    * Validates the basic catch-all pattern: unknown properties are captured via
-   * `BinaryData.FromString(prop.Value.GetRawText())` with a format guard.
+   * `BinaryData.FromString(jsonProperty.Value.GetRawText())` with a format guard.
    *
    * The expected generated code after all property matches:
    * ```csharp
    * if (options.Format != "W")
    * {
-   *     additionalBinaryDataProperties.Add(prop.Name, BinaryData.FromString(prop.Value.GetRawText()));
+   *     additionalBinaryDataProperties.Add(jsonProperty.Name, BinaryData.FromString(jsonProperty.Value.GetRawText()));
    * }
    * ```
    */
@@ -6422,14 +6422,14 @@ describe("AdditionalBinaryDataRead", () => {
 
     // The catch-all adds unknown properties to the dictionary
     expect(content).toContain(
-      "additionalBinaryDataProperties.Add(prop.Name, BinaryData.FromString(prop.Value.GetRawText()));",
+      "additionalBinaryDataProperties.Add(jsonProperty.Name, BinaryData.FromString(jsonProperty.Value.GetRawText()));",
     );
   });
 
   /**
    * Validates that the catch-all appears AFTER all known property matches.
    * The order is critical: known properties must be matched first via
-   * `prop.NameEquals("serializedName"u8)` with `continue`, so the catch-all
+   * `jsonProperty.NameEquals("serializedName"u8)` with `continue`, so the catch-all
    * only captures truly unknown properties.
    */
   it("appears after all known property matches", async () => {
@@ -6456,10 +6456,10 @@ describe("AdditionalBinaryDataRead", () => {
     const content = outputs[fileKey!];
 
     // Known property matches must come first
-    const nameMatch = content.indexOf('prop.NameEquals("name"u8)');
-    const countMatch = content.indexOf('prop.NameEquals("count"u8)');
+    const nameMatch = content.indexOf('jsonProperty.NameEquals("name"u8)');
+    const countMatch = content.indexOf('jsonProperty.NameEquals("count"u8)');
     const catchAll = content.indexOf(
-      "additionalBinaryDataProperties.Add(prop.Name",
+      "additionalBinaryDataProperties.Add(jsonProperty.Name",
     );
 
     expect(nameMatch).toBeGreaterThan(-1);
@@ -6500,7 +6500,7 @@ describe("AdditionalBinaryDataRead", () => {
 
     // BinaryData.FromString preserves raw JSON text for round-trip fidelity
     expect(content).toMatch(
-      /additionalBinaryDataProperties\.Add\(prop\.Name,\s*BinaryData\.FromString\(prop\.Value\.GetRawText\(\)\)\)/,
+      /additionalBinaryDataProperties\.Add\(jsonProperty\.Name,\s*BinaryData\.FromString\(jsonProperty\.Value\.GetRawText\(\)\)\)/,
     );
   });
 });
@@ -6805,8 +6805,8 @@ describe("UnknownDiscriminatorModelSerializationFile", () => {
     // Other properties use default
     expect(content).toContain("string name = default;");
     // Must have property matching loop
-    expect(content).toContain('if (prop.NameEquals("kind"u8))');
-    expect(content).toContain('if (prop.NameEquals("name"u8))');
+    expect(content).toContain('if (jsonProperty.NameEquals("kind"u8))');
+    expect(content).toContain('if (jsonProperty.NameEquals("name"u8))');
     // Must return new UnknownPet(...)
     expect(content).toContain("return new UnknownPet(");
   });

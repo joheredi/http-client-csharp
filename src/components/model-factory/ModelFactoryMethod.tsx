@@ -211,6 +211,16 @@ export function ModelFactoryMethod(props: ModelFactoryMethodProps) {
   // This gives us access to the SdkType for collection detection.
   const allProperties = computeSerializationProperties(props.type);
 
+  // Compute the number of base-model properties so we can insert the
+  // additionalBinaryDataProperties argument at the correct constructor position.
+  // For derived models, the constructor order is:
+  //   [base-props, additionalBinaryDataProperties, own-props]
+  // For root models (no base), the order is:
+  //   [all-props, additionalBinaryDataProperties]
+  const basePropertyCount = props.type.baseModel
+    ? computeSerializationProperties(props.type.baseModel).length
+    : allProperties.length;
+
   // Three parallel data structures built from the property list:
   // 1. factoryParams — the method signature parameters
   // 2. collectionInits — metadata for null-coalescing lines
@@ -220,8 +230,22 @@ export function ModelFactoryMethod(props: ModelFactoryMethodProps) {
   const collectionInits: CollectionInitInfo[] = [];
   const ctorArgs: Children[] = [];
 
+  // Track how many constructor args have been pushed to insert
+  // additionalBinaryDataProperties at the right position.
+  let ctorArgIndex = 0;
+
   for (const p of allProperties) {
     const paramName = namePolicy.getName(p.name, "parameter");
+
+    // Insert additionalBinaryDataProperties at the boundary between base and own props.
+    if (ctorArgIndex === basePropertyCount) {
+      if (isDynamicModel(props.type)) {
+        ctorArgs.push("default");
+      } else {
+        ctorArgs.push("null");
+      }
+      ctorArgIndex++;
+    }
 
     // Discriminator properties with fixed values are excluded from factory
     // method parameters. Instead, the discriminator literal is injected
@@ -230,6 +254,7 @@ export function ModelFactoryMethod(props: ModelFactoryMethodProps) {
       const literal = getDiscriminatorLiteral(p, props.type, namePolicy);
       if (literal !== undefined) {
         ctorArgs.push(literal);
+        ctorArgIndex++;
         continue;
       }
     }
@@ -253,6 +278,7 @@ export function ModelFactoryMethod(props: ModelFactoryMethodProps) {
 
       collectionInits.push({ paramName, isArray: true, valueTypeExpr });
       ctorArgs.push(`${paramName}.ToArray()`);
+      ctorArgIndex++;
     } else if (isDictCollection(p.type)) {
       // Dict → keep IDictionary type, ChangeTrackingDictionary init, pass as-is
       const valueType = getCollectionValueType(p.type);
@@ -271,6 +297,7 @@ export function ModelFactoryMethod(props: ModelFactoryMethodProps) {
 
       collectionInits.push({ paramName, isArray: false, valueTypeExpr });
       ctorArgs.push(paramName);
+      ctorArgIndex++;
     } else {
       // Non-collection — standard TypeExpression for the type
       const baseType = <TypeExpression type={unwrapped.__raw!} />;
@@ -281,15 +308,19 @@ export function ModelFactoryMethod(props: ModelFactoryMethodProps) {
       });
 
       ctorArgs.push(paramName);
+      ctorArgIndex++;
     }
   }
 
-  // For dynamic models, pass `default` for the `in JsonPatch patch` parameter.
-  // For non-dynamic models, pass `null` for `additionalBinaryDataProperties` as a named argument.
-  if (isDynamicModel(props.type)) {
-    ctorArgs.push("default");
-  } else {
-    ctorArgs.push(`${ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME}: null`);
+  // If additionalBinaryDataProperties wasn't inserted during the loop
+  // (root models where basePropertyCount === allProperties.length and
+  // all properties have been processed), append it now.
+  if (ctorArgIndex === basePropertyCount) {
+    if (isDynamicModel(props.type)) {
+      ctorArgs.push("default");
+    } else {
+      ctorArgs.push("null");
+    }
   }
 
   // For abstract models, the factory method instantiates the Unknown variant

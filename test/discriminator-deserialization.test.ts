@@ -104,7 +104,7 @@ describe("DiscriminatorDeserialization", () => {
 
     // Should NOT have property matching loop or variable declarations
     expect(petContent).not.toContain(
-      "foreach (var prop in element.EnumerateObject())",
+      "foreach (var jsonProperty in element.EnumerateObject())",
     );
   });
 
@@ -165,7 +165,7 @@ describe("DiscriminatorDeserialization", () => {
 
     // Should use standard property matching (not discriminator dispatch)
     expect(catContent).toContain(
-      "foreach (var prop in element.EnumerateObject())",
+      "foreach (var jsonProperty in element.EnumerateObject())",
     );
     expect(catContent).not.toContain("TryGetProperty");
   });
@@ -251,7 +251,7 @@ describe("DiscriminatorDeserialization", () => {
 
     // Should NOT have standard deserialization body
     expect(fishContent).not.toContain(
-      "foreach (var prop in element.EnumerateObject())",
+      "foreach (var jsonProperty in element.EnumerateObject())",
     );
   });
 
@@ -320,7 +320,7 @@ describe("DiscriminatorDeserialization", () => {
 
     // Should NOT have standard deserialization body
     expect(sharkContent).not.toContain(
-      "foreach (var prop in element.EnumerateObject())",
+      "foreach (var jsonProperty in element.EnumerateObject())",
     );
   });
 
@@ -374,7 +374,7 @@ describe("DiscriminatorDeserialization", () => {
 
     // Leaf model should use standard deserialization
     expect(sawSharkContent).toContain(
-      "foreach (var prop in element.EnumerateObject())",
+      "foreach (var jsonProperty in element.EnumerateObject())",
     );
 
     // Should NOT have discriminator dispatch

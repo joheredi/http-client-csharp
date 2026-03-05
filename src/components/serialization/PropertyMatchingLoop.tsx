@@ -190,7 +190,7 @@ function renderPropertyNullCheck(
   property: SdkModelPropertyType,
 ): Children {
   const nullCondition =
-    "\n            if (prop.Value.ValueKind == JsonValueKind.Null)";
+    "\n            if (jsonProperty.Value.ValueKind == JsonValueKind.Null)";
   const openBrace = "\n            {";
   const closeBrace = "\n            }";
 
@@ -510,7 +510,7 @@ function getEnumReadExpression(
 export function getReadExpression(
   type: SdkType,
   namePolicy?: NamePolicy<string>,
-  accessor: string = "prop.Value",
+  accessor: string = "jsonProperty.Value",
 ): string | null {
   let unwrapped = unwrapNullableType(type);
 
@@ -596,7 +596,7 @@ export function getReadExpression(
  * @returns The variable name string.
  */
 function getArrayVarName(depth: number): string {
-  return depth === 0 ? "array" : `array${depth - 1}`;
+  return depth === 0 ? "array0" : `array${depth}`;
 }
 
 /**
@@ -745,7 +745,7 @@ function renderArrayDeserialization(
  * @returns The variable name string.
  */
 function getDictionaryVarName(depth: number): string {
-  return depth === 0 ? "dictionary" : `dictionary${depth - 1}`;
+  return depth === 0 ? "dictionary0" : `dictionary${depth}`;
 }
 
 /**
@@ -835,7 +835,7 @@ function renderDictionaryDeserialization(
     foreachBody = (
       <>
         {arrayBlock}
-        {`\n${innerIndent}${dictVar}.Add(${propVar}.Name, array.ToArray());`}
+        {`\n${innerIndent}${dictVar}.Add(${propVar}.Name, ${getArrayVarName(0)}.ToArray());`}
       </>
     );
   } else {
@@ -929,7 +929,7 @@ export function PropertyMatchingLoop(props: PropertyMatchingLoopProps) {
 
   return (
     <>
-      {"\n    foreach (var prop in element.EnumerateObject())"}
+      {"\n    foreach (var jsonProperty in element.EnumerateObject())"}
       {"\n    {"}
       {properties.map((p) => {
         const serializedName = p.serializedName;
@@ -941,7 +941,7 @@ export function PropertyMatchingLoop(props: PropertyMatchingLoopProps) {
         if (unwrapped.kind === "array") {
           const arrayBlock = renderArrayDeserialization(
             unwrapped as SdkArrayType,
-            "prop.Value",
+            "jsonProperty.Value",
             "            ",
             namePolicy,
             0,
@@ -949,12 +949,12 @@ export function PropertyMatchingLoop(props: PropertyMatchingLoopProps) {
           if (!arrayBlock) return null;
           return (
             <>
-              {`\n        if (prop.NameEquals("${serializedName}"u8))`}
+              {`\n        if (jsonProperty.NameEquals("${serializedName}"u8))`}
               {"\n        {"}
               {nullBehavior !== null &&
                 renderPropertyNullCheck(nullBehavior, varName, p)}
               {arrayBlock}
-              {`\n            ${varName} = array.ToArray();`}
+              {`\n            ${varName} = array0.ToArray();`}
               {"\n            continue;"}
               {"\n        }"}
             </>
@@ -965,7 +965,7 @@ export function PropertyMatchingLoop(props: PropertyMatchingLoopProps) {
         if (unwrapped.kind === "dict") {
           const dictBlock = renderDictionaryDeserialization(
             unwrapped as SdkDictionaryType,
-            "prop.Value",
+            "jsonProperty.Value",
             "            ",
             namePolicy,
             0,
@@ -973,12 +973,12 @@ export function PropertyMatchingLoop(props: PropertyMatchingLoopProps) {
           if (!dictBlock) return null;
           return (
             <>
-              {`\n        if (prop.NameEquals("${serializedName}"u8))`}
+              {`\n        if (jsonProperty.NameEquals("${serializedName}"u8))`}
               {"\n        {"}
               {nullBehavior !== null &&
                 renderPropertyNullCheck(nullBehavior, varName, p)}
               {dictBlock}
-              {`\n            ${varName} = dictionary;`}
+              {`\n            ${varName} = dictionary0;`}
               {"\n            continue;"}
               {"\n        }"}
             </>
@@ -991,7 +991,7 @@ export function PropertyMatchingLoop(props: PropertyMatchingLoopProps) {
 
         return (
           <>
-            {`\n        if (prop.NameEquals("${serializedName}"u8))`}
+            {`\n        if (jsonProperty.NameEquals("${serializedName}"u8))`}
             {"\n        {"}
             {nullBehavior !== null &&
               renderPropertyNullCheck(nullBehavior, varName, p)}

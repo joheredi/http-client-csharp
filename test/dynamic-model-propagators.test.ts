@@ -380,7 +380,7 @@ describe("DynamicModelDeserialization", () => {
 
     // Unknown property capture via patch.Set
     expect(serFile).toContain(
-      'patch.Set([.. "$."u8, .. Encoding.UTF8.GetBytes(prop.Name)], prop.Value.GetUtf8Bytes());',
+      'patch.Set([.. "$."u8, .. Encoding.UTF8.GetBytes(jsonProperty.Name)], jsonProperty.Value.GetUtf8Bytes());',
     );
 
     // Should NOT use additionalBinaryDataProperties

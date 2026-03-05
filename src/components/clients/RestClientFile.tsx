@@ -30,7 +30,7 @@ import {
 } from "../../builtins/system-client-model.js";
 import { System } from "../../builtins/system.js";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
-import { getClientFileName } from "../../utils/clients.js";
+import { getClientFileName, getSimpleClientName } from "../../utils/clients.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { isProtocolParamValueType } from "../../utils/nullable.js";
 import {
@@ -115,7 +115,7 @@ export function RestClientFile(props: RestClientFileProps) {
   const { client, options } = props;
   const header = getLicenseHeader(options);
   const namePolicy = useCSharpNamePolicy();
-  const className = namePolicy.getName(client.name, "class");
+  const className = namePolicy.getName(getSimpleClientName(client.name), "class");
   const fileName = getClientFileName(client, (name) =>
     namePolicy.getName(name, "class"),
   );

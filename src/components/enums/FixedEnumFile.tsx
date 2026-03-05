@@ -165,7 +165,7 @@ export function FixedEnumFile(props: FixedEnumFileProps) {
               const description = getEnumMemberDescription(member);
               return (
                 <>
-                  {`/// <summary> ${description} </summary>`}
+                  {`/// <summary> ${formatDocLines(description)} </summary>`}
                   {"\n"}
                   {memberName}
                   {hasIntValues ? ` = ${member.value}` : ""}

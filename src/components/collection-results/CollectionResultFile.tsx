@@ -46,6 +46,7 @@ import {
   cleanOperationName,
 } from "../../utils/operation-naming.js";
 import { reorderTokenFirst } from "../../utils/parameter-ordering.js";
+import { getSimpleClientName } from "../../utils/clients.js";
 import { buildProtocolParams } from "../clients/ProtocolMethod.js";
 
 /**
@@ -153,7 +154,7 @@ function CollectionResultFile(props: CollectionResultFileProps) {
   // Use the immediate client name (not the full hierarchy) to match
   // PagingMethods.tsx naming. Since collection result classes are internal
   // and scoped to the client's own namespace, the parent names are redundant.
-  const clientName = namePolicy.getName(client.name, "class");
+  const clientName = namePolicy.getName(getSimpleClientName(client.name), "class");
   const siblingNames = buildSiblingNameSet(client.methods, (n) =>
     namePolicy.getName(n, "class"),
   );

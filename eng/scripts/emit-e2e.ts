@@ -353,6 +353,26 @@ const propsFilePath = join(
  */
 const ALIAS_PREFIXES = ["client/structure/", "versioning/", "resiliency/"];
 
+/**
+ * Custom alias overrides for specs where the test files (from the legacy
+ * submodule) use extern alias names that differ from the csproj-derived names.
+ * Key: spec directory path, Value: expected alias name.
+ */
+const ALIAS_OVERRIDES: Record<string, string> = {
+  "client/structure/default": "ClientStructureDefault",
+  "client/structure/client-operation-group": "ClientStructureClientOperationGroup",
+  "versioning/madeOptional/v1": "MadeOptionalV1",
+  "versioning/madeOptional/v2": "MadeOptionalV2",
+  "versioning/removed/v1": "RemovedV1",
+  "versioning/removed/v2": "RemovedV2",
+  "versioning/removed/v2preview": "RemovedV2Preview",
+  "versioning/renamedFrom/v2": "RenamedFromV2",
+  "versioning/returnTypeChangedFrom/v2": "ReturnTypeChangedFromV2",
+  "versioning/typeChangedFrom/v2": "TypeChangedFromV2",
+  "resiliency/srv-driven/v1": "SrvDrivenV1",
+  "resiliency/srv-driven/v2": "SrvDrivenV2",
+};
+
 function needsAlias(specDir: string): boolean {
   return ALIAS_PREFIXES.some((prefix) => specDir.startsWith(prefix));
 }
@@ -407,7 +427,7 @@ async function generateProjectReferences(ignoreList: string[]): Promise<void> {
     const include = `$(GeneratedRoot)${csprojRelPath}`;
 
     if (needsAlias(specDir)) {
-      const alias = buildAlias(csprojName);
+      const alias = ALIAS_OVERRIDES[specDir] ?? buildAlias(csprojName);
       lines.push(
         `    <ProjectReference Include="${include}" Aliases="${alias}" />`,
       );

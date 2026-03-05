@@ -26,3 +26,88 @@ azure/resource-manager/operation-templates
 
 # CS0103/CS0191 (model errors) + CS1983 (async paging methods)
 azure/resource-manager/resources
+
+# === Paging / CollectionResult specs ===
+# CollectionResult constructor parameter mismatch: PagingMethods passes all
+# operation parameters but CollectionResultFile only accepts them for
+# continuation-token paging. Also missing CreateXxxRequest parameter alignment.
+# Requires implementing full paging parameter forwarding in CollectionResultFile.tsx.
+azure/core/basic
+azure/core/page
+azure/payload/pageable
+payload/pageable
+azure/client-generator-core/next-link-verb
+
+# === Multipart / file upload specs ===
+# ModelSerializationFile.tsx declares IJsonModel<T> interface on multipart and
+# file models that don't have JSON serialization. CS0535: classes don't
+# implement required IJsonModel<T>.Write/Create methods. Requires either
+# removing IJsonModel for non-JSON models or generating stub methods.
+payload/multipart
+type/file
+azure/client-generator-core/override
+
+# === XML serialization specs ===
+# XML serialization has missing extension methods (CS0117: XmlWriterSettings,
+# CS1929: WriteObjectValue) and type mismatches (CS0029: List vs array).
+# Requires completing XML serialization infrastructure.
+payload/xml
+
+# === Missing using directives / infrastructure ===
+# Generated code references types (DateTimeOffset, TimeSpan, Dictionary,
+# IDictionary, List, ClientUriBuilder) without using statements. Type
+# references are constructed as plain strings rather than through Alloy's
+# refkey system. Requires fixing type expression rendering in constructors
+# and factory methods.
+type/dictionary
+type/property/nullable
+payload/json-merge-patch
+service/multi-service
+client/structure/client-operation-group
+
+# === Namespace / type name collisions ===
+# Generated type names collide with system types or namespaces:
+# CS0104: File, Object, Enum, ContinuationToken ambiguous with System types
+# CS0118: 'Type' namespace collides with System.Type
+# Requires adding namespace qualification or collision detection.
+azure/example/basic
+type/union/discriminated
+type/property/optionality
+
+# === Type mismatch in serialization ===
+# CS1503: Wrong type arguments in deserialization constructors (e.g., Uri
+# passed where DateTime expected, wrong scalar type conversions).
+# CS0029: Cannot convert between string/Uri, array/List in serialization.
+# Requires fixing type mapping in serialization code generation.
+azure/client-generator-core/deserialize-empty-string-as-null
+azure/client-generator-core/hierarchy-building
+type/model/inheritance/enum-discriminator
+type/model/inheritance/nested-discriminator
+type/model/inheritance/not-discriminated
+type/model/visibility
+type/scalar
+routes
+
+# === Model member / method issues ===
+# CS0120: Non-static member accessed from static context in recursive model
+type/model/inheritance/recursive
+
+# CS0542: Property name same as enclosing class name
+special-words
+
+# CS0103: 'Argument' helper class not found (missing infrastructure using)
+azure/core/lro/rpc
+azure/core/lro/standard
+
+# CS1501: Wrong number of method arguments in overloaded convenience methods
+client/overload
+azure/core/traits
+special-headers/conditional-request
+
+# === Union type issues ===
+# CS0029/CS1929: Union type conversion and missing extension methods
+type/union
+
+# === Spread parameter issues ===
+# CS7036: Missing required parameter in spread model constructors
+parameters/spread

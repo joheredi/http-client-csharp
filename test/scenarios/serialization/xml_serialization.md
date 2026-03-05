@@ -621,15 +621,15 @@ public partial class DualFormatModel : IJsonModel<DualFormatModel>
             }
             string title = default;
             IDictionary<string, BinaryData> additionalBinaryDataProperties = new ChangeTrackingDictionary<string, BinaryData>();
-            foreach (var prop in element.EnumerateObject())
+            foreach (var jsonProperty in element.EnumerateObject())
             {
-                if (prop.NameEquals("title"u8))
+                if (jsonProperty.NameEquals("title"u8))
                 {
-                    title = prop.Value.GetString();
+                    title = jsonProperty.Value.GetString();
                     continue;
                 }
                 if (options.Format != "W")
-                {additionalBinaryDataProperties.Add(prop.Name, BinaryData.FromString(prop.Value.GetRawText()));
+                {additionalBinaryDataProperties.Add(jsonProperty.Name, BinaryData.FromString(jsonProperty.Value.GetRawText()));
                 }
             }
             return new DualFormatModel(title, additionalBinaryDataProperties);

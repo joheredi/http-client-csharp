@@ -15,6 +15,7 @@ import type {
 import { SystemClientModelPrimitives } from "../../builtins/system-client-model.js";
 import { System } from "../../builtins/system.js";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
+import { getSimpleClientName } from "../../utils/clients.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { toApiVersionMemberName } from "../../utils/version.js";
 
@@ -80,7 +81,7 @@ export function ClientOptionsFile(props: ClientOptionsFileProps) {
   const header = getLicenseHeader(options);
   const namePolicy = useCSharpNamePolicy();
 
-  const clientName = namePolicy.getName(client.name, "class");
+  const clientName = namePolicy.getName(getSimpleClientName(client.name), "class");
   const optionsClassName = `${clientName}Options`;
 
   // Build version member metadata: name, ordinal, and original string value

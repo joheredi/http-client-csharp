@@ -50,7 +50,7 @@ export function AdditionalBinaryDataRead() {
     <>
       {`\n        if (options.Format != "W")`}
       {"\n        {"}
-      {code`\n            ${param}.Add(prop.Name, ${System.BinaryData}.FromString(prop.Value.GetRawText()));`}
+      {code`\n            ${param}.Add(jsonProperty.Name, ${System.BinaryData}.FromString(jsonProperty.Value.GetRawText()));`}
       {"\n        }"}
     </>
   );
