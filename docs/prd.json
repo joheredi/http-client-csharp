@@ -349,7 +349,7 @@
           "title": "Fix undefined BinaryContentHelper in bytes encoding convenience methods",
           "description": "E2E failure: RequestBody.cs in encode/bytes references BinaryContentHelper which does not exist. The BinaryContentHelper infrastructure class is not being generated. Ensure BinaryContentHelperFile.tsx is included in the emission output. Also check if the file needs to be created or if the component exists but is not wired up.",
           "phase": "phase-14",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],

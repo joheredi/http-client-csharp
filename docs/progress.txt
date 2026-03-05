@@ -4526,3 +4526,22 @@ Tests: 67 test files pass (1304 tests), azure/core/lro/rpc e2e passes
 - `test/scenarios/models/not_discriminated_inheritance.md` — updated expectations
 
 **Result:** 67 test files pass (1,304 tests), not-discriminated and access e2e scenarios compile without CS0191 errors
+
+## Task 14.4 — Fix undefined BinaryContentHelper in bytes encoding convenience methods (2026-03-05)
+
+**What was done:**
+
+Wired up `BinaryContentHelperFile` and `Utf8JsonBinaryContentFile` infrastructure components in `emitter.tsx`. Both components already existed in `src/components/infrastructure/` but were not imported or rendered in the emitter output. This caused generated convenience methods (in ConvenienceMethod.tsx) that reference `BinaryContentHelper.FromObject(...)` and `BinaryContentHelper.FromEnumerable(...)` to fail at compile time.
+
+**Changes:**
+- `src/emitter.tsx` — added imports for `BinaryContentHelperFile` and `Utf8JsonBinaryContentFile`, added both as unconditionally generated infrastructure files alongside other infrastructure files
+- `test/binary-content-helper.test.ts` — new test file with 3 tests verifying BinaryContentHelper.cs and Utf8JsonBinaryContent.cs are generated with expected content (class declarations, factory methods, preprocessor directives)
+
+**Root cause:**
+The components were created but never wired into the emitter output tree. ConvenienceMethod.tsx generates code referencing `BinaryContentHelper`, and `BinaryContentHelper` internally uses `Utf8JsonBinaryContent`, so both files must be present.
+
+**Pattern:**
+- Infrastructure helper files must be explicitly rendered in emitter.tsx's output JSX tree — they are not auto-discovered
+- Always check that new infrastructure components are both (1) defined and (2) wired up in emitter.tsx
+
+**Result:** 1307 tests passing (3 new tests), all 68 test files pass, build clean. encode/bytes e2e test passes.

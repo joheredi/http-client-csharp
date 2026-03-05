@@ -42,6 +42,8 @@ import { SerializationFormatFile } from "./components/infrastructure/Serializati
 import { SolutionFile } from "./components/infrastructure/SolutionFile.js";
 import { TypeFormattersFile } from "./components/infrastructure/TypeFormattersFile.js";
 import { MultiPartFormDataBinaryContentFile } from "./components/infrastructure/MultiPartFormDataBinaryContentFile.js";
+import { BinaryContentHelperFile } from "./components/infrastructure/BinaryContentHelperFile.js";
+import { Utf8JsonBinaryContentFile } from "./components/infrastructure/Utf8JsonBinaryContentFile.js";
 import { ModelFactoryFile } from "./components/model-factory/ModelFactoryFile.js";
 import { hasDiscriminatedSubtypes } from "./components/models/ModelConstructors.js";
 import {
@@ -230,6 +232,14 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
         options={options}
       />
       <MultiPartFormDataBinaryContentFile packageName={rootNamespace} />
+      <Utf8JsonBinaryContentFile
+        packageName={rootNamespace}
+        options={options}
+      />
+      <BinaryContentHelperFile
+        packageName={rootNamespace}
+        options={options}
+      />
       <CodeGenAttributeFiles options={options} />
       <CSharpScalarOverrides>
         {clients.map((c) => (
