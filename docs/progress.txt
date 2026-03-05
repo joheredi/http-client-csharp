@@ -4350,3 +4350,17 @@ Check the NuGet package XML docs: `grep "T:Full.Type.Name" ~/.nuget/packages/{pk
 **Design Decision:** Previous iteration (12.2.2) rejected the name policy approach due to concerns about "unexpected interactions with Alloy's internal name resolution." Analysis of Alloy's source code (OutputSymbol name setter, Name component, createParameterSymbol) showed no actual risk — the `@` prefix is just part of the name string and doesn't affect symbol resolution. The name policy approach is strictly better because it automatically fixes all `<Parameter>` declarations, which can't be fixed by the call-site-only approach (camelCase strips `@` prefix).
 
 **All 1,293 tests pass (3 new), build succeeds.**
+
+## 2026-03-05 — Task 12.9: Fix rootNamespace captured before cleanAllNamespaces
+
+**What was done:** Fixed namespace mismatch where infrastructure files (Argument.cs, ClientUriBuilder.cs, etc.) used a stale pre-clean rootNamespace while client files used cleaned namespaces. Changed `const rootNamespace` to `let` and re-resolved after `cleanAllNamespaces()`.
+
+**Files modified:**
+- `src/emitter.tsx` — changed `const` to `let`, added re-resolution after `cleanAllNamespaces()`
+- `test/package-name.test.ts` — added 2 tests validating rootNamespace reflects cleaned value
+
+**Pattern:** `cleanAllNamespaces` mutates client objects by reference. `resolveRootNamespace` reads `sdkContext.sdkPackage.clients[0].namespace`. Since both share the same JS object references, re-calling `resolveRootNamespace` after cleaning returns the cleaned value.
+
+**Note for next iteration:** The e2e test failure (dotnet test DLL path invalid) is pre-existing and unrelated to this change.
+
+**All 1,295 tests pass (2 new), build succeeds.**

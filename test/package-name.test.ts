@@ -215,6 +215,69 @@ describe("resolveRootNamespace", () => {
 
     expect(resolveRootNamespace(mockContext)).toBe("UnknownPackage");
   });
+
+  /**
+   * Validates the fix for task 12.9: rootNamespace must reflect the cleaned
+   * value after cleanAllNamespaces() mutates client namespaces in place.
+   *
+   * Before the fix, rootNamespace was captured once BEFORE cleanAllNamespaces(),
+   * causing infrastructure files (Argument.cs, ClientUriBuilder.cs, etc.) to
+   * use the pre-clean namespace while client files used the post-clean namespace.
+   * This produced ~214 CS errors (CS0103, CS0246, CS1061) from namespace mismatch.
+   *
+   * The fix re-resolves rootNamespace after cleaning. Since cleanAllNamespaces
+   * mutates client objects by reference (same objects as in sdkPackage.clients),
+   * resolveRootNamespace returns the cleaned value.
+   */
+  it("returns cleaned namespace after cleanAllNamespaces mutates client objects", () => {
+    // Create a context where the first client's namespace contains
+    // a reserved word segment that cleanAllNamespaces will prefix with `_`
+    const mockContext = createMockSdkContext({
+      clientNamespace: "Type.Foo",
+    });
+
+    // Before cleaning: rootNamespace has the original value
+    expect(resolveRootNamespace(mockContext)).toBe("Type.Foo");
+
+    // Simulate what emitter.tsx does: getAllClients returns the same objects
+    const allClients = mockContext.sdkPackage
+      .clients as SdkClientType<SdkHttpOperation>[];
+    cleanAllNamespaces(allClients, [], []);
+
+    // After cleaning: the client's namespace is mutated in place
+    expect(allClients[0].namespace).toBe("_Type.Foo");
+
+    // Re-resolving rootNamespace should return the cleaned value
+    // because cleanAllNamespaces mutated the same object reference
+    expect(resolveRootNamespace(mockContext)).toBe("_Type.Foo");
+  });
+
+  /**
+   * Validates that rootNamespace tracks dynamic client-name conflicts too,
+   * not just static reserved words. When a client name like "MoveClient"
+   * matches its namespace's last segment, that segment gets prefixed.
+   */
+  it("returns cleaned namespace for dynamic client-name conflicts", () => {
+    const mockContext = {
+      sdkPackage: {
+        clients: [
+          { name: "MoveClient", namespace: "MoveClient" },
+        ] as unknown as SdkClientType<SdkHttpOperation>[],
+        namespaces: [],
+        crossLanguagePackageId: undefined,
+      },
+    };
+
+    // Before cleaning
+    expect(resolveRootNamespace(mockContext as any)).toBe("MoveClient");
+
+    const allClients = mockContext.sdkPackage.clients;
+    cleanAllNamespaces(allClients, [], []);
+
+    // After cleaning: name "MoveClient" matches last segment "MoveClient" → prefixed
+    expect(allClients[0].namespace).toBe("_MoveClient");
+    expect(resolveRootNamespace(mockContext as any)).toBe("_MoveClient");
+  });
 });
 
 /**

@@ -96,7 +96,7 @@
           "title": "Fix rootNamespace captured before cleanAllNamespaces causing internal helper namespace mismatch",
           "description": "In emitter.tsx, rootNamespace is resolved at line 152 BEFORE cleanAllNamespaces() runs at line 163. Internal helper files (Argument.cs, ClientUriBuilder.cs, ClientPipelineExtensions.cs, CancellationTokenExtensions.cs, etc.) use the pre-clean rootNamespace for their namespace, while client files use the post-clean namespace from mutated SdkClientType objects. When cleanAllNamespaces prefixes a segment with underscore (e.g., MoveMethodParameterToClient \u2192 _MoveMethodParameterToClient), the internal helpers end up in a different namespace than the client code, causing CS0103 (Argument not found, ~82 errors), CS0246 (ClientUriBuilder not found, ~44 errors), CS1061 (ToRequestOptions/ProcessMessage not found, ~88 errors). Fix by resolving rootNamespace after cleanAllNamespaces, or re-deriving it from the cleaned first client namespace.\n\nAffected specs: azure/client-generator-core/client-location/*, and any spec where cleanAllNamespaces modifies the root client namespace.\n\nTo reproduce: pnpm test:e2e, then check dotnet build errors for 'Argument', 'ClientUriBuilder', 'ToRequestOptions', 'ProcessMessage'.",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

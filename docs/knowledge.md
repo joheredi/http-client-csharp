@@ -2646,3 +2646,11 @@ legacy emitter's behavior documented in knowledge.md's "Namespace differences wi
 **Analysis of Alloy internals confirming safety:** Alloy's `OutputSymbol.name` setter stores the policy-transformed name as a plain string. `<Name />` renders `symbol.name` directly with no post-processing. Symbol lookup uses the symbol object reference (via refkey), not name matching. Therefore, `@class` as a symbol name causes zero issues with Alloy's resolution pipeline.
 
 **Important:** Raw string interpolation sites (validation statements, argLists, protocolCallArg) still need explicit `escapeCSharpKeyword(p.name)` because they use the raw TCGC parameter name directly, not the name policy. The name policy fix handles `<Parameter>` JSX declarations; the utility function handles everything else.
+
+## Task 12.9: rootNamespace captured before cleanAllNamespaces
+
+**Problem:** In `emitter.tsx`, `rootNamespace` was resolved via `resolveRootNamespace(sdkContext)` BEFORE `cleanAllNamespaces()` ran. Since `cleanAllNamespaces` mutates `client.namespace` in place (prefixing segments like "Type", "Array", "Enum" or client names matching their namespace's last segment with `_`), the `rootNamespace` variable held a stale pre-clean value. Infrastructure files (Argument.cs, ClientUriBuilder.cs, etc.) used this stale namespace while client files used the cleaned namespace, causing ~214 CS errors.
+
+**Fix:** Changed `const rootNamespace` to `let rootNamespace` and added `rootNamespace = resolveRootNamespace(sdkContext)` after `cleanAllNamespaces()`. Since `getAllClients` returns the same client objects by reference (not cloned), mutating `.namespace` in `cleanAllNamespaces` also mutates the objects in `sdkContext.sdkPackage.clients`. Therefore re-calling `resolveRootNamespace` returns the cleaned value.
+
+**Key insight:** `ensureModelNamespaces` can safely use the pre-clean `rootNamespace` as its fallback because its output gets cleaned subsequently by `cleanAllNamespaces`.

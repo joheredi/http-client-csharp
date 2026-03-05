@@ -149,7 +149,10 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
   // and ignores the explicit package-name option, ensuring infrastructure files
   // share the same namespace as client code (important for versioned projects
   // where package-name includes a version suffix that clients don't use).
-  const rootNamespace = resolveRootNamespace(sdkContext);
+  // NOTE: This is initially resolved before cleanAllNamespaces() for use in
+  // ensureModelNamespaces(), then re-resolved after cleaning so infrastructure
+  // files share the same cleaned namespace as client code.
+  let rootNamespace = resolveRootNamespace(sdkContext);
 
   // Fix models with empty namespace strings from TCGC. Some anonymous request
   // models (from spread operations with mixed HTTP decorators) get empty
@@ -161,6 +164,13 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
   // segments to prevent CS0118 errors (e.g., "Parameters.Spread.Model" →
   // "Parameters.Spread._Model" when there is a client class named "Model").
   cleanAllNamespaces(allClients, models, enums);
+
+  // Re-resolve rootNamespace after cleaning. cleanAllNamespaces mutates client
+  // .namespace in place, so resolveRootNamespace now returns the cleaned value.
+  // Without this, infrastructure files (Argument.cs, ClientUriBuilder.cs, etc.)
+  // would use the pre-clean namespace while client files use the post-clean one,
+  // causing CS0103/CS0246/CS1061 errors from namespace mismatch.
+  rootNamespace = resolveRootNamespace(sdkContext);
 
   // Determine whether to generate project scaffolding (.csproj, .sln).
   // Skip if the .csproj already exists and user hasn't set new-project: true.
