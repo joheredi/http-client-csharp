@@ -122,7 +122,7 @@ public partial class StringBody
         {
             Argument.AssertNotNullOrEmpty(text, nameof(text));
 
-            return SendAsText(new string(text), cancellationToken.ToRequestOptions());
+            return SendAsText(BinaryContentHelper.FromObject(new string(text)), cancellationToken.ToRequestOptions());
         }
 
         /// <summary>  </summary>
@@ -138,7 +138,7 @@ public partial class StringBody
         {
             Argument.AssertNotNullOrEmpty(text, nameof(text));
 
-            return await SendAsTextAsync(new string(text), cancellationToken.ToRequestOptions()).ConfigureAwait(false);
+            return await SendAsTextAsync(BinaryContentHelper.FromObject(new string(text)), cancellationToken.ToRequestOptions()).ConfigureAwait(false);
         }
 
         /// <summary>  </summary>
@@ -167,7 +167,7 @@ public partial class StringBody
         {
             Argument.AssertNotNullOrEmpty(text, nameof(text));
 
-            return SendAsJson(new string(text), cancellationToken.ToRequestOptions());
+            return SendAsJson(BinaryContentHelper.FromObject(new string(text)), cancellationToken.ToRequestOptions());
         }
 
         /// <summary>  </summary>
@@ -183,7 +183,7 @@ public partial class StringBody
         {
             Argument.AssertNotNullOrEmpty(text, nameof(text));
 
-            return await SendAsJsonAsync(new string(text), cancellationToken.ToRequestOptions()).ConfigureAwait(false);
+            return await SendAsJsonAsync(BinaryContentHelper.FromObject(new string(text)), cancellationToken.ToRequestOptions()).ConfigureAwait(false);
         }
 
         /// <summary>  </summary>

@@ -1206,4 +1206,128 @@ describe("ConvenienceMethod", () => {
       '<param name="xMsTestHeader">',
     );
   });
+
+  /**
+   * Verifies that enum body parameters are wrapped in BinaryContentHelper.FromObject()
+   * with .ToString() for string-backed enums when calling the protocol method.
+   *
+   * Without this wrapping, C# overload resolution fails with CS1503: the enum type
+   * has no implicit conversion to BinaryContent, so the compiler picks the convenience
+   * overload and errors on the RequestOptions → CancellationToken argument.
+   */
+  it("wraps enum body param in BinaryContentHelper for protocol call", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      union MyEnum {
+        string,
+        ValueA: "value_a",
+      }
+
+      @route("/enum")
+      @post op sendEnum(@header contentType: "application/json", @body body: MyEnum): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile =
+      outputs["src/Generated/TestServiceClient.cs"] ?? "";
+
+    // Sync: enum body is wrapped in BinaryContentHelper.FromObject(body.ToString())
+    expect(clientFile).toContain(
+      "return SendEnum(BinaryContentHelper.FromObject(body.ToString()), cancellationToken.ToRequestOptions());",
+    );
+    // Async: same wrapping pattern
+    expect(clientFile).toContain(
+      "return await SendEnumAsync(BinaryContentHelper.FromObject(body.ToString()), cancellationToken.ToRequestOptions()).ConfigureAwait(false);",
+    );
+  });
+
+  /**
+   * Verifies that array body parameters are wrapped in BinaryContentHelper.FromEnumerable()
+   * for protocol method calls, ensuring proper JSON array serialization and correct
+   * C# overload resolution (IEnumerable<T> has no implicit BinaryContent operator).
+   */
+  it("wraps array body param in BinaryContentHelper.FromEnumerable", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/items")
+      @put op putItems(@header contentType: "application/json", @body body: string[]): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile =
+      outputs["src/Generated/TestServiceClient.cs"] ?? "";
+
+    // Array body uses FromEnumerable for proper JSON array serialization
+    expect(clientFile).toContain(
+      "BinaryContentHelper.FromEnumerable(body)",
+    );
+  });
+
+  /**
+   * Verifies that scalar body parameters (string, BinaryData) are wrapped in
+   * BinaryContentHelper.FromObject() for protocol method calls.
+   *
+   * String and BinaryData types have no implicit BinaryContent conversion,
+   * so explicit wrapping is required for C# overload resolution.
+   */
+  it("wraps string body param in BinaryContentHelper.FromObject", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/text")
+      @post op sendText(@header contentType: "text/plain", @body text: string): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile =
+      outputs["src/Generated/TestServiceClient.cs"] ?? "";
+
+    // String body uses FromObject (goes through spread body path with wrapper model)
+    expect(clientFile).toContain(
+      "BinaryContentHelper.FromObject(new string(text))",
+    );
+  });
+
+  /**
+   * Verifies that model body parameters with UsageFlags.Input are passed directly
+   * (no BinaryContentHelper wrapping) because they have implicit BinaryContent operators.
+   * This ensures we don't unnecessarily wrap models that already convert implicitly.
+   */
+  it("passes model body directly when it has implicit BinaryContent operator", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Item {
+        name: string;
+      }
+
+      @route("/items")
+      @post op createItem(@body item: Item): Item;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile =
+      outputs["src/Generated/TestServiceClient.cs"] ?? "";
+
+    // Model body should be passed directly (implicit BinaryContent operator)
+    expect(clientFile).toContain(
+      "CreateItem(item, cancellationToken.ToRequestOptions());",
+    );
+    // Should NOT be wrapped in BinaryContentHelper
+    expect(clientFile).not.toContain("BinaryContentHelper");
+  });
 });

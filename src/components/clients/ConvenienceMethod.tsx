@@ -1,17 +1,18 @@
 import { Method, useCSharpNamePolicy } from "@alloy-js/csharp";
 import { code, namekey } from "@alloy-js/core";
 import type { Children } from "@alloy-js/core";
-import type {
-  SdkArrayType,
-  SdkBodyParameter,
-  SdkClientType,
-  SdkHeaderParameter,
-  SdkHttpOperation,
-  SdkModelType,
-  SdkPathParameter,
-  SdkQueryParameter,
-  SdkServiceMethod,
-  SdkType,
+import {
+  type SdkArrayType,
+  type SdkBodyParameter,
+  type SdkClientType,
+  type SdkHeaderParameter,
+  type SdkHttpOperation,
+  type SdkModelType,
+  type SdkPathParameter,
+  type SdkQueryParameter,
+  type SdkServiceMethod,
+  type SdkType,
+  UsageFlags,
 } from "@azure-tools/typespec-client-generator-core";
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import { SystemClientModel } from "../../builtins/system-client-model.js";
@@ -443,7 +444,7 @@ export function buildConvenienceParams(
         needsAssertion: convInfo.needsAssertion,
         isStringType: convInfo.isString,
         doc: bodyParam.doc ?? bodyParam.summary,
-        protocolCallArg: bodyName, // implicit BinaryContent conversion
+        protocolCallArg: getBodyProtocolCallArg(bodyName, bodyParam.type),
         priority,
         index: index++,
       });
@@ -500,13 +501,27 @@ function buildSpreadProtocolCallExpr(
     }
   }
 
+  // Determine whether the spread body model needs explicit BinaryContent conversion.
+  // Models with UsageFlags.Input have an implicit operator BinaryContent.
+  // Models without it (typically internal spread-only models) need wrapping via
+  // BinaryContentHelper.FromObject, which uses WriteObjectValue → IPersistableModel.
+  const needsExplicitConversion = !hasImplicitBinaryContentOperator(
+    spreadBodyType,
+  );
+
   const parts: Children[] = [];
   let bodyInserted = false;
   for (const p of params) {
     if (p.isBody) {
       if (!bodyInserted) {
         if (parts.length > 0) parts.push(", ");
-        parts.push(code`new ${bodyTypeExpr}(${spreadArgs})`);
+        if (needsExplicitConversion) {
+          parts.push(
+            code`BinaryContentHelper.FromObject(new ${bodyTypeExpr}(${spreadArgs}))`,
+          );
+        } else {
+          parts.push(code`new ${bodyTypeExpr}(${spreadArgs})`);
+        }
         bodyInserted = true;
       }
       // Skip remaining body params — they're combined in the constructor
@@ -722,6 +737,76 @@ function getIntegerKeyword(kind: string): string {
     default:
       return "int";
   }
+}
+
+/**
+ * Determines whether a model type has the `implicit operator BinaryContent`
+ * generated in its serialization file.
+ *
+ * The operator is generated for models with `UsageFlags.Input` set (see
+ * {@link ImplicitBinaryContentOperator} in CastOperators.tsx). Models without
+ * this flag (e.g., internal spread-only models) do not have implicit conversion
+ * and need explicit BinaryContent wrapping in convenience method bodies.
+ */
+function hasImplicitBinaryContentOperator(type: SdkModelType): boolean {
+  return (type.usage & UsageFlags.Input) !== 0;
+}
+
+/**
+ * Determines the protocol call argument expression for a non-spread body parameter.
+ *
+ * For model types that have an `implicit operator BinaryContent` (models with
+ * `UsageFlags.Input`), the body parameter is passed directly — C# resolves the
+ * implicit conversion. For all other types (enums, scalars, arrays, strings,
+ * BinaryData, internal models), the body must be explicitly serialized to
+ * `BinaryContent` via `BinaryContentHelper` to ensure C# overload resolution
+ * picks the protocol method overload `(BinaryContent, RequestOptions)` instead
+ * of the convenience method overload `(TypedBody, CancellationToken)`.
+ *
+ * Type-specific conversions:
+ * - **Enum (string-backed)**: `BinaryContentHelper.FromObject(body.ToString())`
+ * - **Enum (int-backed)**: `BinaryContentHelper.FromObject((int)body)`
+ * - **Array**: `BinaryContentHelper.FromEnumerable(body)`
+ * - **Model without Input flag**: `BinaryContentHelper.FromObject(body)` (uses IPersistableModel)
+ * - **Other (string, BinaryData, scalar)**: `BinaryContentHelper.FromObject(body)`
+ *
+ * @param name - The camelCase parameter name in C#.
+ * @param type - The TCGC SDK type of the body parameter.
+ * @returns A string expression to use as the body argument in the protocol call.
+ */
+function getBodyProtocolCallArg(name: string, type: SdkType): string {
+  const escaped = escapeCSharpKeyword(name);
+  const unwrapped = unwrapType(type);
+
+  // Model types with implicit BinaryContent operator: pass directly.
+  if (
+    unwrapped.kind === "model" &&
+    hasImplicitBinaryContentOperator(unwrapped as SdkModelType)
+  ) {
+    return escaped;
+  }
+
+  // Enum types: convert to wire representation then wrap.
+  if (unwrapped.kind === "enum") {
+    const valueKind = unwrapType(unwrapped.valueType).kind;
+    if (valueKind === "string") {
+      return `BinaryContentHelper.FromObject(${escaped}.ToString())`;
+    }
+    return `BinaryContentHelper.FromObject((${getIntegerKeyword(valueKind)})${escaped})`;
+  }
+
+  if (unwrapped.kind === "enumvalue") {
+    return getBodyProtocolCallArg(name, unwrapped.enumType);
+  }
+
+  // Array types: use FromEnumerable for proper JSON array serialization.
+  if (unwrapped.kind === "array") {
+    return `BinaryContentHelper.FromEnumerable(${escaped})`;
+  }
+
+  // All other types (string, BinaryData, model without Input, scalar, dict, etc.):
+  // use FromObject which delegates to WriteObjectValue for correct serialization.
+  return `BinaryContentHelper.FromObject(${escaped})`;
 }
 
 /**

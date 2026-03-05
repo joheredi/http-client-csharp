@@ -271,7 +271,7 @@ public partial class Model
             Argument.AssertNotNullOrEmpty(testHeader, nameof(testHeader));
             Argument.AssertNotNullOrEmpty(prop, nameof(prop));
 
-            return SpreadCompositeRequestMix(name, testHeader, new SpreadCompositeRequestMixRequest(prop), cancellationToken.ToRequestOptions());
+            return SpreadCompositeRequestMix(name, testHeader, BinaryContentHelper.FromObject(new SpreadCompositeRequestMixRequest(prop)), cancellationToken.ToRequestOptions());
         }
 
         /// <summary>  </summary>
@@ -293,7 +293,7 @@ public partial class Model
             Argument.AssertNotNullOrEmpty(testHeader, nameof(testHeader));
             Argument.AssertNotNullOrEmpty(prop, nameof(prop));
 
-            return await SpreadCompositeRequestMixAsync(name, testHeader, new SpreadCompositeRequestMixRequest(prop), cancellationToken.ToRequestOptions()).ConfigureAwait(false);
+            return await SpreadCompositeRequestMixAsync(name, testHeader, BinaryContentHelper.FromObject(new SpreadCompositeRequestMixRequest(prop)), cancellationToken.ToRequestOptions()).ConfigureAwait(false);
         }
 
         /// <summary>

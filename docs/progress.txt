@@ -4421,3 +4421,29 @@ Result: GeneratedProjectReferences.props no longer includes stale resource-manag
 - Added tests: convenience-method.test.ts and protocol-method.test.ts both have new tests validating hyphenated header names are converted in all usage sites.
 - Verified: parameters/spread spec now compiles successfully in e2e. Zero CS0103 errors from hyphenated names.
 - Pattern: Follow RestClientFile.tsx's getParamName pattern — create the callback in the component, pass it to builder functions.
+
+## 2026-03-05 — Task 12.14: Fix RequestOptions-to-CancellationToken argument conversion errors in convenience methods
+
+**What was done:** Fixed CS1503 errors where convenience methods passed non-model body types directly to protocol methods, causing C# overload resolution to fail. The protocol method expects `(BinaryContent, RequestOptions)` but non-model types (enums, scalars, arrays, strings, BinaryData, internal spread models) lack implicit BinaryContent conversion, so C# would pick the convenience overload and error on the second arg.
+
+**Root cause:** Only model types with `UsageFlags.Input` have `implicit operator BinaryContent`. All other body types passed as-is caused C# to resolve to the wrong overload.
+
+**Fix:** Added `getBodyProtocolCallArg()` function that wraps non-model body types in `BinaryContentHelper.FromObject()` or `BinaryContentHelper.FromEnumerable()`:
+- Model with Input flag → pass directly (implicit operator)
+- Enum (string-backed) → `BinaryContentHelper.FromObject(body.ToString())`
+- Enum (int-backed) → `BinaryContentHelper.FromObject((int)body)`
+- Array → `BinaryContentHelper.FromEnumerable(body)`
+- Other (string, BinaryData, scalar, dict, model without Input) → `BinaryContentHelper.FromObject(body)`
+
+For spread bodies, modified `buildSpreadProtocolCallExpr()` to wrap the model constructor when the spread type lacks `UsageFlags.Input`: `BinaryContentHelper.FromObject(new SpreadModel(args))`.
+
+**Files modified:**
+- `src/components/clients/ConvenienceMethod.tsx` — Added `getBodyProtocolCallArg`, `hasImplicitBinaryContentOperator`, updated `buildConvenienceParams` and `buildSpreadProtocolCallExpr`
+- `test/convenience-method.test.ts` — Added 4 tests: enum body wrapping, array body wrapping, string body wrapping, model body direct pass
+- `test/scenarios/parameters/basic_implicit_body.md` — Updated expected output for BinaryContentHelper wrapping
+- `test/scenarios/parameters/spread_model.md` — Updated spread model wrapping expectations
+- `test/scenarios/payload/media_type_string_body.md` — Updated string body wrapping expectations
+
+**Result:** CS1503 RequestOptions→CancellationToken errors reduced from 120 to 28. Remaining 24 are in `routes/` spec (IDictionary path params need string conversion — different root cause) and 4 in `service/multi-service` (missing CancellationTokenExtensions — different root cause).
+
+**All 1,303 tests pass (7 new), build succeeds.**

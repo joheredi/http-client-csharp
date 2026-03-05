@@ -2676,3 +2676,11 @@ legacy emitter's behavior documented in knowledge.md's "Namespace differences wi
 **Rejected alternative**: Using Alloy refkeys for parameter references in method bodies. This would require major refactoring of how method bodies are constructed (currently string-based) — too invasive for this fix.
 
 **Key insight**: Alloy's `<Method>` component applies the naming policy to parameter *declarations* but not to *body references*. The body is built with raw strings and `code` templates, so names must be pre-converted. This matches the pattern in `RestClientFile.tsx` where `getParamName` is already used.
+
+## Body Parameter BinaryContent Conversion in Convenience Methods
+
+When a convenience method calls a protocol method, the body argument must be convertible to `BinaryContent` for C# overload resolution. Only model types with `UsageFlags.Input` have `implicit operator BinaryContent`. All other body types (enum, scalar, array, string, BinaryData, dict, internal spread models) require explicit wrapping via `BinaryContentHelper.FromObject()` or `BinaryContentHelper.FromEnumerable()`.
+
+Key infrastructure: `BinaryContentHelper` (in `src/Generated/Internal/BinaryContentHelper.cs`) provides `FromObject(object)` which uses `WriteObjectValue` (handles IPersistableModel), and `FromEnumerable<T>(IEnumerable<T>)` for arrays. `Utf8JsonBinaryContent` extends `BinaryContent` and wraps `Utf8JsonWriter`.
+
+Check `hasImplicitBinaryContentOperator(type)` → `(type.usage & UsageFlags.Input) !== 0` to determine if a model can rely on implicit conversion.

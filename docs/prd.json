@@ -202,7 +202,7 @@
           "title": "Fix RequestOptions-to-CancellationToken argument conversion errors in convenience methods",
           "description": "Generated convenience methods pass RequestOptions where CancellationToken is expected, producing CS1503 errors (~56 occurrences: 'cannot convert from RequestOptions to CancellationToken'). This indicates the convenience method body is calling a protocol overload that expects RequestOptions but passing CancellationToken-derived arguments, or vice versa.\n\nInvestigation needed: check how convenience methods build their call to protocol methods, particularly the argument conversion logic in ConvenienceMethod.tsx. The convenience method should call the protocol overload with RequestOptions (converting CancellationToken via ToRequestOptions extension), not the convenience overload.\n\nAffected specs: multiple specs with convenience methods.\n\nTo reproduce: pnpm test:e2e, check CS1503 errors involving RequestOptions/CancellationToken conversion.",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [
