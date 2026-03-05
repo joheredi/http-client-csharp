@@ -4405,3 +4405,11 @@ All 1,296 tests pass (1 new), build succeeds.
 **Patterns for next loops:**
 - After this fix, type/file still has 16 CS0535 and CS1503 errors (unrelated: interface implementation + RequestOptions/CancellationToken conversion)
 - The CS1503 errors are covered by task 12.14
+
+2026-03-05 — Task 12.15: Clean stale output from testignored specs in emit-e2e script (complete)
+
+Fixed the emit-e2e.ts script to clean stale output directories from testignored specs before compilation and project reference generation. Two changes:
+1. Added a cleanup step in main() that iterates through the ignore list and removes any existing output directories for ignored specs (lines ~458-469)
+2. Added defense-in-depth filtering in generateProjectReferences() that skips .csproj files under ignored spec paths (pass ignoreList parameter)
+
+Result: GeneratedProjectReferences.props no longer includes stale resource-manager project references. The 9 ignored ARM specs no longer cause ~56 CS errors during dotnet build. All 111 non-ignored specs compile successfully.

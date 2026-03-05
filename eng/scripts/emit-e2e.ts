@@ -366,8 +366,12 @@ function buildAlias(csprojName: string): string {
 /**
  * Scans the generated output directory for .csproj files and writes
  * a GeneratedProjectReferences.props file that the Spector.Tests.csproj imports.
+ *
+ * @param ignoreList - Spec paths from .testignore. Projects under these paths
+ *   are excluded as a safety net (their output dirs should already be cleaned,
+ *   but this guards against race conditions or manual re-generation).
  */
-async function generateProjectReferences(): Promise<void> {
+async function generateProjectReferences(ignoreList: string[]): Promise<void> {
   console.log("\n📝 Generating project references...");
 
   const csprojPattern = "**/*.csproj";
@@ -385,12 +389,21 @@ async function generateProjectReferences(): Promise<void> {
     `  <ItemGroup>`,
   ];
 
+  let includedCount = 0;
   for (const csprojRelPath of csprojFiles) {
     // csprojRelPath is like "type/array/src/Type.Array.csproj"
-    // specDir is the parent structure, e.g., "type/array/src"
+    // specDir is the parent structure, e.g., "type/array"
     const specDir = dirname(csprojRelPath).replace(/\/src$/, "");
-    const csprojName = basename(csprojRelPath);
 
+    // Skip projects from ignored specs (defense-in-depth)
+    const isIgnored = ignoreList.some(
+      (ignored) => specDir === ignored || specDir.startsWith(ignored + "/"),
+    );
+    if (isIgnored) {
+      continue;
+    }
+
+    const csprojName = basename(csprojRelPath);
     const include = `$(GeneratedRoot)${csprojRelPath}`;
 
     if (needsAlias(specDir)) {
@@ -401,6 +414,7 @@ async function generateProjectReferences(): Promise<void> {
     } else {
       lines.push(`    <ProjectReference Include="${include}" />`);
     }
+    includedCount++;
   }
 
   lines.push(`  </ItemGroup>`);
@@ -409,7 +423,7 @@ async function generateProjectReferences(): Promise<void> {
 
   await writeFile(propsFilePath, lines.join("\n"), "utf8");
   console.log(
-    `✅ Generated ${csprojFiles.length} project reference(s) → ${propsFilePath}`,
+    `✅ Generated ${includedCount} project reference(s) → ${propsFilePath}`,
   );
 }
 
@@ -439,6 +453,19 @@ async function main(): Promise<void> {
   // Clear previous logs
   if (existsSync(logDirRoot)) {
     await rm(logDirRoot, { recursive: true, force: true });
+  }
+
+  // Remove stale output from ignored specs so generateProjectReferences()
+  // doesn't include their .csproj files in the build.
+  if (ignoreList.length > 0) {
+    console.log("🗑️  Cleaning stale output from ignored specs...");
+    for (const ignored of ignoreList) {
+      const staleDir = join(generatedRoot, ignored);
+      if (existsSync(staleDir)) {
+        await rm(staleDir, { recursive: true, force: true });
+        console.log(`   removed: ${ignored}`);
+      }
+    }
   }
 
   // Pre-pass: clean all output directories serially before parallel compilation.
@@ -518,7 +545,7 @@ async function main(): Promise<void> {
   console.log(`\n📄 Report: ${reportFilePath}`);
 
   // Generate .props file with project references for the csproj
-  await generateProjectReferences();
+  await generateProjectReferences(ignoreList);
 
   // Timing
   const endTime = process.hrtime.bigint();

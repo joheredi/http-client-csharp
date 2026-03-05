@@ -222,7 +222,7 @@
           "title": "Clean stale output from testignored specs in emit-e2e script",
           "description": "The emit-e2e.ts script skips specs listed in .testignore during emission but does not clean their previously generated output directories. The generateProjectReferences function then scans all .csproj files in the output directory (including stale ones from ignored specs) and includes them in GeneratedProjectReferences.props. This causes dotnet build to attempt compiling stale code from ignored specs, producing ~56 errors from old ARM resource-manager output.\n\nFix options: (a) have emit-e2e.ts clean output directories for ignored specs, (b) exclude ignored spec directories when generating project references, or (c) both.\n\nTo reproduce: pnpm test:e2e with ARM specs in .testignore, observe CS errors from azure/resource-manager/* paths.",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [
