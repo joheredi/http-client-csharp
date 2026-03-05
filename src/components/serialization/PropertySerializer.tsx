@@ -97,6 +97,7 @@ import { isCollectionType, unwrapNullableType } from "../../utils/nullable.js";
 import {
   isCSharpReferenceType,
   isPropertyReadOnly,
+  resolvePropertyName,
 } from "../../utils/property.js";
 
 /**
@@ -105,6 +106,8 @@ import {
 export interface WritePropertySerializationProps {
   /** The TCGC SDK model property to serialize. */
   property: SdkModelPropertyType;
+  /** The raw TCGC name of the enclosing model, used for CS0542 collision detection. */
+  modelName: string;
 }
 
 /** Primitive SDK type kinds that map to `writer.WriteStringValue`. */
@@ -1164,7 +1167,10 @@ export function WritePropertySerialization(
   const { property } = props;
 
   const serializedName = property.serializedName;
-  const csharpName = namePolicy.getName(property.name, "class-property");
+  const csharpName = namePolicy.getName(
+    resolvePropertyName(property.name, props.modelName),
+    "class-property",
+  );
 
   // Collection types — array/list serialization with foreach loops
   const unwrapped = unwrapNullableType(property.type);

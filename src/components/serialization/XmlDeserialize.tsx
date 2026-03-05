@@ -85,6 +85,7 @@ import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import { SystemClientModelPrimitives } from "../../builtins/system-client-model.js";
 import { SystemXmlLinq } from "../../builtins/system-xml-linq.js";
 import { unwrapNullableType } from "../../utils/nullable.js";
+import { resolvePropertyName } from "../../utils/property.js";
 import {
   isBaseDiscriminatorOverride,
   isDerivedDiscriminatedModel,
@@ -459,10 +460,14 @@ function renderAttributeMatch(
   namePolicy: NamePolicy<string>,
   namespaces: Map<string, XmlNamespaceInfo>,
   indent: string,
+  modelName: string,
 ): Children | null {
   const xmlInfo = prop.serializationOptions.xml!;
   const xmlName = xmlInfo.name;
-  const varName = namePolicy.getName(prop.name, "parameter");
+  const varName = namePolicy.getName(
+    resolvePropertyName(prop.name, modelName),
+    "parameter",
+  );
   const readExpr = getXmlReadExpression(prop.type, "attr", namePolicy);
   if (!readExpr) return null;
 
@@ -503,10 +508,14 @@ function renderElementMatch(
   namePolicy: NamePolicy<string>,
   namespaces: Map<string, XmlNamespaceInfo>,
   indent: string,
+  modelName: string,
 ): Children | null {
   const xmlInfo = prop.serializationOptions.xml!;
   const xmlName = xmlInfo.name;
-  const varName = namePolicy.getName(prop.name, "parameter");
+  const varName = namePolicy.getName(
+    resolvePropertyName(prop.name, modelName),
+    "parameter",
+  );
   const unwrapped = unwrapNullableType(prop.type);
 
   const ns = xmlInfo.ns;
@@ -1012,13 +1021,25 @@ export function XmlDeserialize(props: XmlDeserializeProps) {
 
   const attrMatches: Children[] = [];
   for (const p of attributes) {
-    const match = renderAttributeMatch(p, namePolicy, namespaces, "        ");
+    const match = renderAttributeMatch(
+      p,
+      namePolicy,
+      namespaces,
+      "        ",
+      props.type.name,
+    );
     if (match) attrMatches.push(match);
   }
 
   const elemMatches: Children[] = [];
   for (const p of elements) {
-    const match = renderElementMatch(p, namePolicy, namespaces, "        ");
+    const match = renderElementMatch(
+      p,
+      namePolicy,
+      namespaces,
+      "        ",
+      props.type.name,
+    );
     if (match) elemMatches.push(match);
   }
 
@@ -1054,7 +1075,7 @@ export function XmlDeserialize(props: XmlDeserializeProps) {
       {elemMatches}
       {hasElements ? "\n    }" : ""}
       {textContent
-        ? `\n    ${namePolicy.getName(textContent.name, "parameter")} = element.Value;`
+        ? `\n    ${namePolicy.getName(resolvePropertyName(textContent.name, props.type.name), "parameter")} = element.Value;`
         : ""}
       <DeserializeReturnStatement type={props.type} />
       {"\n}"}

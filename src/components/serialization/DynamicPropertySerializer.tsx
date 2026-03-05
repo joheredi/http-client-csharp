@@ -37,6 +37,7 @@ import { unwrapNullableType } from "../../utils/nullable.js";
 import {
   isCSharpReferenceType,
   isPropertyReadOnly,
+  resolvePropertyName,
 } from "../../utils/property.js";
 import {
   buildGuardCondition,
@@ -52,6 +53,8 @@ import {
 export interface DynamicWritePropertySerializationProps {
   /** The TCGC SDK model property to serialize with patch awareness. */
   property: SdkModelPropertyType;
+  /** The raw TCGC name of the enclosing model, used for CS0542 collision detection. */
+  modelName: string;
 }
 
 /**
@@ -572,7 +575,10 @@ export function DynamicWritePropertySerialization(
   const { property } = props;
 
   const serializedName = property.serializedName;
-  const csharpName = namePolicy.getName(property.name, "class-property");
+  const csharpName = namePolicy.getName(
+    resolvePropertyName(property.name, props.modelName),
+    "class-property",
+  );
 
   const unwrapped = unwrapNullableType(property.type);
 

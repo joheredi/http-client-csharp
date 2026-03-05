@@ -52,6 +52,7 @@ import {
   isPropertyNullable,
   unwrapNullableType,
 } from "../../utils/nullable.js";
+import { resolvePropertyName } from "../../utils/property.js";
 import {
   ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME,
   isBaseDiscriminatorOverride,
@@ -72,7 +73,7 @@ export interface DeserializeVariableDeclarationsProps {
  * Either a model property variable or the synthetic additionalBinaryDataProperties.
  */
 export type VariableInfo =
-  | { kind: "property"; property: SdkModelPropertyType }
+  | { kind: "property"; property: SdkModelPropertyType; modelName: string }
   | { kind: "additional-binary-data" }
   | { kind: "patch" };
 
@@ -96,13 +97,23 @@ export function computeVariableInfos(model: SdkModelType): VariableInfo[] {
     );
     return [
       ...baseInfos,
-      ...ownProps.map((p): VariableInfo => ({ kind: "property", property: p })),
+      ...ownProps.map(
+        (p): VariableInfo => ({
+          kind: "property",
+          property: p,
+          modelName: model.name,
+        }),
+      ),
     ];
   }
 
   return [
     ...model.properties.map(
-      (p): VariableInfo => ({ kind: "property", property: p }),
+      (p): VariableInfo => ({
+        kind: "property",
+        property: p,
+        modelName: model.name,
+      }),
     ),
     isDynamicModel(model)
       ? { kind: "patch" as const }
@@ -166,7 +177,10 @@ export function DeserializeVariableDeclarations(
         }
 
         const p = info.property;
-        const varName = namePolicy.getName(p.name, "parameter");
+        const varName = namePolicy.getName(
+          resolvePropertyName(p.name, info.modelName),
+          "parameter",
+        );
         const nullable = isPropertyNullable(p);
         const unwrapped = unwrapNullableType(p.type);
 

@@ -20,6 +20,7 @@ import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { ensureTrailingPeriod } from "../../utils/doc.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { isModelStruct } from "../../utils/model.js";
+import { resolvePropertyName } from "../../utils/property.js";
 import { efCsharpRefkey } from "../../utils/refkey.js";
 import { DynamicModelMembers, isDynamicModel } from "./DynamicModel.js";
 import {
@@ -105,7 +106,10 @@ export function ModelFile(props: ModelFileProps) {
   const customCode = useCustomCode();
   if (customCode) {
     renderProperties = renderProperties.filter((p) => {
-      const propName = namePolicy.getName(p.name, "class-property");
+      const propName = namePolicy.getName(
+        resolvePropertyName(p.name, props.type.name),
+        "class-property",
+      );
       return !isMemberSuppressed(customCode, modelName, propName);
     });
   }
@@ -144,7 +148,13 @@ export function ModelFile(props: ModelFileProps) {
       <ModelConstructors type={props.type} isStruct={isStruct} />
       {renderProperties.length > 0 ? "\n\n" : ""}
       <For each={renderProperties} hardline>
-        {(p) => <ModelProperty property={p} modelUsage={props.type.usage} />}
+        {(p) => (
+          <ModelProperty
+            property={p}
+            modelUsage={props.type.usage}
+            modelName={props.type.name}
+          />
+        )}
       </For>
       {props.children}
     </>

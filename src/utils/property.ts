@@ -11,6 +11,7 @@
  * - Optional collections initialize to ChangeTrackingList/ChangeTrackingDictionary
  * - Required collections use .ToList()/.ToDictionary() from IEnumerable parameter
  * - Optional scalars get no explicit initialization (remain default/null)
+ * - Properties named the same as their enclosing class get a "Property" suffix (CS0542)
  *
  * @module
  */
@@ -178,4 +179,35 @@ export function getPropertyInitializerKind(
   }
 
   return "none";
+}
+
+/**
+ * Resolves a model property name to avoid CS0542 (member names cannot be the
+ * same as their enclosing type).
+ *
+ * When a property's raw TCGC name matches the model's raw TCGC name, appends
+ * a "Property" suffix to the property name. This matches the legacy emitter's
+ * PropertyProvider.cs behavior (lines 104–106):
+ *
+ * ```csharp
+ * Name = inputProperty.Name == enclosingType.Name
+ *     ? $"{inputProperty.Name.ToIdentifierName()}Property"
+ *     : inputProperty.Name.ToIdentifierName();
+ * ```
+ *
+ * The comparison uses raw TCGC names (before naming policy transformation).
+ * The returned name is then passed through the C# naming policy as usual.
+ *
+ * @param propertyName - The raw TCGC property name.
+ * @param modelName - The raw TCGC model name (enclosing type name).
+ * @returns The property name, with "Property" suffix if it collides with the model name.
+ */
+export function resolvePropertyName(
+  propertyName: string,
+  modelName: string,
+): string {
+  if (propertyName === modelName) {
+    return propertyName + "Property";
+  }
+  return propertyName;
 }

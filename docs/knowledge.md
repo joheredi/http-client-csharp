@@ -2755,3 +2755,18 @@ Unit tests and build are green. These errors only surface during the full E2E pi
 **TCGC encode property for bytes:** Default is `"base64"`. For base64url, requires `@encode(BytesKnownEncoding.base64url)` decorator directly on the param or on a custom scalar. The `SdkBuiltInType.encode` property is accessible after `unwrapType()`.
 
 **Header collection bytes correctness gap:** The current `string.Join(",", value)` for `IEnumerable<BinaryData>` header collections compiles but calls `BinaryData.ToString()` which may not produce correct encoding. The `PipelineRequestHeadersExtensionsFile` component with `SetDelimited` is ready to fix this when needed.
+
+## Design Decisions
+
+### CS0542 Property Name Collision Resolution (Task 12.22)
+
+**Chosen approach:** Utility function `resolvePropertyName(propertyName, modelName)` in `src/utils/property.ts` that appends "Property" suffix when raw TCGC property name equals raw TCGC model name.
+
+**Why this approach:**
+- Matches legacy emitter's PropertyProvider.cs (lines 104–106) exactly
+- Uses raw name comparison (case-sensitive), not post-namePolicy comparison
+- Centralizes logic in one function used across 14+ files
+
+**Rejected approach:** React context providing model name to all child components. Rejected because many serialization functions are plain utility functions, not React components, so they can't access contexts.
+
+**Edge case noted:** For derived models where a base property collides with the BASE model's name, each property is paired with its declaring model name via `VariableInfo.modelName` and `MatchablePropertyInfo.modelName` types. This ensures the collision check uses the correct model context.

@@ -25,6 +25,7 @@
 
 import { useCSharpNamePolicy } from "@alloy-js/csharp";
 import type { SdkModelType } from "@azure-tools/typespec-client-generator-core";
+import { resolvePropertyName } from "../../utils/property.js";
 import { ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME } from "../models/ModelConstructors.js";
 import { computeVariableInfos } from "./DeserializeVariableDeclarations.js";
 
@@ -63,7 +64,10 @@ export function DeserializeReturnStatement(
     if (info.kind === "patch") {
       return "patch";
     }
-    return namePolicy.getName(info.property.name, "parameter");
+    return namePolicy.getName(
+      resolvePropertyName(info.property.name, info.modelName),
+      "parameter",
+    );
   });
 
   return <>{`\n    return new ${modelName}(${paramNames.join(", ")});`}</>;

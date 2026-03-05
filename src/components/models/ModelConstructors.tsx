@@ -70,6 +70,7 @@ import {
   isConstructorParameter,
   isPropertyReadOnly,
   propertyRequiresNullCheck,
+  resolvePropertyName,
 } from "../../utils/property.js";
 import { ensureTrailingPeriod, formatDocLines } from "../../utils/doc.js";
 import { argumentRefkey, efCsharpRefkey } from "../../utils/refkey.js";
@@ -352,6 +353,7 @@ export function getConstructorAccessModifiers(model: SdkModelType): {
 function buildParameters(
   properties: SdkModelPropertyType[],
   namePolicy: ReturnType<typeof useCSharpNamePolicy>,
+  modelName: string,
 ): ParameterProps[] {
   return properties.map((p) => {
     const nullable = isPropertyNullable(p);
@@ -365,7 +367,10 @@ function buildParameters(
     );
 
     return {
-      name: namePolicy.getName(p.name, "parameter"),
+      name: namePolicy.getName(
+        resolvePropertyName(p.name, modelName),
+        "parameter",
+      ),
       type: nullable ? <>{baseType}?</> : baseType,
     };
   });
@@ -392,11 +397,15 @@ function buildParameters(
 function buildNullChecks(
   properties: SdkModelPropertyType[],
   namePolicy: ReturnType<typeof useCSharpNamePolicy>,
+  modelName: string,
 ): Children[] {
   return properties
     .filter((p) => propertyRequiresNullCheck(p))
     .map((p) => {
-      const paramName = namePolicy.getName(p.name, "parameter");
+      const paramName = namePolicy.getName(
+        resolvePropertyName(p.name, modelName),
+        "parameter",
+      );
       return code`${argumentRefkey()}.AssertNotNull(${paramName}, nameof(${paramName}));`;
     });
 }
@@ -451,16 +460,18 @@ function buildAssignments(
   allProperties: SdkModelPropertyType[],
   ctorParams: SdkModelPropertyType[],
   namePolicy: ReturnType<typeof useCSharpNamePolicy>,
+  modelName: string,
 ): string[] {
   const ctorParamSet = new Set(ctorParams);
   const lines: string[] = [];
 
   for (const p of allProperties) {
     const kind = getPropertyInitializerKind(p);
-    const propName = namePolicy.getName(p.name, "class-property");
+    const effectiveName = resolvePropertyName(p.name, modelName);
+    const propName = namePolicy.getName(effectiveName, "class-property");
 
     if (kind === "direct-assign" && ctorParamSet.has(p)) {
-      const paramName = namePolicy.getName(p.name, "parameter");
+      const paramName = namePolicy.getName(effectiveName, "parameter");
       lines.push(`${propName} = ${paramName};`);
     }
     // to-list and to-dict require collection type utilities (task 1.1.3)
@@ -514,6 +525,7 @@ export const ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME =
 function buildPropertyTypeParameters(
   properties: SdkModelPropertyType[],
   namePolicy: ReturnType<typeof useCSharpNamePolicy>,
+  modelName: string,
 ): ParameterProps[] {
   return properties.map((p) => {
     const nullable = isPropertyNullable(p);
@@ -527,7 +539,10 @@ function buildPropertyTypeParameters(
     );
 
     return {
-      name: namePolicy.getName(p.name, "parameter"),
+      name: namePolicy.getName(
+        resolvePropertyName(p.name, modelName),
+        "parameter",
+      ),
       type: nullable ? <>{baseType}?</> : baseType,
     };
   });
@@ -537,8 +552,13 @@ export function buildSerializationParameters(
   properties: SdkModelPropertyType[],
   namePolicy: ReturnType<typeof useCSharpNamePolicy>,
   isDynamic: boolean = false,
+  modelName: string = "",
 ): ParameterProps[] {
-  const propParams = buildPropertyTypeParameters(properties, namePolicy);
+  const propParams = buildPropertyTypeParameters(
+    properties,
+    namePolicy,
+    modelName,
+  );
 
   if (isDynamic) {
     propParams.push({
@@ -590,12 +610,14 @@ function buildSerializationAssignments(
   includeAdditionalBinaryData: boolean = true,
   isDynamic: boolean = false,
   hasNestedDynamicProps: boolean = false,
+  modelName: string = "",
 ): string[] {
   const lines: string[] = [];
 
   for (const p of properties) {
-    const propName = namePolicy.getName(p.name, "class-property");
-    const paramName = namePolicy.getName(p.name, "parameter");
+    const effectiveName = resolvePropertyName(p.name, modelName);
+    const propName = namePolicy.getName(effectiveName, "class-property");
+    const paramName = namePolicy.getName(effectiveName, "parameter");
     lines.push(`${propName} = ${paramName};`);
   }
 
@@ -652,13 +674,18 @@ export function computeSerializationCtorParams(
     const ownProps = model.properties.filter(
       (p) => !isBaseDiscriminatorOverride(p),
     );
-    const ownParams = buildPropertyTypeParameters(ownProps, namePolicy);
+    const ownParams = buildPropertyTypeParameters(
+      ownProps,
+      namePolicy,
+      model.name,
+    );
     return [...baseParams, ...ownParams];
   }
   return buildSerializationParameters(
     model.properties,
     namePolicy,
     isDynamicModel(model),
+    model.name,
   );
 }
 
@@ -781,9 +808,13 @@ interface ParamDocInfo {
 function toParamDocInfos(
   params: SdkModelPropertyType[],
   namePolicy: ReturnType<typeof useCSharpNamePolicy>,
+  modelName: string,
 ): ParamDocInfo[] {
   return params.map((p) => ({
-    name: namePolicy.getName(p.name, "parameter"),
+    name: namePolicy.getName(
+      resolvePropertyName(p.name, modelName),
+      "parameter",
+    ),
     doc: p.doc ?? p.summary,
   }));
 }
@@ -813,11 +844,11 @@ function collectSerializationParamDocs(
     const ownProps = model.properties.filter(
       (p) => !isBaseDiscriminatorOverride(p),
     );
-    return [...baseDocs, ...toParamDocInfos(ownProps, namePolicy)];
+    return [...baseDocs, ...toParamDocInfos(ownProps, namePolicy, model.name)];
   }
 
   // Root model: all properties + trailing additionalBinaryDataProperties or patch
-  const propDocs = toParamDocInfos(model.properties, namePolicy);
+  const propDocs = toParamDocInfos(model.properties, namePolicy, model.name);
   const isDynamic = isDynamicModel(model);
   if (isDynamic) {
     propDocs.push({
@@ -923,17 +954,18 @@ function BaseModelConstructors(props: {
     isConstructorParameter(p, isStruct),
   );
 
-  const parameters = buildParameters(ctorParamProps, namePolicy);
+  const parameters = buildParameters(ctorParamProps, namePolicy, type.name);
   // Abstract base models skip null checks — derived classes validate before
   // calling base(). This matches the legacy emitter's golden output where
   // private protected constructors have no Argument.AssertNotNull calls.
   const nullChecks = isModelAbstract(type)
     ? []
-    : buildNullChecks(ctorParamProps, namePolicy);
+    : buildNullChecks(ctorParamProps, namePolicy, type.name);
   const assignments = buildAssignments(
     type.properties,
     ctorParamProps,
     namePolicy,
+    type.name,
   );
 
   const body = renderPublicCtorBody(nullChecks, assignments);
@@ -945,8 +977,13 @@ function BaseModelConstructors(props: {
     : ctorParamProps.filter((p) => propertyRequiresNullCheck(p));
   const publicCtorDoc = buildConstructorXmlDoc(
     className,
-    toParamDocInfos(ctorParamProps, namePolicy),
-    assertableParams.map((p) => namePolicy.getName(p.name, "parameter")),
+    toParamDocInfos(ctorParamProps, namePolicy, type.name),
+    assertableParams.map((p) =>
+      namePolicy.getName(
+        resolvePropertyName(p.name, type.name),
+        "parameter",
+      ),
+    ),
   );
 
   // === Internal serialization constructor ===
@@ -957,6 +994,7 @@ function BaseModelConstructors(props: {
     type.properties,
     namePolicy,
     isDynamic,
+    type.name,
   );
   const serializationAssignments = buildSerializationAssignments(
     type.properties,
@@ -964,6 +1002,7 @@ function BaseModelConstructors(props: {
     true,
     isDynamic,
     hasNestedDynamic,
+    type.name,
   );
   const serializationBody = serializationAssignments.join("\n");
 
@@ -1050,7 +1089,7 @@ function DerivedModelConstructors(props: {
 
   // Combined parameter list: base params first, then own params
   const allCtorParams = [...baseCtorParams, ...ownCtorParams];
-  const parameters = buildParameters(allCtorParams, namePolicy);
+  const parameters = buildParameters(allCtorParams, namePolicy, type.name);
 
   // For discriminated models, validate ALL params (inherited + own) — the base
   // class's private protected ctor does NOT validate, so the derived public
@@ -1059,12 +1098,13 @@ function DerivedModelConstructors(props: {
   // public/internal ctor already validates its own params via the `: base(...)`
   // chain.
   const paramsToValidate = isDiscriminated ? allCtorParams : ownCtorParams;
-  const nullChecks = buildNullChecks(paramsToValidate, namePolicy);
+  const nullChecks = buildNullChecks(paramsToValidate, namePolicy, type.name);
   // Assignments only for own properties
   const assignments = buildAssignments(
     ownProperties,
     ownCtorParams,
     namePolicy,
+    type.name,
   );
 
   const publicBody = renderPublicCtorBody(nullChecks, assignments);
@@ -1082,7 +1122,10 @@ function DerivedModelConstructors(props: {
     );
   } else {
     const baseParamNames = computePublicCtorParams(baseModel).map((p) =>
-      namePolicy.getName(p.name, "parameter"),
+      namePolicy.getName(
+        resolvePropertyName(p.name, baseModel.name),
+        "parameter",
+      ),
     );
     publicBaseInit = baseParamNames.join(", ");
   }
@@ -1097,6 +1140,7 @@ function DerivedModelConstructors(props: {
   const ownSerializationParams = buildPropertyTypeParameters(
     ownProperties,
     namePolicy,
+    type.name,
   );
 
   const serializationParams = [
@@ -1115,6 +1159,9 @@ function DerivedModelConstructors(props: {
     ownProperties,
     namePolicy,
     false,
+    false,
+    false,
+    type.name,
   );
   const serializationBody = serializationAssignments.join("\n");
 
@@ -1123,10 +1170,15 @@ function DerivedModelConstructors(props: {
   // Exception doc params match the null-check scope (all vs own).
   const assertableParams = paramsToValidate
     .filter((p) => propertyRequiresNullCheck(p))
-    .map((p) => namePolicy.getName(p.name, "parameter"));
+    .map((p) =>
+      namePolicy.getName(
+        resolvePropertyName(p.name, type.name),
+        "parameter",
+      ),
+    );
   const publicCtorDoc = buildConstructorXmlDoc(
     className,
-    toParamDocInfos(allCtorParams, namePolicy),
+    toParamDocInfos(allCtorParams, namePolicy, type.name),
     assertableParams,
   );
   const serializationCtorDoc = buildConstructorXmlDoc(
@@ -1193,7 +1245,12 @@ function buildPublicBaseInitializer(
       parts.push(discriminatorLiteral);
     } else {
       // Regular parameter — pass through
-      parts.push(namePolicy.getName(param.name, "parameter"));
+      parts.push(
+        namePolicy.getName(
+          resolvePropertyName(param.name, baseModel.name),
+          "parameter",
+        ),
+      );
     }
   }
 

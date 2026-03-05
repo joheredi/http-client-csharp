@@ -37,6 +37,7 @@ import { SystemComponentModel } from "../../builtins/system-component-model.js";
 import { SystemClientModelPrimitives } from "../../builtins/system-client-model.js";
 import { SystemTextJsonSerialization } from "../../builtins/system-text-json-serialization.js";
 import { unwrapNullableType } from "../../utils/nullable.js";
+import { resolvePropertyName } from "../../utils/property.js";
 
 /**
  * Determines whether a model is a dynamic model (used for JSON Merge Patch).
@@ -212,19 +213,27 @@ export function getDynamicModelProperties(
   const result: PropagatableProperty[] = [];
 
   // Collect from current model and base models (propagators traverse hierarchy)
-  const allProperties: SdkModelPropertyType[] = [];
+  const allPropertyInfos: {
+    property: SdkModelPropertyType;
+    modelName: string;
+  }[] = [];
   let current: SdkModelType | undefined = model;
   while (current) {
-    allProperties.push(...current.properties);
+    for (const p of current.properties) {
+      allPropertyInfos.push({ property: p, modelName: current.name });
+    }
     current = current.baseModel;
   }
 
-  for (const p of allProperties) {
+  for (const { property: p, modelName } of allPropertyInfos) {
     const steps = getNavigationSteps(p.type);
     if (steps !== null) {
       result.push({
         wireName: p.serializedName,
-        csharpName: namePolicy.getName(p.name, "class-property"),
+        csharpName: namePolicy.getName(
+          resolvePropertyName(p.name, modelName),
+          "class-property",
+        ),
         steps,
       });
     }

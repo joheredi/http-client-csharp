@@ -23,7 +23,7 @@ import {
   isPropertyNullable,
   unwrapNullableType,
 } from "../../utils/nullable.js";
-import { isPropertyReadOnly } from "../../utils/property.js";
+import { isPropertyReadOnly, resolvePropertyName } from "../../utils/property.js";
 import { literalTypeRefkey } from "../../utils/refkey.js";
 import { needsLiteralWrapperStruct } from "../literal-types/collect.js";
 
@@ -35,6 +35,8 @@ export interface ModelPropertyProps {
   property: SdkModelPropertyType;
   /** Usage flags for the containing model (Input, Output, or both). */
   modelUsage: UsageFlags;
+  /** The raw TCGC name of the enclosing model, used for CS0542 collision detection. */
+  modelName: string;
 }
 
 /**
@@ -126,7 +128,7 @@ export function isDiscriminatorProperty(
  * ```
  */
 export function ModelProperty(props: ModelPropertyProps) {
-  const { property, modelUsage } = props;
+  const { property, modelUsage, modelName } = props;
   const nullable = isPropertyNullable(property);
   const type = unwrapNullableType(property.type);
   const isDiscriminator = isDiscriminatorProperty(property);
@@ -137,6 +139,9 @@ export function ModelProperty(props: ModelPropertyProps) {
   const formattedDoc = doc
     ? `<summary> ${ensureTrailingPeriod(doc)} </summary>`
     : undefined;
+
+  // Resolve property name to avoid CS0542 (member name same as enclosing type)
+  const effectiveName = resolvePropertyName(property.name, modelName);
 
   // Collection types (arrays, dicts) render as IList<T>/IReadOnlyList<T> or
   // IDictionary<string,T>/IReadOnlyDictionary<string,T> instead of T[] or the
@@ -158,7 +163,7 @@ export function ModelProperty(props: ModelPropertyProps) {
     <Property
       public={!isDiscriminator}
       internal={isDiscriminator}
-      name={property.name}
+      name={effectiveName}
       type={typeExpr}
       get
       set={hasSetter}

@@ -16,6 +16,7 @@ import {
   isConstructorParameter,
   isPropertyReadOnly,
   propertyRequiresNullCheck,
+  resolvePropertyName,
 } from "../src/utils/property.js";
 
 // --- Mock helpers ---
@@ -487,5 +488,49 @@ describe("getPropertyInitializerKind", () => {
       optional: true,
     });
     expect(getPropertyInitializerKind(prop)).toBe("change-tracking-list");
+  });
+});
+
+/**
+ * Tests for resolvePropertyName — CS0542 collision detection.
+ *
+ * C# rule CS0542 forbids members with the same name as their enclosing type.
+ * The legacy emitter (PropertyProvider.cs lines 104–106) appends "Property"
+ * suffix when a property name matches the class name. These tests verify
+ * that resolvePropertyName correctly detects and resolves such collisions.
+ */
+describe("resolvePropertyName", () => {
+  it("appends 'Property' suffix when property name matches model name", () => {
+    // This is the exact SameAsModel case from the special-words spec:
+    // model SameAsModel { SameAsModel: string; } → SameAsModelProperty
+    expect(resolvePropertyName("SameAsModel", "SameAsModel")).toBe(
+      "SameAsModelProperty",
+    );
+  });
+
+  it("returns original name when no collision exists", () => {
+    // Normal case: property name differs from model name
+    expect(resolvePropertyName("name", "Widget")).toBe("name");
+  });
+
+  it("is case-sensitive (matches raw TCGC names)", () => {
+    // The legacy emitter compares raw names. If casing differs, no rename.
+    expect(resolvePropertyName("sameAsModel", "SameAsModel")).toBe(
+      "sameAsModel",
+    );
+  });
+
+  it("handles single-word names", () => {
+    // Edge case: simple name collision
+    expect(resolvePropertyName("Foo", "Foo")).toBe("FooProperty");
+  });
+
+  it("does not double-suffix if already ends with Property", () => {
+    // If a property is already named "FooProperty" and collides with
+    // a model named "FooProperty", it becomes "FooPropertyProperty".
+    // This matches the legacy emitter's behavior (simple string concat).
+    expect(resolvePropertyName("FooProperty", "FooProperty")).toBe(
+      "FooPropertyProperty",
+    );
   });
 });

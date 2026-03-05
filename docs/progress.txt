@@ -4570,3 +4570,34 @@ The components were created but never wired into the emitter output tree. Conven
 - The header collection case for bytes (`string.Join(",", value)`) compiles but may produce incorrect runtime encoding for base64url arrays. Consider adding `PipelineRequestHeadersExtensionsFile` to the emitter output and using `SetDelimited` for header collections. The `PipelineRequestHeadersExtensionsFile` component already exists in `src/components/infrastructure/`.
 - Pre-existing e2e failures in payload/multipart and next-link-verb are unrelated to this fix
 - 1310 unit tests passing (was 1307), 68 test files, lint clean
+
+## 2026-03-05 — Task 12.22: Fix property name collision with enclosing class name (CS0542)
+
+**What was done:**
+Added `resolvePropertyName(propertyName, modelName)` utility to detect when a model property has the same raw TCGC name as its enclosing model and append a "Property" suffix to avoid C# error CS0542. This matches the legacy emitter's PropertyProvider.cs behavior (lines 104–106).
+
+**Files Changed:**
+- `src/utils/property.ts` — Added `resolvePropertyName()` utility function
+- `src/components/models/ModelProperty.tsx` — Added `modelName` prop; uses resolved name in `<Property>`
+- `src/components/models/ModelFile.tsx` — Passes `modelName` to `<ModelProperty>`; uses resolved name in custom code filter
+- `src/components/models/ModelConstructors.tsx` — Added `modelName` param to `buildParameters`, `buildNullChecks`, `buildAssignments`, `buildPropertyTypeParameters`, `buildSerializationParameters`, `buildSerializationAssignments`, `toParamDocInfos`, `computeSerializationCtorParams`, `buildPublicBaseInitializer`
+- `src/components/models/DynamicModel.tsx` — Uses `resolvePropertyName` in `getDynamicModelProperties`
+- `src/components/serialization/PropertySerializer.tsx` — Added `modelName` to props; uses resolved name
+- `src/components/serialization/DynamicPropertySerializer.tsx` — Added `modelName` to props; uses resolved name
+- `src/components/serialization/JsonModelWriteCore.tsx` — Passes `modelName` to serialization components
+- `src/components/serialization/DeserializeVariableDeclarations.tsx` — Added `modelName` to `VariableInfo`; uses resolved name
+- `src/components/serialization/DeserializeReturnStatement.tsx` — Uses resolved name from `VariableInfo.modelName`
+- `src/components/serialization/PropertyMatchingLoop.tsx` — Added `computeMatchablePropertyInfos` helper; uses resolved name
+- `src/components/serialization/UnknownDiscriminatorModelSerializationFile.tsx` — Uses resolved name from `VariableInfo.modelName`
+- `src/components/serialization/XmlModelWriteCore.tsx` — Uses resolved name for attribute/element/text writes
+- `src/components/serialization/XmlDeserialize.tsx` — Added `modelName` param to `renderAttributeMatch`/`renderElementMatch`
+- `src/components/model-factory/ModelFactoryMethod.tsx` — Added `computeSerializationPropertyInfos` helper; uses resolved name
+- `test/property-utils.test.ts` — 5 new unit tests for `resolvePropertyName`
+- `test/scenarios/models/property_name_collision.md` — Scenario test verifying SameAsModel → SameAsModelProperty
+
+**Key Pattern:**
+- The comparison uses raw TCGC names (before naming policy transformation), matching the legacy emitter
+- Each property is paired with its DECLARING model's name (not the rendered model) to handle inheritance correctly
+- `VariableInfo` and `MatchablePropertyInfo` types carry the declaring model name through the component tree
+
+**Result:** 1316 tests passing (was 1310), 68 test files, build clean, e2e clean.

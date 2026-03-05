@@ -77,6 +77,7 @@ import {
   isPropertyNullable,
   unwrapNullableType,
 } from "../../utils/nullable.js";
+import { resolvePropertyName } from "../../utils/property.js";
 
 /**
  * Props for the {@link UnknownDiscriminatorModelSerializationFile} component.
@@ -307,7 +308,10 @@ export function UnknownDiscriminatorModelSerializationFile(
       if (info.kind === "patch") {
         return "patch";
       }
-      return namePolicy.getName(info.property.name, "parameter");
+      return namePolicy.getName(
+        resolvePropertyName(info.property.name, info.modelName),
+        "parameter",
+      );
     });
     deserializeReturnStmt = `\n    return new ${unknownName}(${returnArgs.join(", ")});`;
   }
@@ -379,7 +383,10 @@ function UnknownDeserializeVariables(props: { type: SdkModelType }) {
         }
 
         const p = info.property;
-        const varName = namePolicy.getName(p.name, "parameter");
+        const varName = namePolicy.getName(
+          resolvePropertyName(p.name, info.modelName),
+          "parameter",
+        );
         const nullable = isPropertyNullable(p);
         const unwrapped = unwrapNullableType(p.type);
         const isDiscriminator = p.discriminator === true;

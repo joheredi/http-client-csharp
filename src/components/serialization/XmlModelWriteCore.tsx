@@ -58,6 +58,7 @@ import { System } from "../../builtins/system.js";
 import { SystemXml } from "../../builtins/system-xml.js";
 import { SystemClientModelPrimitives } from "../../builtins/system-client-model.js";
 import { unwrapNullableType } from "../../utils/nullable.js";
+import { resolvePropertyName } from "../../utils/property.js";
 import {
   needsSerializationGuard,
   buildGuardCondition,
@@ -825,7 +826,10 @@ export function XmlModelWriteCore(props: XmlModelWriteCoreProps) {
 
   // Attributes first
   for (const prop of attributes) {
-    const csharpName = namePolicy.getName(prop.name, "class-property");
+    const csharpName = namePolicy.getName(
+      resolvePropertyName(prop.name, props.type.name),
+      "class-property",
+    );
     const guarded = renderGuardedProperty(
       prop,
       csharpName,
@@ -837,7 +841,10 @@ export function XmlModelWriteCore(props: XmlModelWriteCoreProps) {
 
   // Then elements
   for (const prop of elements) {
-    const csharpName = namePolicy.getName(prop.name, "class-property");
+    const csharpName = namePolicy.getName(
+      resolvePropertyName(prop.name, props.type.name),
+      "class-property",
+    );
     const guarded = renderGuardedProperty(
       prop,
       csharpName,
@@ -849,7 +856,10 @@ export function XmlModelWriteCore(props: XmlModelWriteCoreProps) {
 
   // Then text content
   if (textContent) {
-    const csharpName = namePolicy.getName(textContent.name, "class-property");
+    const csharpName = namePolicy.getName(
+      resolvePropertyName(textContent.name, props.type.name),
+      "class-property",
+    );
     const scalarWrite = getXmlScalarWrite(textContent.type, csharpName);
     if (scalarWrite) {
       propertyWrites.push(<>{`\n    ${scalarWrite}`}</>);

@@ -138,10 +138,16 @@ export function JsonModelWriteCore(props: JsonModelWriteCoreProps) {
         "\n#pragma warning disable SCME0001 // Type is for evaluation purposes only and is subject to change or removal in future updates."}
       {isDynamic
         ? serializableProperties.map((p) => (
-            <DynamicWritePropertySerialization property={p} />
+            <DynamicWritePropertySerialization
+              property={p}
+              modelName={props.type.name}
+            />
           ))
         : serializableProperties.map((p) => (
-            <WritePropertySerialization property={p} />
+            <WritePropertySerialization
+              property={p}
+              modelName={props.type.name}
+            />
           ))}
       {isDynamic ? null : props.children}
       {isDynamic && "\n\n    Patch.WriteTo(writer);"}

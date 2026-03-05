@@ -62,6 +62,7 @@ import {
   isPropertyNullable,
   unwrapNullableType,
 } from "../../utils/nullable.js";
+import { resolvePropertyName } from "../../utils/property.js";
 import { isDynamicModel } from "../models/DynamicModel.js";
 import {
   isBaseDiscriminatorOverride,
@@ -110,6 +111,38 @@ export function computeMatchableProperties(
   }
 
   return [...model.properties];
+}
+
+/**
+ * Represents a matchable property paired with its declaring model name.
+ * Used for CS0542 collision detection: a property name is only renamed
+ * when it matches the name of its declaring model, not a derived model.
+ */
+interface MatchablePropertyInfo {
+  property: SdkModelPropertyType;
+  modelName: string;
+}
+
+/**
+ * Computes matchable properties with their declaring model names.
+ * Each property is paired with the name of the model that declares it,
+ * which is needed for accurate CS0542 property name collision detection.
+ */
+function computeMatchablePropertyInfos(
+  model: SdkModelType,
+): MatchablePropertyInfo[] {
+  if (model.baseModel) {
+    const baseInfos = computeMatchablePropertyInfos(model.baseModel);
+    const ownProps = model.properties.filter(
+      (p) => !isBaseDiscriminatorOverride(p),
+    );
+    return [
+      ...baseInfos,
+      ...ownProps.map((p) => ({ property: p, modelName: model.name })),
+    ];
+  }
+
+  return model.properties.map((p) => ({ property: p, modelName: model.name }));
 }
 
 /**
@@ -925,15 +958,18 @@ function renderDictionaryDeserialization(
  */
 export function PropertyMatchingLoop(props: PropertyMatchingLoopProps) {
   const namePolicy = useCSharpNamePolicy();
-  const properties = computeMatchableProperties(props.type);
+  const propertyInfos = computeMatchablePropertyInfos(props.type);
 
   return (
     <>
       {"\n    foreach (var jsonProperty in element.EnumerateObject())"}
       {"\n    {"}
-      {properties.map((p) => {
+      {propertyInfos.map(({ property: p, modelName }) => {
         const serializedName = p.serializedName;
-        const varName = namePolicy.getName(p.name, "parameter");
+        const varName = namePolicy.getName(
+          resolvePropertyName(p.name, modelName),
+          "parameter",
+        );
         const unwrapped = unwrapNullableType(p.type);
         const nullBehavior = getNullCheckBehavior(p);
 

@@ -64,6 +64,7 @@ import {
   isPropertyNullable,
   unwrapNullableType,
 } from "../../utils/nullable.js";
+import { resolvePropertyName } from "../../utils/property.js";
 import { efCsharpRefkey, unknownModelRefkey } from "../../utils/refkey.js";
 import {
   ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME,
@@ -111,6 +112,34 @@ function computeSerializationProperties(
     return [...baseProps, ...ownProps];
   }
   return [...model.properties];
+}
+
+/**
+ * Represents a serialization property paired with its declaring model name.
+ * Used for CS0542 collision detection in factory method parameter naming.
+ */
+interface SerializationPropertyInfo {
+  property: SdkModelPropertyType;
+  modelName: string;
+}
+
+/**
+ * Computes serialization properties with their declaring model names.
+ */
+function computeSerializationPropertyInfos(
+  model: SdkModelType,
+): SerializationPropertyInfo[] {
+  if (model.baseModel) {
+    const baseInfos = computeSerializationPropertyInfos(model.baseModel);
+    const ownProps = model.properties.filter(
+      (p) => !isBaseDiscriminatorOverride(p),
+    );
+    return [
+      ...baseInfos,
+      ...ownProps.map((p) => ({ property: p, modelName: model.name })),
+    ];
+  }
+  return model.properties.map((p) => ({ property: p, modelName: model.name }));
 }
 
 /**
@@ -210,6 +239,7 @@ export function ModelFactoryMethod(props: ModelFactoryMethodProps) {
   // Get all properties in serialization constructor order (base first, then own).
   // This gives us access to the SdkType for collection detection.
   const allProperties = computeSerializationProperties(props.type);
+  const allPropertyInfos = computeSerializationPropertyInfos(props.type);
 
   // Compute the number of base-model properties so we can insert the
   // additionalBinaryDataProperties argument at the correct constructor position.
@@ -234,8 +264,13 @@ export function ModelFactoryMethod(props: ModelFactoryMethodProps) {
   // additionalBinaryDataProperties at the right position.
   let ctorArgIndex = 0;
 
-  for (const p of allProperties) {
-    const paramName = namePolicy.getName(p.name, "parameter");
+  for (let i = 0; i < allProperties.length; i++) {
+    const p = allProperties[i];
+    const { modelName } = allPropertyInfos[i];
+    const paramName = namePolicy.getName(
+      resolvePropertyName(p.name, modelName),
+      "parameter",
+    );
 
     // Insert additionalBinaryDataProperties at the boundary between base and own props.
     if (ctorArgIndex === basePropertyCount) {

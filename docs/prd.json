@@ -333,7 +333,7 @@
         {
           "id": "12.20",
           "title": "Fix type mapping in serialization constructors for inherited models",
-          "description": "Deserialization constructors and model factory methods pass arguments in wrong order or with wrong types for inherited models. Specific issues:\n- CS1503: Uri passed where DateTime expected (deserialize-empty-string-as-null)\n- CS1503: int passed where IDictionary<string, BinaryData> expected — model factory argument order mismatch for inherited models (not-discriminated, nested-discriminator, hierarchy-building)\n- CS1503: Wrong scalar type in deserialization for various type conversions (type/scalar, routes, type/model/visibility)\n- CS1503: RequestOptions passed where CancellationToken expected (routes) — convenience method calls protocol method with wrong argument types\n\nThe root cause for inheritance models is that the model factory passes arguments in property order, but the serialization constructor has additionalBinaryDataProperties interleaved between base and own properties.\n\nAffected specs: azure/client-generator-core/deserialize-empty-string-as-null, azure/client-generator-core/hierarchy-building, type/model/inheritance/enum-discriminator, type/model/inheritance/nested-discriminator, type/model/inheritance/not-discriminated, type/model/visibility, type/scalar, routes.\n\nTo reproduce: Remove these specs from test/e2e/.testignore, run pnpm emit:e2e --filter type/model/inheritance/not-discriminated, then dotnet build.",
+          "description": "Deserialization constructors and model factory methods pass arguments in wrong order or with wrong types for inherited models. Specific issues:\n- CS1503: Uri passed where DateTime expected (deserialize-empty-string-as-null)\n- CS1503: int passed where IDictionary<string, BinaryData> expected \u2014 model factory argument order mismatch for inherited models (not-discriminated, nested-discriminator, hierarchy-building)\n- CS1503: Wrong scalar type in deserialization for various type conversions (type/scalar, routes, type/model/visibility)\n- CS1503: RequestOptions passed where CancellationToken expected (routes) \u2014 convenience method calls protocol method with wrong argument types\n\nThe root cause for inheritance models is that the model factory passes arguments in property order, but the serialization constructor has additionalBinaryDataProperties interleaved between base and own properties.\n\nAffected specs: azure/client-generator-core/deserialize-empty-string-as-null, azure/client-generator-core/hierarchy-building, type/model/inheritance/enum-discriminator, type/model/inheritance/nested-discriminator, type/model/inheritance/not-discriminated, type/model/visibility, type/scalar, routes.\n\nTo reproduce: Remove these specs from test/e2e/.testignore, run pnpm emit:e2e --filter type/model/inheritance/not-discriminated, then dotnet build.",
           "phase": "phase-12",
           "status": "pending",
           "dependencies": [],
@@ -382,7 +382,7 @@
           "title": "Fix property name collision with enclosing class name",
           "description": "In the special-words spec, a model class SameAsModel has a property also named SameAsModel, violating C# rule CS0542 (member names cannot be the same as their enclosing type). The naming policy should detect this collision and rename the property (e.g., append 'Property' suffix or use a different naming strategy).\n\nAffected spec: special-words.\n\nTo reproduce: Remove this spec from test/e2e/.testignore, run pnpm emit:e2e --filter special-words, then dotnet build.",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [
@@ -400,7 +400,7 @@
         {
           "id": "12.23",
           "title": "Fix missing Argument helper class reference in LRO models",
-          "description": "Models in azure/core/lro/rpc and azure/core/lro/standard reference Argument.AssertNotNull() but the Argument helper class is not in scope (CS0103, 6 occurrences). The internal helper files are generated but the using directive for the Internal namespace is missing from these model files.\n\nThis may be related to task 12.9 (rootNamespace mismatch) — if the Internal namespace differs from what the model expects.\n\nAffected specs: azure/core/lro/rpc, azure/core/lro/standard.\n\nTo reproduce: Remove these specs from test/e2e/.testignore, run pnpm emit:e2e --filter azure/core/lro/rpc, then dotnet build.",
+          "description": "Models in azure/core/lro/rpc and azure/core/lro/standard reference Argument.AssertNotNull() but the Argument helper class is not in scope (CS0103, 6 occurrences). The internal helper files are generated but the using directive for the Internal namespace is missing from these model files.\n\nThis may be related to task 12.9 (rootNamespace mismatch) \u2014 if the Internal namespace differs from what the model expects.\n\nAffected specs: azure/core/lro/rpc, azure/core/lro/standard.\n\nTo reproduce: Remove these specs from test/e2e/.testignore, run pnpm emit:e2e --filter azure/core/lro/rpc, then dotnet build.",
           "phase": "phase-12",
           "status": "pending",
           "dependencies": [],
@@ -422,7 +422,7 @@
         {
           "id": "12.24",
           "title": "Fix convenience method overload argument count mismatches",
-          "description": "Generated convenience methods call protocol method overloads with wrong argument counts, causing CS1501 errors:\n- client/overload: CreateGetAllRequest called with 2 args but no matching overload (4 errors)\n- azure/core/traits: Convenience method passes wrong number of arguments to protocol method (4 errors)\n- special-headers/conditional-request: Similar argument count mismatch (4 errors)\n\nThe issue is in how ConvenienceMethod.tsx builds the call to the protocol method — it doesn't always match the protocol method's parameter list when there are optional parameters or method overloads.\n\nAffected specs: client/overload, azure/core/traits, special-headers/conditional-request.\n\nTo reproduce: Remove these specs from test/e2e/.testignore, run pnpm emit:e2e --filter client/overload, then dotnet build.",
+          "description": "Generated convenience methods call protocol method overloads with wrong argument counts, causing CS1501 errors:\n- client/overload: CreateGetAllRequest called with 2 args but no matching overload (4 errors)\n- azure/core/traits: Convenience method passes wrong number of arguments to protocol method (4 errors)\n- special-headers/conditional-request: Similar argument count mismatch (4 errors)\n\nThe issue is in how ConvenienceMethod.tsx builds the call to the protocol method \u2014 it doesn't always match the protocol method's parameter list when there are optional parameters or method overloads.\n\nAffected specs: client/overload, azure/core/traits, special-headers/conditional-request.\n\nTo reproduce: Remove these specs from test/e2e/.testignore, run pnpm emit:e2e --filter client/overload, then dotnet build.",
           "phase": "phase-12",
           "status": "pending",
           "dependencies": [],
@@ -444,7 +444,7 @@
         {
           "id": "12.25",
           "title": "Fix union type serialization and conversion methods",
-          "description": "Union type serialization generates incorrect code:\n- CS1929: BinaryData.ToSerialString() — ToSerialString is an extension method for the union enum type, not BinaryData (4 errors)\n- CS0029: Cannot implicitly convert union enum types (EnumsOnlyCasesLr, EnumsOnlyCasesUd) to BinaryData (4 errors)\n\nThe serialization code tries to serialize union values using methods that don't exist on the generated types. The union type expression and serialization logic needs to handle the case where a union value needs to be serialized through its discriminated type.\n\nAffected spec: type/union.\n\nTo reproduce: Remove this spec from test/e2e/.testignore, run pnpm emit:e2e --filter type/union, then dotnet build.",
+          "description": "Union type serialization generates incorrect code:\n- CS1929: BinaryData.ToSerialString() \u2014 ToSerialString is an extension method for the union enum type, not BinaryData (4 errors)\n- CS0029: Cannot implicitly convert union enum types (EnumsOnlyCasesLr, EnumsOnlyCasesUd) to BinaryData (4 errors)\n\nThe serialization code tries to serialize union values using methods that don't exist on the generated types. The union type expression and serialization logic needs to handle the case where a union value needs to be serialized through its discriminated type.\n\nAffected spec: type/union.\n\nTo reproduce: Remove this spec from test/e2e/.testignore, run pnpm emit:e2e --filter type/union, then dotnet build.",
           "phase": "phase-12",
           "status": "pending",
           "dependencies": [],
