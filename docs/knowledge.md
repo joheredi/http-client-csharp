@@ -2870,3 +2870,16 @@ using directive won't match the actual namespace.
 ### Spread body constructor arg ordering (Task 12.26)
 **Chosen**: Recover model property order by re-sorting filtered body params by original insertion `index` after the priority sort. This is computed in `buildConvenienceParams` and returned as `spreadBodyParamsInOrder`.
 **Rejected**: (a) Name-matching against `spreadBodyType.properties` — fragile due to naming policy transformations. (b) Adding `modelPropertyIndex` field to `ConvenienceParam` — pollutes the interface with spread-only metadata.
+
+## DateTimeOffset nullable formatting (2026-03-05)
+**Gotcha**: `DateTimeOffset?.ToString("O")` causes CS1501 because `Nullable<T>` only has `ToString()` (no format overload). Always use `TypeFormatters.ConvertToString(value, SerializationFormat.DateTime_RFC3339)` for DateTimeOffset parameters in CreateRequest methods, which handles nullable via boxing and pattern matching.
+
+## CreateRequest method name deduplication (2026-03-05)
+**Gotcha**: When two operations map to the same C# name (via `@clientName`), `<Method name={stringName}>` triggers Alloy's name dedup (`_2` suffix). Use `namekey(name, { ignoreNameConflict: true })` since C# method overloading handles same-name methods with different parameter signatures. Protocol methods reference CreateRequest by string interpolation and can't track Alloy's dedup.
+
+## Design Decisions
+### DateTime parameter formatting (2026-03-05)
+**Chosen**: `TypeFormatters.ConvertToString(name, SerializationFormat.DateTime_RFC3339)` for all datetime params.
+**Why**: Matches legacy emitter pattern; handles both nullable and non-nullable; works inside null-check guards where C# doesn't narrow `T?` to `T`.
+**Rejected**: `name.Value.ToString("O")` — requires conditional logic based on optionality; `.Value` would throw if called outside null guard.
+**Rejected**: `name.ToString("O")` — only works on non-nullable `DateTimeOffset`; fails on `DateTimeOffset?` with CS1501.

@@ -947,10 +947,12 @@ describe("RestClientFile", () => {
    * type in the method signature and `.ToString("O")` for ISO 8601
    * formatting in the URI.
    *
-   * DateTime parameters must use ISO 8601 format ("O" specifier) for
-   * interoperability with REST APIs.
+   * DateTime parameters must use TypeFormatters.ConvertToString for nullable-safe
+   * ISO 8601 format ("O" specifier) interoperability with REST APIs.
+   * Using TypeFormatters instead of direct .ToString("O") avoids CS1501 on
+   * Nullable<DateTimeOffset> which lacks the ToString(string) overload.
    */
-  it("generates DateTimeOffset with ToString O for utcDateTime param", async () => {
+  it("generates TypeFormatters.ConvertToString for utcDateTime param", async () => {
     const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
@@ -971,9 +973,9 @@ describe("RestClientFile", () => {
     // Verify using System; for DateTimeOffset
     expect(restClient).toContain("using System;");
 
-    // Verify ISO 8601 formatting
+    // Verify ISO 8601 formatting via TypeFormatters
     expect(restClient).toContain(
-      'uri.AppendQuery("since", since.ToString("O"), true);',
+      'uri.AppendQuery("since", TypeFormatters.ConvertToString(since, SerializationFormat.DateTime_RFC3339), true);',
     );
   });
 
@@ -1430,5 +1432,96 @@ describe("RestClientFile", () => {
     // Verify both CreateRequest methods use the correct field
     const matches = restClient!.match(/uri\.AppendPath\(_blobName/g);
     expect(matches).toHaveLength(2);
+  });
+
+  /**
+   * Verifies that when two operations are renamed to the same C# name (via
+   * @clientName), their Create*Request methods use the same name and rely on
+   * C# method overloading instead of Alloy's _2 deduplication suffix.
+   *
+   * Without ignoreNameConflict, Alloy renames the second method to
+   * CreateGetAllRequest_2, but protocol methods reference the original name
+   * CreateGetAllRequest — causing CS1501 (no matching overload).
+   *
+   * This was the root cause of the client/overload spec compilation failure.
+   */
+  it("generates overloaded CreateRequest methods when operations share a name", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+      using Azure.ClientGenerator.Core;
+
+      @service
+      namespace TestService;
+
+      model Resource {
+        id: string;
+        name: string;
+      }
+
+      @route("/resources")
+      @get op list(): Resource[];
+
+      #suppress "@azure-tools/typespec-client-generator-core/duplicate-client-name-warning" "testing"
+      @route("/resources/{scope}")
+      @get op listByScope(@path scope: string): Resource[];
+
+      @@clientName(listByScope, "list", "csharp");
+    `);
+    // Filter to errors only — TCGC may emit warnings about duplicate names
+    const errors = diagnostics.filter((d) => d.severity === "error");
+    expect(errors).toHaveLength(0);
+
+    const restClient =
+      outputs["src/Generated/TestServiceClient.RestClient.cs"] ?? "";
+
+    // Both CreateRequest methods should use the same base name (no _2 suffix)
+    // since C# method overloading distinguishes them by parameter count
+    expect(restClient).toContain("CreateGetAllRequest(RequestOptions options)");
+    expect(restClient).toContain(
+      "CreateGetAllRequest(string scope, RequestOptions options)",
+    );
+    // The second method should NOT have a _2 suffix
+    expect(restClient).not.toContain("_2");
+  });
+
+  /**
+   * Verifies that optional (nullable) DateTimeOffset header parameters use
+   * TypeFormatters.ConvertToString instead of .ToString("O") for formatting.
+   *
+   * Nullable<DateTimeOffset> does not have the ToString(string format) overload,
+   * so calling .ToString("O") on a DateTimeOffset? causes CS1501. The
+   * TypeFormatters.ConvertToString method handles nullable values correctly
+   * through boxing and pattern matching.
+   *
+   * This was the root cause of azure/core/traits and special-headers/conditional-request
+   * compilation failures.
+   */
+  it("uses TypeFormatters.ConvertToString for optional DateTimeOffset header params", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/check")
+      @head op checkModified(
+        @header("If-Modified-Since") ifModifiedSince?: utcDateTime,
+        @header("If-Unmodified-Since") ifUnmodifiedSince?: utcDateTime,
+      ): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const restClient =
+      outputs["src/Generated/TestServiceClient.RestClient.cs"] ?? "";
+
+    // Optional datetime headers should use TypeFormatters.ConvertToString
+    expect(restClient).toContain(
+      'request.Headers.Set("If-Modified-Since", TypeFormatters.ConvertToString(ifModifiedSince, SerializationFormat.DateTime_RFC3339));',
+    );
+    expect(restClient).toContain(
+      'request.Headers.Set("If-Unmodified-Since", TypeFormatters.ConvertToString(ifUnmodifiedSince, SerializationFormat.DateTime_RFC3339));',
+    );
+    // Should NOT use direct .ToString("O") which fails on nullable types
+    expect(restClient).not.toContain('.ToString("O")');
   });
 });

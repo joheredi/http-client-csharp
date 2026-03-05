@@ -98,11 +98,6 @@ special-words
 
 # CS0103: 'Argument' helper class not found (missing infrastructure using)
 
-# CS1501: Wrong number of method arguments in overloaded convenience methods
-client/overload
-azure/core/traits
-special-headers/conditional-request
-
 # === Union type issues ===
 # CS0029/CS1929: Union type conversion and missing extension methods
 type/union

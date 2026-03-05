@@ -4749,3 +4749,31 @@ Alloy's `<Namespace>` component renders.
 **Test added**: `passes spread model args in model property order with default for additionalBinaryDataProperties` — uses model with interleaved required/optional to validate both ordering and default parameter.
 
 **Files changed**: `src/components/clients/ConvenienceMethod.tsx`, 4 scenario test files updated expectations.
+
+## 2026-03-05 — Task 12.24: Fix CS1501 errors in three specs
+
+### What was done
+- Fixed two distinct CS1501 root causes across client/overload, azure/core/traits, special-headers/conditional-request
+
+### Fix 1: CreateRequestMethod name collision (client/overload)
+- In RestClientFile.tsx, CreateRequestMethod used plain string `name={methodName}` for the <Method> component
+- When two operations map to the same C# name (via @clientName), Alloy's name deduplication added `_2` suffix
+- Protocol methods referenced the un-suffixed name via string interpolation, causing CS1501
+- Fix: Use `namekey(methodName, { ignoreNameConflict: true })` since C# method overloading handles same-named methods with different signatures
+
+### Fix 2: DateTimeOffset?.ToString("O") on nullable types (azure/core/traits, conditional-request)
+- getParamValueExpression generated `name.ToString("O")` for datetime types
+- Nullable<DateTimeOffset> lacks the ToString(string format) overload, causing CS1501
+- Fix: Use `TypeFormatters.ConvertToString(name, SerializationFormat.DateTime_RFC3339)` which handles nullable via boxing
+
+### Files changed
+- src/components/clients/RestClientFile.tsx (both fixes)
+- test/rest-client.test.ts (updated existing test, added 2 new tests)
+- test/e2e/.testignore (removed 3 specs from skip list)
+
+### Patterns used
+- `namekey(name, { ignoreNameConflict: true })` for C# method overloading
+- `TypeFormatters.ConvertToString(value, SerializationFormat.DateTime_RFC3339)` for nullable-safe datetime formatting
+
+### E2E results
+- 84 specs succeeded (up from 81), 0 failed, 36 skipped

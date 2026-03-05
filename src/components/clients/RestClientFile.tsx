@@ -317,7 +317,7 @@ function CreateRequestMethod(props: CreateRequestMethodProps) {
   return (
     <Method
       internal
-      name={methodName}
+      name={namekey(methodName, { ignoreNameConflict: true })}
       returns={SystemClientModelPrimitives.PipelineMessage}
       parameters={methodParams}
     >
@@ -752,9 +752,10 @@ function getParamValueExpression(
     return `TypeFormatters.ConvertToString(${name}, ${format})`;
   }
 
-  // DateTime → format with ToString
+  // DateTime → TypeFormatters.ConvertToString for nullable-safe formatting.
+  // DateTimeOffset?.ToString("O") fails because Nullable<T> lacks the format overload.
   if (type.kind === "utcDateTime" || type.kind === "offsetDateTime") {
-    return `${name}.ToString("O")`;
+    return `TypeFormatters.ConvertToString(${name}, SerializationFormat.DateTime_RFC3339)`;
   }
 
   // Duration → TypeFormatters

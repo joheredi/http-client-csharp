@@ -424,7 +424,7 @@
           "title": "Fix convenience method overload argument count mismatches",
           "description": "Generated convenience methods call protocol method overloads with wrong argument counts, causing CS1501 errors:\n- client/overload: CreateGetAllRequest called with 2 args but no matching overload (4 errors)\n- azure/core/traits: Convenience method passes wrong number of arguments to protocol method (4 errors)\n- special-headers/conditional-request: Similar argument count mismatch (4 errors)\n\nThe issue is in how ConvenienceMethod.tsx builds the call to the protocol method \u2014 it doesn't always match the protocol method's parameter list when there are optional parameters or method overloads.\n\nAffected specs: client/overload, azure/core/traits, special-headers/conditional-request.\n\nTo reproduce: Remove these specs from test/e2e/.testignore, run pnpm emit:e2e --filter client/overload, then dotnet build.",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [
