@@ -44,6 +44,7 @@
 
 import { useCSharpNamePolicy } from "@alloy-js/csharp";
 import type { Children } from "@alloy-js/core";
+import { code } from "@alloy-js/core";
 import type { NamePolicy } from "@alloy-js/core";
 import type {
   SdkArrayType,
@@ -57,6 +58,7 @@ import type {
   SdkType,
 } from "@azure-tools/typespec-client-generator-core";
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
+import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
 import {
   isCollectionType,
   isPropertyNullable,
@@ -753,9 +755,9 @@ function renderArrayDeserialization(
 
   return (
     <>
-      {`\n${indent}List<`}
+      {code`\n${indent}${SystemCollectionsGeneric.List}<`}
       <TypeExpression type={unwrappedItemType.__raw!} />
-      {`> ${arrayVar} = new List<`}
+      {code`> ${arrayVar} = new ${SystemCollectionsGeneric.List}<`}
       <TypeExpression type={unwrappedItemType.__raw!} />
       {`>();`}
       {`\n${indent}foreach (var ${itemVar} in ${accessor}.EnumerateArray())`}
@@ -906,9 +908,9 @@ function renderDictionaryDeserialization(
 
   return (
     <>
-      {`\n${indent}Dictionary<string, `}
+      {code`\n${indent}${SystemCollectionsGeneric.Dictionary}<string, `}
       <TypeExpression type={unwrappedValueType.__raw!} />
-      {`> ${dictVar} = new Dictionary<string, `}
+      {code`> ${dictVar} = new ${SystemCollectionsGeneric.Dictionary}<string, `}
       <TypeExpression type={unwrappedValueType.__raw!} />
       {`>();`}
       {`\n${indent}foreach (var ${propVar} in ${accessor}.EnumerateObject())`}

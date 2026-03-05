@@ -58,6 +58,22 @@ const scalarOverrideMap = new Map<string, Children>([
   // plainTime → TimeSpan (EF default: TimeOnly)
   // .NET backward compatibility: TimeOnly requires .NET 6+
   ["plainTime", System.TimeSpan],
+
+  // duration → TimeSpan (EF renders as string "TimeSpan" without using directive)
+  // Override ensures using System; is auto-generated via refkey
+  ["duration", System.TimeSpan],
+
+  // utcDateTime → DateTimeOffset (EF renders as string "DateTimeOffset" without using directive)
+  // Override ensures using System; is auto-generated via refkey
+  ["utcDateTime", System.DateTimeOffset],
+
+  // offsetDateTime → DateTimeOffset (EF renders as string "DateTimeOffset" without using directive)
+  // Override ensures using System; is auto-generated via refkey
+  ["offsetDateTime", System.DateTimeOffset],
+
+  // url → Uri (EF renders as string "Uri" without using directive)
+  // Override ensures using System; is auto-generated via refkey
+  ["url", System.Uri],
 ]);
 
 /**

@@ -4640,3 +4640,46 @@ Fix:
 
 Patterns: Used `UsageFlags` bitfield checks. The filter is at emitter level (not component level)
 to prevent generating empty/broken files entirely.
+
+## 2026-03-05 — Task 12.18: Fix missing using directives for System types in generated code
+
+**What was done:**
+Fixed three root causes of missing `using` directives that caused CS0246 compilation errors:
+
+1. **CSharpTypeExpression.tsx** — Added scalar overrides for `duration`, `utcDateTime`, 
+   `offsetDateTime`, and `url` to the `scalarOverrideMap`. The emitter-framework's default
+   TypeExpression renders these as plain strings ("TimeSpan", "DateTimeOffset", "Uri") without
+   triggering `using System;`. The overrides use `System.TimeSpan`, `System.DateTimeOffset`,
+   `System.Uri` refkeys which auto-generate the using directive.
+
+2. **ConvenienceMethod.tsx** — Fixed dict type handling in `getConvenienceTypeInfo()` to use
+   `SystemCollectionsGeneric.IDictionary` refkey with `code` template (like arrays use
+   `SystemCollectionsGeneric.IEnumerable`), instead of `<TypeExpression>` which rendered
+   `IDictionary<string, T>` as a string without `using System.Collections.Generic;`.
+
+3. **PropertyMatchingLoop.tsx** — Replaced string literals `"List<"` and `"Dictionary<string, "`
+   in deserialization code with `SystemCollectionsGeneric.List` and `SystemCollectionsGeneric.Dictionary`
+   refkeys. Added `List` and `Dictionary` (concrete classes) to `system-collections-generic.ts` builtins.
+
+**Specs fixed:**
+- `type/dictionary` — fully builds clean, removed from testignore
+- `type/property/nullable` — no more CS0246 errors (remaining CS7036 are unrelated)
+- `payload/json-merge-patch` — no more CS0246 errors (remaining CS7036 are unrelated)
+- `service/multi-service` and `client/structure/client-operation-group` — have multi-namespace scope
+  issues (not using directive issues), kept in testignore with updated comments.
+
+**Files changed:**
+- Modified: src/components/CSharpTypeExpression.tsx (4 new scalar overrides)
+- Modified: src/components/clients/ConvenienceMethod.tsx (dict type uses IDictionary refkey)
+- Modified: src/builtins/system-collections-generic.ts (added List, Dictionary classes)
+- Modified: src/components/serialization/PropertyMatchingLoop.tsx (List/Dictionary refkeys)
+- Modified: test/e2e/.testignore (removed type/dictionary, updated comments)
+- Modified: test/type-expression.test.tsx (moved url/utcDateTime/duration to overrides tests, added offsetDateTime)
+- Modified: test/convenience-method.test.ts (added dict body param using directive test)
+
+**Key design decision:**
+- For types where the EF default produces the correct C# type name but as a string (not a refkey),
+  we override them with the same type name via a refkey. This doesn't change the output text but
+  ensures the using directive is auto-generated. This is the pattern for duration, utcDateTime,
+  offsetDateTime, url.
+

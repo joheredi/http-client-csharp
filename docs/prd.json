@@ -286,7 +286,7 @@
           "title": "Fix missing using directives for System types in generated code",
           "description": "Generated code references types (IDictionary<,>, DateTimeOffset, TimeSpan, Dictionary<,>, List<>, ClientUriBuilder) without corresponding using statements. Type references are constructed as plain strings rather than through Alloy's refkey system which auto-generates using directives.\n\nSpecific issues:\n- type/dictionary: IDictionary<,> not found in model property declarations (~44 errors)\n- type/property/nullable: DateTimeOffset, TimeSpan not found (~12 errors)\n- payload/json-merge-patch: Dictionary<,>, IDictionary<,>, List<> not found (~14 errors)\n- service/multi-service: ClientUriBuilder not found, missing extension methods (~26 errors)\n- client/structure/client-operation-group: ClientUriBuilder, Argument not found (~26 errors)\n\nThe fix should ensure all type references go through proper Alloy JSX TypeExpression components or add explicit using directives.\n\nTo reproduce: Remove these specs from test/e2e/.testignore, run pnpm emit:e2e --filter type/dictionary, then dotnet build.",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

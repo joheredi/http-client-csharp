@@ -2800,3 +2800,16 @@ as defensive measure, though the primary guard is the emitter-level filter.
 loop, and ModelReaderWriterContextFile models. ModelFactoryFile was NOT filtered because it
 generates factory methods that call internal constructors (which exist on all models regardless of
 serialization support).
+
+## Using Directive Generation via Refkeys (Task 12.18)
+
+**Gotcha**: The emitter-framework's `intrinsicNameToCSharpType` map renders types like `duration` → `"TimeSpan"`, `utcDateTime` → `"DateTimeOffset"`, `url` → `"Uri"` as **plain strings**. These produce the correct type name but do NOT trigger `using System;` generation. Only Alloy library refkeys (e.g., `System.TimeSpan`) auto-generate using directives. If a type appears in generated code without its using directive, check whether it's going through a refkey or a string.
+
+**Pattern**: When the EF default type name is correct but lacks a using directive, add the scalar to `CSharpTypeExpression.tsx`'s `scalarOverrideMap` with the proper `System.*` refkey. The override produces the same type name but through the refkey system.
+
+**Gotcha**: Concrete collection classes (`List<T>`, `Dictionary<K,V>`) used in deserialization code also need refkeys. The `SystemCollectionsGeneric` builtins originally only had interfaces (IDictionary, IList, etc.). Added `List` and `Dictionary` concrete classes to the builtins for use in `PropertyMatchingLoop.tsx`.
+
+**Gotcha**: For convenience method parameters, dict types must build their type expression using `code\`\${SystemCollectionsGeneric.IDictionary}<string, \${valueExpr}>\`` (like arrays use `IEnumerable`), NOT `<TypeExpression type={unwrapped.__raw!} />` which doesn't generate using directives.
+
+## Design Decision: service/multi-service and client/structure/client-operation-group
+These specs build clean individually but fail in the E2E combined build because internal infrastructure types (ClientUriBuilder, Argument, extension methods) are generated in one namespace but referenced from sub-clients in a different namespace. This is a separate multi-namespace scope issue, not a using directive problem.

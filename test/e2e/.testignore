@@ -53,15 +53,18 @@ azure/client-generator-core/override
 # Requires completing XML serialization infrastructure.
 payload/xml
 
-# === Missing using directives / infrastructure ===
-# Generated code references types (DateTimeOffset, TimeSpan, Dictionary,
-# IDictionary, List, ClientUriBuilder) without using statements. Type
-# references are constructed as plain strings rather than through Alloy's
-# refkey system. Requires fixing type expression rendering in constructors
-# and factory methods.
-type/dictionary
+# === Remaining issues (using directives fixed, other errors remain) ===
+# type/property/nullable: CS7036 (missing options param in DeserializeXxx calls),
+# CS0029 (ChangeTrackingList to array conversion). No more CS0246 using errors.
 type/property/nullable
+# payload/json-merge-patch: CS7036 (missing options param in DeserializeXxx calls).
+# No more CS0246 using errors for List<>/Dictionary<>.
 payload/json-merge-patch
+
+# === Multi-namespace scope issues ===
+# Internal infrastructure types (ClientUriBuilder, Argument, extension methods)
+# are generated in one namespace but referenced from sub-clients in a different
+# namespace. Individual project builds succeed; fails in combined E2E build.
 service/multi-service
 client/structure/client-operation-group
 

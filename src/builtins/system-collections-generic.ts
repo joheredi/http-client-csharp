@@ -85,5 +85,31 @@ export const SystemCollectionsGeneric = createLibrary(
       kind: "interface",
       members: {},
     },
+
+    /**
+     * Concrete generic list class.
+     * Used in deserialization code to construct mutable lists that accumulate
+     * elements from JSON arrays (e.g., `List<T> array0 = new List<T>()`).
+     * Referencing this symbol auto-generates `using System.Collections.Generic;`.
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.list-1
+     */
+    List: {
+      kind: "class",
+      members: {},
+    },
+
+    /**
+     * Concrete generic dictionary class.
+     * Used in deserialization code to construct mutable dictionaries that
+     * accumulate entries from JSON objects (e.g., `Dictionary<string, T> dict0 = new Dictionary<string, T>()`).
+     * Referencing this symbol auto-generates `using System.Collections.Generic;`.
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2
+     */
+    Dictionary: {
+      kind: "class",
+      members: {},
+    },
   },
 );

@@ -92,6 +92,10 @@ describe("CSharpScalarOverrides", () => {
      * - float → double: 64-bit safety for abstract float
      * - plainDate → DateTimeOffset: .NET backward compat (DateOnly needs .NET 6+)
      * - plainTime → TimeSpan: .NET backward compat (TimeOnly needs .NET 6+)
+     * - duration → TimeSpan: override ensures using System; via refkey
+     * - utcDateTime → DateTimeOffset: override ensures using System; via refkey
+     * - offsetDateTime → DateTimeOffset: override ensures using System; via refkey
+     * - url → Uri: override ensures using System; via refkey
      */
     it.each([
       ["bytes", "BinaryData"],
@@ -101,6 +105,10 @@ describe("CSharpScalarOverrides", () => {
       ["float", "double"],
       ["plainDate", "DateTimeOffset"],
       ["plainTime", "TimeSpan"],
+      ["duration", "TimeSpan"],
+      ["utcDateTime", "DateTimeOffset"],
+      ["offsetDateTime", "DateTimeOffset"],
+      ["url", "Uri"],
     ])("overrides %s to %s", async (tspType, csType) => {
       const type = await getType(tspType);
       const content = renderType(type);
@@ -144,9 +152,6 @@ describe("CSharpScalarOverrides", () => {
       ["float32", "float"],
       ["float64", "double"],
       ["boolean", "bool"],
-      ["url", "Uri"],
-      ["utcDateTime", "DateTimeOffset"],
-      ["duration", "TimeSpan"],
     ])("passes through %s as %s", async (tspType, csType) => {
       const type = await getType(tspType);
       const content = renderType(type);

@@ -1001,10 +1001,40 @@ describe("ConvenienceMethod", () => {
   });
 
   /**
-   * Verifies that multiline @doc text on parameters produces valid XML doc
-   * comments where every continuation line starts with `///`.
+   * Verifies that dictionary body parameters use IDictionary<string, T> via refkey
+   * and generate the correct using System.Collections.Generic; directive.
    *
    * Why this test matters:
+   * - Before this fix, dict parameters used TypeExpression which rendered
+   *   IDictionary<string, T> as a plain string without triggering using directive
+   *   generation. This caused CS0246 compilation errors (IDictionary not found)
+   *   in specs like type/dictionary.
+   * - The fix uses SystemCollectionsGeneric.IDictionary refkey in getConvenienceTypeInfo()
+   *   to ensure the using directive is auto-generated.
+   */
+  it("generates IDictionary<string, T> with using directive for dict body params", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/items")
+      @put op putItems(@body body: Record<int32>): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Convenience method param should be IDictionary<string, int>
+    expect(clientFile).toContain("IDictionary<string, int> body");
+
+    // Should have the using directive for System.Collections.Generic
+    expect(clientFile).toContain("using System.Collections.Generic;");
+  });
+
+  /**
    * - TypeSpec @doc decorators can contain long descriptions that span multiple
    *   lines. Without proper formatting, continuation lines lack the `///` prefix,
    *   producing invalid C# that fails dotnet build.

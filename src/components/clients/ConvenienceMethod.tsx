@@ -5,6 +5,7 @@ import {
   type SdkArrayType,
   type SdkBodyParameter,
   type SdkClientType,
+  type SdkDictionaryType,
   type SdkHeaderParameter,
   type SdkHttpOperation,
   type SdkModelType,
@@ -677,13 +678,16 @@ function getConvenienceTypeInfo(type: SdkType): {
       };
     }
 
-    // Dictionary — reference type
-    case "dict":
+    // Dictionary — reference type, use IDictionary refkey for using directive
+    case "dict": {
+      const valueType = (unwrapped as SdkDictionaryType).valueType;
+      const valueInfo = getConvenienceTypeInfo(valueType);
       return {
-        expression: <TypeExpression type={unwrapped.__raw!} />,
+        expression: code`${SystemCollectionsGeneric.IDictionary}<string, ${valueInfo.expression}>`,
         needsAssertion: true,
         isString: false,
       };
+    }
 
     default:
       return { expression: "string", needsAssertion: true, isString: true };
