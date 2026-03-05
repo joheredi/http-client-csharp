@@ -108,6 +108,7 @@ describe("getInvalidNamespaceSegments", () => {
     expect(getInvalidNamespaceSegments("My.Type.Service")).toEqual(["Type"]);
     expect(getInvalidNamespaceSegments("My.Array.Handler")).toEqual(["Array"]);
     expect(getInvalidNamespaceSegments("My.Enum.Types")).toEqual(["Enum"]);
+    expect(getInvalidNamespaceSegments("My.File.Handler")).toEqual(["File"]);
   });
 
   /**
@@ -438,6 +439,7 @@ describe("collectInvalidNamespaceSegments", () => {
     expect(invalid.has("Type")).toBe(true);
     expect(invalid.has("Array")).toBe(true);
     expect(invalid.has("Enum")).toBe(true);
+    expect(invalid.has("File")).toBe(true);
   });
 
   /**
@@ -468,8 +470,8 @@ describe("collectInvalidNamespaceSegments", () => {
 
     const invalid = collectInvalidNamespaceSegments(clients);
 
-    // Should only contain static reserved words
-    expect(invalid.size).toBe(3);
+    // Should only contain static reserved words (Type, Array, Enum, File)
+    expect(invalid.size).toBe(4);
   });
 });
 
@@ -605,6 +607,32 @@ describe("cleanAllNamespaces", () => {
     expect(clients[0].namespace).toBe("My._Type");
     expect(models[0].namespace).toBe("My._Type");
     expect(enums[0].namespace).toBe("My._Type");
+  });
+
+  /**
+   * The "File" namespace segment must be prefixed because it shadows the common
+   * .NET type System.IO.File and can cause CS0118 errors when a model named
+   * "File" (e.g., TypeSpec.Http.File) is referenced from a child namespace.
+   * This mirrors the type/file spec where namespace _Type.File._Body has a
+   * File segment that shadows the File model type.
+   */
+  it("prefixes File segment in namespaces like Type and Array", () => {
+    const clients = [
+      createMockClient("FileClient", "Type.File"),
+      createMockClient("Body", "Type.File.Body"),
+    ];
+    const models = [
+      createMockModel("FileModel", "TypeSpec.Http", "TypeSpec.Http.File"),
+    ];
+    const enums: SdkEnumType[] = [];
+
+    cleanAllNamespaces(clients, models, enums);
+
+    // Both Type and File are static reserved words and should be prefixed
+    expect(clients[0].namespace).toBe("_Type._File");
+    expect(clients[1].namespace).toBe("_Type._File._Body");
+    // Model namespace TypeSpec.Http has no invalid segments — unchanged
+    expect(models[0].namespace).toBe("TypeSpec.Http");
   });
 });
 

@@ -10,12 +10,18 @@ import type {
  * C# reserved words and common type names that conflict when used as namespace segments.
  * Namespace segments matching these cause ambiguous references in generated code.
  *
- * Sourced from the legacy emitter's InputNamespace.InvalidNamespaceSegments list.
+ * "Type", "Array", and "Enum" are sourced from the legacy emitter's
+ * InputNamespace.InvalidNamespaceSegments list.
+ *
+ * "File" is added because `System.IO.File` and model types named `File`
+ * (e.g., TypeSpec.Http.File) cause CS0118 errors when a namespace segment
+ * named `File` shadows the type in child namespaces (see type/file spec).
  */
 const INVALID_NAMESPACE_SEGMENTS: ReadonlySet<string> = new Set([
   "Type",
   "Array",
   "Enum",
+  "File",
 ]);
 
 /**

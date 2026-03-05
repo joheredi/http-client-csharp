@@ -4378,3 +4378,30 @@ Files modified:
 Verification: Confirmed CS0246 errors for DateTimeOffset/TimeSpan/Uri in e2e tests are eliminated (0 occurrences after fix vs ~41 before).
 
 All 1,296 tests pass (1 new), build succeeds.
+
+## 2026-03-05 — Task 12.13: Fix namespace segment shadowing in generated code
+
+**What was done:**
+- Added `"File"` to `INVALID_NAMESPACE_SEGMENTS` in `src/utils/package-name.ts`
+- This extends the existing static reserved words list (`Type`, `Array`, `Enum`) with `File`
+- Updated JSDoc comment to explain why `File` is included
+- Updated unit tests in `test/package-name.test.ts`:
+  - Added `File` to reserved word detection test
+  - Updated static reserved words count from 3 to 4
+  - Added integration test for `_Type._File` namespace cleaning
+
+**Root cause analysis:**
+- The ORIGINAL issue described in task 12.13 (Type shadowing System.Type) was already fixed by task 12.9 (rootNamespace capture fix) + cleanAllNamespaces handling Type as a reserved word
+- The REMAINING CS0118 errors (24 in type/file) were about `File` (a model type from TypeSpec.Http) being shadowed by the `File` namespace segment in `_Type.File._Body`
+- C# name resolution rule: namespace segments in parent namespaces take precedence over imported type names
+
+**Key decisions:**
+- Added File to static list rather than dynamically detecting model-namespace conflicts, because:
+  1. File is a common .NET type (System.IO.File) like Type, Array, Enum
+  2. Dynamic detection would change currently-passing specs (Model, Query) unnecessarily
+  3. The legacy emitter also doesn't handle model-namespace conflicts dynamically
+- Only type/file spec was affected (verified no other specs use File as namespace segment)
+
+**Patterns for next loops:**
+- After this fix, type/file still has 16 CS0535 and CS1503 errors (unrelated: interface implementation + RequestOptions/CancellationToken conversion)
+- The CS1503 errors are covered by task 12.14

@@ -181,7 +181,7 @@
           "title": "Fix Type namespace segment shadowing System.Type in internal helper files",
           "description": "Internal helper files (e.g., CodeGenSuppressAttribute.cs) reference System.Type, but when the generated namespace contains a 'Type' segment (e.g., Type.Array namespace), the Type segment shadows System.Type, producing CS0118 errors (~36 occurrences: 'Type is a namespace but is used like a type').\n\nThe fix should either: (a) use global::System.Type in internal helper templates that reference System.Type, or (b) ensure the namespace cleaning in cleanAllNamespaces also applies to the rootNamespace used by internal files (related to task 12.9).\n\nAffected specs: type/array, type/dictionary, type/enum/*, type/file, type/model/*, type/property/*, type/scalar, type/union/*.\n\nTo reproduce: pnpm test:e2e, check CS0118 errors in Internal/CodeGenSuppressAttribute.cs.",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

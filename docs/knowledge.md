@@ -2654,3 +2654,15 @@ legacy emitter's behavior documented in knowledge.md's "Namespace differences wi
 **Fix:** Changed `const rootNamespace` to `let rootNamespace` and added `rootNamespace = resolveRootNamespace(sdkContext)` after `cleanAllNamespaces()`. Since `getAllClients` returns the same client objects by reference (not cloned), mutating `.namespace` in `cleanAllNamespaces` also mutates the objects in `sdkContext.sdkPackage.clients`. Therefore re-calling `resolveRootNamespace` returns the cleaned value.
 
 **Key insight:** `ensureModelNamespaces` can safely use the pre-clean `rootNamespace` as its fallback because its output gets cleaned subsequently by `cleanAllNamespaces`.
+
+## Design Decisions
+
+### Task 12.13: File added to INVALID_NAMESPACE_SEGMENTS
+
+**Chosen approach:** Added `"File"` to the static `INVALID_NAMESPACE_SEGMENTS` set alongside `"Type"`, `"Array"`, `"Enum"`.
+
+**Why:** The `type/file` spec generates a namespace `_Type.File._Body` where the `File` segment shadows the `TypeSpec.Http.File` model type, causing 24 CS0118 errors. `File` is also a common .NET type (`System.IO.File`), making it a reasonable addition to the static reserved word list.
+
+**Rejected:** Dynamic detection of model-name/namespace-segment conflicts. This would also flag `Model` and `Query` in other specs, changing currently-passing output without fixing any actual compilation errors in those specs.
+
+**Gotcha:** The legacy emitter does NOT have `File` in its invalid segments list, but also doesn't generate test projects for `type/file`, so there's no ground truth conflict.
