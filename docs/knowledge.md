@@ -2745,3 +2745,13 @@ Unit tests and build are green. These errors only surface during the full E2E pi
 - `computeSerializationProperties` — model factory methods
 
 **Design Decision:** For non-discriminated derived models, null checks in the public constructor only cover OWN params (not inherited ones). The base constructor validates its own params via the `: base(...)` chain. This differs from discriminated models where the abstract base's `private protected` constructor doesn't validate, so derived models validate ALL params.
+
+## Bytes Parameter Encoding in RestClient (Task 14.5)
+
+**BinaryData parameters in headers/queries require explicit string conversion.** `PipelineRequest.Headers.Set()` and `ClientUriBuilder.AppendQuery()` only accept string arguments. BinaryData (the C# type for TypeSpec `bytes`) must be converted via `TypeFormatters.ConvertToString(value, SerializationFormat.Bytes_Base64|Bytes_Base64Url)`.
+
+**AppendQueryDelimited argument ordering is critical.** The signature is `AppendQueryDelimited<T>(string, IEnumerable<T>, string, SerializationFormat, bool)`. When omitting the format, use named arg `escape: true` — passing `true` positionally maps to the `format` parameter (CS1503).
+
+**TCGC encode property for bytes:** Default is `"base64"`. For base64url, requires `@encode(BytesKnownEncoding.base64url)` decorator directly on the param or on a custom scalar. The `SdkBuiltInType.encode` property is accessible after `unwrapType()`.
+
+**Header collection bytes correctness gap:** The current `string.Join(",", value)` for `IEnumerable<BinaryData>` header collections compiles but calls `BinaryData.ToString()` which may not produce correct encoding. The `PipelineRequestHeadersExtensionsFile` component with `SetDelimited` is ready to fix this when needed.

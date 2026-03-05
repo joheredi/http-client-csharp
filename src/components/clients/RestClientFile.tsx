@@ -11,6 +11,7 @@ import type {
   CollectionFormat,
   SdkArrayType,
   SdkBodyParameter,
+  SdkBuiltInType,
   SdkClientType,
   SdkHeaderParameter,
   SdkHttpOperation,
@@ -722,6 +723,7 @@ function getAcceptHeaderValue(responses: SdkHttpResponse[]): string | null {
  * Renders the value expression for appending a parameter value to the URI
  * or a header. Handles type-specific formatting:
  * - string → used directly
+ * - bytes → TypeFormatters.ConvertToString(value, SerializationFormat.Bytes_Base64|Base64Url)
  * - utcDateTime/offsetDateTime → ToString("O") (ISO 8601)
  * - boolean → TypeFormatters.ConvertToString(value)
  * - numeric types → ToString()
@@ -742,6 +744,12 @@ function getParamValueExpression(
   // String → use directly
   if (type.kind === "string") {
     return name;
+  }
+
+  // Bytes (BinaryData) → TypeFormatters.ConvertToString with encoding format
+  if (type.kind === "bytes") {
+    const format = getBytesSerializationFormat(type as SdkBuiltInType);
+    return `TypeFormatters.ConvertToString(${name}, ${format})`;
   }
 
   // DateTime → format with ToString
@@ -812,6 +820,37 @@ function isNumericKind(kind: string): boolean {
  */
 function isCollectionType(type: SdkType): boolean {
   return unwrapType(type).kind === "array";
+}
+
+/**
+ * Returns the C# `SerializationFormat` enum value for a bytes type based on
+ * its encoding. TCGC always sets the encoding — base64 is the default.
+ *
+ * @param type - An `SdkBuiltInType` with `kind: "bytes"`.
+ * @returns The `SerializationFormat` enum reference string
+ *   (e.g., `"SerializationFormat.Bytes_Base64Url"`).
+ */
+function getBytesSerializationFormat(type: SdkBuiltInType): string {
+  return type.encode === "base64url"
+    ? "SerializationFormat.Bytes_Base64Url"
+    : "SerializationFormat.Bytes_Base64";
+}
+
+/**
+ * Returns the C# `SerializationFormat` for a collection parameter's element type,
+ * or null if no format is needed (non-bytes elements).
+ *
+ * Used to generate the correct format argument for `AppendQueryDelimited` and
+ * `SetDelimited` calls when the collection contains bytes (BinaryData) values.
+ */
+function getCollectionElementBytesFormat(type: SdkType): string | null {
+  const unwrapped = unwrapType(type);
+  if (unwrapped.kind !== "array") return null;
+  const elementType = unwrapType((unwrapped as SdkArrayType).valueType);
+  if (elementType.kind === "bytes") {
+    return getBytesSerializationFormat(elementType as SdkBuiltInType);
+  }
+  return null;
 }
 
 /**
@@ -894,7 +933,7 @@ function isExplodedQueryParam(param: SdkQueryParameter): boolean {
  *   ```
  *
  * For collection parameters with delimiter (CSV/SSV/pipes):
- *   `uri.AppendQueryDelimited("name", values, ",", true);`
+ *   `uri.AppendQueryDelimited("name", values, ",", SerializationFormat.Default, true);`
  */
 function buildQueryParamStatement(
   param: SdkQueryParameter,
@@ -925,7 +964,9 @@ function buildQueryParamStatement(
     } else {
       // Delimited: join all elements with delimiter
       const delimiter = getCollectionDelimiter(param.collectionFormat) ?? ",";
-      const stmt = `uri.AppendQueryDelimited("${serializedName}", ${name}, "${delimiter}", true);`;
+      const bytesFormat = getCollectionElementBytesFormat(param.type);
+      const formatArg = bytesFormat ?? "SerializationFormat.Default";
+      const stmt = `uri.AppendQueryDelimited("${serializedName}", ${name}, "${delimiter}", ${formatArg}, true);`;
       if (param.optional) {
         return `if (${name} != null)\n{\n    ${stmt}\n}`;
       }

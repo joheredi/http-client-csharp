@@ -4545,3 +4545,28 @@ The components were created but never wired into the emitter output tree. Conven
 - Always check that new infrastructure components are both (1) defined and (2) wired up in emitter.tsx
 
 **Result:** 1307 tests passing (3 new tests), all 68 test files pass, build clean. encode/bytes e2e test passes.
+
+## 2026-03-05 — Task 14.5: Fix BinaryData-to-string conversion for bytes parameters in headers and queries
+**What was done:**
+- Fixed `getParamValueExpression()` in `src/components/clients/RestClientFile.tsx` to handle `bytes` type (BinaryData) by converting via `TypeFormatters.ConvertToString(name, SerializationFormat.Bytes_Base64|Bytes_Base64Url)` based on the TCGC `encode` property
+- Fixed `buildQueryParamStatement()` collection delimited case: previously passed `true` (bool) as 4th positional arg to `AppendQueryDelimited` where `SerializationFormat` was expected, causing CS1503. Now passes `SerializationFormat.Default` (or appropriate bytes format) explicitly before `escape: true`
+- Added `getBytesSerializationFormat()` helper to map TCGC encode to C# SerializationFormat enum
+- Added `getCollectionElementBytesFormat()` helper to detect bytes array element types and return the correct SerializationFormat
+- Added 3 unit tests: base64 bytes header/query, base64url bytes header/query, bytes array query with AppendQueryDelimited
+
+**Errors fixed (encode/bytes project):**
+- 6 CS1503: BinaryData → string in Header.RestClient.cs (3 scalar bytes methods × 2 target frameworks)
+- 6 CS1503: BinaryData → string in Query.RestClient.cs (3 scalar bytes methods × 2 target frameworks)
+- 2 CS1503: bool → SerializationFormat in Query.RestClient.cs (array case × 2 target frameworks)
+- Also fixed same AppendQueryDelimited arg ordering in parameters/collection-format and other projects
+
+**Key patterns:**
+- `SdkBuiltInType.encode` property differentiates base64 vs base64url for bytes types
+- `TypeFormatters.ConvertToString` in infrastructure handles BinaryData by routing through `byte[]` conversion with the format specifier
+- TCGC always assigns "base64" as default encoding for bytes; "base64url" requires explicit `@encode(BytesKnownEncoding.base64url)` decorator
+- For inline `@encode` on TypeSpec params, TCGC correctly sets the encode property; for custom scalars extending bytes, the encode propagates through the type chain
+
+**Notes for next iteration:**
+- The header collection case for bytes (`string.Join(",", value)`) compiles but may produce incorrect runtime encoding for base64url arrays. Consider adding `PipelineRequestHeadersExtensionsFile` to the emitter output and using `SetDelimited` for header collections. The `PipelineRequestHeadersExtensionsFile` component already exists in `src/components/infrastructure/`.
+- Pre-existing e2e failures in payload/multipart and next-link-verb are unrelated to this fix
+- 1310 unit tests passing (was 1307), 68 test files, lint clean

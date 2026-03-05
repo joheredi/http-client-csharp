@@ -260,6 +260,119 @@ describe("RestClientFile", () => {
   });
 
   /**
+   * Bytes parameters (TypeSpec `bytes` scalar) map to C# `BinaryData` which
+   * cannot be passed directly to `Headers.Set(string, string)` or
+   * `AppendQuery(string, string, bool)`. The emitter must convert BinaryData
+   * to a string using `TypeFormatters.ConvertToString` with the correct
+   * SerializationFormat (Bytes_Base64 for base64, Bytes_Base64Url for base64url).
+   *
+   * This test validates that:
+   * 1. Scalar bytes header params use TypeFormatters.ConvertToString with base64
+   * 2. Scalar bytes query params use TypeFormatters.ConvertToString with base64
+   * Without this fix, the generated code has CS1503: cannot convert BinaryData to string.
+   */
+  it("generates TypeFormatters.ConvertToString for bytes header and query params", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/data")
+      @get op getData(
+        @header("x-data") data: bytes,
+        @query value: bytes
+      ): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const restClient = outputs["src/Generated/TestServiceClient.RestClient.cs"];
+    expect(restClient).toBeDefined();
+
+    // Bytes header param uses TypeFormatters.ConvertToString with base64 format
+    expect(restClient).toContain(
+      'request.Headers.Set("x-data", TypeFormatters.ConvertToString(data, SerializationFormat.Bytes_Base64));',
+    );
+
+    // Bytes query param uses TypeFormatters.ConvertToString with base64 format
+    expect(restClient).toContain(
+      'uri.AppendQuery("value", TypeFormatters.ConvertToString(value, SerializationFormat.Bytes_Base64), true);',
+    );
+  });
+
+  /**
+   * Bytes parameters with base64url encoding must use the Bytes_Base64Url
+   * SerializationFormat. The `@encode(BytesKnownEncoding.base64url)` decorator
+   * on the parameter tells TCGC to set `encode: "base64url"` on the type.
+   *
+   * This test validates that the emitter correctly reads the encode property
+   * from the TCGC type and selects the right format.
+   */
+  it("generates Bytes_Base64Url format for base64url-encoded bytes params", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/data")
+      @get op getData(
+        @header("x-data") @encode(BytesKnownEncoding.base64url) data: bytes,
+        @query @encode(BytesKnownEncoding.base64url) value: bytes
+      ): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const restClient = outputs["src/Generated/TestServiceClient.RestClient.cs"];
+    expect(restClient).toBeDefined();
+
+    // base64url header uses Bytes_Base64Url format
+    expect(restClient).toContain(
+      'request.Headers.Set("x-data", TypeFormatters.ConvertToString(data, SerializationFormat.Bytes_Base64Url));',
+    );
+
+    // base64url query uses Bytes_Base64Url format
+    expect(restClient).toContain(
+      'uri.AppendQuery("value", TypeFormatters.ConvertToString(value, SerializationFormat.Bytes_Base64Url), true);',
+    );
+  });
+
+  /**
+   * Collection bytes query parameters (e.g., `base64urlBytes[]`) must pass
+   * the correct SerializationFormat to `AppendQueryDelimited` so the
+   * infrastructure can encode each BinaryData element properly.
+   *
+   * Previously, the emitter passed `true` (bool) as the 4th positional arg
+   * to AppendQueryDelimited, which mapped to the `format` parameter
+   * (SerializationFormat) instead of `escape` (bool), causing CS1503.
+   */
+  it("generates correct AppendQueryDelimited format for bytes array query param", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @encode(BytesKnownEncoding.base64url)
+      scalar base64urlBytes extends bytes;
+
+      @route("/data")
+      @get op getData(
+        @query values: base64urlBytes[]
+      ): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const restClient = outputs["src/Generated/TestServiceClient.RestClient.cs"];
+    expect(restClient).toBeDefined();
+
+    // Collection bytes query passes correct SerializationFormat and escape arg
+    expect(restClient).toContain(
+      'uri.AppendQueryDelimited("values", values, ",", SerializationFormat.Bytes_Base64Url, true);',
+    );
+  });
+
+  /**
    * Verifies that multiple operations on the same client generate unique
    * classifiers and separate CreateRequest methods.
    *
@@ -505,7 +618,7 @@ describe("RestClientFile", () => {
 
     // Verify CSV delimited query serialization
     expect(restClient).toContain(
-      'uri.AppendQueryDelimited("tags", tags, ",", true);',
+      'uri.AppendQueryDelimited("tags", tags, ",", SerializationFormat.Default, true);',
     );
   });
 

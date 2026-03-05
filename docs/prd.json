@@ -372,7 +372,7 @@
           "title": "Fix BinaryData-to-string conversion for bytes parameters in headers and queries",
           "description": "E2E failure: Header.RestClient.cs and Query.RestClient.cs in encode/bytes have CS1503 errors \u2014 BinaryData cannot convert to string. The getParamValueExpression() in RestClientFile.tsx lacks handling for bytes type parameters in header and query contexts. Need to add Base64 encoding conversion (e.g., Convert.ToBase64String()).",
           "phase": "phase-14",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],
