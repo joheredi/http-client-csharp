@@ -505,9 +505,8 @@ function buildSpreadProtocolCallExpr(
   // Models with UsageFlags.Input have an implicit operator BinaryContent.
   // Models without it (typically internal spread-only models) need wrapping via
   // BinaryContentHelper.FromObject, which uses WriteObjectValue → IPersistableModel.
-  const needsExplicitConversion = !hasImplicitBinaryContentOperator(
-    spreadBodyType,
-  );
+  const needsExplicitConversion =
+    !hasImplicitBinaryContentOperator(spreadBodyType);
 
   const parts: Children[] = [];
   let bodyInserted = false;

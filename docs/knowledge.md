@@ -2675,7 +2675,7 @@ legacy emitter's behavior documented in knowledge.md's "Namespace differences wi
 
 **Rejected alternative**: Using Alloy refkeys for parameter references in method bodies. This would require major refactoring of how method bodies are constructed (currently string-based) — too invasive for this fix.
 
-**Key insight**: Alloy's `<Method>` component applies the naming policy to parameter *declarations* but not to *body references*. The body is built with raw strings and `code` templates, so names must be pre-converted. This matches the pattern in `RestClientFile.tsx` where `getParamName` is already used.
+**Key insight**: Alloy's `<Method>` component applies the naming policy to parameter _declarations_ but not to _body references_. The body is built with raw strings and `code` templates, so names must be pre-converted. This matches the pattern in `RestClientFile.tsx` where `getParamName` is already used.
 
 ## Body Parameter BinaryContent Conversion in Convenience Methods
 
@@ -2702,6 +2702,7 @@ The following compilation errors exist in the Spector E2E test suite (`pnpm test
 5. **`BinaryData` to `string` CS1503** — Header and Query rest client methods in `encode/bytes` pass `BinaryData` where `string` is expected. Need bytes-to-string conversion (likely Base64) in `getParamValueExpression()`.
 
 ### Gotcha: `pnpm test` and `pnpm build` pass — only E2E fails
+
 Unit tests and build are green. These errors only surface during the full E2E pipeline (`pnpm test:e2e`) which compiles the generated C# with `dotnet build`.
 
 ## Parameter Alias Field Name Resolution (2026-03-05)
@@ -2713,6 +2714,21 @@ Unit tests and build are green. These errors only surface during the full E2E pi
 ## Design Decisions
 
 ### Task 14.1: Param Alias Field Name Resolution
+
 **Chosen approach**: Use `correspondingMethodParams[0].name` from the TCGC SDK to resolve the correct client field name.  
 **Why**: This is the TCGC-provided mechanism for mapping operation parameters back to method parameters. It handles both aliased and non-aliased cases correctly.  
 **Rejected**: Using `param.serializedName` (also the alias in this case), or looking up the client's initialization parameters by matching on type (overly complex and fragile).
+
+## Cross-namespace infrastructure class references require refkeys (Task 14.2)
+
+**Problem**: Infrastructure helper classes (Argument, Optional, etc.) are generated in the root namespace. When model files are in different namespaces (e.g., Azure.Core.Foundations), raw string references like `"Argument.AssertNotNull(...)"` don't trigger Alloy's automatic `using` directive generation.
+
+**Fix Pattern**: 
+1. Declare a stable refkey using `Symbol.for()` in `src/utils/refkey.ts`
+2. Register the refkey on the `ClassDeclaration` in the infrastructure file
+3. Use `code` templates with the refkey interpolated (e.g., `code\`${argumentRefkey()}.AssertNotNull(...)\``) instead of plain strings
+4. Alloy automatically adds `using {rootNamespace};` when the reference site is in a different namespace
+
+**Affected files**: Any component that generates `Argument.Assert*` calls should use `argumentRefkey()` from `src/utils/refkey.ts`. Currently fixed in ModelConstructors.tsx. ClientFile.tsx, ConvenienceMethod.tsx, ProtocolMethod.tsx, LiteralTypeFile.tsx, and ExtensibleEnumFile.tsx still use raw strings but currently don't have cross-namespace issues because they render in the root namespace.
+
+**Rule**: When referencing infrastructure classes from model/serialization code that may be in a different namespace, always use refkeys + code templates — never raw strings.

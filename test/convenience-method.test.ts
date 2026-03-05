@@ -1189,9 +1189,7 @@ describe("ConvenienceMethod", () => {
     expect(clientFile).toBeDefined();
 
     // Convenience method declaration: hyphenated name becomes camelCase
-    expect(clientFile).toContain(
-      "string xMsTestHeader",
-    );
+    expect(clientFile).toContain("string xMsTestHeader");
 
     // Convenience method validation: uses camelCase name
     expect(clientFile).toContain(
@@ -1202,9 +1200,7 @@ describe("ConvenienceMethod", () => {
     expect(clientFile).not.toMatch(/\bx-ms-test-header\b/);
 
     // XML doc param reference: uses camelCase name
-    expect(clientFile).toContain(
-      '<param name="xMsTestHeader">',
-    );
+    expect(clientFile).toContain('<param name="xMsTestHeader">');
   });
 
   /**
@@ -1232,8 +1228,7 @@ describe("ConvenienceMethod", () => {
     `);
     expect(diagnostics).toHaveLength(0);
 
-    const clientFile =
-      outputs["src/Generated/TestServiceClient.cs"] ?? "";
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"] ?? "";
 
     // Sync: enum body is wrapped in BinaryContentHelper.FromObject(body.ToString())
     expect(clientFile).toContain(
@@ -1262,13 +1257,10 @@ describe("ConvenienceMethod", () => {
     `);
     expect(diagnostics).toHaveLength(0);
 
-    const clientFile =
-      outputs["src/Generated/TestServiceClient.cs"] ?? "";
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"] ?? "";
 
     // Array body uses FromEnumerable for proper JSON array serialization
-    expect(clientFile).toContain(
-      "BinaryContentHelper.FromEnumerable(body)",
-    );
+    expect(clientFile).toContain("BinaryContentHelper.FromEnumerable(body)");
   });
 
   /**
@@ -1290,8 +1282,7 @@ describe("ConvenienceMethod", () => {
     `);
     expect(diagnostics).toHaveLength(0);
 
-    const clientFile =
-      outputs["src/Generated/TestServiceClient.cs"] ?? "";
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"] ?? "";
 
     // String body uses FromObject (goes through spread body path with wrapper model)
     expect(clientFile).toContain(
@@ -1320,8 +1311,7 @@ describe("ConvenienceMethod", () => {
     `);
     expect(diagnostics).toHaveLength(0);
 
-    const clientFile =
-      outputs["src/Generated/TestServiceClient.cs"] ?? "";
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"] ?? "";
 
     // Model body should be passed directly (implicit BinaryContent operator)
     expect(clientFile).toContain(

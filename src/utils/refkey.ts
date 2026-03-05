@@ -105,6 +105,31 @@ export function declarationRefkeys(
 }
 
 /**
+ * Well-known symbol prefix for the `Argument` internal static helper class.
+ *
+ * The `Argument` class provides parameter validation methods (`AssertNotNull`,
+ * `AssertNotNullOrEmpty`, etc.) used by model constructors and client methods.
+ * Using a stable refkey allows Alloy to automatically generate `using` directives
+ * when the reference site is in a different namespace from the declaration.
+ */
+const ARGUMENT_PREFIX = Symbol.for("http-client-csharp:argument");
+
+/**
+ * Creates the refkey for the `Argument` internal helper class.
+ *
+ * This refkey is registered on the `ClassDeclaration` in `ArgumentFile.tsx`
+ * and referenced via `code` templates in `ModelConstructors.tsx` (and other
+ * components that emit `Argument.AssertNotNull` calls). When the referencing
+ * code is in a different namespace, Alloy automatically adds the required
+ * `using` directive.
+ *
+ * @returns A stable refkey for the `Argument` class.
+ */
+export function argumentRefkey(): Refkey {
+  return refkey(ARGUMENT_PREFIX);
+}
+
+/**
  * Well-known symbol prefix for literal type wrapper struct refkeys.
  *
  * Used to create deterministic refkeys for emitter-synthesized literal type

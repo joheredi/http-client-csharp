@@ -304,7 +304,7 @@
           "title": "Fix undefined Argument helper class in generated model constructors",
           "description": "E2E failure: Error.cs, OperationState.cs, ErrorResponse.cs in azure/core/lro/rpc reference Argument.AssertNotNull() but the Argument helper class is not generated or not in scope. Either src/components/infrastructure/ArgumentFile.tsx is not being emitted, or models referencing it are missing the proper using for the Internal namespace.",
           "phase": "phase-14",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],

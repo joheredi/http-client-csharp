@@ -2,6 +2,7 @@ import { ClassDeclaration, Namespace, SourceFile } from "@alloy-js/csharp";
 import { code } from "@alloy-js/core";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
+import { argumentRefkey } from "../../utils/refkey.js";
 
 /**
  * Props for the {@link ArgumentFile} component.
@@ -45,7 +46,13 @@ export function ArgumentFile(props: ArgumentFileProps) {
       {header}
       {"\n\n"}
       <Namespace name={props.packageName}>
-        <ClassDeclaration internal static partial name="Argument">
+        <ClassDeclaration
+          internal
+          static
+          partial
+          name="Argument"
+          refkey={argumentRefkey()}
+        >
           {code`
             /// <param name="value"> The value. </param>
             /// <param name="name"> The name. </param>

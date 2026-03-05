@@ -4481,3 +4481,18 @@ For spread bodies, modified `buildSpreadProtocolCallExpr()` to wrap the model co
 **Patterns**: For onClient params, always use `correspondingMethodParams` to get the field name, never `param.name` directly. This handles both aliased and non-aliased parameters correctly.
 
 **E2E result**: client-initialization/default, individually, and individuallyParent all pass (✅ 12/111, 13/111, 16/111).
+
+2026-03-05 — Task 14.2: Fix undefined Argument helper class in generated model constructors
+
+Problem: Models in cross-namespace scenarios (e.g., Azure.Core.Foundations vs root namespace _Specs_.Azure.Core.Lro.Rpc) referenced Argument.AssertNotNull() as a raw string. Since Argument is in the root namespace and models are in different namespaces, C# couldn't resolve the reference without a using directive.
+
+Solution: Used Alloy's refkey mechanism for automatic cross-namespace using generation:
+1. Added argumentRefkey() to src/utils/refkey.ts using Symbol.for("http-client-csharp:argument")
+2. Registered the refkey on ClassDeclaration in ArgumentFile.tsx
+3. Changed buildNullChecks() in ModelConstructors.tsx to return Children[] (code template results) instead of string[], using code`${argumentRefkey()}.AssertNotNull(...)` instead of raw strings
+4. Added renderPublicCtorBody() helper to assemble null checks (JSX) and assignments (strings) as mixed JSX children
+
+Key pattern: When an infrastructure class (like Argument) is referenced from files in different namespaces, use a refkey + code template so Alloy auto-generates the using directive. Raw strings bypass Alloy's namespace resolution.
+
+Files changed: src/utils/refkey.ts, src/components/infrastructure/ArgumentFile.tsx, src/components/models/ModelConstructors.tsx
+Tests: 67 test files pass (1304 tests), azure/core/lro/rpc e2e passes

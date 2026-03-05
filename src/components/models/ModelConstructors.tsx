@@ -43,6 +43,7 @@ import {
 import {
   Block,
   type Children,
+  code,
   MemberDeclaration,
   MemberName,
 } from "@alloy-js/core";
@@ -71,7 +72,7 @@ import {
   propertyRequiresNullCheck,
 } from "../../utils/property.js";
 import { ensureTrailingPeriod, formatDocLines } from "../../utils/doc.js";
-import { efCsharpRefkey } from "../../utils/refkey.js";
+import { argumentRefkey, efCsharpRefkey } from "../../utils/refkey.js";
 import { hasDynamicModelProperties, isDynamicModel } from "./DynamicModel.js";
 
 /**
@@ -354,27 +355,64 @@ function buildParameters(
 }
 
 /**
- * Builds `Argument.AssertNotNull` validation lines for the constructor body.
+ * Builds `Argument.AssertNotNull` validation elements for the constructor body.
  *
  * Only required, non-nullable, non-collection reference-type parameters
  * need null validation. Value types (int, bool, etc.) cannot be null
  * and don't need checks. Collections use ChangeTracking initialization
  * instead of null checks.
  *
+ * Returns Alloy `code` template elements (not plain strings) so that the
+ * `Argument` class is referenced via its refkey. This enables Alloy to
+ * automatically generate `using` directives when the model is in a different
+ * namespace from the `Argument` helper class (e.g., Azure.Core.Foundations
+ * vs the root namespace).
+ *
  * @param properties - The constructor parameter properties.
  * @param namePolicy - The C# naming policy for parameter name conversion.
- * @returns An array of C# statements like `Argument.AssertNotNull(name, nameof(name));`.
+ * @returns An array of Alloy Children elements rendering `Argument.AssertNotNull(name, nameof(name));`.
  */
 function buildNullChecks(
   properties: SdkModelPropertyType[],
   namePolicy: ReturnType<typeof useCSharpNamePolicy>,
-): string[] {
+): Children[] {
   return properties
     .filter((p) => propertyRequiresNullCheck(p))
     .map((p) => {
       const paramName = namePolicy.getName(p.name, "parameter");
-      return `Argument.AssertNotNull(${paramName}, nameof(${paramName}));`;
+      return code`${argumentRefkey()}.AssertNotNull(${paramName}, nameof(${paramName}));`;
     });
+}
+
+/**
+ * Renders the public constructor body as JSX children, combining null-check
+ * elements (Alloy `code` template results with refkeys) and assignment strings.
+ *
+ * This function exists because null checks use `code` template elements
+ * (not plain strings) to reference the `Argument` class via its refkey,
+ * enabling automatic `using` directive generation for cross-namespace
+ * scenarios. Plain string `.join("\n")` cannot be used on Alloy Children.
+ *
+ * @param nullChecks - Alloy Children elements for `Argument.AssertNotNull` calls.
+ * @param assignments - Plain string assignment statements.
+ * @returns JSX children to pass to `<OverloadConstructor>`.
+ */
+function renderPublicCtorBody(
+  nullChecks: Children[],
+  assignments: string[],
+): Children {
+  return (
+    <>
+      {nullChecks.map((check, i) => (
+        <>
+          {i > 0 && "\n"}
+          {check}
+        </>
+      ))}
+      {nullChecks.length > 0 && assignments.length > 0 && "\n\n"}
+      {assignments.length > 0 && assignments.join("\n")}
+    </>
+  );
 }
 
 /**
@@ -875,18 +913,7 @@ function BaseModelConstructors(props: {
     namePolicy,
   );
 
-  const bodyParts: string[] = [];
-  if (nullChecks.length > 0) {
-    bodyParts.push(nullChecks.join("\n"));
-  }
-  if (nullChecks.length > 0 && assignments.length > 0) {
-    bodyParts.push("");
-  }
-  if (assignments.length > 0) {
-    bodyParts.push(assignments.join("\n"));
-  }
-
-  const body = bodyParts.join("\n");
+  const body = renderPublicCtorBody(nullChecks, assignments);
 
   // === Doc comments for public constructor ===
   const className = namePolicy.getName(type.name, "class");
@@ -1004,17 +1031,7 @@ function DerivedModelConstructors(props: {
     namePolicy,
   );
 
-  const bodyParts: string[] = [];
-  if (nullChecks.length > 0) {
-    bodyParts.push(nullChecks.join("\n"));
-  }
-  if (nullChecks.length > 0 && assignments.length > 0) {
-    bodyParts.push("");
-  }
-  if (assignments.length > 0) {
-    bodyParts.push(assignments.join("\n"));
-  }
-  const publicBody = bodyParts.join("\n");
+  const publicBody = renderPublicCtorBody(nullChecks, assignments);
 
   // Build public ctor base initializer by matching the base model's ctor param order.
   // The discriminator position gets the discriminator literal; other positions get pass-throughs.
