@@ -60,7 +60,10 @@ import {
   ExplicitClientResultOperator,
   ImplicitBinaryContentOperator,
 } from "./components/serialization/CastOperators.js";
-import { ModelSerializationFile } from "./components/serialization/ModelSerializationFile.js";
+import {
+  ModelSerializationFile,
+  modelNeedsSerialization,
+} from "./components/serialization/ModelSerializationFile.js";
 import { DeserializationConstructor } from "./components/serialization/DeserializationConstructor.js";
 import { DeserializeReturnStatement } from "./components/serialization/DeserializeReturnStatement.js";
 import { DeserializeVariableDeclarations } from "./components/serialization/DeserializeVariableDeclarations.js";
@@ -293,14 +296,14 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
             <UnknownDiscriminatorModelFile type={m} options={options} />
           ))}
         {models
-          .filter((m) => hasDiscriminatedSubtypes(m))
+          .filter((m) => hasDiscriminatedSubtypes(m) && modelNeedsSerialization(m))
           .map((m) => (
             <UnknownDiscriminatorModelSerializationFile
               type={m}
               options={options}
             />
           ))}
-        {models.map((m) => {
+        {models.filter(modelNeedsSerialization).map((m) => {
           const supportsJson = (m.usage & UsageFlags.Json) !== 0;
           const supportsXml = (m.usage & UsageFlags.Xml) !== 0;
           return (
@@ -366,7 +369,7 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
           options={options}
         />
         <ModelReaderWriterContextFile
-          models={models}
+          models={models.filter(modelNeedsSerialization)}
           packageName={rootNamespace}
           options={options}
         />

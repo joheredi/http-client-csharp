@@ -1,5 +1,87 @@
 import { describe, expect, it } from "vitest";
+import { UsageFlags } from "@azure-tools/typespec-client-generator-core";
+import type { SdkModelType } from "@azure-tools/typespec-client-generator-core";
+import { modelNeedsSerialization } from "../src/components/serialization/ModelSerializationFile.js";
 import { HttpTester } from "./test-host.js";
+
+/**
+ * Tests for the modelNeedsSerialization utility function.
+ *
+ * This function is the gatekeeper that determines whether a model gets a
+ * `.Serialization.cs` file. It mirrors the legacy emitter's
+ * `ScmTypeFactory.CreateSerializationsCore()` which only generates serialization
+ * type definitions for models with `Json` or `Xml` usage flags.
+ *
+ * Why these tests matter:
+ * - Without this filter, models used only for multipart form data or spread
+ *   parameters would incorrectly get serialization files that declare
+ *   `IJsonModel<T>` without implementing its methods, causing compile errors.
+ * - The function must correctly handle bitwise flag combinations since TCGC
+ *   usage flags are a bitfield (e.g., Json | Input | Output).
+ */
+describe("modelNeedsSerialization", () => {
+  /**
+   * Helper to create a minimal SdkModelType stub with the given usage flags.
+   * Only the `usage` field is relevant for this function.
+   */
+  function makeModel(usage: number): SdkModelType {
+    return { usage } as unknown as SdkModelType;
+  }
+
+  it("returns true for JSON models", () => {
+    expect(modelNeedsSerialization(makeModel(UsageFlags.Json))).toBe(true);
+  });
+
+  it("returns true for XML models", () => {
+    expect(modelNeedsSerialization(makeModel(UsageFlags.Xml))).toBe(true);
+  });
+
+  it("returns true for models with both JSON and XML usage", () => {
+    expect(
+      modelNeedsSerialization(
+        makeModel(UsageFlags.Json | UsageFlags.Xml),
+      ),
+    ).toBe(true);
+  });
+
+  it("returns true for JSON models with additional flags (Input, Output)", () => {
+    expect(
+      modelNeedsSerialization(
+        makeModel(UsageFlags.Json | UsageFlags.Input | UsageFlags.Output),
+      ),
+    ).toBe(true);
+  });
+
+  it("returns false for multipart-only models", () => {
+    expect(
+      modelNeedsSerialization(
+        makeModel(UsageFlags.MultipartFormData | UsageFlags.Input),
+      ),
+    ).toBe(false);
+  });
+
+  it("returns false for models with no usage flags", () => {
+    expect(modelNeedsSerialization(makeModel(UsageFlags.None))).toBe(false);
+  });
+
+  it("returns false for spread-only models", () => {
+    expect(
+      modelNeedsSerialization(
+        makeModel(UsageFlags.Spread | UsageFlags.Input),
+      ),
+    ).toBe(false);
+  });
+
+  it("returns true for multipart models that also have JSON usage", () => {
+    expect(
+      modelNeedsSerialization(
+        makeModel(
+          UsageFlags.MultipartFormData | UsageFlags.Json | UsageFlags.Input,
+        ),
+      ),
+    ).toBe(true);
+  });
+});
 
 /**
  * Tests for the ModelSerializationFile component.
@@ -518,6 +600,86 @@ describe("ModelSerializationFile", () => {
 
     // Non-discriminated models must NOT have the PersistableModelProxy attribute
     expect(widgetContent).not.toContain("PersistableModelProxy");
+  });
+
+  /**
+   * Validates that models used exclusively for multipart form data do NOT get
+   * serialization files.
+   *
+   * In the legacy emitter, `ScmTypeFactory.CreateSerializationsCore()` only generates
+   * serialization type definitions for models with `Json` or `Xml` usage flags.
+   * Multipart-only models have `UsageFlags.MultipartFormData` but NOT `UsageFlags.Json`,
+   * so they should be excluded from serialization file generation entirely.
+   *
+   * Without this filter, the emitter would generate a partial class declaring
+   * `IJsonModel<T>` but missing the required interface implementation methods
+   * (since JSON serialization components are guarded by `supportsJson`), causing
+   * compile errors (CS0535: does not implement interface member).
+   */
+  it("does not generate serialization file for multipart-only models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model MultiPartRequest {
+        id: HttpPart<string>;
+        profileImage: HttpPart<bytes>;
+      }
+
+      @route("/upload")
+      @post op upload(@header contentType: "multipart/form-data", @multipartBody body: MultiPartRequest): void;
+    `);
+
+    // Filter out warnings — multipart specs may produce advisory diagnostics
+    const errors = diagnostics.filter((d) => d.severity === "error");
+    expect(errors).toHaveLength(0);
+
+    // Multipart-only models must NOT get a .Serialization.cs file
+    const serializationFiles = Object.keys(outputs).filter((k) =>
+      k.includes(".Serialization.cs"),
+    );
+    const multipartSerFile = serializationFiles.find((k) =>
+      k.includes("MultiPartRequest.Serialization.cs"),
+    );
+    expect(multipartSerFile).toBeUndefined();
+  });
+
+  /**
+   * Validates that models used in both JSON and multipart contexts still get
+   * serialization files. The `modelNeedsSerialization()` filter only excludes
+   * models that have NEITHER `UsageFlags.Json` NOR `UsageFlags.Xml`.
+   *
+   * A model referenced by a JSON operation and a multipart operation would have
+   * both `UsageFlags.Json` and `UsageFlags.MultipartFormData` flags set, and
+   * should still get its serialization file with `IJsonModel<T>`.
+   */
+  it("generates serialization file for models with JSON usage even if also used elsewhere", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const serFile = Object.keys(outputs).find((k) =>
+      k.includes("Widget.Serialization.cs"),
+    );
+    expect(serFile).toBeDefined();
+    const content = outputs[serFile!];
+    expect(content).toMatch(
+      /public\s+partial\s+class\s+Widget\s*:\s*IJsonModel<Widget>/,
+    );
   });
 });
 

@@ -264,7 +264,7 @@
           "title": "Fix IJsonModel<T> declared on non-JSON models (multipart, file)",
           "description": "ModelSerializationFile.tsx declares IJsonModel<T> interface on models that don't have JSON serialization (multipart form data models, file upload models). The interface is declared but JsonModelWriteCore and JsonModelCreateCore methods are not generated, causing CS0535 errors (56+ occurrences).\n\nThe fix should either: (a) not declare IJsonModel<T> for models whose usage doesn't include JSON serialization, or (b) generate stub JsonModelWriteCore/JsonModelCreateCore methods that throw NotSupportedException.\n\nAlso has secondary CS0104 issue: generated type name 'File' collides with System.IO.File in payload/multipart.\n\nAffected specs: payload/multipart, type/file, azure/client-generator-core/override.\n\nTo reproduce: Remove these specs from test/e2e/.testignore, run pnpm emit:e2e --filter payload/multipart, then dotnet build.",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

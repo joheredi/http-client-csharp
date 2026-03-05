@@ -2780,3 +2780,23 @@ Unit tests and build are green. These errors only surface during the full E2E pi
 **Rejected alternative**: Change PagingMethods to not pass params for next-link/single-page. Rejected because the CreateXxxRequest method in RestClient needs operation parameters for the initial request — without storing them, the CollectionResult can't build it correctly. Legacy emitter's test sample happened to not have extra params, masking this issue.
 
 **Learning**: When `reorderTokenFirst` receives `undefined` as tokenParamName, it's a no-op — returns params unchanged. This makes the same code path work for all strategies.
+
+## Design Decisions
+
+### Task 12.17: Serialization file filtering for non-JSON/XML models
+
+**Approach chosen**: Filter at emitter level (emitter.tsx) using `modelNeedsSerialization()`.
+Models without `UsageFlags.Json` or `UsageFlags.Xml` are excluded from serialization file
+generation entirely, matching the legacy emitter's `ScmTypeFactory.CreateSerializationsCore()`.
+
+**Rejected**: Guard inside ModelSerializationFile component (return null) — would still create
+empty/broken SourceFile nodes. Filtering upstream is cleaner.
+
+**Key insight**: The `getSerializationInterfaces()` fallback previously defaulted to `IJsonModel<T>`
+for models with no serialization format, which was wrong. Changed fallback to `IPersistableModel<T>`
+as defensive measure, though the primary guard is the emitter-level filter.
+
+**Affected locations**: emitter.tsx serialization loop, UnknownDiscriminatorModelSerializationFile
+loop, and ModelReaderWriterContextFile models. ModelFactoryFile was NOT filtered because it
+generates factory methods that call internal constructors (which exist on all models regardless of
+serialization support).

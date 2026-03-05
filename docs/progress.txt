@@ -4619,3 +4619,24 @@ Added `resolvePropertyName(propertyName, modelName)` utility to detect when a mo
 - The existing tests didn't cover operations with parameters for next-link/single-page strategies — that's the exact scenario that was broken
 - The fix is purely in CollectionResultFile.tsx (no changes needed in PagingMethods.tsx which was already correct)
 - Status: DONE — all 1318 unit tests pass, all 77 e2e specs compile, all 5 e2e tests pass
+
+2026-03-05 — Task 12.17: Fix IJsonModel<T> declared on non-JSON models (multipart, file)
+
+Problem: emitter.tsx generated ModelSerializationFile for ALL models regardless of usage flags.
+Models used only for multipart form data got serialization files declaring IJsonModel<T> but
+without the required interface implementation methods (guarded by supportsJson), causing CS0535.
+
+Fix:
+- Added `modelNeedsSerialization()` utility function to ModelSerializationFile.tsx that checks
+  `(type.usage & (UsageFlags.Json | UsageFlags.Xml)) !== 0`, matching legacy emitter's
+  `ScmTypeFactory.CreateSerializationsCore()` filtering logic.
+- Filtered serialization file rendering loop in emitter.tsx (line 303) with this function.
+- Also filtered UnknownDiscriminatorModelSerializationFile rendering (line 295).
+- Also filtered ModelReaderWriterContextFile models (non-serializable models shouldn't be registered).
+- Updated `getSerializationInterfaces()` fallback from IJsonModel<T> to IPersistableModel<T>
+  (defensive; callers should filter first).
+- Added 10 unit tests: 8 for modelNeedsSerialization function (flag combinations), 2 integration
+  tests for multipart model exclusion and JSON model inclusion.
+
+Patterns: Used `UsageFlags` bitfield checks. The filter is at emitter level (not component level)
+to prevent generating empty/broken files entirely.

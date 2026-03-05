@@ -33,7 +33,10 @@ export { JsonModelInterfaceWrite } from "./JsonModelInterfaceWrite.js";
 export type { JsonModelInterfaceWriteProps } from "./JsonModelInterfaceWrite.js";
 export { JsonModelWriteCore } from "./JsonModelWriteCore.js";
 export type { JsonModelWriteCoreProps } from "./JsonModelWriteCore.js";
-export { ModelSerializationFile } from "./ModelSerializationFile.js";
+export {
+  ModelSerializationFile,
+  modelNeedsSerialization,
+} from "./ModelSerializationFile.js";
 export type { ModelSerializationFileProps } from "./ModelSerializationFile.js";
 export { PersistableModelCreateCore } from "./PersistableModelCreateCore.js";
 export type { PersistableModelCreateCoreProps } from "./PersistableModelCreateCore.js";

@@ -34,6 +34,23 @@ export interface ModelSerializationFileProps {
 }
 
 /**
+ * Checks whether a model needs a `.Serialization.cs` file based on its TCGC
+ * usage flags.
+ *
+ * The legacy emitter's `ScmTypeFactory.CreateSerializationsCore()` only generates
+ * serialization type definitions for models with `Json` or `Xml` usage flags.
+ * Models used exclusively for multipart form data, file uploads, or spread
+ * parameters do not get serialization files — they lack the usage flags that
+ * would make them serializable via `IJsonModel<T>` or `IPersistableModel<T>`.
+ *
+ * @param type - The TCGC SDK model type to check.
+ * @returns `true` if the model should have a serialization file generated.
+ */
+export function modelNeedsSerialization(type: SdkModelType): boolean {
+  return (type.usage & (UsageFlags.Json | UsageFlags.Xml)) !== 0;
+}
+
+/**
  * Determines which serialization interfaces a model should implement based on
  * its TCGC usage flags.
  *
@@ -42,6 +59,10 @@ export interface ModelSerializationFileProps {
  *   so both interfaces are satisfied).
  * - Models with only XML usage implement `IPersistableModel<T>` directly (JSON methods
  *   are not needed).
+ *
+ * Callers should filter models with {@link modelNeedsSerialization} before calling
+ * this function. Models without Json or Xml usage should not have serialization
+ * files generated at all.
  *
  * @param type - The TCGC SDK model type.
  * @param modelName - The C# class name (used as the generic type argument `T`).
@@ -62,9 +83,13 @@ export function getSerializationInterfaces(
     ];
   }
 
-  // Fallback: models with no serialization format still default to IJsonModel<T>
-  // to match the legacy emitter behavior where all emitted models are serializable.
-  return [code`${SystemClientModelPrimitives.IJsonModel}<${modelName}>`];
+  // Defensive fallback: models without Json or Xml usage should be filtered out
+  // by modelNeedsSerialization() before reaching this point. If they somehow get
+  // here, default to IPersistableModel<T> (the minimal interface) rather than
+  // IJsonModel<T> to avoid declaring methods that won't be implemented.
+  return [
+    code`${SystemClientModelPrimitives.IPersistableModel}<${modelName}>`,
+  ];
 }
 
 /**
