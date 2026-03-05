@@ -163,7 +163,7 @@
           "title": "Add missing using System directive in ModelFactory generated files",
           "description": "ModelFactoryFile.tsx (line 79) hardcodes using={['System.Collections.Generic', 'System.Linq']} without including 'System'. When factory method parameters include types from the System namespace (DateTimeOffset, TimeSpan, Uri), the generated code fails with CS0246 (~41 errors: DateTimeOffset 13, TimeSpan 18, Uri 10).\n\nThe fix is straightforward: add 'System' to the using list in ModelFactoryFile.tsx. Alternatively, rely on Alloy's automatic using generation by ensuring TypeExpression resolves these types through the library reference system.\n\nAffected specs: azure/client-generator-core/client-initialization/default, individually, individuallyParent, and others with DateTimeOffset/TimeSpan/Uri model properties.\n\nTo reproduce: pnpm test:e2e, check CS0246 errors for DateTimeOffset in ModelFactory files.",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

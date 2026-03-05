@@ -544,4 +544,46 @@ describe("ModelFactoryFile", () => {
     // UnknownPet gets all params plus additionalBinaryDataProperties: null
     expect(factoryFile).toContain("additionalBinaryDataProperties: null");
   });
+
+  /**
+   * Validates that the factory file includes `using System;` when models
+   * contain properties that map to System namespace types (DateTimeOffset,
+   * TimeSpan, etc.).
+   *
+   * Without `using System;`, the generated C# code fails with CS0246 errors
+   * because `DateTimeOffset`, `TimeSpan`, and `Uri` are in the `System`
+   * namespace. TypeExpression renders these type names correctly but does not
+   * auto-generate the `using System;` directive (it maps TypeSpec scalars to
+   * C# type name strings without going through Alloy's builtin refkey system).
+   *
+   * The fix hardcodes `using System;` in the SourceFile's using list,
+   * matching the legacy emitter's behavior.
+   */
+  it("includes using System for DateTimeOffset and TimeSpan types", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        createdAt: utcDateTime;
+        elapsed: duration;
+      }
+
+      @route("/test")
+      op test(): Widget;
+    `);
+
+    const factoryFile =
+      outputs[Object.keys(outputs).find((k) => k.includes("ModelFactory"))!];
+
+    // using System; must be present for DateTimeOffset and TimeSpan
+    expect(factoryFile).toContain("using System;");
+
+    // Verify the types render correctly in the factory method signature
+    expect(factoryFile).toContain("DateTimeOffset createdAt = default");
+    expect(factoryFile).toContain("TimeSpan elapsed = default");
+  });
 });

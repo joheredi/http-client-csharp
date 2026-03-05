@@ -4364,3 +4364,17 @@ Check the NuGet package XML docs: `grep "T:Full.Type.Name" ~/.nuget/packages/{pk
 **Note for next iteration:** The e2e test failure (dotnet test DLL path invalid) is pre-existing and unrelated to this change.
 
 **All 1,295 tests pass (2 new), build succeeds.**
+
+2026-03-05 — Task 12.12: Add missing using System directive in ModelFactory generated files
+
+What was done: Added 'System' to the hardcoded using list in ModelFactoryFile.tsx. The SourceFile component's `using` prop now includes `["System", "System.Collections.Generic", "System.Linq"]` instead of only the latter two.
+
+Root cause: TypeExpression renders System namespace types (DateTimeOffset, TimeSpan, Uri) as bare type name strings without going through Alloy's builtin refkey system, so the auto-using mechanism never triggers `using System;`. The fix matches the legacy emitter's behavior of always including `using System;` in ModelFactory files.
+
+Files modified:
+- src/components/model-factory/ModelFactoryFile.tsx — added 'System' to using list (line 79)
+- test/model-factory.test.ts — added test verifying using System; presence with DateTimeOffset and TimeSpan types
+
+Verification: Confirmed CS0246 errors for DateTimeOffset/TimeSpan/Uri in e2e tests are eliminated (0 occurrences after fix vs ~41 before).
+
+All 1,296 tests pass (1 new), build succeeds.
