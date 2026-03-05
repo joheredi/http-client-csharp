@@ -240,7 +240,7 @@
           "title": "Fix CollectionResult constructor parameter mismatch for paging methods",
           "description": "CollectionResultFile.tsx only populates operation parameters for continuation-token paging, but PagingMethods.tsx always passes all operation parameters in the constructor call. For next-link paging, the constructor has fewer parameters than the caller provides, causing CS1729 (wrong constructor argument count), CS7036 (missing required parameter), and cascading CS1061 (missing member) errors.\n\nThe fix should include operation parameters for both continuation-token AND next-link paging strategies in CollectionResultFile.tsx, and align the CreateXxxRequest parameter lists between RestClient and CollectionResult.\n\nAffected specs: azure/core/basic, azure/core/page, azure/payload/pageable, payload/pageable, azure/client-generator-core/next-link-verb.\n\nTo reproduce: Remove these specs from test/e2e/.testignore, run pnpm emit:e2e --filter azure/core/basic, then dotnet build.",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

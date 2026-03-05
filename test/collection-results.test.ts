@@ -1127,4 +1127,129 @@ describe("CollectionResultFile", () => {
       "global::System.ClientModel.ContinuationToken",
     );
   });
+
+  /**
+   * Verifies that operation parameters are stored as fields and passed to
+   * CreateXxxRequest for next-link paging operations.
+   *
+   * This is a critical test because next-link paging operations with query/header
+   * parameters need those parameters stored in the CollectionResult class to build
+   * the initial request. Without this, the constructor has fewer parameters than
+   * PagingMethods passes, causing CS1729 (wrong constructor argument count).
+   *
+   * The initial request uses all stored field values, while subsequent requests
+   * use CreateNext{Op}Request with just the next URI.
+   */
+  it("includes operation parameters in constructor and initial request for next-link paging", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Thing {
+        name: string;
+      }
+
+      model PageThing {
+        @pageItems
+        items: Thing[];
+
+        @nextLink
+        nextLink?: url;
+      }
+
+      @route("/things")
+      @list
+      @get
+      op listThings(@query maxPageSize?: int32): PageThing;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    // Find the sync protocol file
+    const fileName = Object.keys(outputs).find(
+      (k) =>
+        k.includes("CollectionResult.cs") &&
+        !k.includes("Async") &&
+        !k.includes("OfT"),
+    );
+    expect(fileName).toBeDefined();
+    const content = outputs[fileName!];
+
+    // Constructor should accept the operation parameter
+    expect(content).toContain("int? maxPageSize");
+
+    // Operation parameter should be stored as a private readonly field
+    expect(content).toContain("private readonly int? _maxPageSize;");
+
+    // Constructor body should assign the field
+    expect(content).toContain("_maxPageSize = maxPageSize;");
+
+    // Initial request should pass the stored parameter to CreateXxxRequest
+    expect(content).toContain(
+      "_client.CreateGetThingsRequest(_maxPageSize, _options)",
+    );
+
+    // Subsequent requests should still use CreateNext with just URI
+    expect(content).toContain(
+      "_client.CreateNextGetThingsRequest(nextPageUri, _options)",
+    );
+  });
+
+  /**
+   * Verifies that operation parameters are stored as fields and passed to
+   * CreateXxxRequest for single-page paging operations (no next-link, no
+   * continuation token).
+   *
+   * Even single-page paging operations with parameters need to pass those
+   * parameters to CreateXxxRequest. Without this, the constructor/request
+   * call would be mismatched with PagingMethods.
+   */
+  it("includes operation parameters in constructor and request for single-page paging", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Thing {
+        name: string;
+      }
+
+      model PageThing {
+        @pageItems
+        items: Thing[];
+      }
+
+      @route("/things")
+      @list
+      @get
+      op listThings(@query filter?: string): PageThing;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    // Find the sync protocol file
+    const fileName = Object.keys(outputs).find(
+      (k) =>
+        k.includes("CollectionResult.cs") &&
+        !k.includes("Async") &&
+        !k.includes("OfT"),
+    );
+    expect(fileName).toBeDefined();
+    const content = outputs[fileName!];
+
+    // Constructor should accept the operation parameter
+    expect(content).toContain("string filter");
+
+    // Operation parameter should be stored as a private readonly field
+    expect(content).toContain("private readonly string _filter;");
+
+    // Constructor body should assign the field
+    expect(content).toContain("_filter = filter;");
+
+    // Request should pass the stored parameter to CreateXxxRequest
+    expect(content).toContain(
+      "_client.CreateGetThingsRequest(_filter, _options)",
+    );
+  });
 });

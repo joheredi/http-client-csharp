@@ -4601,3 +4601,21 @@ Added `resolvePropertyName(propertyName, modelName)` utility to detect when a mo
 - `VariableInfo` and `MatchablePropertyInfo` types carry the declaring model name through the component tree
 
 **Result:** 1316 tests passing (was 1310), 68 test files, build clean, e2e clean.
+
+## Task 12.16 — Fix CollectionResult constructor parameter mismatch for paging methods (2026-03-05)
+
+### What was done
+- Fixed `CollectionResultFile.tsx` to include ALL operation parameters for ALL paging strategies (next-link, single-page, continuation-token), not just continuation-token
+- Changed `operationParams` from conditional (`hasContinuationToken ? ... : []`) to always include params via `buildProtocolParams` + `reorderTokenFirst`
+- Updated `buildNextLinkGetRawPagesBody` and `buildSinglePageGetRawPagesBody` to accept and use operation params for the initial `CreateXxxRequest` call
+- Added `buildStoredFieldArgs` helper for building `_param1, _param2, _options` arg strings
+- Added 2 unit tests: next-link with query params, single-page with query params
+
+### Patterns used
+- `buildStoredFieldArgs(params)` maps params to stored field references (`_paramName`) plus `_options`
+- `reorderTokenFirst` is a no-op when `tokenParamName` is undefined, so it safely handles all strategies
+
+### Notes for next iteration
+- The existing tests didn't cover operations with parameters for next-link/single-page strategies — that's the exact scenario that was broken
+- The fix is purely in CollectionResultFile.tsx (no changes needed in PagingMethods.tsx which was already correct)
+- Status: DONE — all 1318 unit tests pass, all 77 e2e specs compile, all 5 e2e tests pass

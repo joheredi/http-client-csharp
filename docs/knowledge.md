@@ -2770,3 +2770,13 @@ Unit tests and build are green. These errors only surface during the full E2E pi
 **Rejected approach:** React context providing model name to all child components. Rejected because many serialization functions are plain utility functions, not React components, so they can't access contexts.
 
 **Edge case noted:** For derived models where a base property collides with the BASE model's name, each property is paired with its declaring model name via `VariableInfo.modelName` and `MatchablePropertyInfo.modelName` types. This ensures the collision check uses the correct model context.
+
+## Design Decision: CollectionResult operation parameters for all paging strategies (Task 12.16)
+
+**Decision**: Store ALL operation parameters as fields in CollectionResult classes for ALL paging strategies (next-link, single-page, continuation-token), not just continuation-token.
+
+**Reason**: PagingMethods.tsx always passes all operation parameters to the CollectionResult constructor. The CollectionResult needs them to call `CreateXxxRequest(...)` for the initial request, regardless of paging strategy. For next-link, subsequent requests use `CreateNextXxxRequest(nextPageUri, _options)` and don't need the stored params, but the initial request does.
+
+**Rejected alternative**: Change PagingMethods to not pass params for next-link/single-page. Rejected because the CreateXxxRequest method in RestClient needs operation parameters for the initial request — without storing them, the CollectionResult can't build it correctly. Legacy emitter's test sample happened to not have extra params, masking this issue.
+
+**Learning**: When `reorderTokenFirst` receives `undefined` as tokenParamName, it's a no-op — returns params unchanged. This makes the same code path work for all strategies.

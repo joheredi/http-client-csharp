@@ -274,24 +274,21 @@ function CollectionResultFile(props: CollectionResultFileProps) {
         )
       : undefined;
 
-  // Get all operation parameters for continuation-token operations.
-  // These are stored as fields and passed to Create{Op}Request on each iteration.
-  // Identify which operation parameter is the continuation token by matching
-  // against the last segment in continuationTokenParameterSegments.
+  // Get all operation parameters. These are stored as fields and passed to
+  // Create{Op}Request when building request messages. For continuation-token
+  // paging, the token parameter is placed first (matching legacy emitter).
+  // For next-link and single-page strategies, params keep their original order.
   const tokenParamName = hasContinuationToken
     ? continuationTokenParamSegments![
         continuationTokenParamSegments!.length - 1
       ].name
     : undefined;
 
-  // Reorder params to put the continuation token first (matching legacy emitter).
   const getParamName = (name: string) => namePolicy.getName(name, "parameter");
-  const operationParams = hasContinuationToken
-    ? reorderTokenFirst(
-        buildProtocolParams(method.operation, getParamName),
-        tokenParamName,
-      )
-    : [];
+  const operationParams = reorderTokenFirst(
+    buildProtocolParams(method.operation, getParamName),
+    tokenParamName,
+  );
 
   // Base type: generic for convenience, non-generic for protocol
   const baseType =
@@ -319,6 +316,7 @@ function CollectionResultFile(props: CollectionResultFileProps) {
         nextRequestMethodName,
         responseTypeExpr!,
         nextLinkPropertyPath!,
+        operationParams,
       )
     : hasContinuationToken
       ? isContinuationTokenHeader
@@ -337,7 +335,7 @@ function CollectionResultFile(props: CollectionResultFileProps) {
             responseTypeExpr!,
             continuationTokenPropertyPath!,
           )
-      : buildSinglePageGetRawPagesBody(isAsync, requestMethodName);
+      : buildSinglePageGetRawPagesBody(isAsync, requestMethodName, operationParams);
 
   // Build GetContinuationToken method body.
   // Returns ContinuationToken from next-link URI, continuation token string,
@@ -515,20 +513,27 @@ function buildAsyncGetValuesBody(
  *
  * Generates a simple yield return of one processed message.
  * Used when no nextLinkSegments or continuationToken are present.
+ *
+ * @param isAsync - Whether to generate async variant
+ * @param requestMethodName - Name of the request factory method
+ * @param params - All operation parameters to pass to the request factory
  */
 function buildSinglePageGetRawPagesBody(
   isAsync: boolean,
   requestMethodName: string,
+  params: { name: string }[],
 ): Children[] {
+  const requestArgs = buildStoredFieldArgs(params);
+
   if (isAsync) {
     return [
-      code`${SystemClientModelPrimitives.PipelineMessage} message = _client.${requestMethodName}(_options);`,
+      code`${SystemClientModelPrimitives.PipelineMessage} message = _client.${requestMethodName}(${requestArgs});`,
       "\n",
       code`yield return ${SystemClientModel.ClientResult}.FromResponse(await _client.Pipeline.ProcessMessageAsync(message, _options).ConfigureAwait(false));`,
     ];
   }
   return [
-    code`${SystemClientModelPrimitives.PipelineMessage} message = _client.${requestMethodName}(_options);`,
+    code`${SystemClientModelPrimitives.PipelineMessage} message = _client.${requestMethodName}(${requestArgs});`,
     "\n",
     code`yield return ${SystemClientModel.ClientResult}.FromResponse(_client.Pipeline.ProcessMessage(message, _options));`,
   ];
@@ -548,6 +553,7 @@ function buildSinglePageGetRawPagesBody(
  * @param nextRequestMethodName - Name of the next-page request factory method (e.g., "CreateNextListThingsRequest")
  * @param responseTypeExpr - JSX expression for the response model type (used for casting)
  * @param nextLinkPropertyPath - C# property path to the next-link value (e.g., "NextLink" or "Nested?.NextLink")
+ * @param params - All operation parameters to pass to the initial request factory
  */
 function buildNextLinkGetRawPagesBody(
   isAsync: boolean,
@@ -555,13 +561,16 @@ function buildNextLinkGetRawPagesBody(
   nextRequestMethodName: string,
   responseTypeExpr: Children,
   nextLinkPropertyPath: string,
+  params: { name: string }[],
 ): Children[] {
   const processMessage = isAsync
     ? code`await _client.Pipeline.ProcessMessageAsync(message, _options).ConfigureAwait(false)`
     : code`_client.Pipeline.ProcessMessage(message, _options)`;
 
+  const requestArgs = buildStoredFieldArgs(params);
+
   return [
-    code`${SystemClientModelPrimitives.PipelineMessage} message = _client.${requestMethodName}(_options);`,
+    code`${SystemClientModelPrimitives.PipelineMessage} message = _client.${requestMethodName}(${requestArgs});`,
     "\n",
     code`${System.Uri} nextPageUri = null;`,
     "\n",
@@ -622,6 +631,21 @@ function buildNextLinkGetContinuationTokenBody(
     "\n",
     "return null;",
   ];
+}
+
+/**
+ * Builds a Create{Op}Request argument list from stored operation parameter fields.
+ *
+ * Maps each parameter to its stored field (e.g., `_paramName`) and appends `_options`.
+ * Used by next-link and single-page strategies where no token replacement is needed.
+ *
+ * @param params - All operation parameters from buildProtocolParams
+ * @returns Comma-separated argument string (e.g., "_maxPageSize, _options")
+ */
+function buildStoredFieldArgs(params: { name: string }[]): string {
+  const args = params.map((p) => `_${p.name}`);
+  args.push("_options");
+  return args.join(", ");
 }
 
 /**
