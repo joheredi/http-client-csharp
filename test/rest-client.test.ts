@@ -1266,4 +1266,56 @@ describe("RestClientFile", () => {
     const acceptIndex = restClient!.indexOf('request.Headers.Set("Accept"');
     expect(acceptIndex).toBeGreaterThan(contentTypeIndex);
   });
+
+  /**
+   * Verifies that onClient path parameters with @paramAlias use the client
+   * field name (from the initialization parameter) rather than the operation's
+   * aliased parameter name.
+   *
+   * This matters because @paramAlias("blob") causes the operation path param
+   * to have name "blob", but the client field is _blobName (from the
+   * initialization parameter "blobName"). Without this fix, the RestClient
+   * would generate `uri.AppendPath(_blob, true)` which is an undefined field.
+   *
+   * The fix uses correspondingMethodParams to resolve the correct field name.
+   */
+  it("uses client field name for onClient path params with @paramAlias", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+      using Azure.ClientGenerator.Core;
+
+      @service
+      namespace TestService;
+
+      model ClientOptions {
+        @doc("Blob name for the client.")
+        @paramAlias("blob")
+        blobName: string;
+      }
+
+      @client({ name: "ParamAliasClient" })
+      @clientInitialization(ClientOptions)
+      @route("/param-alias")
+      interface ParamAlias {
+        @route("/{blob}/with-aliased-name")
+        @get
+        withAliasedName(@path blob: string): void;
+
+        @route("/{blobName}/with-original-name")
+        @get
+        withOriginalName(@path blobName: string): void;
+      }
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const restClient = outputs["src/Generated/ParamAliasClient.RestClient.cs"];
+    expect(restClient).toBeDefined();
+
+    // Both operations should reference _blobName (the client field), not _blob
+    expect(restClient).toContain("uri.AppendPath(_blobName, true)");
+
+    // Verify both CreateRequest methods use the correct field
+    const matches = restClient!.match(/uri\.AppendPath\(_blobName/g);
+    expect(matches).toHaveLength(2);
+  });
 });

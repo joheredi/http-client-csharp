@@ -4465,3 +4465,19 @@ For spread bodies, modified `buildSpreadProtocolCallExpr()` to wrap the model co
 **Next person should:**
 - Pick up task 14.1–14.5 in priority order. Tasks 14.4 and 14.5 are both in encode/bytes and may share investigation.
 - Build and test pass; only E2E fails.
+
+## Task 14.1: Fix undefined _blob reference in ParamAlias rest client generation (2026-03-05)
+
+**Problem**: When `@paramAlias("blob")` is applied to a client initialization parameter `blobName`, the RestClient generates `_blob` (the alias) instead of `_blobName` (the actual client field) in request builder methods. This causes CS0103 compilation errors.
+
+**Root cause**: `buildPathParamStatement`, `buildQueryParamStatement`, and `buildHeaderParamStatement` in `RestClientFile.tsx` constructed onClient field names as `_${getParamName(param.name)}`, but `param.name` is the operation-level alias, not the client initialization parameter name.
+
+**Fix**: Added `getOnClientFieldName()` helper that uses `param.correspondingMethodParams[0].name` to resolve the correct client initialization parameter name. Applied the helper in all three build functions.
+
+**Files changed**:
+- `src/components/clients/RestClientFile.tsx` — added `getOnClientFieldName()`, updated 3 build functions
+- `test/rest-client.test.ts` — added unit test verifying correct field name resolution for @paramAlias
+
+**Patterns**: For onClient params, always use `correspondingMethodParams` to get the field name, never `param.name` directly. This handles both aliased and non-aliased parameters correctly.
+
+**E2E result**: client-initialization/default, individually, and individuallyParent all pass (✅ 12/111, 13/111, 16/111).

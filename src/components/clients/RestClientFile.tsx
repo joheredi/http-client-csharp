@@ -815,6 +815,27 @@ function isCollectionType(type: SdkType): boolean {
 }
 
 /**
+ * Resolves the correct client field name for an onClient HTTP parameter.
+ *
+ * When a parameter uses `@paramAlias`, the operation-level parameter name is
+ * the alias (e.g., "blob"), but the client field is named after the client
+ * initialization parameter (e.g., "blobName" → field "_blobName"). This
+ * function uses `correspondingMethodParams` to find the correct field name.
+ *
+ * @param param - The HTTP parameter with `onClient: true`
+ * @param getParamName - Name policy transformation function
+ * @returns The prefixed field name (e.g., "_blobName")
+ */
+function getOnClientFieldName(
+  param: SdkPathParameter | SdkQueryParameter | SdkHeaderParameter,
+  getParamName: (name: string) => string,
+): string {
+  const methodParam = param.correspondingMethodParams?.[0];
+  const name = methodParam?.name ?? param.name;
+  return `_${getParamName(name)}`;
+}
+
+/**
  * Maps a TCGC CollectionFormat to the delimiter string used in
  * AppendQueryDelimited / AppendPathDelimited / SetHeaderDelimited calls.
  *
@@ -888,7 +909,7 @@ function buildQueryParamStatement(
   }
 
   if (param.onClient) {
-    const fieldName = `_${name}`;
+    const fieldName = getOnClientFieldName(param, getParamName);
     return `if (${fieldName} != null)\n{\n    uri.AppendQuery("${serializedName}", ${fieldName}, true);\n}`;
   }
 
@@ -938,9 +959,10 @@ function buildPathParamStatement(
   // allowReserved means reserved characters should NOT be escaped
   const escape = !param.allowReserved;
 
-  // onClient params (e.g., api-version) are stored as client fields (_name)
+  // onClient params (e.g., api-version) are stored as client fields (_name).
+  // Uses correspondingMethodParams to resolve param aliases correctly.
   const effectiveName = param.onClient
-    ? `_${getParamName(param.name)}`
+    ? getOnClientFieldName(param, getParamName)
     : getParamName(param.name);
 
   if (isCollectionType(param.type)) {
@@ -980,9 +1002,10 @@ function buildHeaderParamStatement(
     return `request.Headers.Set("${serializedName}", ${valueExpr});`;
   }
 
-  // onClient params are stored as client fields (_name)
+  // onClient params are stored as client fields (_name).
+  // Uses correspondingMethodParams to resolve param aliases correctly.
   if (param.onClient) {
-    const fieldName = `_${name}`;
+    const fieldName = getOnClientFieldName(param, getParamName);
     if (param.optional) {
       return `if (${fieldName} != null)\n{\n    request.Headers.Set("${serializedName}", ${fieldName});\n}`;
     }

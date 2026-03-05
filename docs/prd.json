@@ -282,7 +282,7 @@
           "title": "Fix undefined _blob reference in ParamAlias rest client generation",
           "description": "E2E failure: ParamAliasClient.RestClient.cs and IndividuallyNestedWithParamAliasClient.RestClient.cs reference _blob which does not exist in scope. The parameter name resolution for aliased parameters in RestClientFile.tsx is generating an incorrect variable name. Investigate getParamName() / name policy handling in src/components/clients/RestClientFile.tsx.",
           "phase": "phase-14",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],

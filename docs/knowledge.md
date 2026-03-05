@@ -2703,3 +2703,16 @@ The following compilation errors exist in the Spector E2E test suite (`pnpm test
 
 ### Gotcha: `pnpm test` and `pnpm build` pass — only E2E fails
 Unit tests and build are green. These errors only surface during the full E2E pipeline (`pnpm test:e2e`) which compiles the generated C# with `dotnet build`.
+
+## Parameter Alias Field Name Resolution (2026-03-05)
+
+**Gotcha**: For `onClient` HTTP parameters in RestClient methods, never use `param.name` to construct the client field name. Use `param.correspondingMethodParams[0].name` instead. The `param.name` may be an alias (from `@paramAlias`) that differs from the client initialization parameter name (which determines the field name).
+
+**Pattern**: `getOnClientFieldName()` helper in `RestClientFile.tsx` resolves this correctly for path, query, and header parameters.
+
+## Design Decisions
+
+### Task 14.1: Param Alias Field Name Resolution
+**Chosen approach**: Use `correspondingMethodParams[0].name` from the TCGC SDK to resolve the correct client field name.  
+**Why**: This is the TCGC-provided mechanism for mapping operation parameters back to method parameters. It handles both aliased and non-aliased cases correctly.  
+**Rejected**: Using `param.serializedName` (also the alias in this case), or looking up the client's initialization parameters by matching on type (overly complex and fragile).
