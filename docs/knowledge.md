@@ -2684,3 +2684,22 @@ When a convenience method calls a protocol method, the body argument must be con
 Key infrastructure: `BinaryContentHelper` (in `src/Generated/Internal/BinaryContentHelper.cs`) provides `FromObject(object)` which uses `WriteObjectValue` (handles IPersistableModel), and `FromEnumerable<T>(IEnumerable<T>)` for arrays. `Utf8JsonBinaryContent` extends `BinaryContent` and wraps `Utf8JsonWriter`.
 
 Check `hasImplicitBinaryContentOperator(type)` → `(type.usage & UsageFlags.Input) !== 0` to determine if a model can rely on implicit conversion.
+
+## E2E Failure Triage (2026-03-05)
+
+### Pre-existing E2E failures found before any task work
+
+The following compilation errors exist in the Spector E2E test suite (`pnpm test:e2e`):
+
+1. **`_blob` undefined** — `ParamAliasClient.RestClient.cs` references `_blob` (line 21). This is in `client-initialization/default` and `client-initialization/individually`. The parameter alias handling in `RestClientFile.tsx` is generating an incorrect variable name.
+
+2. **`Argument` class undefined** — Models in `azure/core/lro/rpc` use `Argument.AssertNotNull()` but the `Argument` infrastructure helper is not generated. Check whether `ArgumentFile.tsx` is wired up in the emitter output.
+
+3. **Readonly field assignment CS0191** — `OuterModel.cs` in `azure/client-generator-core/access` tries to assign a readonly field outside the constructor. The serialization constructor logic in `ModelConstructors.tsx` needs to handle readonly vs mutable fields correctly.
+
+4. **`BinaryContentHelper` undefined** — `RequestBody.cs` in `encode/bytes` references `BinaryContentHelper` methods. The infrastructure class is not being generated. Check `BinaryContentHelperFile.tsx` and whether it's included in emission.
+
+5. **`BinaryData` to `string` CS1503** — Header and Query rest client methods in `encode/bytes` pass `BinaryData` where `string` is expected. Need bytes-to-string conversion (likely Base64) in `getParamValueExpression()`.
+
+### Gotcha: `pnpm test` and `pnpm build` pass — only E2E fails
+Unit tests and build are green. These errors only surface during the full E2E pipeline (`pnpm test:e2e`) which compiles the generated C# with `dotnet build`.

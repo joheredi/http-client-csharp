@@ -4447,3 +4447,21 @@ For spread bodies, modified `buildSpreadProtocolCallExpr()` to wrap the model co
 **Result:** CS1503 RequestOptions→CancellationToken errors reduced from 120 to 28. Remaining 24 are in `routes/` spec (IDictionary path params need string conversion — different root cause) and 4 in `service/multi-service` (missing CancellationTokenExtensions — different root cause).
 
 **All 1,303 tests pass (7 new), build succeeds.**
+
+## 2026-03-05 — Triage: Pre-existing E2E compilation failures
+
+**What was done:**
+- Ran full validation: `pnpm build` ✅, `pnpm test` ✅, `pnpm test:e2e` ❌
+- Identified 5 categories of E2E compilation errors in Spector test suite
+- Created 5 new tasks (14.1–14.5) in phase-14 to track them
+
+**E2E failure categories:**
+1. [14.1] `_blob` undefined in ParamAlias rest clients (client-initialization)
+2. [14.2] `Argument` helper class missing in model constructors (azure/core/lro/rpc)
+3. [14.3] Readonly field assignment in OuterModel serialization constructor (access)
+4. [14.4] `BinaryContentHelper` class missing in bytes encoding (encode/bytes)
+5. [14.5] BinaryData-to-string conversion missing for header/query bytes params (encode/bytes)
+
+**Next person should:**
+- Pick up task 14.1–14.5 in priority order. Tasks 14.4 and 14.5 are both in encode/bytes and may share investigation.
+- Build and test pass; only E2E fails.

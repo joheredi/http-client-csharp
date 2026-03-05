@@ -271,6 +271,126 @@
           ]
         }
       ]
+    },
+    {
+      "id": "phase-14",
+      "name": "E2E Compilation Fixes",
+      "description": "Fix pre-existing E2E test compilation errors discovered in the Spector test suite",
+      "tasks": [
+        {
+          "id": "14.1",
+          "title": "Fix undefined _blob reference in ParamAlias rest client generation",
+          "description": "E2E failure: ParamAliasClient.RestClient.cs and IndividuallyNestedWithParamAliasClient.RestClient.cs reference _blob which does not exist in scope. The parameter name resolution for aliased parameters in RestClientFile.tsx is generating an incorrect variable name. Investigate getParamName() / name policy handling in src/components/clients/RestClientFile.tsx.",
+          "phase": "phase-14",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "create": [],
+            "modify": [
+              "src/components/clients/RestClientFile.tsx"
+            ],
+            "reference": [
+              "temp/e2e/Spector/http/azure/client-generator-core/client-initialization/default/src/Generated/ParamAliasClient.RestClient.cs"
+            ]
+          },
+          "acceptance_criteria": [
+            "ParamAliasClient.RestClient.cs compiles without _blob errors",
+            "IndividuallyNestedWithParamAliasClient.RestClient.cs compiles without _blob errors",
+            "pnpm test:e2e passes for client-initialization specs"
+          ]
+        },
+        {
+          "id": "14.2",
+          "title": "Fix undefined Argument helper class in generated model constructors",
+          "description": "E2E failure: Error.cs, OperationState.cs, ErrorResponse.cs in azure/core/lro/rpc reference Argument.AssertNotNull() but the Argument helper class is not generated or not in scope. Either src/components/infrastructure/ArgumentFile.tsx is not being emitted, or models referencing it are missing the proper using for the Internal namespace.",
+          "phase": "phase-14",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "create": [],
+            "modify": [
+              "src/components/infrastructure/ArgumentFile.tsx",
+              "src/emitter.tsx"
+            ],
+            "reference": [
+              "temp/e2e/Spector/http/azure/core/lro/rpc/src/Generated/Models/Error.cs"
+            ]
+          },
+          "acceptance_criteria": [
+            "Argument helper class is generated in Internal namespace",
+            "Models using Argument.AssertNotNull() compile correctly",
+            "pnpm test:e2e passes for azure/core/lro/rpc specs"
+          ]
+        },
+        {
+          "id": "14.3",
+          "title": "Fix readonly field assignment error in model serialization constructors",
+          "description": "E2E failure: OuterModel.cs in azure/client-generator-core/access has CS0191 error \u2014 a readonly field is assigned outside of a constructor or init-only setter. The serialization constructor in ModelConstructors.tsx is incorrectly assigning to readonly fields. Investigate whether fields should not be readonly or whether the assignment should be in the constructor.",
+          "phase": "phase-14",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "create": [],
+            "modify": [
+              "src/components/models/ModelConstructors.tsx"
+            ],
+            "reference": [
+              "temp/e2e/Spector/http/azure/client-generator-core/access/src/Generated/Models/OuterModel.cs"
+            ]
+          },
+          "acceptance_criteria": [
+            "OuterModel.cs compiles without CS0191 readonly assignment error",
+            "Model serialization constructors correctly handle readonly vs mutable fields",
+            "pnpm test:e2e passes for access specs"
+          ]
+        },
+        {
+          "id": "14.4",
+          "title": "Fix undefined BinaryContentHelper in bytes encoding convenience methods",
+          "description": "E2E failure: RequestBody.cs in encode/bytes references BinaryContentHelper which does not exist. The BinaryContentHelper infrastructure class is not being generated. Ensure BinaryContentHelperFile.tsx is included in the emission output. Also check if the file needs to be created or if the component exists but is not wired up.",
+          "phase": "phase-14",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "create": [],
+            "modify": [
+              "src/emitter.tsx"
+            ],
+            "reference": [
+              "src/components/infrastructure/BinaryContentHelperFile.tsx",
+              "temp/e2e/Spector/http/encode/bytes/src/Generated/RequestBody.cs"
+            ]
+          },
+          "acceptance_criteria": [
+            "BinaryContentHelper class is generated",
+            "RequestBody.cs compiles without BinaryContentHelper errors",
+            "pnpm test:e2e passes for encode/bytes specs"
+          ]
+        },
+        {
+          "id": "14.5",
+          "title": "Fix BinaryData-to-string conversion for bytes parameters in headers and queries",
+          "description": "E2E failure: Header.RestClient.cs and Query.RestClient.cs in encode/bytes have CS1503 errors \u2014 BinaryData cannot convert to string. The getParamValueExpression() in RestClientFile.tsx lacks handling for bytes type parameters in header and query contexts. Need to add Base64 encoding conversion (e.g., Convert.ToBase64String()).",
+          "phase": "phase-14",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "create": [],
+            "modify": [
+              "src/components/clients/RestClientFile.tsx"
+            ],
+            "reference": [
+              "temp/e2e/Spector/http/encode/bytes/src/Generated/Header.RestClient.cs",
+              "temp/e2e/Spector/http/encode/bytes/src/Generated/Query.RestClient.cs"
+            ]
+          },
+          "acceptance_criteria": [
+            "BinaryData parameters in headers are converted to string correctly",
+            "BinaryData parameters in queries are converted to string correctly",
+            "pnpm test:e2e passes for encode/bytes specs"
+          ]
+        }
+      ]
     }
   ]
 }
