@@ -81,16 +81,16 @@ export type VariableInfo =
  * the serialization constructor parameters.
  *
  * For base/standalone models: all own properties + additionalBinaryDataProperties.
- * For derived discriminated models: base model variables (recursive) +
- * own non-override properties. This mirrors `computeSerializationCtorParams`
- * from ModelConstructors.tsx.
+ * For derived models (both discriminated and non-discriminated): base model
+ * variables (recursive) + own non-override properties. This mirrors
+ * `computeSerializationCtorParams` from ModelConstructors.tsx.
  *
  * @param model - The TCGC SDK model type.
  * @returns Ordered list of variable infos for declaration generation.
  */
 export function computeVariableInfos(model: SdkModelType): VariableInfo[] {
-  if (isDerivedDiscriminatedModel(model)) {
-    const baseInfos = computeVariableInfos(model.baseModel!);
+  if (model.baseModel) {
+    const baseInfos = computeVariableInfos(model.baseModel);
     const ownProps = model.properties.filter(
       (p) => !isBaseDiscriminatorOverride(p),
     );

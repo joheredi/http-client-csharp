@@ -2732,3 +2732,16 @@ Unit tests and build are green. These errors only surface during the full E2E pi
 **Affected files**: Any component that generates `Argument.Assert*` calls should use `argumentRefkey()` from `src/utils/refkey.ts`. Currently fixed in ModelConstructors.tsx. ClientFile.tsx, ConvenienceMethod.tsx, ProtocolMethod.tsx, LiteralTypeFile.tsx, and ExtensibleEnumFile.tsx still use raw strings but currently don't have cross-namespace issues because they render in the root namespace.
 
 **Rule**: When referencing infrastructure classes from model/serialization code that may be in a different namespace, always use refkeys + code templates — never raw strings.
+
+## Non-Discriminated Derived Model Constructors (Task 14.3)
+
+**Gotcha:** Any function that recursively walks the model hierarchy for derived models (constructors, serialization, deserialization) must check `model.baseModel` (not `isDerivedDiscriminatedModel`) to handle non-discriminated inheritance. Functions that were updated:
+- `computePublicCtorParams` — constructor parameter computation
+- `computeSerializationCtorParams` — serialization constructor params
+- `collectSerializationParamDocs` — param doc generation
+- `computeVariableInfos` — deserialization variable declarations
+- `computeMatchableProperties` — property matching loops
+- `computeAllXmlProperties` — XML deserialization
+- `computeSerializationProperties` — model factory methods
+
+**Design Decision:** For non-discriminated derived models, null checks in the public constructor only cover OWN params (not inherited ones). The base constructor validates its own params via the `: base(...)` chain. This differs from discriminated models where the abstract base's `private protected` constructor doesn't validate, so derived models validate ALL params.

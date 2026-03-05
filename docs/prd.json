@@ -327,7 +327,7 @@
           "title": "Fix readonly field assignment error in model serialization constructors",
           "description": "E2E failure: OuterModel.cs in azure/client-generator-core/access has CS0191 error \u2014 a readonly field is assigned outside of a constructor or init-only setter. The serialization constructor in ModelConstructors.tsx is incorrectly assigning to readonly fields. Investigate whether fields should not be readonly or whether the assignment should be in the constructor.",
           "phase": "phase-14",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "create": [],

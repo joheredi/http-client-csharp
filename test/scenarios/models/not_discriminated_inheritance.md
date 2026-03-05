@@ -70,19 +70,24 @@ Should generate Cat extending Pet with age property
 public partial class Cat : Pet
     {
         /// <summary> Initializes a new instance of <see cref="Cat"/>. </summary>
+        /// <param name="name"></param>
         /// <param name="age"></param>
-        public Cat(int age)
+        public Cat(string name, int age) : base(name)
         {
             Age = age;
         }
 
         /// <summary> Initializes a new instance of <see cref="Cat"/>. </summary>
-        /// <param name="age"></param>
+        /// <param name="name"></param>
         /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
-        internal Cat(int age, IDictionary<string, BinaryData> additionalBinaryDataProperties)
+        /// <param name="age"></param>
+        internal Cat(
+            string name,
+            IDictionary<string, BinaryData> additionalBinaryDataProperties,
+            int age
+        ) : base(name, additionalBinaryDataProperties)
         {
             Age = age;
-            _additionalBinaryDataProperties = additionalBinaryDataProperties;
         }
 
         public int Age { get; set; }
@@ -95,19 +100,27 @@ Should generate Siamese extending Cat with smart property
 public partial class Siamese : Cat
     {
         /// <summary> Initializes a new instance of <see cref="Siamese"/>. </summary>
+        /// <param name="name"></param>
+        /// <param name="age"></param>
         /// <param name="smart"></param>
-        public Siamese(bool smart)
+        public Siamese(string name, int age, bool smart) : base(name, age)
         {
             Smart = smart;
         }
 
         /// <summary> Initializes a new instance of <see cref="Siamese"/>. </summary>
-        /// <param name="smart"></param>
+        /// <param name="name"></param>
         /// <param name="additionalBinaryDataProperties"> Keeps track of any properties unknown to the library. </param>
-        internal Siamese(bool smart, IDictionary<string, BinaryData> additionalBinaryDataProperties)
+        /// <param name="age"></param>
+        /// <param name="smart"></param>
+        internal Siamese(
+            string name,
+            IDictionary<string, BinaryData> additionalBinaryDataProperties,
+            int age,
+            bool smart
+        ) : base(name, additionalBinaryDataProperties, age)
         {
             Smart = smart;
-            _additionalBinaryDataProperties = additionalBinaryDataProperties;
         }
 
         public bool Smart { get; set; }

@@ -161,6 +161,21 @@ export function isDerivedDiscriminatedModel(model: SdkModelType): boolean {
 }
 
 /**
+ * Determines whether a model is a derived type (has a base model).
+ *
+ * This covers both discriminated derived models (with discriminator value)
+ * and non-discriminated derived models (plain inheritance without
+ * polymorphism). Both cases need `: base(...)` constructor chaining and
+ * should only assign their own properties in the constructor body.
+ *
+ * @param model - The TCGC SDK model type.
+ * @returns `true` if the model has a base model.
+ */
+export function isDerivedModel(model: SdkModelType): boolean {
+  return model.baseModel !== undefined;
+}
+
+/**
  * Determines whether a model property is a base discriminator override.
  *
  * A base discriminator override is a property that sets the discriminator value
@@ -241,12 +256,14 @@ function buildDiscriminatorLiteral(
 /**
  * Computes the ordered public constructor parameter list for a model.
  *
- * For abstract/base models: all `isConstructorParameter` properties in definition order.
- * For derived models: [ancestor non-discriminator params] + [own non-override ctor params].
+ * For base/standalone models: all `isConstructorParameter` properties in definition order.
+ * For derived models (both discriminated and non-discriminated):
+ *   [ancestor non-discriminator params] + [own non-override ctor params].
  *
  * This is needed to build correct `: base(...)` calls that match the base model's
- * constructor parameter order — important for nested discriminator hierarchies
- * where the discriminator parameter isn't always first.
+ * constructor parameter order — important for both discriminated hierarchies
+ * (where the discriminator parameter isn't always first) and non-discriminated
+ * inheritance (where base model params must be passed through).
  *
  * @param model - The TCGC SDK model type.
  * @returns The model's public ctor params in the order they appear in the signature.
@@ -254,7 +271,7 @@ function buildDiscriminatorLiteral(
 export function computePublicCtorParams(
   model: SdkModelType,
 ): SdkModelPropertyType[] {
-  if (isDerivedDiscriminatedModel(model)) {
+  if (model.baseModel) {
     const baseParams = collectBaseNonDiscCtorParams(model);
     const ownParams = model.properties.filter(
       (p) => !isBaseDiscriminatorOverride(p) && isConstructorParameter(p),
@@ -602,16 +619,22 @@ function buildSerializationAssignments(
  * Recursively computes the full serialization constructor parameter list for a model.
  *
  * For base/standalone models: all own properties + additionalBinaryDataProperties.
- * For derived models: base's serialization params (recursive) + own non-override properties.
+ * For derived models (both discriminated and non-discriminated):
+ *   base's serialization params (recursive) + own non-override properties.
  *
  * This correctly positions `additionalBinaryDataProperties` between the root model's
  * properties and intermediate/derived model properties, matching the legacy emitter's
  * serialization constructor parameter order.
  *
- * @example For Fish → Shark → SawShark:
+ * @example For Fish → Shark → SawShark (discriminated):
  * - Fish: [kind, age, additionalBinaryData]
  * - Shark: [kind, age, additionalBinaryData, sharktype]
  * - SawShark: [kind, age, additionalBinaryData, sharktype] (no own props)
+ *
+ * @example For Pet → Cat → Siamese (non-discriminated):
+ * - Pet: [name, additionalBinaryData]
+ * - Cat: [name, additionalBinaryData, age]
+ * - Siamese: [name, additionalBinaryData, age, smart]
  *
  * @param model - The TCGC SDK model type.
  * @param namePolicy - The C# naming policy for parameter name conversion.
@@ -621,9 +644,9 @@ export function computeSerializationCtorParams(
   model: SdkModelType,
   namePolicy: ReturnType<typeof useCSharpNamePolicy>,
 ): ParameterProps[] {
-  if (isDerivedDiscriminatedModel(model)) {
+  if (model.baseModel) {
     const baseParams = computeSerializationCtorParams(
-      model.baseModel!,
+      model.baseModel,
       namePolicy,
     );
     const ownProps = model.properties.filter(
@@ -725,7 +748,7 @@ export function ModelConstructors(props: ModelConstructorsProps) {
   const { type, isStruct = false } = props;
   const namePolicy = useCSharpNamePolicy();
 
-  if (isDerivedDiscriminatedModel(type)) {
+  if (type.baseModel) {
     return <DerivedModelConstructors type={type} namePolicy={namePolicy} />;
   }
 
@@ -782,9 +805,9 @@ function collectSerializationParamDocs(
   model: SdkModelType,
   namePolicy: ReturnType<typeof useCSharpNamePolicy>,
 ): ParamDocInfo[] {
-  if (isDerivedDiscriminatedModel(model)) {
+  if (model.baseModel) {
     const baseDocs = collectSerializationParamDocs(
-      model.baseModel!,
+      model.baseModel,
       namePolicy,
     );
     const ownProps = model.properties.filter(
@@ -972,7 +995,8 @@ function BaseModelConstructors(props: {
 }
 
 /**
- * Generates constructors for derived discriminated model classes.
+ * Generates constructors for derived model classes, both discriminated
+ * and non-discriminated.
  *
  * Derived models chain both constructors to the base class. Walks the full
  * inheritance hierarchy to collect parameters (not just the immediate base).
@@ -981,7 +1005,9 @@ function BaseModelConstructors(props: {
  * - Parameters: all ancestor non-discriminator ctor params + own ctor params
  * - Base call: arguments matching the base model's ctor param order, with
  *   the discriminator position replaced by the discriminator literal
+ *   (discriminated only); for non-discriminated, all base params passed through
  * - Body: null checks and assignments for own properties only
+ *   (for discriminated, null checks cover all params since base is abstract)
  *
  * **Serialization constructor:**
  * - Parameters: all ancestor properties + additionalBinaryData + own properties
@@ -992,6 +1018,11 @@ function BaseModelConstructors(props: {
  * Shark introduces its own "sharktype" discriminator), the base call correctly
  * places the discriminator literal at the position matching the base model's
  * constructor parameter order.
+ *
+ * For non-discriminated hierarchies (e.g., Pet → Cat → Siamese), the base
+ * call simply passes through all base ctor param names. The base constructor
+ * validates its own params, so the derived constructor only validates its
+ * own reference-type params.
  */
 function DerivedModelConstructors(props: {
   type: SdkModelType;
@@ -999,9 +1030,12 @@ function DerivedModelConstructors(props: {
 }) {
   const { type, namePolicy } = props;
   const baseModel = type.baseModel!;
+  const isDiscriminated = isDerivedDiscriminatedModel(type);
 
   // Filter out only base discriminator overrides (constants like kind: "eagle").
   // Keep the model's own discriminator property (like Shark's sharktype: string).
+  // For non-discriminated models, isBaseDiscriminatorOverride is always false, so
+  // all properties are kept.
   const ownProperties = type.properties.filter(
     (p) => !isBaseDiscriminatorOverride(p),
   );
@@ -1018,12 +1052,14 @@ function DerivedModelConstructors(props: {
   const allCtorParams = [...baseCtorParams, ...ownCtorParams];
   const parameters = buildParameters(allCtorParams, namePolicy);
 
-  // Null checks for ALL constructor params (inherited + own) — the base
+  // For discriminated models, validate ALL params (inherited + own) — the base
   // class's private protected ctor does NOT validate, so the derived public
-  // ctor is responsible for validating all reference-type params before
-  // passing them to base(). Matches golden output where Pet validates `name`
-  // (inherited from Animal) and Dog validates both `name` and `breed`.
-  const nullChecks = buildNullChecks(allCtorParams, namePolicy);
+  // ctor is responsible for validating all reference-type params.
+  // For non-discriminated models, validate only OWN params — the base class's
+  // public/internal ctor already validates its own params via the `: base(...)`
+  // chain.
+  const paramsToValidate = isDiscriminated ? allCtorParams : ownCtorParams;
+  const nullChecks = buildNullChecks(paramsToValidate, namePolicy);
   // Assignments only for own properties
   const assignments = buildAssignments(
     ownProperties,
@@ -1033,14 +1069,23 @@ function DerivedModelConstructors(props: {
 
   const publicBody = renderPublicCtorBody(nullChecks, assignments);
 
-  // Build public ctor base initializer by matching the base model's ctor param order.
-  // The discriminator position gets the discriminator literal; other positions get pass-throughs.
-  const discriminatorLiteral = buildDiscriminatorLiteral(type, namePolicy);
-  const publicBaseInit = buildPublicBaseInitializer(
-    baseModel,
-    discriminatorLiteral,
-    namePolicy,
-  );
+  // Build public ctor base initializer.
+  // For discriminated models: substitute discriminator literal at the discriminator position.
+  // For non-discriminated models: pass through all base ctor param names.
+  let publicBaseInit: Children;
+  if (isDiscriminated) {
+    const discriminatorLiteral = buildDiscriminatorLiteral(type, namePolicy);
+    publicBaseInit = buildPublicBaseInitializer(
+      baseModel,
+      discriminatorLiteral,
+      namePolicy,
+    );
+  } else {
+    const baseParamNames = computePublicCtorParams(baseModel).map((p) =>
+      namePolicy.getName(p.name, "parameter"),
+    );
+    publicBaseInit = baseParamNames.join(", ");
+  }
 
   // === Internal serialization constructor ===
   // Compute serialization params recursively: base's serialization params + own props.
@@ -1075,7 +1120,8 @@ function DerivedModelConstructors(props: {
 
   // === Doc comments ===
   const className = namePolicy.getName(type.name, "class");
-  const assertableParams = allCtorParams
+  // Exception doc params match the null-check scope (all vs own).
+  const assertableParams = paramsToValidate
     .filter((p) => propertyRequiresNullCheck(p))
     .map((p) => namePolicy.getName(p.name, "parameter"));
   const publicCtorDoc = buildConstructorXmlDoc(

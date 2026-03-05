@@ -4496,3 +4496,33 @@ Key pattern: When an infrastructure class (like Argument) is referenced from fil
 
 Files changed: src/utils/refkey.ts, src/components/infrastructure/ArgumentFile.tsx, src/components/models/ModelConstructors.tsx
 Tests: 67 test files pass (1304 tests), azure/core/lro/rpc e2e passes
+
+## Task 14.3 — Fix readonly field assignment error in model serialization constructors (2026-03-05)
+
+**Problem:** Non-discriminated derived models (e.g., Cat : Pet, OuterModel : BaseModel) generated constructors that:
+1. Didn't chain to `: base(...)` — both public and serialization constructors
+2. Didn't include inherited parameters (e.g., Cat's constructor lacked `name` from Pet)
+3. Directly assigned `_additionalBinaryDataProperties` which is `private protected readonly` in the base class → CS0191
+
+**Root Cause:** `ModelConstructors` only routed discriminated derived models (`isDerivedDiscriminatedModel`) to `DerivedModelConstructors`. Non-discriminated derived models fell through to `BaseModelConstructors` which generates standalone constructors without `: base(...)` chaining.
+
+**Solution:** Generalized derived model constructor handling to cover both discriminated and non-discriminated inheritance:
+1. Added `isDerivedModel(model)` function — checks `model.baseModel !== undefined`
+2. Updated routing in `ModelConstructors` to use `model.baseModel` check instead of `isDerivedDiscriminatedModel`
+3. Updated `computePublicCtorParams` and `computeSerializationCtorParams` to handle non-discriminated derived models (recurse through base hierarchy)
+4. Updated `DerivedModelConstructors` to handle both cases:
+   - For discriminated: substitute discriminator literal in base call, validate ALL params (abstract base doesn't validate)
+   - For non-discriminated: pass through all base params in base call, validate only OWN params (base validates its own)
+5. Updated parallel functions in serialization files: `computeVariableInfos`, `computeMatchableProperties`, `computeAllXmlProperties`, `computeSerializationProperties`
+
+**Key Pattern:** When `model.baseModel` is defined, the model is derived and needs `: base(...)` chaining regardless of whether it has a discriminator. The discriminator only affects HOW the base call is built (literal substitution vs pass-through).
+
+**Files Changed:**
+- `src/components/models/ModelConstructors.tsx` — core fix
+- `src/components/serialization/DeserializeVariableDeclarations.tsx`
+- `src/components/serialization/PropertyMatchingLoop.tsx`
+- `src/components/serialization/XmlDeserialize.tsx`
+- `src/components/model-factory/ModelFactoryMethod.tsx`
+- `test/scenarios/models/not_discriminated_inheritance.md` — updated expectations
+
+**Result:** 67 test files pass (1,304 tests), not-discriminated and access e2e scenarios compile without CS0191 errors

@@ -103,8 +103,8 @@ export interface ModelFactoryMethodProps {
 function computeSerializationProperties(
   model: SdkModelType,
 ): SdkModelPropertyType[] {
-  if (isDerivedDiscriminatedModel(model)) {
-    const baseProps = computeSerializationProperties(model.baseModel!);
+  if (model.baseModel) {
+    const baseProps = computeSerializationProperties(model.baseModel);
     const ownProps = model.properties.filter(
       (p) => !isBaseDiscriminatorOverride(p),
     );

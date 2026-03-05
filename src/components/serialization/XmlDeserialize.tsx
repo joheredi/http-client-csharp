@@ -440,8 +440,8 @@ function collectNamespaces(
  * For derived models, includes base model properties + own properties.
  */
 function computeAllXmlProperties(model: SdkModelType): SdkModelPropertyType[] {
-  if (isDerivedDiscriminatedModel(model)) {
-    const baseProps = computeAllXmlProperties(model.baseModel!);
+  if (model.baseModel) {
+    const baseProps = computeAllXmlProperties(model.baseModel);
     const ownProps = model.properties.filter(
       (p) => !isBaseDiscriminatorOverride(p),
     );
