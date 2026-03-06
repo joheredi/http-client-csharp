@@ -3228,3 +3228,11 @@ The `BinaryContentHelper.FromObject()` helper attempts JSON parsing on all input
 **Chosen**: Generate `ClientResult<BinaryData>` for bytes responses, extracting content via `result.GetRawResponse().Content`.
 **Rejected**: Keep untyped `ClientResult` — this doesn't match the legacy emitter and forces callers to manually extract binary content.
 **Reason**: The legacy emitter generates typed convenience methods for bytes responses. The content extraction pattern (`GetRawResponse().Content`) is different from model responses (explicit operator cast) because `BinaryData` doesn't define a `ClientResult` conversion operator.
+
+## Sub-client Hierarchical Naming Convention (Task 15.10)
+
+**Rule:** Always use `getClientFileName(client, toClassName)` — never `getSimpleClientName(client.name)` — when computing a client's class name, cached field name, or accessor method name. The `getClientFileName` function walks the parent chain to produce hierarchical names for depth-2+ sub-clients (e.g., `PathParametersReservedExpansion` instead of `ReservedExpansion`), matching the legacy emitter convention.
+
+**Affected files:** `ClientFile.tsx`, `RestClientFile.tsx`, `PagingMethods.tsx`, `CollectionResultFile.tsx`. If you add a new component that needs the client class name, always use `getClientFileName`.
+
+**The `getSimpleClientName` function** should only be used inside `getClientFileName` itself (to strip namespace prefixes). It should NOT be used directly for class/method naming in components.

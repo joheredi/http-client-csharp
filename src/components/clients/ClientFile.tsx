@@ -30,7 +30,7 @@ import {
   getFieldTypeForParam,
   getServerPathSegments,
 } from "../../utils/client-params.js";
-import { getClientFileName, getSimpleClientName } from "../../utils/clients.js";
+import { getClientFileName } from "../../utils/clients.js";
 import { formatDocLines } from "../../utils/doc.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { isSystemTypeNameCollision } from "../../utils/package-name.js";
@@ -116,13 +116,14 @@ export function ClientFile(props: ClientFileProps) {
   const { client, options } = props;
   const header = getLicenseHeader(options);
   const namePolicy = useCSharpNamePolicy();
-  const className = namePolicy.getName(
-    getSimpleClientName(client.name),
-    "class",
-  );
-  const fileName = getClientFileName(client, (name) =>
-    namePolicy.getName(name, "class"),
-  );
+  const toClassName = (name: string) => namePolicy.getName(name, "class");
+  // Use getClientFileName for both file name and class name. For root and
+  // depth-1 sub-clients the result equals the simple leaf name. For depth-2+
+  // sub-clients it concatenates all non-root ancestor names, producing
+  // hierarchical names like "PathParametersReservedExpansion" that match the
+  // legacy emitter's class naming convention.
+  const className = getClientFileName(client, toClassName);
+  const fileName = className;
   const isSubClient = client.parent !== undefined;
 
   // Extract auth info for root clients only.
@@ -239,7 +240,7 @@ export function ClientFile(props: ClientFileProps) {
             </>
           ))}
           {children.map((child) => {
-            const childName = namePolicy.getName(child.name, "class");
+            const childName = getClientFileName(child, toClassName);
             // Use fully-qualified type reference when the sub-client name
             // collides with a .NET system type (e.g., "Object" → CS0104 with
             // System.Object). The FQN bypasses Alloy's short-name resolution,
@@ -787,10 +788,12 @@ function SubClientFactoryMethods(props: SubClientFactoryMethodsProps) {
     return null;
   }
 
+  const toClassName = (name: string) => namePolicy.getName(name, "class");
+
   return (
     <>
       {children.map((child) => {
-        const childName = namePolicy.getName(child.name, "class");
+        const childName = getClientFileName(child, toClassName);
         const methodName = childName.toLowerCase().endsWith("client")
           ? `Get${childName}`
           : `Get${childName}Client`;

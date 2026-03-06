@@ -31,7 +31,7 @@ import {
   buildSiblingNameSet,
   cleanOperationName,
 } from "../../utils/operation-naming.js";
-import { getSimpleClientName } from "../../utils/clients.js";
+import { getClientFileName } from "../../utils/clients.js";
 import {
   getContinuationTokenParamName,
   reorderTokenFirst,
@@ -95,10 +95,8 @@ export interface PagingMethodsProps {
 export function PagingMethods(props: PagingMethodsProps) {
   const { client } = props;
   const namePolicy = useCSharpNamePolicy();
-  const clientName = namePolicy.getName(
-    getSimpleClientName(client.name),
-    "class",
-  );
+  const toClassName = (name: string) => namePolicy.getName(name, "class");
+  const clientName = getClientFileName(client, toClassName);
   const siblingNames = buildSiblingNameSet(client.methods, (n) =>
     namePolicy.getName(n, "class"),
   );

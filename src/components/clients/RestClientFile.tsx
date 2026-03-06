@@ -33,7 +33,7 @@ import {
 } from "../../builtins/system-client-model.js";
 import { System } from "../../builtins/system.js";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
-import { getClientFileName, getSimpleClientName } from "../../utils/clients.js";
+import { getClientFileName } from "../../utils/clients.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { isProtocolParamValueType } from "../../utils/nullable.js";
 import {
@@ -118,13 +118,12 @@ export function RestClientFile(props: RestClientFileProps) {
   const { client, options } = props;
   const header = getLicenseHeader(options);
   const namePolicy = useCSharpNamePolicy();
-  const className = namePolicy.getName(
-    getSimpleClientName(client.name),
-    "class",
-  );
-  const fileName = getClientFileName(client, (name) =>
-    namePolicy.getName(name, "class"),
-  );
+  const toClassName = (name: string) => namePolicy.getName(name, "class");
+  // Use getClientFileName for both the class name and file name. For sub-clients
+  // at depth 2+, this produces hierarchical names (e.g., "PathParametersReservedExpansion")
+  // matching the legacy emitter convention.
+  const className = getClientFileName(client, toClassName);
+  const fileName = className;
   const siblingNames = buildSiblingNameSet(client.methods, (n) =>
     namePolicy.getName(n, "class"),
   );

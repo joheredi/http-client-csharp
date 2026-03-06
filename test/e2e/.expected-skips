@@ -16,3 +16,16 @@ QueryFloatSecondsLargerUnit
 
 # --- Documentation: BulletPointsModel uses BulletPointsEnum not yet generated correctly ---
 BulletPointsModel
+
+# --- Routes: LabelExpansion and QueryContinuation tests ignored upstream ---
+# https://github.com/Azure/cadl-ranch/issues/772
+LabelExpansionArray
+LabelExpansionExplodeArray
+LabelExpansionExplodePrimitive
+LabelExpansionExplodeRecord
+LabelExpansionPrimitive
+LabelExpansionRecord
+# https://github.com/microsoft/typespec/issues/5139
+QueryContinuationArray
+QueryContinuationPrimitive
+QueryContinuationRecord

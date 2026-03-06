@@ -5318,3 +5318,31 @@ Fixed two API surface differences between the new and legacy emitters:
 ### Key pattern: @encode("string") on numeric types
 - **Required**: keeps native C# type (long, byte), serializes with `.ToString()`, deserializes with `Parse(GetString())`
 - **Optional**: uses `object` C# type, serializes with `.ToString()`, deserializes with `GetString()` directly
+
+## 2026-03-06 — Task 15.10: Align Routes API surface with legacy emitter (DONE)
+
+### What was done
+Fixed sub-client class names and accessor method names to use hierarchical naming (matching the legacy emitter convention) instead of leaf-only names.
+
+**Before:** `GetReservedExpansionClient()`, class `ReservedExpansion`
+**After:** `GetPathParametersReservedExpansionClient()`, class `PathParametersReservedExpansion`
+
+### Root cause
+`ClientFile.tsx` and `RestClientFile.tsx` used `getSimpleClientName(client.name)` for the class name, which returns only the leaf name. `getClientFileName()` already computed the correct hierarchical name by walking the parent chain. The fix replaces leaf-name usage with `getClientFileName()` everywhere.
+
+### Files modified
+- `src/components/clients/ClientFile.tsx` — className, caching fields, SubClientFactoryMethods all use `getClientFileName()`
+- `src/components/clients/RestClientFile.tsx` — className uses `getClientFileName()`
+- `src/components/clients/PagingMethods.tsx` — clientName uses `getClientFileName()`
+- `src/components/collection-results/CollectionResultFile.tsx` — clientName uses `getClientFileName()`
+- `test/client-file.test.ts` — Updated test expectation for deeply nested sub-clients to expect hierarchical class names
+- `test/e2e/Spector.Tests/Spector.Tests.csproj` — Removed Routes Compile Remove entry
+- `test/e2e/.expected-skips` — Added 9 upstream-[Ignore]'d Route tests
+
+### Results
+- E2e tests: 413→430 passed (+17 new Routes tests passing)
+- 9 Route tests correctly skipped (upstream [Ignore] attributes)
+- Also fixed paging sub-client naming (e.g., `GetServerDrivenPaginationContinuationTokenClient()`) as a side benefit
+
+### Key pattern: getClientFileName() is the canonical source of truth
+For both file names AND class names, use `getClientFileName(client, toClassName)`. For root and depth-1 sub-clients, it produces the same result as `getSimpleClientName()`. For depth-2+ sub-clients, it concatenates all non-root ancestor names.

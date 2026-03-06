@@ -1270,9 +1270,11 @@ describe("ClientFile", () => {
     expect(nestedA).toContain("namespace TestService._GroupA._Nested");
     expect(nestedB).toContain("namespace TestService._GroupB._Nested");
 
-    // Each must have the short class name (not the hierarchical filename)
-    expect(nestedA).toContain("public partial class Nested");
-    expect(nestedB).toContain("public partial class Nested");
+    // Each must have the hierarchical class name (matching the legacy emitter's
+    // convention where depth-2+ sub-client class names concatenate all non-root
+    // ancestor names, e.g., "PathParametersReservedExpansion")
+    expect(nestedA).toContain("public partial class GroupANested");
+    expect(nestedB).toContain("public partial class GroupBNested");
 
     // Parent clients should also exist with correct filenames
     expect(outputs["src/Generated/GroupA.cs"]).toBeDefined();

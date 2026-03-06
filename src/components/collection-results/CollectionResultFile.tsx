@@ -46,7 +46,7 @@ import {
   cleanOperationName,
 } from "../../utils/operation-naming.js";
 import { reorderTokenFirst } from "../../utils/parameter-ordering.js";
-import { getSimpleClientName } from "../../utils/clients.js";
+import { getClientFileName } from "../../utils/clients.js";
 import { buildProtocolParams } from "../clients/ProtocolMethod.js";
 
 /**
@@ -151,13 +151,11 @@ interface CollectionResultFileProps {
 function CollectionResultFile(props: CollectionResultFileProps) {
   const { client, method, options, isAsync, isConvenience } = props;
   const namePolicy = useCSharpNamePolicy();
-  // Use the immediate client name (not the full hierarchy) to match
-  // PagingMethods.tsx naming. Since collection result classes are internal
-  // and scoped to the client's own namespace, the parent names are redundant.
-  const clientName = namePolicy.getName(
-    getSimpleClientName(client.name),
-    "class",
-  );
+  // Use the hierarchical client name to match the legacy emitter's naming
+  // convention. For depth-2+ sub-clients, this produces names like
+  // "PathParametersLabelExpansion" instead of just "LabelExpansion".
+  const toClassName = (name: string) => namePolicy.getName(name, "class");
+  const clientName = getClientFileName(client, toClassName);
   const siblingNames = buildSiblingNameSet(client.methods, (n) =>
     namePolicy.getName(n, "class"),
   );
