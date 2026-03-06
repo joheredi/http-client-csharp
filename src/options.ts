@@ -32,6 +32,13 @@ export interface LicenseOptions {
  */
 export interface CSharpEmitterOptions {
   /**
+   * Controls whether the emitter generates Azure SDK code or unbranded
+   * System.ClientModel code. When set to `"azure"`, the emitter produces
+   * Azure-branded clients using Azure.Core types. Defaults to `"unbranded"`.
+   */
+  flavor?: "azure" | "unbranded";
+
+  /**
    * For TypeSpec files using the `@versioned` decorator, set this option to
    * the API version that the emitter should generate against.
    * Defaults to `"latest"`.
@@ -104,6 +111,14 @@ export const CSharpEmitterOptionsSchema: JSONSchemaType<CSharpEmitterOptions> =
     type: "object",
     additionalProperties: false,
     properties: {
+      flavor: {
+        type: "string",
+        enum: ["azure", "unbranded"],
+        nullable: true,
+        description:
+          "Controls whether Azure SDK code or unbranded System.ClientModel code is generated. " +
+          "The default value is `unbranded`.",
+      },
       "api-version": {
         type: "string",
         nullable: true,
@@ -184,6 +199,7 @@ export const CSharpEmitterOptionsSchema: JSONSchemaType<CSharpEmitterOptions> =
 export const defaultOptions: Required<
   Pick<
     CSharpEmitterOptions,
+    | "flavor"
     | "api-version"
     | "generate-protocol-methods"
     | "generate-convenience-methods"
@@ -192,6 +208,7 @@ export const defaultOptions: Required<
     | "save-inputs"
   >
 > = {
+  flavor: "unbranded",
   "api-version": "latest",
   "generate-protocol-methods": true,
   "generate-convenience-methods": true,
@@ -203,7 +220,7 @@ export const defaultOptions: Required<
 /**
  * Emitter options with defaults applied for fields that have default values.
  *
- * Fields covered by {@link defaultOptions} (`api-version`,
+ * Fields covered by {@link defaultOptions} (`flavor`, `api-version`,
  * `generate-protocol-methods`, `generate-convenience-methods`,
  * `unreferenced-types-handling`, `new-project`, `save-inputs`) are
  * guaranteed to be present. All other fields remain optional.

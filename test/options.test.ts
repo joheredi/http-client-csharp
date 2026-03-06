@@ -40,6 +40,7 @@ describe("CSharpEmitterOptions", () => {
    */
   it("accepts all option fields with correct types", () => {
     const opts: CSharpEmitterOptions = {
+      flavor: "azure",
       "api-version": "2024-01-01",
       "generate-protocol-methods": true,
       "generate-convenience-methods": false,
@@ -56,6 +57,7 @@ describe("CSharpEmitterOptions", () => {
         description: "MIT License",
       },
     };
+    expect(opts.flavor).toBe("azure");
     expect(opts["api-version"]).toBe("2024-01-01");
     expect(opts["generate-protocol-methods"]).toBe(true);
     expect(opts["generate-convenience-methods"]).toBe(false);
@@ -95,6 +97,18 @@ describe("CSharpEmitterOptions", () => {
     ];
     expect(values).toHaveLength(3);
   });
+
+  /**
+   * Verifies the flavor enum values are correctly typed. These values control
+   * whether Azure SDK or unbranded System.ClientModel code is generated —
+   * an incorrect type would silently produce the wrong SDK flavor.
+   */
+  it("accepts all flavor enum values", () => {
+    const azure: CSharpEmitterOptions = { flavor: "azure" };
+    const unbranded: CSharpEmitterOptions = { flavor: "unbranded" };
+    expect(azure.flavor).toBe("azure");
+    expect(unbranded.flavor).toBe("unbranded");
+  });
 });
 
 describe("CSharpEmitterOptionsSchema", () => {
@@ -116,6 +130,7 @@ describe("CSharpEmitterOptionsSchema", () => {
    */
   it("defines schema properties for all interface options", () => {
     const expectedKeys = [
+      "flavor",
       "api-version",
       "generate-protocol-methods",
       "generate-convenience-methods",
@@ -151,6 +166,16 @@ describe("CSharpEmitterOptionsSchema", () => {
   });
 
   /**
+   * Verifies the flavor schema uses the correct enum values.
+   * An incorrect schema would cause the TypeSpec compiler to reject valid
+   * flavor settings in tspconfig.yaml.
+   */
+  it("defines correct enum values for flavor", () => {
+    const schema = CSharpEmitterOptionsSchema.properties["flavor"];
+    expect(schema.enum).toEqual(["azure", "unbranded"]);
+  });
+
+  /**
    * Verifies unreferenced-types-handling schema uses the correct enum values.
    * Incorrect enum values would cause the TypeSpec compiler to reject valid
    * configuration entries.
@@ -173,6 +198,7 @@ describe("defaultOptions", () => {
    * emitter will get the same behavior without changing their config.
    */
   it("has correct default values matching legacy emitter", () => {
+    expect(defaultOptions.flavor).toBe("unbranded");
     expect(defaultOptions["api-version"]).toBe("latest");
     expect(defaultOptions["generate-protocol-methods"]).toBe(true);
     expect(defaultOptions["generate-convenience-methods"]).toBe(true);
@@ -195,6 +221,7 @@ describe("resolveOptions", () => {
 
     const resolved = resolveOptions(mockContext);
 
+    expect(resolved.flavor).toBe("unbranded");
     expect(resolved["api-version"]).toBe("latest");
     expect(resolved["generate-protocol-methods"]).toBe(true);
     expect(resolved["generate-convenience-methods"]).toBe(true);
@@ -222,6 +249,27 @@ describe("resolveOptions", () => {
     // Non-overridden defaults should still apply
     expect(resolved["generate-convenience-methods"]).toBe(true);
     expect(resolved["api-version"]).toBe("latest");
+  });
+
+  /**
+   * Verifies that flavor can be overridden to "azure". This is the key
+   * mechanism for enabling Azure SDK generation — the emit-e2e.ts script
+   * passes flavor=azure for Azure specs.
+   */
+  it("user can override flavor to azure", () => {
+    const mockContext = {
+      options: {
+        flavor: "azure",
+      } as CSharpEmitterOptions,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
+
+    const resolved = resolveOptions(mockContext);
+
+    expect(resolved.flavor).toBe("azure");
+    // Non-overridden defaults should still apply
+    expect(resolved["api-version"]).toBe("latest");
+    expect(resolved["generate-protocol-methods"]).toBe(true);
   });
 
   /**

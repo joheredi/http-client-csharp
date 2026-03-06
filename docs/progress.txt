@@ -5475,3 +5475,17 @@ Enabled the `type/union` spec (~20 Spector tests) by fixing three gaps in union 
 
 ### Key pattern
 Union types (`SdkUnionType` with `kind === "union"`) map to `BinaryData` everywhere in C#. They follow the same serialization pattern as `unknown` types: `WriteRawValue` for serialization, `BinaryData.FromString(GetRawText())` for deserialization.
+
+## Task 16.1: Add `flavor` emitter option to src/options.ts
+- **Date**: 2026-03-06
+- **Status**: Done
+
+Added the `flavor` emitter option that controls whether Azure SDK or unbranded System.ClientModel code is generated. This is the foundational toggle for all Azure-specific behavior in subsequent phases.
+
+**Changes:**
+- `src/options.ts`: Added `flavor?: "azure" | "unbranded"` to `CSharpEmitterOptions` interface, JSON schema entry with enum validation, and default value `"unbranded"` in `defaultOptions`. Updated `ResolvedCSharpEmitterOptions` type to guarantee `flavor` is always present.
+- `test/options.test.ts`: Added tests for flavor type acceptance, schema enum values, default value, and override to "azure" via resolveOptions.
+
+**Design decision:** Added flavor as a first-class option with a default (approach 1) rather than inferring it at runtime from namespace heuristics (approach 2, used by Java/Python emitters). The explicit option is simpler, matches the PRD spec, and lets emit-e2e.ts pass `--option http-client-csharp.flavor=azure` directly.
+
+**Results:** Build passes, all 569 tests pass (39 expected failures, 14 expected skips), all 4 e2e tests pass.
