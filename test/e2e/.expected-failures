@@ -32,3 +32,11 @@ Versioning_Added_v1
 Versioning_Added_v2
 Versioning_RenamedFrom_NewInterface
 Versioning_RenamedFrom_NewOp
+
+# --- Encode/Bytes/RequestBody: raw binary content handling ---
+# Convenience methods use BinaryContentHelper.FromObject() which attempts
+# JSON parsing on raw binary data (PNG). Needs a separate fix to use
+# BinaryContent.Create() for non-JSON byte body parameters.
+RequestBodyDefault
+RequestBodyOctetStream
+RequestBodyCustomContentType

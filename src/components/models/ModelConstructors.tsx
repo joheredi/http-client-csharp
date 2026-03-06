@@ -68,6 +68,7 @@ import {
 import {
   isCollectionType,
   isPropertyNullable,
+  isStringEncodedNumeric,
   unwrapNullableType,
 } from "../../utils/nullable.js";
 import {
@@ -651,6 +652,11 @@ function buildPropertyTypeParameters(
   return properties.map((p) => {
     const nullable = isPropertyNullable(p);
     const unwrapped = unwrapNullableType(p.type);
+    // Optional @encode("string") numeric properties use `object` type to
+    // match the property type. The serialization constructor must accept the
+    // same type as the property declaration.
+    const isOptionalStringEncodedNumeric =
+      nullable && isStringEncodedNumeric(p.type);
     // Serialization constructor uses property types: IList<T>/IReadOnlyList<T>
     // for arrays, IDictionary/IReadOnlyDictionary for dicts.
     // Literal wrapper types use the wrapper struct refkey instead of the
@@ -659,7 +665,9 @@ function buildPropertyTypeParameters(
     const isLiteralWrapper =
       unwrapped.kind === "constant" &&
       needsLiteralWrapperStruct(unwrapped, nullable);
-    const baseType = isCollectionType(p.type) ? (
+    const baseType = isOptionalStringEncodedNumeric ? (
+      ("object" as Children)
+    ) : isCollectionType(p.type) ? (
       renderCollectionPropertyType(unwrapped, isPropertyReadOnly(p))
     ) : isLiteralWrapper ? (
       literalTypeRefkey(unwrapped as SdkConstantType)
@@ -672,7 +680,10 @@ function buildPropertyTypeParameters(
         resolvePropertyName(p.name, modelName),
         "parameter",
       ),
-      type: nullable ? <>{baseType}?</> : baseType,
+      type:
+        isOptionalStringEncodedNumeric ? baseType
+        : nullable ? <>{baseType}?</>
+        : baseType,
     };
   });
 }

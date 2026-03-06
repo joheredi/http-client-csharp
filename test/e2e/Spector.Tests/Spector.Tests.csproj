@@ -139,8 +139,6 @@
       Re-enable as the new emitter's API surface aligns with these test expectations.
     -->
     <Compile Remove="$(LegacyTestRoot)Http/Authentication/Http/Custom/**/*.cs" />
-    <Compile Remove="$(LegacyTestRoot)Http/Encode/Bytes/**/*.cs" />
-    <Compile Remove="$(LegacyTestRoot)Http/Encode/Numeric/**/*.cs" />
     <Compile Remove="$(LegacyTestRoot)Http/Parameters/BodyOptionality/**/*.cs" />
     <Compile Remove="$(LegacyTestRoot)Http/Payload/ContentNegotiation/**/*.cs" />
     <Compile Remove="$(LegacyTestRoot)Http/Payload/MediaType/**/*.cs" />

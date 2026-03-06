@@ -24,6 +24,7 @@ import { ensureTrailingPeriod } from "../../utils/doc.js";
 import {
   isCollectionType,
   isPropertyNullable,
+  isStringEncodedNumeric,
   unwrapNullableType,
 } from "../../utils/nullable.js";
 import {
@@ -136,7 +137,7 @@ export function isDiscriminatorProperty(
  */
 export function ModelProperty(props: ModelPropertyProps) {
   const { property, modelUsage, modelName } = props;
-  const nullable = isPropertyNullable(property);
+  let nullable = isPropertyNullable(property);
   const type = unwrapNullableType(property.type);
   const isDiscriminator = isDiscriminatorProperty(property);
   const hasSetter = isDiscriminator
@@ -150,6 +151,13 @@ export function ModelProperty(props: ModelPropertyProps) {
   // Resolve property name to avoid CS0542 (member name same as enclosing type)
   const effectiveName = resolvePropertyName(property.name, modelName);
 
+  // Optional numeric properties with @encode("string") use `object` type in C#.
+  // The wire value is a JSON string, and the object type allows holding the raw
+  // string value. Required @encode("string") numerics keep their native type
+  // with transparent encode/decode during serialization.
+  const isOptionalStringEncodedNumeric =
+    nullable && isStringEncodedNumeric(property.type);
+
   // Collection types (arrays, dicts) render as IList<T>/IReadOnlyList<T> or
   // IDictionary<string,T>/IReadOnlyDictionary<string,T> instead of T[] or the
   // default IDictionary. Non-collections use TypeExpression directly.
@@ -158,13 +166,21 @@ export function ModelProperty(props: ModelPropertyProps) {
   const isCollection = isCollectionType(property.type);
   const readOnly = isPropertyReadOnly(property);
   const isLiteralWrapper = needsLiteralWrapperStruct(type, nullable);
-  const typeExpr = isCollection ? (
+  const typeExpr = isOptionalStringEncodedNumeric ? (
+    "object" as Children
+  ) : isCollection ? (
     renderCollectionPropertyType(type, readOnly)
   ) : isLiteralWrapper ? (
     literalTypeRefkey(type as SdkConstantType)
   ) : (
     <TypeExpression type={type.__raw!} />
   );
+
+  // When the property type is overridden to `object` (reference type),
+  // suppress the nullable `?` suffix since `object` is already nullable.
+  if (isOptionalStringEncodedNumeric) {
+    nullable = false;
+  }
 
   // Constant/literal properties get a property initializer so their value
   // is always correct without explicit constructor initialization.

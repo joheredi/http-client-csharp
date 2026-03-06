@@ -95,7 +95,12 @@ import {
   type SdkType,
 } from "@azure-tools/typespec-client-generator-core";
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
-import { isCollectionType, isPropertyNullable, unwrapNullableType } from "../../utils/nullable.js";
+import {
+  isCollectionType,
+  isPropertyNullable,
+  isStringEncodedNumeric,
+  unwrapNullableType,
+} from "../../utils/nullable.js";
 import {
   isCSharpReferenceType,
   isPropertyReadOnly,
@@ -432,6 +437,17 @@ export function getWriteMethodInfo(type: SdkType): WriteMethodInfo | null {
 
   // Primitive types — no format specifier needed.
   if (STRING_KINDS.has(kind)) return { methodName: "WriteStringValue" };
+
+  // Numeric types with @encode("string") write the value as a JSON string.
+  // The ToString() transform converts the native numeric or object value to
+  // its string representation (e.g., 10000000000L.ToString() → "10000000000").
+  if (NUMBER_KINDS.has(kind) && isStringEncodedNumeric(type)) {
+    return {
+      methodName: "WriteStringValue",
+      valueTransform: (name) => `${name}.ToString()`,
+    };
+  }
+
   if (NUMBER_KINDS.has(kind)) return { methodName: "WriteNumberValue" };
   if (BOOLEAN_KINDS.has(kind)) return { methodName: "WriteBooleanValue" };
 
@@ -604,6 +620,9 @@ export function needsNullableValueAccess(
   if (isCollectionType(property.type)) return false;
   // Reference types don't need .Value
   if (isCSharpReferenceType(property.type)) return false;
+  // Optional @encode("string") numeric properties use `object` type (reference type),
+  // so they don't need .Value unwrapping even though the TCGC kind is a value type.
+  if (property.optional && isStringEncodedNumeric(property.type)) return false;
   // Optional properties with value types need .Value inside the guard
   if (property.optional) return true;
   // Required-nullable value types need .Value

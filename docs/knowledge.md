@@ -3207,3 +3207,24 @@ When a sub-client is named "ContinuationToken", it collides with `System.ClientM
 ### Design Decision: Approach for CreateNextRequest
 **Chosen**: Generate as a separate component (`CreateNextRequestMethod`) rendered after all regular `CreateRequestMethod` components. Uses raw string body pattern (matching existing `buildRequestBody`) with hardcoded next-page URI handling.
 **Rejected**: Modifying `CreateRequestMethod` to conditionally render a next-link variant — too complex, hard to understand, and the next-page request has completely different URI construction logic (no path/query building, just URI forwarding).
+
+## @encode("string") on Numeric Types
+
+When `@encode(string)` is applied to a numeric TypeSpec type, the wire format is a JSON string instead of a JSON number. TCGC preserves the original `kind` (e.g., `"uint32"`) but sets `encode: "string"` on the `SdkBuiltInType`.
+
+### C# type mapping rules
+- **Required numeric + @encode(string)**: Keep native C# type (e.g., `long`, `byte`). Serialize with `WriteStringValue(Value.ToString())`, deserialize with `NativeType.Parse(GetString())`.
+- **Optional numeric + @encode(string)**: Use `object` C# type (not `uint?`). Serialize with `WriteStringValue(Value.ToString())`, deserialize with `GetString()` (stores raw string).
+
+### TCGC optionality representation
+TCGC does NOT always wrap optional types in `SdkNullableType`. Instead, `property.optional === true` indicates optionality. Don't rely solely on `type.kind === "nullable"` to detect optional properties — always check `property.optional` when available.
+
+### Pre-existing issue: raw bytes request body
+The `BinaryContentHelper.FromObject()` helper attempts JSON parsing on all input, which fails for raw binary data (e.g., PNG images sent as octet-stream). Operations with non-JSON byte body parameters need `BinaryContent.Create()` instead. Tracked in `.expected-failures`.
+
+## Design Decisions
+
+### Bytes response convenience methods return ClientResult<BinaryData>
+**Chosen**: Generate `ClientResult<BinaryData>` for bytes responses, extracting content via `result.GetRawResponse().Content`.
+**Rejected**: Keep untyped `ClientResult` — this doesn't match the legacy emitter and forces callers to manually extract binary content.
+**Reason**: The legacy emitter generates typed convenience methods for bytes responses. The content extraction pattern (`GetRawResponse().Content`) is different from model responses (explicit operator cast) because `BinaryData` doesn't define a `ClientResult` conversion operator.

@@ -80,7 +80,7 @@ public partial class ContentNegotiationClient
 ```
 
 Should generate the DifferentBody sub-client with both convenience and protocol
-methods. `getAvatarAsPng` returns `ClientResult` (binary), while
+methods. `getAvatarAsPng` returns `ClientResult<BinaryData>` (binary), while
 `getAvatarAsJson` returns `ClientResult<PngImageAsJson>` (model type).
 
 ```csharp src/Generated/DifferentBody.cs class DifferentBody
@@ -108,17 +108,21 @@ public partial class DifferentBody
         /// <summary>  </summary>
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult GetAvatarAsPng(CancellationToken cancellationToken = default)
+        public virtual ClientResult<BinaryData> GetAvatarAsPng(CancellationToken cancellationToken = default)
         {
-            return GetAvatarAsPng(cancellationToken.ToRequestOptions());
+            ClientResult result = GetAvatarAsPng(cancellationToken.ToRequestOptions());
+            return ClientResult.FromValue(result.GetRawResponse().Content, result.GetRawResponse());
         }
 
         /// <summary>  </summary>
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async Task<ClientResult> GetAvatarAsPngAsync(CancellationToken cancellationToken = default)
+        public virtual async Task<ClientResult<BinaryData>> GetAvatarAsPngAsync(
+            CancellationToken cancellationToken = default
+        )
         {
-            return await GetAvatarAsPngAsync(cancellationToken.ToRequestOptions()).ConfigureAwait(false);
+            ClientResult result = await GetAvatarAsPngAsync(cancellationToken.ToRequestOptions()).ConfigureAwait(false);
+            return ClientResult.FromValue(result.GetRawResponse().Content, result.GetRawResponse());
         }
 
         /// <summary>  </summary>

@@ -81,7 +81,7 @@ public partial class ContentNegotiationClient
 
 Should generate the SameBody sub-client with convenience and protocol methods
 for getting avatars in PNG and JPEG formats. Convenience methods return
-`ClientResult` since the response is binary data (bytes), not a model type.
+`ClientResult<BinaryData>` since the response is binary data (bytes).
 
 ```csharp src/Generated/SameBody.cs class SameBody
 public partial class SameBody
@@ -108,33 +108,41 @@ public partial class SameBody
         /// <summary>  </summary>
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult GetAvatarAsPng(CancellationToken cancellationToken = default)
+        public virtual ClientResult<BinaryData> GetAvatarAsPng(CancellationToken cancellationToken = default)
         {
-            return GetAvatarAsPng(cancellationToken.ToRequestOptions());
+            ClientResult result = GetAvatarAsPng(cancellationToken.ToRequestOptions());
+            return ClientResult.FromValue(result.GetRawResponse().Content, result.GetRawResponse());
         }
 
         /// <summary>  </summary>
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async Task<ClientResult> GetAvatarAsPngAsync(CancellationToken cancellationToken = default)
+        public virtual async Task<ClientResult<BinaryData>> GetAvatarAsPngAsync(
+            CancellationToken cancellationToken = default
+        )
         {
-            return await GetAvatarAsPngAsync(cancellationToken.ToRequestOptions()).ConfigureAwait(false);
+            ClientResult result = await GetAvatarAsPngAsync(cancellationToken.ToRequestOptions()).ConfigureAwait(false);
+            return ClientResult.FromValue(result.GetRawResponse().Content, result.GetRawResponse());
         }
 
         /// <summary>  </summary>
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult GetAvatarAsJpeg(CancellationToken cancellationToken = default)
+        public virtual ClientResult<BinaryData> GetAvatarAsJpeg(CancellationToken cancellationToken = default)
         {
-            return GetAvatarAsJpeg(cancellationToken.ToRequestOptions());
+            ClientResult result = GetAvatarAsJpeg(cancellationToken.ToRequestOptions());
+            return ClientResult.FromValue(result.GetRawResponse().Content, result.GetRawResponse());
         }
 
         /// <summary>  </summary>
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async Task<ClientResult> GetAvatarAsJpegAsync(CancellationToken cancellationToken = default)
+        public virtual async Task<ClientResult<BinaryData>> GetAvatarAsJpegAsync(
+            CancellationToken cancellationToken = default
+        )
         {
-            return await GetAvatarAsJpegAsync(cancellationToken.ToRequestOptions()).ConfigureAwait(false);
+            ClientResult result = await GetAvatarAsJpegAsync(cancellationToken.ToRequestOptions()).ConfigureAwait(false);
+            return ClientResult.FromValue(result.GetRawResponse().Content, result.GetRawResponse());
         }
 
         /// <summary>

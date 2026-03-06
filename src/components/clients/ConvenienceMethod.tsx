@@ -194,15 +194,18 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
             ? ({ internal: true } as const)
             : ({ public: true } as const);
 
-        // Build response type expression (used for return type and cast).
-        // Only model types have the explicit operator from ClientResult needed
-        // for the cast pattern. Arrays, scalars, and other non-model response
-        // types fall back to untyped ClientResult.
+        // Build response type expression (used for return type and body extraction).
+        // Model types use the explicit operator from ClientResult for the cast
+        // pattern. Bytes types return ClientResult<BinaryData> with content
+        // extracted from the raw response. Other response types (arrays, scalars)
+        // fall back to untyped ClientResult.
         const isModelResponse = responseType?.kind === "model";
-        const responseTypeExpr =
-          responseType && isModelResponse ? (
-            <TypeExpression type={responseType.__raw!} />
-          ) : null;
+        const isBytesResponse = responseType?.kind === "bytes";
+        const responseTypeExpr = isModelResponse ? (
+          <TypeExpression type={responseType!.__raw!} />
+        ) : isBytesResponse ? (
+          System.BinaryData
+        ) : null;
 
         // Build return types
         const syncReturn = responseTypeExpr
@@ -222,13 +225,17 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
 
         // Sync method body — use code template for all cases to support
         // spread body Children expressions in protocolCallExpr.
+        // Model responses: cast via explicit operator (ModelType)result
+        // Bytes responses: extract BinaryData via result.GetRawResponse().Content
         const syncBody = responseTypeExpr
           ? [
               validation,
               assertableParams.length > 0 ? "\n\n" : "",
               code`${SystemClientModel.ClientResult} result = ${methodName}(${protocolCallExpr});`,
               "\n",
-              code`return ${SystemClientModel.ClientResult}.FromValue((${responseTypeExpr})result, result.GetRawResponse());`,
+              isBytesResponse
+                ? code`return ${SystemClientModel.ClientResult}.FromValue(result.GetRawResponse().Content, result.GetRawResponse());`
+                : code`return ${SystemClientModel.ClientResult}.FromValue((${responseTypeExpr})result, result.GetRawResponse());`,
             ]
           : [
               validation,
@@ -243,7 +250,9 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
               assertableParams.length > 0 ? "\n\n" : "",
               code`${SystemClientModel.ClientResult} result = await ${methodName}Async(${protocolCallExpr}).ConfigureAwait(false);`,
               "\n",
-              code`return ${SystemClientModel.ClientResult}.FromValue((${responseTypeExpr})result, result.GetRawResponse());`,
+              isBytesResponse
+                ? code`return ${SystemClientModel.ClientResult}.FromValue(result.GetRawResponse().Content, result.GetRawResponse());`
+                : code`return ${SystemClientModel.ClientResult}.FromValue((${responseTypeExpr})result, result.GetRawResponse());`,
             ]
           : [
               validation,

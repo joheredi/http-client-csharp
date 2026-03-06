@@ -19,7 +19,10 @@
  * @module
  */
 
-import type { SdkType } from "@azure-tools/typespec-client-generator-core";
+import type {
+  SdkBuiltInType,
+  SdkType,
+} from "@azure-tools/typespec-client-generator-core";
 
 /**
  * Checks whether an SDK type is a collection type (array or dictionary).
@@ -163,5 +166,51 @@ export function isConvenienceParamValueType(type: SdkType): boolean {
     VALUE_TYPE_KINDS.has(unwrapped.kind) ||
     unwrapped.kind === "enum" ||
     unwrapped.kind === "enumvalue"
+  );
+}
+
+/**
+ * Set of numeric SDK type kinds that can have `@encode("string")`.
+ *
+ * When a numeric type has `encode === "string"`, its wire format is a JSON
+ * string rather than a JSON number. The C# type and serialization must account
+ * for this: optional properties use `object` to hold the raw string, while
+ * required properties keep the native type and convert during serialization.
+ */
+const NUMERIC_KINDS = new Set([
+  "int8",
+  "int16",
+  "int32",
+  "int64",
+  "uint8",
+  "uint16",
+  "uint32",
+  "uint64",
+  "float",
+  "float32",
+  "float64",
+  "decimal",
+  "decimal128",
+  "safeint",
+  "numeric",
+  "integer",
+]);
+
+/**
+ * Checks whether an SDK type is a numeric type with `@encode("string")`.
+ *
+ * When `@encode(string)` is applied to a numeric TypeSpec type, the value is
+ * serialized as a JSON string on the wire (e.g., `"10000000000"` instead of
+ * `10000000000`). This affects both the C# property type (for optional
+ * properties) and the serialization/deserialization methods.
+ *
+ * @param type - An SDK type from TCGC (may be nullable-wrapped).
+ * @returns `true` if the underlying type is numeric with `encode === "string"`.
+ */
+export function isStringEncodedNumeric(type: SdkType): boolean {
+  const unwrapped = unwrapNullableType(type);
+  return (
+    NUMERIC_KINDS.has(unwrapped.kind) &&
+    (unwrapped as SdkBuiltInType).encode === "string"
   );
 }

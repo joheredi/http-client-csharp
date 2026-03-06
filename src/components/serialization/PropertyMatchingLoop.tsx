@@ -63,6 +63,7 @@ import { SystemCollectionsGeneric } from "../../builtins/system-collections-gene
 import {
   isCollectionType,
   isPropertyNullable,
+  isStringEncodedNumeric,
   unwrapNullableType,
 } from "../../utils/nullable.js";
 import {
@@ -349,6 +350,36 @@ const READ_METHOD_MAP: Record<string, string> = {
 };
 
 /**
+ * Maps numeric SDK type kinds to their C# `Parse` method for deserializing
+ * string-encoded numeric values.
+ *
+ * When a numeric type has `@encode("string")`, the wire value is a JSON string
+ * (e.g., `"10000000000"`) that must be parsed to the native C# type. For required
+ * properties that keep their native type, this map provides the `Type.Parse()`
+ * call to convert the string back.
+ *
+ * @see {@link getReadExpression} — uses this map before `READ_METHOD_MAP`.
+ */
+const NUMERIC_PARSE_MAP: Record<string, string> = {
+  int8: "sbyte.Parse",
+  int16: "short.Parse",
+  int32: "int.Parse",
+  int64: "long.Parse",
+  uint8: "byte.Parse",
+  uint16: "ushort.Parse",
+  uint32: "uint.Parse",
+  uint64: "ulong.Parse",
+  float32: "float.Parse",
+  float64: "double.Parse",
+  float: "double.Parse",
+  decimal: "decimal.Parse",
+  decimal128: "decimal.Parse",
+  safeint: "long.Parse",
+  numeric: "double.Parse",
+  integer: "long.Parse",
+};
+
+/**
  * Returns the C# read expression for a `SdkDateTimeType` based on its encoding.
  *
  * The encoding determines how the JSON value is read:
@@ -555,6 +586,7 @@ export function getReadExpression(
   namePolicy?: NamePolicy<string>,
   accessor: string = "jsonProperty.Value",
   enclosingPropertyNames?: Set<string>,
+  isOptional?: boolean,
 ): string | null {
   let unwrapped = unwrapNullableType(type);
 
@@ -598,6 +630,22 @@ export function getReadExpression(
   }
   if (kind === "plainTime") {
     return `${accessor}.GetTimeSpan("T")`;
+  }
+
+  // Numeric types with @encode("string") — wire value is a JSON string.
+  // Optional properties use `object` type so GetString() suffices.
+  // Required properties keep native type so we parse the string.
+  if (isStringEncodedNumeric(type)) {
+    const isNullableType = type.kind === "nullable" || isOptional;
+    if (isNullableType) {
+      // Optional → property type is `object`, store string directly
+      return `${accessor}.GetString()`;
+    }
+    // Required → property type is native, parse string to native type
+    const parseMethod = NUMERIC_PARSE_MAP[kind];
+    if (parseMethod) {
+      return `${parseMethod}(${accessor}.GetString())`;
+    }
   }
 
   // Primitive types — direct JsonElement getter
@@ -1084,6 +1132,7 @@ export function PropertyMatchingLoop(props: PropertyMatchingLoopProps) {
           namePolicy,
           undefined,
           enclosingPropertyNames,
+          p.optional,
         );
         if (!readExpr) return null;
 

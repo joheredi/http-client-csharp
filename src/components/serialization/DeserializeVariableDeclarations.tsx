@@ -57,6 +57,7 @@ import { renderCollectionPropertyType } from "../../utils/collection-type-expres
 import {
   isCollectionType,
   isPropertyNullable,
+  isStringEncodedNumeric,
   unwrapNullableType,
 } from "../../utils/nullable.js";
 import {
@@ -239,16 +240,27 @@ export function DeserializeVariableDeclarations(
         // type matches the property type (e.g., FloatLiteralPropertyProperty?
         // instead of double?). The implicit conversion from the raw primitive
         // (returned by GetSingle/GetInt32/etc.) handles the assignment.
+        // Optional @encode("string") numeric properties use `object` to hold
+        // the raw JSON string value.
+        const isOptionalStringEncodedNumeric =
+          nullable && isStringEncodedNumeric(p.type);
         const isLiteralWrapper =
           unwrapped.kind === "constant" &&
           needsLiteralWrapperStruct(unwrapped, nullable);
-        const typeExpr = isCollectionType(unwrapped) ? (
+        const typeExpr = isOptionalStringEncodedNumeric ? (
+          ("object" as Children)
+        ) : isCollectionType(unwrapped) ? (
           renderCollectionPropertyType(unwrapped, isPropertyReadOnly(p))
         ) : isLiteralWrapper ? (
           literalTypeRefkey(unwrapped as SdkConstantType)
         ) : (
           <TypeExpression type={unwrapped.__raw!} />
         );
+
+        // Suppress nullable suffix for object type override (already nullable)
+        const effectiveNullable = isOptionalStringEncodedNumeric
+          ? false
+          : nullable;
 
         // Compute the initializer expression. Optional collections use
         // ChangeTrackingList/Dictionary so that Optional.IsCollectionDefined()
@@ -278,7 +290,7 @@ export function DeserializeVariableDeclarations(
           <>
             {"\n    "}
             {typeExpr}
-            {nullable ? "?" : ""}
+            {effectiveNullable ? "?" : ""}
             {` ${varName} = `}
             {initializerExpr}
             {";"}

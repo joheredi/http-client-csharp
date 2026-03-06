@@ -5291,3 +5291,30 @@ Files modified:
 - src/utils/package-name.ts — ContinuationToken collision fix
 - test/e2e/.testignore — removed paging spec exclusions
 - test/e2e/Spector.Tests/Spector.Tests.csproj — re-enabled paging test files
+
+## 2026-03-06 — Task 15.12: Align Encode/Bytes and Encode/Numeric API surface (DONE)
+
+### What was done
+Fixed two API surface differences between the new and legacy emitters:
+
+1. **ResponseBody convenience methods now return `ClientResult<BinaryData>`** instead of untyped `ClientResult` for operations returning raw bytes. Modified `ConvenienceMethod.tsx` to detect `bytes` response type and extract content via `result.GetRawResponse().Content`.
+
+2. **Optional @encode("string") numeric properties now use `object` type** instead of `uint?`. This matches the legacy emitter's behavior where optional numeric properties with string encoding expose the raw wire string. Changes span:
+   - `ModelProperty.tsx` — property type override
+   - `DeserializeVariableDeclarations.tsx` — variable type override
+   - `ModelConstructors.tsx` — internal constructor parameter type
+   - `PropertySerializer.tsx` — `WriteStringValue` + `.ToString()` for @encode(string) numerics
+   - `PropertyMatchingLoop.tsx` — `GetString()` for deserialization of string-encoded numerics
+   - `needsNullableValueAccess` — suppress `.Value` unwrap for object-typed properties
+
+### Utility added
+- `isStringEncodedNumeric()` in `nullable.ts` — detects numeric types with `@encode("string")`
+
+### Test updates
+- Updated `content_negotiation_different_body.md` and `content_negotiation_same_body.md` scenario expectations for `ClientResult<BinaryData>` return type
+- Added 3 pre-existing RequestBody failures to `.expected-failures` (raw bytes sent via JSON serializer)
+- Re-enabled Encode/Bytes and Encode/Numeric e2e tests (removed csproj exclusions)
+
+### Key pattern: @encode("string") on numeric types
+- **Required**: keeps native C# type (long, byte), serializes with `.ToString()`, deserializes with `Parse(GetString())`
+- **Optional**: uses `object` C# type, serializes with `.ToString()`, deserializes with `GetString()` directly
