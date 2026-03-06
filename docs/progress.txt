@@ -5507,3 +5507,29 @@ Updated `eng/scripts/emit-e2e.ts` so Azure specs are compiled with `--option htt
 - `pnpm emit:e2e --filter azure/versioning/previewVersion` compiles both v1 and v2 with correct aliases.
 - Generated project references show correct aliases: PreviewVersionV1, PreviewVersionV2.
 - Build passes, all 1,399 tests pass (128 skips), 0 failures.
+
+## Task 16.3: Configure Spector.Tests.csproj for Azure test files and dependencies
+- **Date**: 2026-03-06
+- **Status**: Done
+
+Configured test/e2e/Spector.Tests/Spector.Tests.csproj with full Azure test infrastructure.
+
+**Changes to Spector.Tests.csproj:**
+1. Added `AzureTestRoot` property pointing to `submodules/azure-sdk-for-net/.../Spector.Tests/`
+2. Added `AzureCoreSharedRoot` property pointing to `submodules/azure-sdk-for-net/sdk/core/Azure.Core/src/Shared/`
+3. Added `Azure.Core` NuGet PackageReference (Version 1.44.1)
+4. Linked Azure test .cs files via glob: `$(AzureTestRoot)Http/Azure/**/*.cs`
+5. Linked 10 shared Azure.Core source files (diagnostics, URI builder, headers, etc.) + ProcessTracker from Azure.Core.TestFramework
+6. Excluded ALL 27 Azure test files via Compile Remove (categorized by spec group) — Azure-specific code generation is not yet implemented (tasks 17.1–17.10)
+
+**Key findings:**
+- Shared source files from Azure.Core compile successfully against Azure.Core 1.44.1 NuGet
+- No ProcessTracker conflict: legacy uses `TestProjects.Spector.Tests` namespace, Azure.Core.TestFramework uses `Azure.Core.TestFramework` namespace
+- Azure test files all use Azure-specific types (Response, AsyncPageable<T>, HttpPipeline, WaitUntil) that are not generated yet
+- No Azure test files reference Azure.Generator.Tests.Common (only standard SpectorTestBase infrastructure)
+
+**Validation:**
+- `dotnet build Spector.Tests.csproj` succeeds (0 errors, 5 warnings)
+- `pnpm build` passes
+- `pnpm test` passes (569 pass, 39 expected failures, 14 expected skips)
+- `pnpm test:e2e` passes (5/5 tests pass)

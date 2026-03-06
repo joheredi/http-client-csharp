@@ -9,6 +9,8 @@
     <RepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../..'))/</RepoRoot>
     <GeneratedRoot>$(RepoRoot)temp/e2e/Spector/http/</GeneratedRoot>
     <LegacyTestRoot>$(RepoRoot)submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/</LegacyTestRoot>
+    <AzureTestRoot>$(RepoRoot)submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/TestProjects/Spector.Tests/</AzureTestRoot>
+    <AzureCoreSharedRoot>$(RepoRoot)submodules/azure-sdk-for-net/sdk/core/Azure.Core/src/Shared/</AzureCoreSharedRoot>
   </PropertyGroup>
 
   <!-- NUnit test infrastructure -->
@@ -18,6 +20,7 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageReference Include="System.Memory.Data" Version="10.0.1" />
     <PackageReference Include="System.ClientModel" Version="1.9.0" />
+    <PackageReference Include="Azure.Core" Version="1.44.1" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.8.0" />
   </ItemGroup>
 
@@ -55,9 +58,36 @@
     <Compile Include="$(LegacyTestRoot)Http/**/*.cs" LinkBase="Http" />
   </ItemGroup>
 
+  <!--
+    Link Azure-specific test files from the azure-sdk-for-net submodule.
+    These test classes exercise Azure-flavored generated clients (using Azure.Core types
+    like HttpPipeline, Response<T>, AsyncPageable<T>) against the Spector server.
+  -->
+  <ItemGroup>
+    <Compile Include="$(AzureTestRoot)Http/Azure/**/*.cs" LinkBase="Http/Azure" />
+  </ItemGroup>
+
   <!-- Copy test data JSON files to output -->
   <ItemGroup>
     <None Include="$(LegacyTestRoot)Http/**/TestData/**/*.json" LinkBase="Http" CopyToOutputDirectory="Always" />
+  </ItemGroup>
+
+  <!--
+    Include shared source files from Azure.Core.
+    These provide infrastructure types (diagnostics, URI building, header extensions)
+    needed by Azure-flavored test projects and test infrastructure.
+  -->
+  <ItemGroup>
+    <Compile Include="$(AzureCoreSharedRoot)AzureKeyCredentialPolicy.cs" LinkBase="Shared/Core" />
+    <Compile Include="$(AzureCoreSharedRoot)RawRequestUriBuilder.cs" LinkBase="Shared/Core" />
+    <Compile Include="$(AzureCoreSharedRoot)AppContextSwitchHelper.cs" LinkBase="Shared/Core" />
+    <Compile Include="$(AzureCoreSharedRoot)ClientDiagnostics.cs" LinkBase="Shared/Core" />
+    <Compile Include="$(AzureCoreSharedRoot)DiagnosticScopeFactory.cs" LinkBase="Shared/Core" />
+    <Compile Include="$(AzureCoreSharedRoot)DiagnosticScope.cs" LinkBase="Shared/Core" />
+    <Compile Include="$(AzureCoreSharedRoot)HttpMessageSanitizer.cs" LinkBase="Shared/Core" />
+    <Compile Include="$(AzureCoreSharedRoot)TypeFormatters.cs" LinkBase="Shared/Core" />
+    <Compile Include="$(AzureCoreSharedRoot)RequestHeaderExtensions.cs" LinkBase="Shared/Core" />
+    <Compile Include="$(RepoRoot)submodules/azure-sdk-for-net/sdk/core/Azure.Core.TestFramework/src/ProcessTracker.cs" LinkBase="Shared/TestFramework" />
   </ItemGroup>
 
   <!--
@@ -134,6 +164,53 @@
       is excluded due to unsupported patterns in specific test methods.
     -->
     <Compile Remove="$(LegacyTestRoot)Http/_Type/Property/AdditionalProperties/AdditionalPropertiesTests.cs" />
+  </ItemGroup>
+
+  <!--
+    Exclude ALL Azure test files.
+    Azure test files reference Azure-specific types (Azure.Response, Azure.AsyncPageable<T>,
+    Azure.Core.Pipeline.HttpPipeline, Azure.WaitUntil, Azure.RequestContent, etc.) that the
+    new emitter does not yet generate. The generated Azure code currently uses System.ClientModel
+    types (ClientResult<T>, ClientPipeline) instead of Azure.Core equivalents.
+    Azure-specific code generation is tracked in tasks 17.1–17.10.
+    Re-enable individual test files as Azure features are implemented in those tasks.
+  -->
+  <ItemGroup>
+    <!-- azure/core/basic: Uses Azure.Response, Azure.RequestContent, Azure.AsyncPageable<T> (task 17.1, 17.3) -->
+    <Compile Remove="$(AzureTestRoot)Http/Azure/Core/Basic/**/*.cs" />
+
+    <!-- azure/core/lro/*: Uses Azure.WaitUntil, Azure.Operation<T> (task 17.5) -->
+    <Compile Remove="$(AzureTestRoot)Http/Azure/Core/Lro/**/*.cs" />
+
+    <!-- azure/core/model: Uses Azure.Response (task 17.1) -->
+    <Compile Remove="$(AzureTestRoot)Http/Azure/Core/Model/**/*.cs" />
+
+    <!-- azure/core/page: Uses Azure.AsyncPageable<T>, Azure.Page<T> (task 17.1, 17.3) -->
+    <Compile Remove="$(AzureTestRoot)Http/Azure/Core/Page/**/*.cs" />
+
+    <!-- azure/core/scalar: Uses Azure.Response (task 17.1) -->
+    <Compile Remove="$(AzureTestRoot)Http/Azure/Core/Scalar/**/*.cs" />
+
+    <!-- azure/core/traits: Uses Azure.Response (task 17.1) -->
+    <Compile Remove="$(AzureTestRoot)Http/Azure/Core/Traits/**/*.cs" />
+
+    <!-- azure/client-generator-core/*: Uses Azure.Response, Azure.RequestContext (task 17.1, 17.3) -->
+    <Compile Remove="$(AzureTestRoot)Http/Azure/ClientGeneratorCore/**/*.cs" />
+
+    <!-- azure/encode/duration: Uses Azure.Response (task 17.1) -->
+    <Compile Remove="$(AzureTestRoot)Http/Azure/Encode/**/*.cs" />
+
+    <!-- azure/example/basic: Uses Azure.Response (task 17.1) -->
+    <Compile Remove="$(AzureTestRoot)Http/Azure/Example/**/*.cs" />
+
+    <!-- azure/payload/pageable: Uses Azure.AsyncPageable<T> (task 17.1) -->
+    <Compile Remove="$(AzureTestRoot)Http/Azure/Payload/**/*.cs" />
+
+    <!-- azure/special-headers/client-request-id: Uses Azure.Core.Pipeline.HttpPipeline (task 17.3, 17.7) -->
+    <Compile Remove="$(AzureTestRoot)Http/Azure/SpecialHeaders/**/*.cs" />
+
+    <!-- azure/versioning/previewVersion: Uses Azure.Response (task 17.1) -->
+    <Compile Remove="$(AzureTestRoot)Http/Azure/Versioning/**/*.cs" />
   </ItemGroup>
 
 </Project>
