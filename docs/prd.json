@@ -1163,7 +1163,7 @@
           "title": "Fix JsonMergePatch deserialization options parameter",
           "description": "Payload/JsonMergePatch specs (~5 scenarios) are in .testignore. CS7036 (missing options param) was FIXED in task 15.18, but CS1503 remains in JsonMergePatchTests.cs: BinaryContent-to-ResourcePatch type mismatch. The test calls methods expecting ResourcePatch but the emitter generates BinaryContent parameters. Fix the remaining API surface mismatch.\n\nIMPORTANT: Fix the emitter to match the legacy API. NEVER update the test to workaround the API mismatch.",
           "phase": "phase-15",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

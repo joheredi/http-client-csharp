@@ -125,7 +125,13 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
       // Skip convenience methods for multipart/form-data operations.
       // The legacy emitter does not generate convenience methods for multipart
       // operations — only protocol methods with BinaryContent parameters.
-      !isMultipartOperation(m as SdkServiceMethod<SdkHttpOperation>),
+      !isMultipartOperation(m as SdkServiceMethod<SdkHttpOperation>) &&
+      // Skip convenience methods for JSON Merge Patch operations.
+      // The legacy emitter does not generate convenience methods for
+      // merge-patch operations — only protocol methods with BinaryContent
+      // parameters, because merge-patch semantics require explicit null
+      // values that typed model parameters cannot easily express.
+      !isJsonMergePatchOperation(m as SdkServiceMethod<SdkHttpOperation>),
   );
 
   if (methods.length === 0) return null;
@@ -1088,7 +1094,8 @@ export function clientNeedsLinq(
       "operation" in m &&
       m.generateConvenient === true &&
       (m as SdkServiceMethod<SdkHttpOperation>).operation?.kind === "http" &&
-      !isMultipartOperation(m as SdkServiceMethod<SdkHttpOperation>),
+      !isMultipartOperation(m as SdkServiceMethod<SdkHttpOperation>) &&
+      !isJsonMergePatchOperation(m as SdkServiceMethod<SdkHttpOperation>),
   );
 
   for (const method of methods) {
@@ -1126,6 +1133,27 @@ function isMultipartOperation(
   return (
     method.operation?.bodyParam?.contentTypes?.includes(
       "multipart/form-data",
+    ) ?? false
+  );
+}
+
+/**
+ * Checks whether a service method uses application/merge-patch+json content type.
+ *
+ * JSON Merge Patch operations in the legacy emitter only have protocol methods
+ * (taking `BinaryContent`). Convenience methods are not generated because
+ * merge-patch semantics require explicit null values to signal property removal,
+ * which cannot be naturally expressed through typed model parameters.
+ *
+ * @param method - The SDK service method to check.
+ * @returns `true` if the operation's body parameter is application/merge-patch+json.
+ */
+function isJsonMergePatchOperation(
+  method: SdkServiceMethod<SdkHttpOperation>,
+): boolean {
+  return (
+    method.operation?.bodyParam?.contentTypes?.includes(
+      "application/merge-patch+json",
     ) ?? false
   );
 }

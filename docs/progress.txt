@@ -5137,3 +5137,26 @@ Optional collection properties (like `Element.Extension: IList<Extension>`) were
 - `type/file` is still in .testignore — file download operations have unresolved refkeys because File model types (TypeSpec.Http.File) are filtered out but convenience methods try to cast responses to them
 - The fix for `type/file` requires special handling of file download convenience methods to return `BinaryData`/stream instead of File model types
 - The `isMultipartFormData()` function is duplicated in `ProtocolMethod.tsx` and `RestClientFile.tsx` — consider extracting to a shared utility
+
+## 2026-03-06 — Task 15.23: Fix JsonMergePatch deserialization options parameter
+
+### What was done
+- Fixed convenience method generation to suppress convenience methods for JSON Merge Patch operations (`application/merge-patch+json` content type), matching legacy emitter behavior.
+- Fixed protocol method `options` parameter defaulting: when an operation has no convenience method counterpart (merge-patch or multipart), `options` now defaults to `null` so callers can omit it. When a convenience method exists, `options` remains required to avoid CS0121 overload ambiguity.
+- Removed `payload/json-merge-patch` from `.testignore` and the Compile Remove entry from `Spector.Tests.csproj`.
+- All 3 JsonMergePatch e2e tests now pass (CreateResource, UpdateResource, UpdateOptionalResource), adding 3 passing tests to the suite (303 → 306).
+
+### Files modified
+- `src/components/clients/ConvenienceMethod.tsx` — Added `isJsonMergePatchOperation()` filter to suppress convenience methods for merge-patch operations.
+- `src/components/clients/ProtocolMethod.tsx` — Made `options` parameter default conditional: defaults to `null` when no convenience method exists (merge-patch, multipart), otherwise required.
+- `test/multipart.test.ts` — Updated test expectation for multipart protocol method `options = null` (now correct since multipart has no convenience methods).
+- `test/e2e/.testignore` — Removed `payload/json-merge-patch` entry.
+- `test/e2e/Spector.Tests/Spector.Tests.csproj` — Removed Compile Remove for JsonMergePatch tests.
+
+### Patterns used
+- Content-type based filtering analogous to `isMultipartOperation()` — checking `bodyParam.contentTypes` for `application/merge-patch+json`.
+- Conditional `options` defaulting based on whether a convenience method will be generated, avoiding CS0121 overload ambiguity.
+
+### Key learnings
+- Protocol method `options` parameter cannot always default to `null` — when both protocol and convenience methods exist with no required data params, both having optional-only params causes CS0121 overload ambiguity.
+- Legacy emitter always has `options = null` on protocol methods, but it also doesn't generate convenience methods for many operations (void return, merge-patch, multipart), so ambiguity doesn't arise.

@@ -516,12 +516,15 @@ describe("multipart generation", () => {
     const clientFile = outputs["src/Generated/TestServiceClient.cs"];
     expect(clientFile).toBeDefined();
 
-    // Both should have identical parameter patterns despite different body parts
-    expect(clientFile).toContain(
-      "public virtual ClientResult SimpleUpload(BinaryContent content, string contentType, RequestOptions options",
+    // Both should have identical parameter patterns despite different body parts.
+    // Multipart operations only have protocol methods (no convenience methods),
+    // so options defaults to null to let callers omit it.
+    // Generated code wraps parameters to multiple lines, so we use regex matching.
+    expect(clientFile).toMatch(
+      /public virtual ClientResult SimpleUpload\(\s*BinaryContent content,\s*string contentType,\s*RequestOptions options = null\s*\)/,
     );
-    expect(clientFile).toContain(
-      "public virtual ClientResult ComplexUpload(BinaryContent content, string contentType, RequestOptions options",
+    expect(clientFile).toMatch(
+      /public virtual ClientResult ComplexUpload\(\s*BinaryContent content,\s*string contentType,\s*RequestOptions options = null\s*\)/,
     );
   });
 });

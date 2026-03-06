@@ -3119,3 +3119,18 @@ Legacy tests call `new OAuth2Client(tokenProvider)` with just 1 arg. The new emi
 ## Design Decisions
 
 **Multipart model filter approach:** Used dual filter `!isMultipartOnlyModel(m) && modelNeedsSerialization(m)` over just `isMultipartOnlyModel()` because ancillary types (TypeSpec.Http.File subtypes, Address model) don't have `MultipartFormData` flag but still shouldn't be generated. The `modelNeedsSerialization(m)` check (requires Json or Xml usage) catches ALL models without serialization format, matching the legacy emitter behavior where only serializable models get model files. Rejected: filtering only `MultipartFormData` models (missed File/Address types).
+
+## Protocol method `options` parameter defaulting (Task 15.23)
+
+**Problem**: Making `RequestOptions options = null` unconditional on all protocol methods causes CS0121 (overload ambiguity) when both a convenience method and protocol method exist with no required data parameters. For example, `Method(CancellationToken = default)` vs `Method(RequestOptions = null)` — the C# compiler can't resolve which overload to call with zero arguments.
+
+**Solution**: The `options` parameter should default to `null` ONLY when the operation has no convenience method counterpart (merge-patch, multipart). When a convenience method exists, `options` remains required, and callers use the convenience method instead.
+
+**Why this matters**: The legacy emitter always has `options = null`, but it also suppresses convenience methods for many operations (void return, merge-patch, multipart, etc.), so ambiguity never arises. The new emitter generates convenience methods more broadly (via TCGC's `generateConvenient` flag), making the default more dangerous.
+
+## Design Decisions
+
+### Merge-patch convenience method suppression (Task 15.23)
+- **Chosen**: Check `bodyParam.contentTypes` for `application/merge-patch+json` (content-type based filtering)
+- **Rejected**: Check model `UsageFlags.JsonMergePatch` on the body param type — this would require additional type traversal and doesn't align with the existing pattern (multipart uses content-type check)
+- **Reason**: Consistent with `isMultipartOperation()` pattern already in ConvenienceMethod.tsx

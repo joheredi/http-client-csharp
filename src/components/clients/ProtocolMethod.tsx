@@ -138,6 +138,18 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
         const params = buildProtocolParams(operation, getParamName);
         const hasOptionalParams = params.some((p) => p.optional);
         const validatedParams = params.filter((p) => p.needsValidation);
+
+        // Determine whether this operation will have a convenience method
+        // counterpart. When no convenience method exists, the protocol method's
+        // `options` parameter must default to `null` so callers can omit it.
+        // When a convenience method DOES exist, omitting the default avoids
+        // CS0121 overload ambiguity (e.g., Method(RequestOptions) vs
+        // Method(CancellationToken) when both have defaults and no required params).
+        const hasConvenienceMethod =
+          method.generateConvenient === true &&
+          !isJsonMergePatchProtocolMethod(method) &&
+          !isMultipartProtocolMethod(method);
+        const optionsDefault = hasOptionalParams || !hasConvenienceMethod;
         const argList = [
           ...params.map((p) => escapeCSharpKeyword(p.name)),
           "options",
@@ -153,7 +165,7 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
           {
             name: "options",
             type: SystemClientModelPrimitives.RequestOptions as Children,
-            ...(hasOptionalParams ? { default: "null" } : {}),
+            ...(optionsDefault ? { default: "null" } : {}),
           },
         ];
 
@@ -626,4 +638,44 @@ function maybeNullable(
 ): Children {
   if (!optional || !isProtocolParamValueType(sdkType)) return typeExpr;
   return typeof typeExpr === "string" ? `${typeExpr}?` : code`${typeExpr}?`;
+}
+
+/**
+ * Checks whether a service method uses application/merge-patch+json content type.
+ *
+ * JSON Merge Patch operations only have protocol methods (no convenience methods),
+ * so the protocol method's `options` parameter should default to `null` to allow
+ * callers to omit it.
+ *
+ * @param method - The SDK service method to check.
+ * @returns `true` if the operation's body parameter is application/merge-patch+json.
+ */
+function isJsonMergePatchProtocolMethod(
+  method: SdkServiceMethod<SdkHttpOperation>,
+): boolean {
+  return (
+    method.operation?.bodyParam?.contentTypes?.includes(
+      "application/merge-patch+json",
+    ) ?? false
+  );
+}
+
+/**
+ * Checks whether a service method uses multipart/form-data content type.
+ *
+ * Multipart operations only have protocol methods (no convenience methods),
+ * so the protocol method's `options` parameter should default to `null` to allow
+ * callers to omit it.
+ *
+ * @param method - The SDK service method to check.
+ * @returns `true` if the operation's body parameter is multipart/form-data.
+ */
+function isMultipartProtocolMethod(
+  method: SdkServiceMethod<SdkHttpOperation>,
+): boolean {
+  return (
+    method.operation?.bodyParam?.contentTypes?.includes(
+      "multipart/form-data",
+    ) ?? false
+  );
 }

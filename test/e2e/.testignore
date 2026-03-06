@@ -46,9 +46,6 @@ azure/client-generator-core/next-link-verb
 type/file
 
 # === Remaining issues (using directives fixed, other errors remain) ===
-# payload/json-merge-patch: CS7036 fixed (BinaryData param forwarding), but
-# CS1503 remains in JsonMergePatchTests.cs (BinaryContent→ResourcePatch mismatch).
-payload/json-merge-patch
 
 # === Multi-namespace scope issues ===
 # Internal infrastructure types (ClientUriBuilder, Argument, extension methods)
