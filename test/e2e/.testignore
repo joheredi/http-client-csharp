@@ -70,7 +70,3 @@ client/structure/client-operation-group
 # === Union type issues ===
 # CS0029/CS1929: Union type conversion and missing extension methods
 type/union
-
-# === Spread parameter issues ===
-# CS7036: Missing required parameter in spread model constructors
-parameters/spread

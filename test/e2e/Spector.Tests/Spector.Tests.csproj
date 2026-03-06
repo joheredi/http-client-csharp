@@ -82,9 +82,6 @@
     Re-enable as the emitter adds support for these specs.
   -->
   <ItemGroup>
-    <!-- .testignore: parameters/spread (CS7036: missing spread model params) -->
-    <Compile Remove="$(LegacyTestRoot)Http/Parameters/Spread/**/*.cs" />
-
     <!-- .testignore: client/structure/client-operation-group (multi-namespace scope) -->
     <Compile Remove="$(LegacyTestRoot)Http/Client/Structure/ClientOperationGroup/**/*.cs" />
 

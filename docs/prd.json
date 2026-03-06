@@ -1120,7 +1120,7 @@
           "title": "Fix spread parameter model constructors",
           "description": "Parameters/Spread specs (~10 scenarios) are in .testignore due to CS7036: missing required parameters in spread model constructors. The emitter generates constructors that don't include all required parameters from the spread model. Note: task 12.26 addressed the additionalBinaryDataProperties parameter but other parameters remain missing.\n\nFix the emitter's spread parameter handling to generate complete constructors.\n\nIMPORTANT: Fix the emitter to match the legacy API. NEVER update the test to workaround the API mismatch.",
           "phase": "phase-15",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [
