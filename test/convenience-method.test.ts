@@ -595,7 +595,16 @@ describe("ConvenienceMethod", () => {
    * cast pattern `(ModelType)result`. Scalars, arrays, and dicts use untyped
    * ClientResult. This test documents that behavior.
    */
-  it("returns untyped ClientResult for scalar return types", async () => {
+  /**
+   * Verifies that operations returning a scalar type (e.g., string) generate
+   * typed ClientResult<string> convenience methods with ToObjectFromJson
+   * deserialization.
+   *
+   * Scalar return types are deserialized from the raw response content using
+   * BinaryData.ToObjectFromJson<T>(). This matches the legacy emitter's API
+   * surface where scalar returns are strongly typed.
+   */
+  it("returns typed ClientResult<T> for scalar return types", async () => {
     const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
@@ -610,34 +619,31 @@ describe("ConvenienceMethod", () => {
     const clientFile = outputs["src/Generated/TestServiceClient.cs"];
     expect(clientFile).toBeDefined();
 
-    // Scalar return → untyped ClientResult (no generic type parameter)
+    // Scalar return → typed ClientResult<string>
     expect(clientFile).toContain(
-      "public virtual ClientResult GetName(CancellationToken cancellationToken = default)",
+      "public virtual ClientResult<string> GetName(CancellationToken cancellationToken = default)",
     );
 
-    // Async variant also untyped
+    // Async variant also typed
     expect(clientFile).toContain(
-      "public virtual async Task<ClientResult> GetNameAsync(CancellationToken cancellationToken = default)",
+      "public virtual async Task<ClientResult<string>> GetNameAsync(CancellationToken cancellationToken = default)",
     );
 
-    // Should NOT have ClientResult<string> since scalar returns are untyped
-    expect(clientFile).not.toContain("ClientResult<string>");
-
-    // Delegates directly without cast/wrapping
+    // Uses ToObjectFromJson for deserialization
     expect(clientFile).toContain(
-      "return GetName(cancellationToken.ToRequestOptions());",
+      "result.GetRawResponse().Content.ToObjectFromJson<string>()",
     );
   });
 
   /**
-   * Verifies that operations returning an array type (e.g., Item[]) fall back
-   * to untyped ClientResult rather than ClientResult<IReadOnlyList<Item>>.
+   * Verifies that operations returning an array type (e.g., Item[]) generate
+   * typed ClientResult<IReadOnlyList<Item>> convenience methods.
    *
-   * Like scalar returns, array/collection returns currently use untyped
-   * ClientResult because the explicit cast pattern is only implemented for
-   * model types. This test documents the current behavior.
+   * Array return types are deserialized using ToObjectFromJson<IReadOnlyList<T>>()
+   * which maps the JSON array to a read-only list. This matches the legacy
+   * emitter's API surface for collection returns.
    */
-  it("returns untyped ClientResult for array return types", async () => {
+  it("returns typed ClientResult<IReadOnlyList<T>> for array return types", async () => {
     const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
@@ -656,13 +662,11 @@ describe("ConvenienceMethod", () => {
     const clientFile = outputs["src/Generated/TestServiceClient.cs"];
     expect(clientFile).toBeDefined();
 
-    // Array return → untyped ClientResult
-    expect(clientFile).toContain(
-      "public virtual ClientResult GetItems(CancellationToken cancellationToken = default)",
-    );
+    // Array return → typed ClientResult<IReadOnlyList<Item>>
+    expect(clientFile).toContain("ClientResult<IReadOnlyList<Item>>");
 
-    // Should NOT have a generic ClientResult return for arrays
-    expect(clientFile).not.toContain("ClientResult<IReadOnlyList");
+    // Uses ToObjectFromJson for deserialization
+    expect(clientFile).toContain("ToObjectFromJson<IReadOnlyList<Item>>()");
   });
 
   /**
@@ -701,8 +705,11 @@ describe("ConvenienceMethod", () => {
 
     // All three operations should have convenience methods
     // Note: "listItems" goes through cleanOperationName → "GetItems"
-    expect(clientFile).toContain("ClientResult GetItems(");
-    expect(clientFile).toContain("Task<ClientResult> GetItemsAsync(");
+    // Array return types get typed ClientResult<IReadOnlyList<Item>>
+    expect(clientFile).toContain("ClientResult<IReadOnlyList<Item>> GetItems(");
+    expect(clientFile).toContain(
+      "Task<ClientResult<IReadOnlyList<Item>>> GetItemsAsync(",
+    );
 
     expect(clientFile).toContain("ClientResult<Item> CreateItem(");
     expect(clientFile).toContain("Task<ClientResult<Item>> CreateItemAsync(");

@@ -6,6 +6,7 @@ import {
   type SdkBodyParameter,
   type SdkClientType,
   type SdkDictionaryType,
+  type SdkEnumType,
   type SdkHeaderParameter,
   type SdkHttpOperation,
   type SdkModelType,
@@ -194,25 +195,18 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
             ? ({ internal: true } as const)
             : ({ public: true } as const);
 
-        // Build response type expression (used for return type and body extraction).
-        // Model types use the explicit operator from ClientResult for the cast
-        // pattern. Bytes types return ClientResult<BinaryData> with content
-        // extracted from the raw response. Other response types (arrays, scalars)
-        // fall back to untyped ClientResult.
-        const isModelResponse = responseType?.kind === "model";
-        const isBytesResponse = responseType?.kind === "bytes";
-        const responseTypeExpr = isModelResponse ? (
-          <TypeExpression type={responseType!.__raw!} />
-        ) : isBytesResponse ? (
-          System.BinaryData
-        ) : null;
+        // Build response type expression and deserialization logic.
+        // Model types use the explicit operator cast. Bytes/unknown types
+        // return BinaryData from the raw response content. Scalars, arrays,
+        // dicts, and enums use ToObjectFromJson<T>() for typed deserialization.
+        const responseInfo = buildResponseInfo(responseType, namePolicy);
 
         // Build return types
-        const syncReturn = responseTypeExpr
-          ? code`${SystemClientModel.ClientResult}<${responseTypeExpr}>`
+        const syncReturn = responseInfo
+          ? code`${SystemClientModel.ClientResult}<${responseInfo.typeExpr}>`
           : SystemClientModel.ClientResult;
-        const asyncReturn = responseTypeExpr
-          ? code`${SystemThreadingTasks.Task}<${SystemClientModel.ClientResult}<${responseTypeExpr}>>`
+        const asyncReturn = responseInfo
+          ? code`${SystemThreadingTasks.Task}<${SystemClientModel.ClientResult}<${responseInfo.typeExpr}>>`
           : code`${SystemThreadingTasks.Task}<${SystemClientModel.ClientResult}>`;
 
         const xmlDoc = buildConvenienceXmlDoc(
@@ -223,19 +217,15 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
         );
         const validation = buildConvenienceValidation(assertableParams);
 
-        // Sync method body — use code template for all cases to support
-        // spread body Children expressions in protocolCallExpr.
-        // Model responses: cast via explicit operator (ModelType)result
-        // Bytes responses: extract BinaryData via result.GetRawResponse().Content
-        const syncBody = responseTypeExpr
+        // Sync method body — typed responses deserialize the result and wrap
+        // in ClientResult.FromValue(). Void responses delegate directly.
+        const syncBody = responseInfo
           ? [
               validation,
               assertableParams.length > 0 ? "\n\n" : "",
               code`${SystemClientModel.ClientResult} result = ${methodName}(${protocolCallExpr});`,
               "\n",
-              isBytesResponse
-                ? code`return ${SystemClientModel.ClientResult}.FromValue(result.GetRawResponse().Content, result.GetRawResponse());`
-                : code`return ${SystemClientModel.ClientResult}.FromValue((${responseTypeExpr})result, result.GetRawResponse());`,
+              code`return ${SystemClientModel.ClientResult}.FromValue(${responseInfo.deserializeExpr}, result.GetRawResponse());`,
             ]
           : [
               validation,
@@ -244,15 +234,13 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
             ];
 
         // Async method body
-        const asyncBody = responseTypeExpr
+        const asyncBody = responseInfo
           ? [
               validation,
               assertableParams.length > 0 ? "\n\n" : "",
               code`${SystemClientModel.ClientResult} result = await ${methodName}Async(${protocolCallExpr}).ConfigureAwait(false);`,
               "\n",
-              isBytesResponse
-                ? code`return ${SystemClientModel.ClientResult}.FromValue(result.GetRawResponse().Content, result.GetRawResponse());`
-                : code`return ${SystemClientModel.ClientResult}.FromValue((${responseTypeExpr})result, result.GetRawResponse());`,
+              code`return ${SystemClientModel.ClientResult}.FromValue(${responseInfo.deserializeExpr}, result.GetRawResponse());`,
             ]
           : [
               validation,
@@ -732,6 +720,7 @@ function getConvenienceTypeInfo(type: SdkType): {
     case "uint64":
       return { expression: "ulong", needsAssertion: false, isString: false };
     case "decimal":
+    case "decimal128":
       return { expression: "decimal", needsAssertion: false, isString: false };
 
     // String — reference type
@@ -757,6 +746,7 @@ function getConvenienceTypeInfo(type: SdkType): {
     case "url":
       return { expression: System.Uri, needsAssertion: true, isString: false };
     case "bytes":
+    case "unknown":
       return {
         expression: System.BinaryData,
         needsAssertion: true,
@@ -786,22 +776,43 @@ function getConvenienceTypeInfo(type: SdkType): {
       };
 
     // Array → IEnumerable<elementType> (broadest input interface for collection params)
+    // Preserves nullable element types (e.g., IEnumerable<float?> for float32 | null arrays).
     case "array": {
       const elementType = (unwrapped as SdkArrayType).valueType;
       const elementInfo = getConvenienceTypeInfo(elementType);
+      // Check for nullable wrapper on the element type (before unwrapping).
+      // Value types like float, int, bool need explicit ? for nullable.
+      const isNullableElement =
+        elementType.kind === "nullable" &&
+        isConvenienceParamValueType(elementType);
+      const elementExpr = isNullableElement
+        ? typeof elementInfo.expression === "string"
+          ? `${elementInfo.expression}?`
+          : code`${elementInfo.expression}?`
+        : elementInfo.expression;
       return {
-        expression: code`${SystemCollectionsGeneric.IEnumerable}<${elementInfo.expression}>`,
+        expression: code`${SystemCollectionsGeneric.IEnumerable}<${elementExpr}>`,
         needsAssertion: true,
         isString: false,
       };
     }
 
-    // Dictionary — reference type, use IDictionary refkey for using directive
+    // Dictionary — reference type, use IDictionary refkey for using directive.
+    // Preserves nullable value types (e.g., IDictionary<string, float?> for nullable dicts).
     case "dict": {
       const valueType = (unwrapped as SdkDictionaryType).valueType;
       const valueInfo = getConvenienceTypeInfo(valueType);
+      // Check for nullable wrapper on the value type.
+      const isNullableValue =
+        valueType.kind === "nullable" &&
+        isConvenienceParamValueType(valueType);
+      const valueExpr = isNullableValue
+        ? typeof valueInfo.expression === "string"
+          ? `${valueInfo.expression}?`
+          : code`${valueInfo.expression}?`
+        : valueInfo.expression;
       return {
-        expression: code`${SystemCollectionsGeneric.IDictionary}<string, ${valueInfo.expression}>`,
+        expression: code`${SystemCollectionsGeneric.IDictionary}<string, ${valueExpr}>`,
         needsAssertion: true,
         isString: false,
       };
@@ -858,6 +869,293 @@ function getIntegerKeyword(kind: string): string {
     default:
       return "int";
   }
+}
+
+/**
+ * Information about a typed convenience method response, including the C#
+ * return type expression and the deserialization expression to extract the
+ * typed value from a `ClientResult` variable named "result".
+ */
+interface ResponseInfo {
+  /** The C# type expression for the ClientResult<T> generic parameter. */
+  typeExpr: Children;
+  /** The C# expression to extract the typed value from a ClientResult named "result". */
+  deserializeExpr: Children;
+}
+
+/**
+ * Builds the return type and deserialization expression for a convenience method's
+ * response type.
+ *
+ * This is the core function that enables typed `ClientResult<T>` returns for all
+ * response types, not just models. Each response type category uses a different
+ * deserialization pattern:
+ *
+ * - **Model**: `(ModelType)result` — uses the explicit operator generated in the
+ *   model's serialization file.
+ * - **Bytes/Unknown**: `result.GetRawResponse().Content` — returns BinaryData directly.
+ * - **Scalar** (string, int, bool, etc.): `result.GetRawResponse().Content.ToObjectFromJson<T>()` —
+ *   uses System.Text.Json deserialization.
+ * - **Array**: `result.GetRawResponse().Content.ToObjectFromJson<IReadOnlyList<T>>()` — deserializes
+ *   JSON array to a read-only list.
+ * - **Dictionary**: `result.GetRawResponse().Content.ToObjectFromJson<IReadOnlyDictionary<string, T>>()` —
+ *   deserializes JSON object to a read-only dictionary.
+ * - **Extensible enum**: `new EnumType(result.GetRawResponse().Content.ToObjectFromJson<string>())` —
+ *   constructs the readonly struct from the deserialized string.
+ * - **Fixed enum**: `result.GetRawResponse().Content.ToObjectFromJson<string>().ToEnumName()` —
+ *   uses the generated extension method for string-to-enum conversion.
+ *
+ * @param responseType - The TCGC SDK type of the method's response body, or undefined for void.
+ * @param namePolicy - The C# naming policy for generating enum method names.
+ * @returns ResponseInfo with type expression and deserialization expression, or null for void responses.
+ */
+function buildResponseInfo(
+  responseType: SdkType | undefined,
+  namePolicy: ReturnType<typeof useCSharpNamePolicy>,
+): ResponseInfo | null {
+  if (!responseType) return null;
+
+  const unwrapped = unwrapType(responseType);
+
+  switch (unwrapped.kind) {
+    // Model types: use explicit operator cast (ModelType)result
+    case "model":
+      return {
+        typeExpr: <TypeExpression type={unwrapped.__raw!} />,
+        deserializeExpr: code`(${<TypeExpression type={unwrapped.__raw!} />})result`,
+      };
+
+    // Bytes and unknown: return BinaryData from response content
+    case "bytes":
+    case "unknown":
+      return {
+        typeExpr: System.BinaryData,
+        deserializeExpr: "result.GetRawResponse().Content",
+      };
+
+    // Scalar primitive types: use ToObjectFromJson<T>()
+    case "int32":
+      return buildScalarResponseInfo("int");
+    case "int64":
+      return buildScalarResponseInfo("long");
+    case "float32":
+      return buildScalarResponseInfo("float");
+    case "float64":
+      return buildScalarResponseInfo("double");
+    case "boolean":
+      return buildScalarResponseInfo("bool");
+    case "int8":
+      return buildScalarResponseInfo("sbyte");
+    case "uint8":
+      return buildScalarResponseInfo("byte");
+    case "int16":
+      return buildScalarResponseInfo("short");
+    case "uint16":
+      return buildScalarResponseInfo("ushort");
+    case "uint32":
+      return buildScalarResponseInfo("uint");
+    case "uint64":
+      return buildScalarResponseInfo("ulong");
+    case "decimal":
+    case "decimal128":
+      return buildScalarResponseInfo("decimal");
+    case "string":
+      return buildScalarResponseInfo("string");
+
+    // BCL struct types
+    case "utcDateTime":
+    case "offsetDateTime":
+      return {
+        typeExpr: System.DateTimeOffset,
+        deserializeExpr: code`result.GetRawResponse().Content.ToObjectFromJson<${System.DateTimeOffset}>()`,
+      };
+    case "duration":
+      return {
+        typeExpr: System.TimeSpan,
+        deserializeExpr: code`result.GetRawResponse().Content.ToObjectFromJson<${System.TimeSpan}>()`,
+      };
+    case "url":
+      return {
+        typeExpr: System.Uri,
+        deserializeExpr: code`result.GetRawResponse().Content.ToObjectFromJson<${System.Uri}>()`,
+      };
+
+    // Array: IReadOnlyList<T> with ToObjectFromJson
+    case "array": {
+      const elementType = (unwrapped as SdkArrayType).valueType;
+      const elementExpr = getResponseElementTypeExpr(elementType, namePolicy);
+      return {
+        typeExpr: code`${SystemCollectionsGeneric.IReadOnlyList}<${elementExpr}>`,
+        deserializeExpr: code`result.GetRawResponse().Content.ToObjectFromJson<${SystemCollectionsGeneric.IReadOnlyList}<${elementExpr}>>()`,
+      };
+    }
+
+    // Dictionary: IReadOnlyDictionary<string, T> with ToObjectFromJson
+    case "dict": {
+      const valueType = (unwrapped as SdkDictionaryType).valueType;
+      const valueExpr = getResponseElementTypeExpr(valueType, namePolicy);
+      return {
+        typeExpr: code`${SystemCollectionsGeneric.IReadOnlyDictionary}<string, ${valueExpr}>`,
+        deserializeExpr: code`result.GetRawResponse().Content.ToObjectFromJson<${SystemCollectionsGeneric.IReadOnlyDictionary}<string, ${valueExpr}>>()`,
+      };
+    }
+
+    // Enum types: fixed enums use extension method, extensible use constructor
+    case "enum": {
+      const enumType = unwrapped as SdkEnumType;
+      const enumExpr = <TypeExpression type={unwrapped.__raw!} />;
+      if (enumType.isFixed) {
+        // Fixed enum: string → ToEnumName() extension method
+        const enumName = namePolicy.getName(enumType.name, "enum");
+        return {
+          typeExpr: enumExpr,
+          deserializeExpr: code`result.GetRawResponse().Content.ToObjectFromJson<string>().To${enumName}()`,
+        };
+      } else {
+        // Extensible enum: construct from string
+        return {
+          typeExpr: enumExpr,
+          deserializeExpr: code`new ${enumExpr}(result.GetRawResponse().Content.ToObjectFromJson<string>())`,
+        };
+      }
+    }
+    case "enumvalue": {
+      const parentEnum = unwrapped.enumType;
+      return buildResponseInfo(parentEnum, namePolicy);
+    }
+
+    default:
+      return null;
+  }
+}
+
+/**
+ * Builds a ResponseInfo for a scalar C# type using ToObjectFromJson<T>().
+ *
+ * @param keyword - The C# type keyword (e.g., "int", "string", "decimal").
+ */
+function buildScalarResponseInfo(keyword: string): ResponseInfo {
+  return {
+    typeExpr: keyword,
+    deserializeExpr: `result.GetRawResponse().Content.ToObjectFromJson<${keyword}>()`,
+  };
+}
+
+/**
+ * Gets the C# type expression for an element type within a collection response
+ * (array or dictionary). Handles nullable element types by appending "?" for
+ * value types.
+ *
+ * This is distinct from `getConvenienceTypeInfo` which is used for input parameters.
+ * Response element types preserve nullability to match the legacy emitter's API
+ * surface (e.g., `IReadOnlyList<float?>` for nullable float arrays).
+ *
+ * @param type - The TCGC SDK type of the collection element/value.
+ * @param namePolicy - The C# naming policy for enum names.
+ * @returns A C# type expression suitable for use in generic type parameters.
+ */
+function getResponseElementTypeExpr(
+  type: SdkType,
+  namePolicy: ReturnType<typeof useCSharpNamePolicy>,
+): Children {
+  // Check for nullable wrapper BEFORE unwrapping
+  const isNullable =
+    type.kind === "nullable" && isConvenienceParamValueType(type);
+  const unwrapped = unwrapType(type);
+
+  let baseExpr: Children;
+  switch (unwrapped.kind) {
+    case "int32":
+      baseExpr = "int";
+      break;
+    case "int64":
+      baseExpr = "long";
+      break;
+    case "float32":
+      baseExpr = "float";
+      break;
+    case "float64":
+      baseExpr = "double";
+      break;
+    case "boolean":
+      baseExpr = "bool";
+      break;
+    case "int8":
+      baseExpr = "sbyte";
+      break;
+    case "uint8":
+      baseExpr = "byte";
+      break;
+    case "int16":
+      baseExpr = "short";
+      break;
+    case "uint16":
+      baseExpr = "ushort";
+      break;
+    case "uint32":
+      baseExpr = "uint";
+      break;
+    case "uint64":
+      baseExpr = "ulong";
+      break;
+    case "decimal":
+    case "decimal128":
+      baseExpr = "decimal";
+      break;
+    case "string":
+      baseExpr = "string";
+      break;
+    case "bytes":
+    case "unknown":
+      baseExpr = System.BinaryData;
+      break;
+    case "utcDateTime":
+    case "offsetDateTime":
+      baseExpr = System.DateTimeOffset;
+      break;
+    case "duration":
+      baseExpr = System.TimeSpan;
+      break;
+    case "url":
+      baseExpr = System.Uri;
+      break;
+    case "model":
+      baseExpr = <TypeExpression type={unwrapped.__raw!} />;
+      break;
+    case "enum":
+      baseExpr = <TypeExpression type={unwrapped.__raw!} />;
+      break;
+    case "enumvalue":
+      baseExpr = <TypeExpression type={unwrapped.enumType.__raw!} />;
+      break;
+    case "array": {
+      const innerElem = getResponseElementTypeExpr(
+        (unwrapped as SdkArrayType).valueType,
+        namePolicy,
+      );
+      baseExpr = code`${SystemCollectionsGeneric.IReadOnlyList}<${innerElem}>`;
+      break;
+    }
+    case "dict": {
+      const innerVal = getResponseElementTypeExpr(
+        (unwrapped as SdkDictionaryType).valueType,
+        namePolicy,
+      );
+      baseExpr = code`${SystemCollectionsGeneric.IReadOnlyDictionary}<string, ${innerVal}>`;
+      break;
+    }
+    default:
+      baseExpr = "object";
+      break;
+  }
+
+  // Append ? for nullable value types (e.g., float? for float32 | null)
+  if (isNullable) {
+    return typeof baseExpr === "string"
+      ? `${baseExpr}?`
+      : code`${baseExpr}?`;
+  }
+  return baseExpr;
 }
 
 /**

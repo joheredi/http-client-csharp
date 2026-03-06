@@ -3236,3 +3236,35 @@ The `BinaryContentHelper.FromObject()` helper attempts JSON parsing on all input
 **Affected files:** `ClientFile.tsx`, `RestClientFile.tsx`, `PagingMethods.tsx`, `CollectionResultFile.tsx`. If you add a new component that needs the client class name, always use `getClientFileName`.
 
 **The `getSimpleClientName` function** should only be used inside `getClientFileName` itself (to strip namespace prefixes). It should NOT be used directly for class/method naming in components.
+
+## Typed Convenience Method Returns — Deserialization Patterns (Task 15.11)
+
+**Pattern:** Convenience methods return `ClientResult<T>` for ALL response types, not just models.
+
+**Deserialization by type:**
+- **Model**: `(ModelType)result` — explicit operator
+- **Bytes/Unknown**: `result.GetRawResponse().Content` — BinaryData directly
+- **Scalar** (string, int, bool, float, decimal): `result.GetRawResponse().Content.ToObjectFromJson<T>()`
+- **Array**: `result.GetRawResponse().Content.ToObjectFromJson<IReadOnlyList<T>>()`
+- **Dict**: `result.GetRawResponse().Content.ToObjectFromJson<IReadOnlyDictionary<string, T>>()`
+- **Extensible enum**: `new EnumType(result.GetRawResponse().Content.ToObjectFromJson<string>())`
+- **Fixed enum**: `result.GetRawResponse().Content.ToObjectFromJson<string>().ToEnumName()`
+
+**Gotcha: `ToObjectFromJson<T>()` limitations.**
+Does NOT work for: TimeSpan (ISO 8601 duration), Model types (internal constructor), BinaryData (not JSON-serializable). These need element-level deserialization using JsonDocument/JsonElement.
+
+**Gotcha: `BinaryContentHelper.FromObject()` doesn't support `Dictionary<string, T>`.**
+Dict body params currently use `FromObject` which calls `WriteObjectValue<T>()`. WriteObjectValue doesn't handle dictionaries. Fix: use `BinaryContent.Create(BinaryData.FromObjectAsJson(body))` for dict bodies, or add dict support to WriteObjectValue.
+
+**Gotcha: Nullable element types in collections.**
+When checking element types for arrays/dicts, check `type.kind === "nullable"` BEFORE calling `unwrapType()`. The `unwrapType()` strips nullable wrappers permanently. After getting the base type info, re-apply `?` suffix if the original type was nullable AND a value type.
+
+**Gotcha: `decimal128` type missing from switch statements.**
+The `decimal128` TCGC kind must be handled alongside `decimal` in ALL type-mapping switch statements: `getConvenienceTypeInfo()`, `getProtocolTypeExpression()` (ProtocolMethod.tsx), `getProtocolTypeExpression()` (RestClientFile.tsx), `buildResponseInfo()`, `getResponseElementTypeExpr()`. Missing it causes fallthrough to `string` default.
+
+## Design Decisions
+
+### Task 15.11: Typed convenience returns for non-model types
+**Chosen**: Use `ToObjectFromJson<T>()` for deserialization of scalars, simple arrays, simple dicts. Use enum-specific patterns (extension method for fixed, constructor for extensible).
+**Rejected**: JsonDocument/JsonElement manual parsing for all types — too complex for the common scalar/array/dict cases where `ToObjectFromJson` works correctly.
+**Rejected**: Generate explicit operators on scalar/collection types (like models have) — would require generating infrastructure code for every possible return type combination.

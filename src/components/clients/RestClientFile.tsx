@@ -601,6 +601,7 @@ function getProtocolTypeExpression(type: SdkType): Children {
     case "uint64":
       return "ulong";
     case "decimal":
+    case "decimal128":
       return "decimal";
 
     // Types needing using System; — use refkeys

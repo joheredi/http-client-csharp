@@ -529,6 +529,7 @@ function getProtocolTypeExpression(type: SdkType): Children {
     case "uint64":
       return "ulong";
     case "decimal":
+    case "decimal128":
       return "decimal";
 
     case "utcDateTime":

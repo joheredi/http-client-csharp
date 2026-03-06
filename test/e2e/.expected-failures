@@ -40,3 +40,38 @@ Versioning_RenamedFrom_NewOp
 RequestBodyDefault
 RequestBodyOctetStream
 RequestBodyCustomContentType
+
+# --- Type/Array GET: ToObjectFromJson<T>() doesn't support complex element types ---
+# Typed convenience method returns use ToObjectFromJson<IReadOnlyList<T>>() which
+# works for primitives (int, string, float, bool, DateTimeOffset) but fails for:
+# - TimeSpan: ISO 8601 duration format not supported by default JSON serializer
+# - Model: Internal parameterless constructor not accessible to JsonSerializer
+# - BinaryData: Not JSON-serializable
+# Fix: Use JsonDocument.Parse + element-level deserialization for these types.
+DurationValueGet
+ModelValueGet
+NullableModelValueGet
+UnknownValueGet
+
+# --- Type/Dictionary PUT: BinaryContentHelper.FromObject() doesn't support Dictionary<string, T> ---
+# Dict body params use BinaryContentHelper.FromObject(body) which calls WriteObjectValue<T>()
+# that doesn't handle Dictionary<TKey, TValue>. Affects all dict PUT convenience methods.
+# Fix: Use BinaryContent.Create(BinaryData.FromObjectAsJson(body)) or add dict support
+# to WriteObjectValue.
+BooleanPut
+DatetimeValuePut
+DurationValuePut
+Float32ValuePut
+Int32ValuePut
+Int64ValuePut
+ModelValuePut
+NullableFloatValuePut
+RecursiveModelValuePut
+StringPut
+UnknownValuePut
+
+# --- Type/Dictionary GET: same complex type deserialization issue as Array GET ---
+DurationValueGet
+ModelValueGet
+RecursiveModelValueGet
+UnknownValueGet

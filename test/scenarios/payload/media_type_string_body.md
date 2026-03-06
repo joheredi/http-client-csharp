@@ -144,17 +144,19 @@ public partial class StringBody
         /// <summary>  </summary>
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult GetAsText(CancellationToken cancellationToken = default)
+        public virtual ClientResult<string> GetAsText(CancellationToken cancellationToken = default)
         {
-            return GetAsText(cancellationToken.ToRequestOptions());
+            ClientResult result = GetAsText(cancellationToken.ToRequestOptions());
+            return ClientResult.FromValue(result.GetRawResponse().Content.ToObjectFromJson<string>(), result.GetRawResponse());
         }
 
         /// <summary>  </summary>
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async Task<ClientResult> GetAsTextAsync(CancellationToken cancellationToken = default)
+        public virtual async Task<ClientResult<string>> GetAsTextAsync(CancellationToken cancellationToken = default)
         {
-            return await GetAsTextAsync(cancellationToken.ToRequestOptions()).ConfigureAwait(false);
+            ClientResult result = await GetAsTextAsync(cancellationToken.ToRequestOptions()).ConfigureAwait(false);
+            return ClientResult.FromValue(result.GetRawResponse().Content.ToObjectFromJson<string>(), result.GetRawResponse());
         }
 
         /// <summary>  </summary>
@@ -189,17 +191,19 @@ public partial class StringBody
         /// <summary>  </summary>
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual ClientResult GetAsJson(CancellationToken cancellationToken = default)
+        public virtual ClientResult<string> GetAsJson(CancellationToken cancellationToken = default)
         {
-            return GetAsJson(cancellationToken.ToRequestOptions());
+            ClientResult result = GetAsJson(cancellationToken.ToRequestOptions());
+            return ClientResult.FromValue(result.GetRawResponse().Content.ToObjectFromJson<string>(), result.GetRawResponse());
         }
 
         /// <summary>  </summary>
         /// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
-        public virtual async Task<ClientResult> GetAsJsonAsync(CancellationToken cancellationToken = default)
+        public virtual async Task<ClientResult<string>> GetAsJsonAsync(CancellationToken cancellationToken = default)
         {
-            return await GetAsJsonAsync(cancellationToken.ToRequestOptions()).ConfigureAwait(false);
+            ClientResult result = await GetAsJsonAsync(cancellationToken.ToRequestOptions()).ConfigureAwait(false);
+            return ClientResult.FromValue(result.GetRawResponse().Content.ToObjectFromJson<string>(), result.GetRawResponse());
         }
 
         /// <summary>

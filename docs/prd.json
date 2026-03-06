@@ -894,7 +894,7 @@
           "title": "Align Type/Array, Dictionary, Scalar, Enum API surface with legacy emitter",
           "description": "Type collection tests (~73 scenarios total: Array 28, Dictionary 22, Scalar 16, Enum 7) are excluded due to CS1061/CS1503: method signature differences in model constructors, property accessors, and type conversions. These likely share root causes \u2014 the new emitter generates different constructor signatures, property types, or accessor patterns for collection-related models.\n\nFix the emitter to generate matching constructor signatures, property names, and type accessors for array, dictionary, scalar, and enum types. Compare generated models with what ArrayTests.cs, DictionaryTests.cs, ScalarTests.cs, ExtensibleTests.cs, and FixedTests.cs expect.\n\nIMPORTANT: Fix the emitter to match the legacy API. NEVER update the test to workaround the API mismatch.",
           "phase": "phase-15",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [
