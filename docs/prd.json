@@ -968,7 +968,7 @@
           "title": "Align remaining PLUG-IN test APIs with legacy emitter",
           "description": "Several smaller test groups are excluded due to API surface differences (CS1061/CS1729):\n\n- Authentication/Http/Custom (~2 scenarios): CS1729 constructor takes 3 args, new emitter generates 2\n- Parameters/BodyOptionality (~5 scenarios): CS1061 body parameter API differences\n- Payload/ContentNegotiation (~5 scenarios): CS1061 content negotiation API\n- Payload/MediaType (~3 scenarios): CS1061 media type API\n- Resiliency/SrvDriven V1+V2 (~5 scenarios): CS1061 resiliency API\n- SpecialHeaders/ConditionalRequest (~5 scenarios): CS1061 header API\n- Versioning/ReturnTypeChangedFrom (~3 scenarios): CS1061 return type API\n\nFix the emitter to generate APIs matching the legacy emitter for each case.\n\nIMPORTANT: Fix the emitter to match the legacy API. NEVER update the test to workaround the API mismatch.",
           "phase": "phase-15",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

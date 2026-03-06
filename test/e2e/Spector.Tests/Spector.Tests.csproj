@@ -128,19 +128,7 @@
     <Compile Remove="$(LegacyTestRoot)Http/_Type/Property/AdditionalProperties/DifferentSpreadStringDerivedTests.cs" />
     <Compile Remove="$(LegacyTestRoot)Http/_Type/Property/AdditionalProperties/MultipleSpreadRecordTests.cs" />
 
-    <!--
-      Tests with API surface differences between legacy and new emitter.
-      Common issues: missing properties/methods (CS1061), constructor mismatches (CS1729),
-      type conversion errors (CS0029/CS1503), ambiguous overloads (CS0121).
-      Re-enable as the new emitter's API surface aligns with these test expectations.
-    -->
-    <Compile Remove="$(LegacyTestRoot)Http/Authentication/Http/Custom/**/*.cs" />
-    <Compile Remove="$(LegacyTestRoot)Http/Parameters/BodyOptionality/**/*.cs" />
-    <Compile Remove="$(LegacyTestRoot)Http/Payload/ContentNegotiation/**/*.cs" />
-    <Compile Remove="$(LegacyTestRoot)Http/Payload/MediaType/**/*.cs" />
-    <Compile Remove="$(LegacyTestRoot)Http/Resiliency/**/*.cs" />
-    <Compile Remove="$(LegacyTestRoot)Http/SpecialHeaders/ConditionalRequest/**/*.cs" />
-    <Compile Remove="$(LegacyTestRoot)Http/Versioning/ReturnTypeChangedFrom/**/*.cs" />
+    <!-- Task 15.14: Re-enabled — API surface now aligns with legacy emitter -->
     <!--
       AdditionalPropertiesTests.cs contains tests for MultipleSpreadRecord which
       requires AdditionalSingleProperties (multi-spread Record<T>) — not yet supported.

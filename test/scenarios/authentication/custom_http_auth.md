@@ -35,6 +35,10 @@ maps to API key authentication).
 public partial class CustomClient
     {
         private readonly Uri _endpoint;
+        /// <summary> A credential used to authenticate to the service. </summary>
+        private readonly ApiKeyCredential _keyCredential;
+        private const string AuthorizationHeader = "Authorization";
+        private const string AuthorizationApiKeyPrefix = "SharedAccessKey";
 
         /// <summary> Initializes a new instance of CustomClient for mocking. </summary>
         protected CustomClient()
@@ -43,23 +47,30 @@ public partial class CustomClient
 
         /// <summary> Initializes a new instance of CustomClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
-        /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> is null. </exception>
-        public CustomClient(Uri endpoint) : this(endpoint, new CustomClientOptions())
+        /// <param name="credential"> A credential used to authenticate to the service. </param>
+        /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> or <paramref name="credential"/> is null. </exception>
+        public CustomClient(
+            Uri endpoint,
+            ApiKeyCredential credential
+        ) : this(endpoint, credential, new CustomClientOptions())
         {
         }
 
         /// <summary> Initializes a new instance of CustomClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
+        /// <param name="credential"> A credential used to authenticate to the service. </param>
         /// <param name="options"> The options for configuring the client. </param>
-        /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> is null. </exception>
-        public CustomClient(Uri endpoint, CustomClientOptions options)
+        /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> or <paramref name="credential"/> is null. </exception>
+        public CustomClient(Uri endpoint, ApiKeyCredential credential, CustomClientOptions options)
         {
             Argument.AssertNotNull(endpoint, nameof(endpoint));
+            Argument.AssertNotNull(credential, nameof(credential));
 
             options ??= new CustomClientOptions();
 
             _endpoint = endpoint;
-            Pipeline = ClientPipeline.Create(options, Array.Empty<PipelinePolicy>(), new PipelinePolicy[] { new UserAgentPolicy(typeof(CustomClient).Assembly) }, Array.Empty<PipelinePolicy>());
+            _keyCredential = credential;
+            Pipeline = ClientPipeline.Create(options, Array.Empty<PipelinePolicy>(), new PipelinePolicy[] { new UserAgentPolicy(typeof(CustomClient).Assembly), ApiKeyAuthenticationPolicy.CreateHeaderApiKeyPolicy(_keyCredential, AuthorizationHeader, AuthorizationApiKeyPrefix) }, Array.Empty<PipelinePolicy>());
         }
 
         /// <summary> The HTTP pipeline for sending and receiving REST requests and responses. </summary>

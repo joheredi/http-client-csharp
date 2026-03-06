@@ -309,7 +309,7 @@ public partial class Model
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual ClientResult SpreadAsRequestBody(BinaryContent content, RequestOptions options)
+        public virtual ClientResult SpreadAsRequestBody(BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -330,7 +330,10 @@ public partial class Model
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async Task<ClientResult> SpreadAsRequestBodyAsync(BinaryContent content, RequestOptions options)
+        public virtual async Task<ClientResult> SpreadAsRequestBodyAsync(
+            BinaryContent content,
+            RequestOptions options = null
+        )
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -351,7 +354,10 @@ public partial class Model
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual ClientResult SpreadCompositeRequestOnlyWithBody(BinaryContent content, RequestOptions options)
+        public virtual ClientResult SpreadCompositeRequestOnlyWithBody(
+            BinaryContent content,
+            RequestOptions options = null
+        )
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -374,7 +380,7 @@ public partial class Model
         /// <returns> The response returned from the service. </returns>
         public virtual async Task<ClientResult> SpreadCompositeRequestOnlyWithBodyAsync(
             BinaryContent content,
-            RequestOptions options
+            RequestOptions options = null
         )
         {
             Argument.AssertNotNull(content, nameof(content));

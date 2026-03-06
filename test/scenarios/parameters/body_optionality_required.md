@@ -141,7 +141,7 @@ public partial class BodyOptionalityClient
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual ClientResult RequiredExplicit(BinaryContent content, RequestOptions options)
+        public virtual ClientResult RequiredExplicit(BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -162,7 +162,10 @@ public partial class BodyOptionalityClient
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async Task<ClientResult> RequiredExplicitAsync(BinaryContent content, RequestOptions options)
+        public virtual async Task<ClientResult> RequiredExplicitAsync(
+            BinaryContent content,
+            RequestOptions options = null
+        )
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -183,7 +186,7 @@ public partial class BodyOptionalityClient
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual ClientResult RequiredImplicit(BinaryContent content, RequestOptions options)
+        public virtual ClientResult RequiredImplicit(BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -204,7 +207,10 @@ public partial class BodyOptionalityClient
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async Task<ClientResult> RequiredImplicitAsync(BinaryContent content, RequestOptions options)
+        public virtual async Task<ClientResult> RequiredImplicitAsync(
+            BinaryContent content,
+            RequestOptions options = null
+        )
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -301,7 +307,7 @@ public partial class OptionalExplicit
         /// <param name="options"> The request options, which can override default behaviors of the client pipeline on a per-call basis. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual ClientResult Set(BinaryContent content = default, RequestOptions options = null)
+        public virtual ClientResult Set(BinaryContent content, RequestOptions options = null)
         {
             using PipelineMessage message = CreateSetRequest(content, options);
             return ClientResult.FromResponse(Pipeline.ProcessMessage(message, options));
@@ -319,7 +325,7 @@ public partial class OptionalExplicit
         /// <param name="options"> The request options, which can override default behaviors of the client pipeline on a per-call basis. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async Task<ClientResult> SetAsync(BinaryContent content = default, RequestOptions options = null)
+        public virtual async Task<ClientResult> SetAsync(BinaryContent content, RequestOptions options = null)
         {
             using PipelineMessage message = CreateSetRequest(content, options);
             return ClientResult.FromResponse(await Pipeline.ProcessMessageAsync(message, options).ConfigureAwait(false));
@@ -337,7 +343,7 @@ public partial class OptionalExplicit
         /// <param name="options"> The request options, which can override default behaviors of the client pipeline on a per-call basis. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual ClientResult Omit(BinaryContent content = default, RequestOptions options = null)
+        public virtual ClientResult Omit(BinaryContent content, RequestOptions options = null)
         {
             using PipelineMessage message = CreateOmitRequest(content, options);
             return ClientResult.FromResponse(Pipeline.ProcessMessage(message, options));
@@ -355,10 +361,7 @@ public partial class OptionalExplicit
         /// <param name="options"> The request options, which can override default behaviors of the client pipeline on a per-call basis. </param>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async Task<ClientResult> OmitAsync(
-            BinaryContent content = default,
-            RequestOptions options = null
-        )
+        public virtual async Task<ClientResult> OmitAsync(BinaryContent content, RequestOptions options = null)
         {
             using PipelineMessage message = CreateOmitRequest(content, options);
             return ClientResult.FromResponse(await Pipeline.ProcessMessageAsync(message, options).ConfigureAwait(false));

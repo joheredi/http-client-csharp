@@ -136,31 +136,48 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
         const getParamName = (name: string) =>
           namePolicy.getName(name, "parameter");
         const params = buildProtocolParams(operation, getParamName);
-        const hasOptionalParams = params.some((p) => p.optional);
         const validatedParams = params.filter((p) => p.needsValidation);
 
         // Determine whether this operation will have a convenience method
         // counterpart. When no convenience method exists, the protocol method's
         // `options` parameter must default to `null` so callers can omit it.
-        // When a convenience method DOES exist, omitting the default avoids
-        // CS0121 overload ambiguity (e.g., Method(RequestOptions) vs
-        // Method(CancellationToken) when both have defaults and no required params).
+        // When a convenience method DOES exist, protocol method parameters must
+        // NOT have defaults to avoid CS0121 overload ambiguity with the
+        // convenience overload (which has CancellationToken = default).
         const hasConvenienceMethod =
           method.generateConvenient === true &&
           !isJsonMergePatchProtocolMethod(method) &&
           !isMultipartProtocolMethod(method);
-        const optionsDefault = hasOptionalParams || !hasConvenienceMethod;
+
+        // RequestOptions gets `= null` when:
+        //   (a) no convenience method exists (protocol is the only API), OR
+        //   (b) all params are body-only (BinaryContent is always a different
+        //       type from the convenience method's typed model, so the compiler
+        //       can unambiguously resolve overloads even with `= null`).
+        // When non-body params exist (header/query), they share types with the
+        // convenience overload (e.g., both use `string`), so any default on
+        // RequestOptions would cause CS0121.
+        const hasOnlyBodyParams =
+          params.length > 0 && params.every((p) => p.isBody);
+        const optionsDefault =
+          !hasConvenienceMethod || hasOnlyBodyParams;
         const argList = [
           ...params.map((p) => escapeCSharpKeyword(p.name)),
           "options",
         ].join(", ");
 
-        // Build <Method> parameter props with defaults for optional params
+        // Build <Method> parameter props. Protocol method parameters never
+        // have defaults — even when the TypeSpec parameter is optional, the
+        // protocol method lists it as required. This matches the legacy
+        // emitter behaviour and prevents CS0121 ambiguity with the
+        // convenience overload which *does* use defaults.
         const methodParams = [
           ...params.map((p) => ({
             name: p.name,
             type: p.type,
-            ...(p.optional ? { default: "default" } : {}),
+            ...(!hasConvenienceMethod && p.optional
+              ? { default: "default" }
+              : {}),
           })),
           {
             name: "options",

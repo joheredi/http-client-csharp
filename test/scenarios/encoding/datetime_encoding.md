@@ -719,7 +719,7 @@ public partial class Property
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual ClientResult Default(BinaryContent content, RequestOptions options)
+        public virtual ClientResult Default(BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -740,7 +740,7 @@ public partial class Property
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async Task<ClientResult> DefaultAsync(BinaryContent content, RequestOptions options)
+        public virtual async Task<ClientResult> DefaultAsync(BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -761,7 +761,7 @@ public partial class Property
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual ClientResult Rfc3339(BinaryContent content, RequestOptions options)
+        public virtual ClientResult Rfc3339(BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -782,7 +782,7 @@ public partial class Property
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async Task<ClientResult> Rfc3339Async(BinaryContent content, RequestOptions options)
+        public virtual async Task<ClientResult> Rfc3339Async(BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -803,7 +803,7 @@ public partial class Property
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual ClientResult Rfc7231(BinaryContent content, RequestOptions options)
+        public virtual ClientResult Rfc7231(BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -824,7 +824,7 @@ public partial class Property
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async Task<ClientResult> Rfc7231Async(BinaryContent content, RequestOptions options)
+        public virtual async Task<ClientResult> Rfc7231Async(BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -845,7 +845,7 @@ public partial class Property
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual ClientResult UnixTimestamp(BinaryContent content, RequestOptions options)
+        public virtual ClientResult UnixTimestamp(BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -866,7 +866,7 @@ public partial class Property
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async Task<ClientResult> UnixTimestampAsync(BinaryContent content, RequestOptions options)
+        public virtual async Task<ClientResult> UnixTimestampAsync(BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -887,7 +887,7 @@ public partial class Property
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual ClientResult UnixTimestampArray(BinaryContent content, RequestOptions options)
+        public virtual ClientResult UnixTimestampArray(BinaryContent content, RequestOptions options = null)
         {
             Argument.AssertNotNull(content, nameof(content));
 
@@ -908,7 +908,10 @@ public partial class Property
         /// <exception cref="ArgumentNullException"> <paramref name="content"/> is null. </exception>
         /// <exception cref="ClientResultException"> Service returned a non-success status code. </exception>
         /// <returns> The response returned from the service. </returns>
-        public virtual async Task<ClientResult> UnixTimestampArrayAsync(BinaryContent content, RequestOptions options)
+        public virtual async Task<ClientResult> UnixTimestampArrayAsync(
+            BinaryContent content,
+            RequestOptions options = null
+        )
         {
             Argument.AssertNotNull(content, nameof(content));
 

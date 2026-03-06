@@ -3291,3 +3291,17 @@ Approach: Extract template params as constructor params at the ClientFile level,
 
 ### Finding
 For versioned specs (e.g., versioning/removed, versioning/added), the legacy emitter puts models in the ROOT namespace (`Versioning.Removed`), NOT in versioned sub-namespaces (`Versioning.Removed.V1`). Only the Context class goes in the versioned sub-namespace. The new emitter already matches this behavior for models.
+
+## Protocol Method Parameter Defaults (Task 15.14)
+**Problem**: CS0121 ambiguous overload errors when both protocol and convenience methods have all-optional parameters.
+**Rule**: Protocol method parameters NEVER get `= default` when a convenience method exists. `RequestOptions options = null` only when all non-options params are body-only (BinaryContent type always differs from convenience's typed model, so the compiler can disambiguate). This matches the legacy emitter behavior.
+**Location**: `src/components/clients/ProtocolMethod.tsx` — `hasOnlyBodyParams` and `optionsDefault` logic.
+
+## Custom HTTP Auth Schemes (Task 15.14)
+**Problem**: `extractAuthFromScheme()` only handled bearer HTTP auth, returning `undefined` for custom schemes like "SharedAccessKey".
+**Fix**: Custom HTTP schemes map to `ApiKeyCredential` with headerName="Authorization" and prefix=scheme.scheme. The pipeline creation now passes the prefix as a 3rd argument to `CreateHeaderApiKeyPolicy`.
+**Location**: `src/utils/client-params.ts` `extractAuthFromScheme()` case "http".
+
+## Pre-existing Runtime Failures Uncovered by Task 15.14
+1. **MediaType text/plain**: `BinaryContentHelper.FromObject()` JSON-serializes text/plain strings. Needs raw text handling.
+2. **Resiliency V1**: Generated from main.tsp (v2 spec) instead of old.tsp (v1 spec), producing "client:v2" in URL when "client:v1" is expected.

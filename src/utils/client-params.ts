@@ -172,7 +172,17 @@ function extractAuthFromScheme(scheme: HttpAuth): AuthInfo | undefined {
           flows: [{ scopes: [] }],
         };
       }
-      return undefined;
+      // Custom HTTP auth schemes (e.g., "SharedAccessKey") map to
+      // ApiKeyCredential with the Authorization header. The scheme
+      // name becomes a prefix so the header value is sent as
+      // `Authorization: <scheme> <key>`.
+      const httpScheme = (scheme as unknown as Record<string, unknown>)
+        .scheme as string | undefined;
+      return {
+        kind: "apiKey",
+        headerName: "Authorization",
+        prefix: httpScheme,
+      };
     }
     default:
       return undefined;

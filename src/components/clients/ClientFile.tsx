@@ -754,7 +754,10 @@ function buildPipelineCreateLine(
   const userAgent = code`new ${SCP.UserAgentPolicy}(typeof(${clientRef}).Assembly)`;
 
   if (apiKeyAuth) {
-    return code`Pipeline = ${SCP.ClientPipeline}.Create(options, Array.Empty<${SCP.PipelinePolicy}>(), new ${SCP.PipelinePolicy}[] { ${userAgent}, ${SCP.ApiKeyAuthenticationPolicy}.CreateHeaderApiKeyPolicy(_keyCredential, AuthorizationHeader) }, Array.Empty<${SCP.PipelinePolicy}>());`;
+    const prefixArg = apiKeyAuth.prefix
+      ? `, AuthorizationApiKeyPrefix`
+      : "";
+    return code`Pipeline = ${SCP.ClientPipeline}.Create(options, Array.Empty<${SCP.PipelinePolicy}>(), new ${SCP.PipelinePolicy}[] { ${userAgent}, ${SCP.ApiKeyAuthenticationPolicy}.CreateHeaderApiKeyPolicy(_keyCredential, AuthorizationHeader${prefixArg}) }, Array.Empty<${SCP.PipelinePolicy}>());`;
   }
 
   if (oauth2Auth) {

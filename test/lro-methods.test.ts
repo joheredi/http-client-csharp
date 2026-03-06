@@ -55,9 +55,11 @@ describe("LroMethod", () => {
     const clientFile = outputs["src/Generated/TestServiceClient.cs"];
     expect(clientFile).toBeDefined();
 
-    // Verify sync protocol method — same signature as basic operations
+    // Verify sync protocol method — body-only protocol methods get
+    // RequestOptions = null since BinaryContent always disambiguates
+    // from the convenience method's typed model parameter.
     expect(clientFile).toContain(
-      "public virtual ClientResult StartDeployment(BinaryContent content, RequestOptions options)",
+      "public virtual ClientResult StartDeployment(BinaryContent content, RequestOptions options = null)",
     );
     expect(clientFile).toContain(
       "using PipelineMessage message = CreateStartDeploymentRequest(content, options);",
@@ -66,9 +68,12 @@ describe("LroMethod", () => {
       "return ClientResult.FromResponse(Pipeline.ProcessMessage(message, options));",
     );
 
-    // Verify async protocol method
+    // Verify async protocol method (may wrap across lines)
     expect(clientFile).toContain(
-      "public virtual async Task<ClientResult> StartDeploymentAsync(BinaryContent content, RequestOptions options)",
+      "public virtual async Task<ClientResult> StartDeploymentAsync(",
+    );
+    expect(clientFile).toContain(
+      "BinaryContent content, RequestOptions options = null",
     );
     expect(clientFile).toContain(
       "return ClientResult.FromResponse(await Pipeline.ProcessMessageAsync(message, options).ConfigureAwait(false));",

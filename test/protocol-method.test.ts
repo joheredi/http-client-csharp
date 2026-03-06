@@ -212,11 +212,15 @@ describe("ProtocolMethod", () => {
     const clientFile = outputs["src/Generated/TestServiceClient.cs"];
     expect(clientFile).toBeDefined();
 
-    // Verify optional param gets default
+    // Verify optional param gets default in convenience method
     expect(clientFile).toContain("string optionalFilter = default");
 
-    // Verify RequestOptions gets = null when optional params exist
-    expect(clientFile).toContain("RequestOptions options = null");
+    // Protocol method params should NOT have defaults when a convenience
+    // method exists — prevents CS0121 ambiguous overload resolution.
+    // RequestOptions must be required to disambiguate from CancellationToken.
+    expect(clientFile).toContain(
+      "string optionalFilter, RequestOptions options)",
+    );
   });
 
   /**

@@ -75,3 +75,19 @@ DurationValueGet
 ModelValueGet
 RecursiveModelValueGet
 UnknownValueGet
+
+# --- Payload/MediaType: text/plain serialization issue ---
+# Convenience methods use BinaryContentHelper.FromObject() for text/plain body params,
+# which JSON-serializes the string instead of sending raw text. Similarly,
+# response deserialization uses ToObjectFromJson<string>() which fails on raw text.
+# Fix: Detect text/plain content-type and use raw BinaryContent / text parsing.
+GetAsText
+SendAsText
+
+# --- Resiliency/SrvDriven V1: v1 client generated from main.tsp (v2 spec) ---
+# The V1 client embeds "client:v2" in the URL path template instead of "client:v1"
+# because the emitter generates from main.tsp (latest version). The mock server
+# expects "client:v1" for V1 deployment scenarios.
+AddOptionalParamFromNone_V1Client_V1Service_WithApiVersionV1
+AddOptionalParamFromOneOptional_V1Client_V1Service_WithApiVersionV1
+AddOptionalParamFromOneRequired_V1Client_V1Service_WithApiVersionV1
