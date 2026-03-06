@@ -93,6 +93,7 @@ import {
   cleanAllNamespaces,
 } from "./utils/package-name.js";
 import { applyUnreferencedTypeHandling } from "./utils/unreferenced-types.js";
+import { isMultipartOnlyModel } from "./utils/model.js";
 import { fixAllNamespaceBraceStyles } from "./utils/namespace-brace-style.js";
 import { reorderAllFileHeaders } from "./utils/reorder-header.js";
 
@@ -166,12 +167,25 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
   // "Parameters.Spread._Model" when there is a client class named "Model").
   cleanAllNamespaces(allClients, models, enums);
 
+  // Filter out models used exclusively for multipart form data. The legacy
+  // emitter does not generate model classes for these types — multipart
+  // operations use raw BinaryContent parameters instead. Models with both
+  // multipart AND JSON/XML usage are kept (they need model files for their
+  // JSON/XML serialization path).
+  //
+  // This also filters out ancillary types (e.g., TypeSpec.Http.File and its
+  // subtypes) that only appear in multipart/file-upload contexts. These types
+  // lack JSON/XML usage flags and should not generate model files.
+  const generatableModels = models.filter(
+    (m) => !isMultipartOnlyModel(m) && modelNeedsSerialization(m),
+  );
+
   // Collect literal type wrapper structs from model properties AFTER namespace
   // cleaning. These structs capture the declaring model's namespace; collecting
   // before cleanAllNamespaces() would snapshot the uncleaned namespace (e.g.,
   // "Type.Property.Optional" instead of "_Type.Property.Optional"), creating a
   // root-level "Type" namespace that shadows System.Type (CS0118).
-  const literalTypes = collectLiteralTypes(models);
+  const literalTypes = collectLiteralTypes(generatableModels);
 
   // Re-resolve rootNamespace after cleaning. cleanAllNamespaces mutates client
   // .namespace in place, so resolveRootNamespace now returns the cleaned value.
@@ -301,15 +315,15 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
               options={options}
             />
           ))}
-        {models.map((m) => (
+        {generatableModels.map((m) => (
           <ModelFile type={m} options={options} />
         ))}
-        {models
+        {generatableModels
           .filter((m) => hasDiscriminatedSubtypes(m))
           .map((m) => (
             <UnknownDiscriminatorModelFile type={m} options={options} />
           ))}
-        {models
+        {generatableModels
           .filter(
             (m) => hasDiscriminatedSubtypes(m) && modelNeedsSerialization(m),
           )
@@ -319,7 +333,7 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
               options={options}
             />
           ))}
-        {models.filter(modelNeedsSerialization).map((m) => {
+        {generatableModels.filter(modelNeedsSerialization).map((m) => {
           const supportsJson = (m.usage & UsageFlags.Json) !== 0;
           const supportsXml = (m.usage & UsageFlags.Xml) !== 0;
           return (
@@ -380,12 +394,12 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
           );
         })}
         <ModelFactoryFile
-          models={models}
+          models={generatableModels}
           packageName={rootNamespace}
           options={options}
         />
         <ModelReaderWriterContextFile
-          models={models.filter(modelNeedsSerialization)}
+          models={generatableModels.filter(modelNeedsSerialization)}
           packageName={rootNamespace}
           options={options}
         />

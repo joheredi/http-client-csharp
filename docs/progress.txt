@@ -5116,3 +5116,24 @@ Optional collection properties (like `Element.Extension: IList<Extension>`) were
 **Design Decision:** Protocol methods keep `string name` (no default) while convenience methods use `string name = default`. This avoids CS0121 overload ambiguity. The `needsValidation` flag decouples "has default" from "needs assertion" in protocol params.
 
 **Results:** 1376 unit tests pass, e2e exit code 0, 2 expected-failure entries removed.
+
+## [2026-03-06] Task 15.22: Fix IJsonModel on non-JSON models (Multipart/File)
+
+### What was done
+- Fixed multipart model generation by filtering out models without JSON/XML usage flags from model file generation in `emitter.tsx`
+- Added `isMultipartOnlyModel()` utility to `src/utils/model.ts` for detecting multipart-only models
+- Skipped convenience method generation for multipart/form-data operations in `ConvenienceMethod.tsx` (legacy emitter only generates protocol methods for multipart)
+- Fixed `MultiPartFormDataBinaryContent.cs` infrastructure file: `CopyTo()` in .NET 6+ needs `TransportContext?` parameter (`CopyTo(stream, null, cancellationToken)`)
+- Removed `payload/multipart` and `azure/client-generator-core/override` from `.testignore`
+- Updated `.testignore` description for `type/file` (separate issue: file download response type refkeys)
+- Added 8 unit tests for `isMultipartOnlyModel()` covering all flag combinations
+
+### Key patterns
+- `generatableModels = models.filter(m => !isMultipartOnlyModel(m) && modelNeedsSerialization(m))` — dual filter for model file generation
+- Multipart operations detected via `bodyParam.contentTypes.includes("multipart/form-data")` in convenience method filter
+- `isMultipartOperation()` helper added to `ConvenienceMethod.tsx` for the filter
+
+### What the next person should know
+- `type/file` is still in .testignore — file download operations have unresolved refkeys because File model types (TypeSpec.Http.File) are filtered out but convenience methods try to cast responses to them
+- The fix for `type/file` requires special handling of file download convenience methods to return `BinaryData`/stream instead of File model types
+- The `isMultipartFormData()` function is duplicated in `ProtocolMethod.tsx` and `RestClientFile.tsx` — consider extracting to a shared utility

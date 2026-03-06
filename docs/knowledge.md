@@ -3107,3 +3107,15 @@ Legacy tests call `new OAuth2Client(tokenProvider)` with just 1 arg. The new emi
 **Gotcha — CS0121 overload ambiguity:** If both convenience and protocol overloads have `name = default`, calling `client.OptionalAsync(name)` is ambiguous between `Optional(string, CancellationToken)` and `Optional(string, RequestOptions)`. Solution: only the convenience method gets `= default`.
 
 **Implementation detail:** The `ProtocolParam.needsValidation` flag decouples "has default value" (`optional`) from "needs Argument.Assert*" (`needsValidation`). Optional path params need `optional: false, needsValidation: false`.
+
+## Multipart Model Filtering (Task 15.22)
+
+**Gotcha: Multipart models should NOT be generated as model files.** The legacy emitter does not generate model classes (e.g., `MultiPartRequest`, `Address`, `File`) for types used exclusively in multipart form data context. These types have `UsageFlags.MultipartFormData` but not `Json` or `Xml`. Filtering by `isMultipartOnlyModel()` alone is insufficient — ancillary types like `TypeSpec.Http.File` don't have `MultipartFormData` flag either. The full filter is: `!isMultipartOnlyModel(m) && modelNeedsSerialization(m)`.
+
+**Gotcha: Convenience methods must be skipped for multipart operations.** If multipart models are filtered from generation but convenience methods still reference them via refkeys, you get `<Unresolved Symbol>` errors. The legacy emitter only generates protocol methods (taking `BinaryContent content, string contentType, RequestOptions options`) for multipart operations. Filter convenience methods using `operation.bodyParam.contentTypes.includes("multipart/form-data")`.
+
+**Gotcha: `HttpContent.CopyTo` in .NET 6+ requires 3 params.** The `CopyTo(Stream, TransportContext?, CancellationToken)` overload has no 2-param version. Must pass `null` for `TransportContext?`: `_multipartContent.CopyTo(stream, null, cancellationToken)`.
+
+## Design Decisions
+
+**Multipart model filter approach:** Used dual filter `!isMultipartOnlyModel(m) && modelNeedsSerialization(m)` over just `isMultipartOnlyModel()` because ancillary types (TypeSpec.Http.File subtypes, Address model) don't have `MultipartFormData` flag but still shouldn't be generated. The `modelNeedsSerialization(m)` check (requires Json or Xml usage) catches ALL models without serialization format, matching the legacy emitter behavior where only serializable models get model files. Rejected: filtering only `MultipartFormData` models (missed File/Address types).

@@ -50,7 +50,7 @@ export function MultiPartFormDataBinaryContentFile(
 public override void WriteTo(Stream stream, CancellationToken cancellationToken = default)
 {
 #if NET6_0_OR_GREATER
-    _multipartContent.CopyTo(stream, cancellationToken);
+    _multipartContent.CopyTo(stream, null, cancellationToken);
 #else
     _multipartContent.CopyToAsync(stream).GetAwaiter().GetResult();
 #endif

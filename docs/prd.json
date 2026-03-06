@@ -1142,7 +1142,7 @@
           "title": "Fix IJsonModel on non-JSON models (Multipart/File)",
           "description": "Payload/Multipart (~17 scenarios) and type/file specs are in .testignore due to CS0535: IJsonModel<T> interface is declared on multipart and file models that don't have JSON serialization. The emitter generates IJsonModel/IPersistableModel interfaces for all models regardless of content type. Note: task 12.17 partially addressed this.\n\nFix the emitter to not emit IJsonModel interface for non-JSON models (multipart, file, form-data).\n\nIMPORTANT: Fix the emitter to match the legacy API. NEVER update the test to workaround the API mismatch.",
           "phase": "phase-15",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

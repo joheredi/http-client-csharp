@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { UsageFlags } from "@azure-tools/typespec-client-generator-core";
 import type { SdkModelType } from "@azure-tools/typespec-client-generator-core";
 import { modelNeedsSerialization } from "../src/components/serialization/ModelSerializationFile.js";
+import { isMultipartOnlyModel } from "../src/utils/model.js";
 import { HttpTester } from "./test-host.js";
 
 /**
@@ -76,6 +77,83 @@ describe("modelNeedsSerialization", () => {
         ),
       ),
     ).toBe(true);
+  });
+});
+
+/**
+ * Tests for the isMultipartOnlyModel utility function.
+ *
+ * This function determines whether a model is used exclusively for multipart
+ * form data and should NOT have a model file generated. The legacy emitter
+ * does not generate model classes for multipart-only request body types —
+ * multipart operations use raw `BinaryContent` parameters instead.
+ *
+ * Why these tests matter:
+ * - Without this filter, multipart-only models would be generated as C# classes
+ *   but never used (the legacy emitter doesn't produce them), causing namespace
+ *   collisions (CS0104) and unnecessary code bloat.
+ * - Models with BOTH multipart AND JSON usage must NOT be filtered out — they
+ *   need model files for their JSON serialization path.
+ * - The function uses bitwise flag arithmetic on TCGC's UsageFlags, so we verify
+ *   all relevant flag combinations.
+ */
+describe("isMultipartOnlyModel", () => {
+  function makeModel(usage: number): SdkModelType {
+    return { usage } as unknown as SdkModelType;
+  }
+
+  it("returns true for models with only MultipartFormData usage", () => {
+    expect(
+      isMultipartOnlyModel(
+        makeModel(UsageFlags.MultipartFormData | UsageFlags.Input),
+      ),
+    ).toBe(true);
+  });
+
+  it("returns true for MultipartFormData with Output", () => {
+    expect(
+      isMultipartOnlyModel(
+        makeModel(UsageFlags.MultipartFormData | UsageFlags.Output),
+      ),
+    ).toBe(true);
+  });
+
+  it("returns false for models with both MultipartFormData and JSON usage", () => {
+    expect(
+      isMultipartOnlyModel(
+        makeModel(
+          UsageFlags.MultipartFormData | UsageFlags.Json | UsageFlags.Input,
+        ),
+      ),
+    ).toBe(false);
+  });
+
+  it("returns false for models with both MultipartFormData and XML usage", () => {
+    expect(
+      isMultipartOnlyModel(
+        makeModel(
+          UsageFlags.MultipartFormData | UsageFlags.Xml | UsageFlags.Input,
+        ),
+      ),
+    ).toBe(false);
+  });
+
+  it("returns false for models with no MultipartFormData flag", () => {
+    expect(
+      isMultipartOnlyModel(makeModel(UsageFlags.Json | UsageFlags.Input)),
+    ).toBe(false);
+  });
+
+  it("returns false for models with no usage flags", () => {
+    expect(isMultipartOnlyModel(makeModel(UsageFlags.None))).toBe(false);
+  });
+
+  it("returns false for JSON-only models", () => {
+    expect(isMultipartOnlyModel(makeModel(UsageFlags.Json))).toBe(false);
+  });
+
+  it("returns false for XML-only models", () => {
+    expect(isMultipartOnlyModel(makeModel(UsageFlags.Xml))).toBe(false);
   });
 });
 

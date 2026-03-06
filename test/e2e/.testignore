@@ -39,13 +39,11 @@ payload/pageable
 azure/client-generator-core/next-link-verb
 
 # === Multipart / file upload specs ===
-# ModelSerializationFile.tsx declares IJsonModel<T> interface on multipart and
-# file models that don't have JSON serialization. CS0535: classes don't
-# implement required IJsonModel<T>.Write/Create methods. Requires either
-# removing IJsonModel for non-JSON models or generating stub methods.
-payload/multipart
+# type/file: Convenience methods reference File model types via refkeys, but
+# these file models don't have JSON/XML usage and are filtered from generation.
+# File download operations need special handling to return BinaryData/stream
+# instead of model types in convenience methods.
 type/file
-azure/client-generator-core/override
 
 # === Remaining issues (using directives fixed, other errors remain) ===
 # payload/json-merge-patch: CS7036 fixed (BinaryData param forwarding), but

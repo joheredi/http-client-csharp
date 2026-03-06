@@ -121,7 +121,11 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
       m.kind !== "lropaging" &&
       "operation" in m &&
       m.generateConvenient === true &&
-      (m as SdkServiceMethod<SdkHttpOperation>).operation?.kind === "http",
+      (m as SdkServiceMethod<SdkHttpOperation>).operation?.kind === "http" &&
+      // Skip convenience methods for multipart/form-data operations.
+      // The legacy emitter does not generate convenience methods for multipart
+      // operations — only protocol methods with BinaryContent parameters.
+      !isMultipartOperation(m as SdkServiceMethod<SdkHttpOperation>),
   );
 
   if (methods.length === 0) return null;
@@ -1083,7 +1087,8 @@ export function clientNeedsLinq(
       m.kind !== "lropaging" &&
       "operation" in m &&
       m.generateConvenient === true &&
-      (m as SdkServiceMethod<SdkHttpOperation>).operation?.kind === "http",
+      (m as SdkServiceMethod<SdkHttpOperation>).operation?.kind === "http" &&
+      !isMultipartOperation(m as SdkServiceMethod<SdkHttpOperation>),
   );
 
   for (const method of methods) {
@@ -1102,4 +1107,25 @@ export function clientNeedsLinq(
   }
 
   return false;
+}
+
+/**
+ * Checks whether a service method uses multipart/form-data content type.
+ *
+ * Multipart operations in the legacy emitter only have protocol methods
+ * (taking `BinaryContent` + `contentType` string). Convenience methods
+ * that would reference multipart model types are not generated because
+ * those model types are not emitted as C# classes.
+ *
+ * @param method - The SDK service method to check.
+ * @returns `true` if the operation's body parameter is multipart/form-data.
+ */
+function isMultipartOperation(
+  method: SdkServiceMethod<SdkHttpOperation>,
+): boolean {
+  return (
+    method.operation?.bodyParam?.contentTypes?.includes(
+      "multipart/form-data",
+    ) ?? false
+  );
 }
