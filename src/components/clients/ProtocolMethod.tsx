@@ -43,6 +43,13 @@ export interface ProtocolParam {
   isStringType: boolean;
   /** Whether this is the body parameter (rendered as BinaryContent). */
   isBody: boolean;
+  /**
+   * Whether this parameter needs null/empty validation.
+   * Defaults to true for required params, false for optional params.
+   * Optional path params set this to false while keeping `optional: false`
+   * (no `= default`) to avoid overload ambiguity with convenience methods.
+   */
+  needsValidation: boolean;
   /** Documentation string from the TypeSpec @doc decorator, if available. */
   doc?: string;
 }
@@ -130,7 +137,7 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
           namePolicy.getName(name, "parameter");
         const params = buildProtocolParams(operation, getParamName);
         const hasOptionalParams = params.some((p) => p.optional);
-        const requiredParams = params.filter((p) => !p.optional);
+        const validatedParams = params.filter((p) => p.needsValidation);
         const argList = [
           ...params.map((p) => escapeCSharpKeyword(p.name)),
           "options",
@@ -155,8 +162,8 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
             ? ({ internal: true } as const)
             : ({ public: true } as const);
 
-        const xmlDoc = buildXmlDoc(description, params, requiredParams);
-        const validation = buildValidation(requiredParams);
+        const xmlDoc = buildXmlDoc(description, params, validatedParams);
+        const validation = buildValidation(validatedParams);
 
         return (
           <>
@@ -171,7 +178,7 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
               parameters={methodParams}
             >
               {validation}
-              {requiredParams.length > 0 ? "\n\n" : ""}
+              {validatedParams.length > 0 ? "\n\n" : ""}
               {code`using ${SystemClientModelPrimitives.PipelineMessage} message = Create${methodName}Request(${argList});`}
               {"\n"}
               {code`return ${SystemClientModel.ClientResult}.FromResponse(Pipeline.ProcessMessage(message, options));`}
@@ -188,7 +195,7 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
               parameters={methodParams}
             >
               {validation}
-              {requiredParams.length > 0 ? "\n\n" : ""}
+              {validatedParams.length > 0 ? "\n\n" : ""}
               {code`using ${SystemClientModelPrimitives.PipelineMessage} message = Create${methodName}Request(${argList});`}
               {"\n"}
               {code`return ${SystemClientModel.ClientResult}.FromResponse(await Pipeline.ProcessMessageAsync(message, options).ConfigureAwait(false));`}
@@ -234,7 +241,7 @@ export function buildProtocolParams(
   const params: Array<ProtocolParam & { priority: number; index: number }> = [];
   let index = 0;
 
-  // Path parameters (priority 0) — always required
+  // Path parameters: required (priority 0), but optional path params skip validation
   for (const p of pathParams) {
     if (isConstantType(p.type) || p.onClient) continue;
     const typeInfo = getTypeInfo(p.type);
@@ -244,6 +251,7 @@ export function buildProtocolParams(
       optional: false,
       isStringType: typeInfo.isString,
       isBody: false,
+      needsValidation: !p.optional,
       doc: p.doc ?? p.summary,
       priority: 0,
       index: index++,
@@ -263,6 +271,7 @@ export function buildProtocolParams(
       optional: p.optional,
       isStringType: typeInfo.isString,
       isBody: false,
+      needsValidation: !p.optional,
       doc: p.doc ?? p.summary,
       priority: p.optional ? 400 : 100,
       index: index++,
@@ -280,6 +289,7 @@ export function buildProtocolParams(
       optional: p.optional,
       isStringType: typeInfo.isString,
       isBody: false,
+      needsValidation: !p.optional,
       doc: p.doc ?? p.summary,
       priority: p.optional ? 400 : 100,
       index: index++,
@@ -295,6 +305,7 @@ export function buildProtocolParams(
       optional: bodyParam.optional ?? false,
       isStringType: false,
       isBody: true,
+      needsValidation: !(bodyParam.optional ?? false),
       doc: undefined,
       priority,
       index: index++,
@@ -311,6 +322,7 @@ export function buildProtocolParams(
         optional: false,
         isStringType: true,
         isBody: false,
+        needsValidation: true,
         doc: "The contentType to use which has the multipart/form-data boundary.",
         priority: priority + 1,
         index: index++,

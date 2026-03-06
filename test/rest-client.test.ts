@@ -197,6 +197,48 @@ describe("RestClientFile", () => {
   });
 
   /**
+   * Verifies optional path parameter handling with RFC 6570 {/name} expansion.
+   *
+   * Optional path params (from TypeSpec `@path name?: string` with `{/name}` route
+   * syntax) must:
+   * - Be wrapped in a null check so the path segment is omitted when null
+   * - Include a "/" prefix before the parameter value (the {/name} expansion adds
+   *   a path separator only when the value is present)
+   * - Not assert null/empty (unlike required path params)
+   *
+   * This is critical for specs like Parameters.Path.optional which expects:
+   * - /optional       (when name is null)
+   * - /optional/foo   (when name is "foo")
+   */
+  it("generates conditional path append for optional path parameters", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/things{/name}")
+      @get op getOptional(@path name?: string): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const restClient = outputs["src/Generated/TestServiceClient.RestClient.cs"];
+    expect(restClient).toBeDefined();
+
+    // Verify the literal path is appended unconditionally
+    expect(restClient).toContain('uri.AppendPath("/things", false);');
+
+    // Verify the optional param is wrapped in a null check with "/" prefix
+    expect(restClient).toContain("if (name != null)");
+    expect(restClient).toContain('uri.AppendPath("/", false);');
+    expect(restClient).toContain("uri.AppendPath(name, true);");
+
+    // Verify no assertion is generated for the optional path param
+    expect(restClient).not.toContain("Argument.AssertNotNullOrEmpty(name");
+    expect(restClient).not.toContain("Argument.AssertNotNull(name");
+  });
+
+  /**
    * Verifies query parameter handling including optional parameters.
    *
    * Required query params are always appended. Optional query params must be

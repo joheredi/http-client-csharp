@@ -24,11 +24,6 @@ ExtensibleEnumNewlineDelimited
 ExtensibleEnumPipeDelimited
 ExtensibleEnumSpaceDelimited
 
-# --- Parameters/Path: ClientResultException ---
-# Server/Path/Multiple optional path parameter tests
-OptionalPathParamIncluded(False)
-OptionalPathParamIncluded(True)
-
 # --- Versioning: ClientResultException (body serialization issues) ---
 # URL routing is fixed (api-version in server URL template now handled),
 # but these specs have body serialization mismatches (400 Bad Request).

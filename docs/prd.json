@@ -808,7 +808,7 @@
           "title": "Fix path parameter expansion and optional path params",
           "description": "Parameters/Path tests (2 failures: NoOperationParams, WithOperationPathParam) fail with ArgumentNullException/ClientResultException. Server/Path/Multiple tests (2 failures: OptionalPathParamIncluded True/False) fail with ClientResultException. Fix the emitter's path parameter expansion and optional path parameter handling.\n\nIMPORTANT: Fix the emitter to match the legacy API. Do NOT modify tests.",
           "phase": "phase-15",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [],

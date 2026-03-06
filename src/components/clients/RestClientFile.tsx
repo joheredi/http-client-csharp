@@ -1259,6 +1259,16 @@ function buildRequestBody(
   for (const segment of pathSegments) {
     if (segment.kind === "literal") {
       parts.push(`\nuri.AppendPath("${segment.value}", false);`);
+    } else if (segment.param.optional) {
+      // Optional path params (RFC 6570 {/name} expansion): only append when
+      // the value is non-null, prefixed with "/" to form the path segment.
+      const paramName = segment.param.onClient
+        ? getOnClientFieldName(segment.param, getParamName)
+        : getParamName(segment.param.name);
+      parts.push(`\nif (${paramName} != null)\n{`);
+      parts.push(`\n    uri.AppendPath("/", false);`);
+      parts.push(`\n    ${buildPathParamStatement(segment.param, getParamName)}`);
+      parts.push(`\n}`);
     } else {
       parts.push(`\n${buildPathParamStatement(segment.param, getParamName)}`);
     }

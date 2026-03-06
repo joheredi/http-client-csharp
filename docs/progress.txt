@@ -5088,3 +5088,31 @@ Optional collection properties (like `Element.Extension: IList<Extension>`) were
 **Next person should know:**
 - OAuth2 and Union auth tests still excluded: they call single-arg constructors `new OAuth2Client(tokenProvider)` which the new emitter doesn't generate. Tracked as a separate issue.
 - Documentation's `BulletPointsModel` test is skipped — the model uses a `BulletPointsEnum` not yet generated correctly by the new emitter.
+
+---
+## Task 15.7: Fix optional path parameter handling (2026-03-06)
+
+**Problem:** `OptionalPathParamIncluded(False)` and `OptionalPathParamIncluded(True)` e2e tests failed. The emitter generated incorrect code for optional path parameters (RFC 6570 `{/name}` expansion syntax).
+
+**Root Causes:**
+1. ConvenienceMethod.tsx hardcoded `optional: false` for all path params — optional path params didn't get `= default`
+2. ProtocolMethod.tsx same — plus assertion was generated, throwing ArgumentNullException on null
+3. RestClientFile.tsx unconditionally appended path param to URI — no null guard, missing `/` separator
+
+**Fix:**
+- ConvenienceMethod.tsx: Changed to `optional: p.optional` for path params. Optional path params now get `= default` in convenience method signatures and skip Argument.Assert* validation.
+- ProtocolMethod.tsx: Added `needsValidation` flag to ProtocolParam interface. Optional path params keep `optional: false` (no `= default` — avoids CS0121 overload ambiguity with convenience methods) but set `needsValidation: false` to skip assertions.
+- RestClientFile.tsx: Optional path params wrapped in `if (name != null) { uri.AppendPath("/", false); uri.AppendPath(name, true); }` — the `/` prefix comes from RFC 6570 {/name} expansion semantics.
+
+**Files Modified:**
+- `src/components/clients/ConvenienceMethod.tsx` — `optional: p.optional` for path params
+- `src/components/clients/ProtocolMethod.tsx` — added `needsValidation` to ProtocolParam, use for assertion filtering
+- `src/components/clients/RestClientFile.tsx` — conditional path append for optional params
+- `test/rest-client.test.ts` — added test for conditional path append
+- `test/convenience-method.test.ts` — added test for optional path param with default
+- `test/protocol-method.test.ts` — added test for no default + no assertion in protocol
+- `test/e2e/.expected-failures` — removed 2 stale entries
+
+**Design Decision:** Protocol methods keep `string name` (no default) while convenience methods use `string name = default`. This avoids CS0121 overload ambiguity. The `needsValidation` flag decouples "has default" from "needs assertion" in protocol params.
+
+**Results:** 1376 unit tests pass, e2e exit code 0, 2 expected-failure entries removed.

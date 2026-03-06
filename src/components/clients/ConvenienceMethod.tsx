@@ -338,7 +338,7 @@ export function buildConvenienceParams(
     [];
   let index = 0;
 
-  // Path parameters (priority 0)
+  // Path parameters: required (priority 0), optional (priority 400)
   for (const p of pathParams) {
     if (isConstantType(p.type) || p.onClient) continue;
     const convInfo = getConvenienceTypeInfo(p.type);
@@ -346,13 +346,13 @@ export function buildConvenienceParams(
     params.push({
       name: csharpName,
       type: convInfo.expression,
-      optional: false,
+      optional: p.optional,
       isBody: false,
       needsAssertion: convInfo.needsAssertion,
       isStringType: convInfo.isString,
       doc: p.doc ?? p.summary,
       protocolCallArg: getProtocolCallArg(csharpName, p.type),
-      priority: 0,
+      priority: p.optional ? 400 : 0,
       index: index++,
     });
   }

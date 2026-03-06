@@ -633,4 +633,43 @@ describe("ProtocolMethod", () => {
     // XML doc param reference uses camelCase name
     expect(clientFile).toContain('<param name="xMsTestHeader">');
   });
+
+  /**
+   * Verifies that optional path parameters do NOT get `= default` in protocol
+   * method signatures (to avoid overload ambiguity with convenience methods)
+   * but also do NOT get Argument.Assert* validation.
+   *
+   * Protocol methods must keep `string name` (required signature) while the
+   * convenience method has `string name = default`. This prevents CS0121
+   * ambiguity errors when calling the method with a single argument.
+   */
+  it("generates optional path params without default value and no assertion in protocol methods", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/things{/name}")
+      @get op getOptional(@path name?: string): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"] ?? "";
+
+    // Protocol method must NOT have = default for path param (avoids overload ambiguity)
+    expect(clientFile).toContain(
+      "string name, RequestOptions options",
+    );
+
+    // No assertion in protocol method for optional path params
+    // Find protocol method bodies (after "RequestOptions options")
+    const protocolSections = clientFile.split("RequestOptions options)");
+    // Check each protocol method body
+    for (let i = 1; i < protocolSections.length; i++) {
+      const body = protocolSections[i].slice(0, protocolSections[i].indexOf("}"));
+      expect(body).not.toContain("Argument.AssertNotNullOrEmpty");
+      expect(body).not.toContain("Argument.AssertNotNull");
+    }
+  });
 });

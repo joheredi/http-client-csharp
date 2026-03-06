@@ -1469,4 +1469,36 @@ describe("ConvenienceMethod", () => {
       '/// <param name="cancellationToken0"> The cancellation token',
     );
   });
+
+  /**
+   * Verifies that optional path parameters get `= default` in convenience method
+   * signatures and do NOT get Argument.Assert* validation.
+   *
+   * This is critical for RFC 6570 {/name} expansion support where the parameter
+   * is legitimately null when the path segment should be omitted.
+   * Without this, Optional(null) would throw ArgumentNullException.
+   */
+  it("generates optional path params with default value and no assertion", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/things{/name}")
+      @get op getOptional(@path name?: string): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"] ?? "";
+
+    // Optional path param must have = default in convenience method
+    expect(clientFile).toContain(
+      "string name = default, CancellationToken cancellationToken = default",
+    );
+
+    // No null/empty assertion for optional path params
+    expect(clientFile).not.toContain("Argument.AssertNotNullOrEmpty(name");
+    expect(clientFile).not.toContain("Argument.AssertNotNull(name");
+  });
 });

@@ -3094,3 +3094,16 @@ Changing `ClientPipelineOptions` (21 chars) to `TestServiceClientOptions` (24 ch
 
 ### OAuth2/Union auth tests need single-arg convenience constructors
 Legacy tests call `new OAuth2Client(tokenProvider)` with just 1 arg. The new emitter generates `(endpoint, tokenProvider)` as minimum. These tests remain excluded until the emitter supports endpoint-defaulting convenience constructors.
+
+## Optional Path Parameters (RFC 6570 {/name} expansion)
+
+**Key Insight:** TCGC normalizes RFC 6570 `{/name}` syntax by stripping the `/` prefix — the path becomes `/optional{name}` instead of `/optional{/name}`. The parameter's `optional` flag indicates this was originally `{/name}` expansion.
+
+**Pattern for optional path params in generated C#:**
+- Convenience method: `string name = default` (with `= default`, no assertion)
+- Protocol method: `string name` (NO `= default` to avoid CS0121 ambiguity, but still no assertion)
+- RestClient CreateRequest: wrap in `if (name != null) { uri.AppendPath("/", false); uri.AppendPath(name, true); }`
+
+**Gotcha — CS0121 overload ambiguity:** If both convenience and protocol overloads have `name = default`, calling `client.OptionalAsync(name)` is ambiguous between `Optional(string, CancellationToken)` and `Optional(string, RequestOptions)`. Solution: only the convenience method gets `= default`.
+
+**Implementation detail:** The `ProtocolParam.needsValidation` flag decouples "has default value" (`optional`) from "needs Argument.Assert*" (`needsValidation`). Optional path params need `optional: false, needsValidation: false`.
