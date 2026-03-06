@@ -37,6 +37,7 @@ import { ErrorResultFile } from "./components/infrastructure/ErrorResultFile.js"
 import { ModelReaderWriterContextFile } from "./components/infrastructure/ModelReaderWriterContextFile.js";
 import { ModelSerializationExtensionsFile } from "./components/infrastructure/ModelSerializationExtensionsFile.js";
 import { OptionalFile } from "./components/infrastructure/OptionalFile.js";
+import { PipelineRequestHeadersExtensionsFile } from "./components/infrastructure/PipelineRequestHeadersExtensionsFile.js";
 import { ProjectFile } from "./components/infrastructure/ProjectFile.js";
 import { SerializationFormatFile } from "./components/infrastructure/SerializationFormatFile.js";
 import { SolutionFile } from "./components/infrastructure/SolutionFile.js";
@@ -238,6 +239,10 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
         )}
       />
       <ClientPipelineExtensionsFile
+        packageName={rootNamespace}
+        options={options}
+      />
+      <PipelineRequestHeadersExtensionsFile
         packageName={rootNamespace}
         options={options}
       />

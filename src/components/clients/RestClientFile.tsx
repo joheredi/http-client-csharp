@@ -14,6 +14,7 @@ import type {
   SdkBuiltInType,
   SdkClientType,
   SdkDictionaryType,
+  SdkDurationType,
   SdkHeaderParameter,
   SdkHttpOperation,
   SdkHttpResponse,
@@ -770,9 +771,10 @@ function getParamValueExpression(
     return `TypeFormatters.ConvertToString(${name}, SerializationFormat.DateTime_RFC3339)`;
   }
 
-  // Duration → TypeFormatters
+  // Duration → TypeFormatters with encoding-specific format
   if (type.kind === "duration") {
-    return `TypeFormatters.ConvertToString(${name}, SerializationFormat.Duration_ISO8601)`;
+    const format = getDurationSerializationFormat(type as SdkDurationType);
+    return `TypeFormatters.ConvertToString(${name}, ${format})`;
   }
 
   // Boolean → TypeFormatters.ConvertToString
@@ -858,18 +860,84 @@ function getBytesSerializationFormat(type: SdkBuiltInType): string {
 }
 
 /**
+ * Integer SDK type kinds used to determine whether a numeric duration
+ * encoding maps to the integer SerializationFormat variant.
+ *
+ * When a duration is encoded as seconds or milliseconds with an integer
+ * wire type, the value is formatted via `Convert.ToInt32()` at runtime
+ * (in TypeFormatters.ConvertToString). Float/double wire types use the
+ * raw TotalSeconds or TotalMilliseconds value instead.
+ */
+const DURATION_INTEGER_KINDS = new Set([
+  "int8",
+  "int16",
+  "int32",
+  "int64",
+  "uint8",
+  "uint16",
+  "uint32",
+  "uint64",
+  "safeint",
+  "integer",
+]);
+
+/**
+ * Returns the C# `SerializationFormat` enum value for a duration type based on
+ * its encoding and wire type. Mirrors the legacy C# generator's TypeFactory.cs
+ * mapping (lines 360-378).
+ *
+ * Duration (TimeSpan) supports these encoding strategies:
+ * - `"ISO8601"` (default) → `Duration_ISO8601` — uses `XmlConvert.ToString()`
+ * - `"seconds"` → integer wire types get `Duration_Seconds`, float32 gets
+ *   `Duration_Seconds_Float`, float64/other gets `Duration_Seconds_Double`
+ * - `"milliseconds"` → same pattern with `Duration_Milliseconds` variants
+ *
+ * @param type - An `SdkDurationType` with encoding and wireType resolved by TCGC.
+ * @returns The `SerializationFormat` enum reference string.
+ */
+function getDurationSerializationFormat(type: SdkDurationType): string {
+  switch (type.encode) {
+    case "seconds":
+      if (DURATION_INTEGER_KINDS.has(type.wireType.kind)) {
+        return "SerializationFormat.Duration_Seconds";
+      }
+      if (type.wireType.kind === "float32") {
+        return "SerializationFormat.Duration_Seconds_Float";
+      }
+      return "SerializationFormat.Duration_Seconds_Double";
+
+    case "milliseconds":
+      if (DURATION_INTEGER_KINDS.has(type.wireType.kind)) {
+        return "SerializationFormat.Duration_Milliseconds";
+      }
+      if (type.wireType.kind === "float32") {
+        return "SerializationFormat.Duration_Milliseconds_Float";
+      }
+      return "SerializationFormat.Duration_Milliseconds_Double";
+
+    case "ISO8601":
+    default:
+      return "SerializationFormat.Duration_ISO8601";
+  }
+}
+
+/**
  * Returns the C# `SerializationFormat` for a collection parameter's element type,
- * or null if no format is needed (non-bytes elements).
+ * or null if no format is needed (non-bytes, non-duration elements).
  *
  * Used to generate the correct format argument for `AppendQueryDelimited` and
- * `SetDelimited` calls when the collection contains bytes (BinaryData) values.
+ * `SetDelimited` calls when the collection contains bytes (BinaryData) or
+ * duration (TimeSpan) values that require encoding-specific formatting.
  */
-function getCollectionElementBytesFormat(type: SdkType): string | null {
+function getCollectionElementFormat(type: SdkType): string | null {
   const unwrapped = unwrapType(type);
   if (unwrapped.kind !== "array") return null;
   const elementType = unwrapType((unwrapped as SdkArrayType).valueType);
   if (elementType.kind === "bytes") {
     return getBytesSerializationFormat(elementType as SdkBuiltInType);
+  }
+  if (elementType.kind === "duration") {
+    return getDurationSerializationFormat(elementType as SdkDurationType);
   }
   return null;
 }
@@ -985,8 +1053,8 @@ function buildQueryParamStatement(
     } else {
       // Delimited: join all elements with delimiter
       const delimiter = getCollectionDelimiter(param.collectionFormat) ?? ",";
-      const bytesFormat = getCollectionElementBytesFormat(param.type);
-      const formatArg = bytesFormat ?? "SerializationFormat.Default";
+      const elementFormat = getCollectionElementFormat(param.type);
+      const formatArg = elementFormat ?? "SerializationFormat.Default";
       const stmt = `uri.AppendQueryDelimited("${serializedName}", ${name}, "${delimiter}", ${formatArg}, true);`;
       if (param.optional) {
         return `if (${name} != null)\n{\n    ${stmt}\n}`;
@@ -1100,9 +1168,17 @@ function buildHeaderParamStatement(
   }
 
   if (isCollectionType(param.type)) {
-    // Collection header: join values with delimiter
+    // Collection header: join values with delimiter.
+    // Use SetDelimited with SerializationFormat when elements need encoding-specific
+    // formatting (e.g., duration, bytes). Otherwise fall back to string.Join.
     const delimiter = getCollectionDelimiter(param.collectionFormat) ?? ",";
-    const stmt = `request.Headers.Set("${serializedName}", string.Join("${delimiter}", ${name}));`;
+    const elementFormat = getCollectionElementFormat(param.type);
+    let stmt: string;
+    if (elementFormat) {
+      stmt = `request.Headers.SetDelimited("${serializedName}", ${name}, "${delimiter}", ${elementFormat});`;
+    } else {
+      stmt = `request.Headers.Set("${serializedName}", string.Join("${delimiter}", ${name}));`;
+    }
     if (param.optional) {
       return `if (${name} != null)\n{\n    ${stmt}\n}`;
     }

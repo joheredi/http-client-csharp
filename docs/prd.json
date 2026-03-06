@@ -750,7 +750,7 @@
           "title": "Fix duration header/query parameter encoding",
           "description": "Encode/Duration tests (25 failures + 4 skips) fail with ClientResultException because the generated client sends duration values in a format the Spector mock server doesn't expect. Covers header, query, and property encoding for int32-seconds, float-seconds, float64-seconds, int32-milliseconds, float-milliseconds, float64-milliseconds, and ISO8601 array formats. Fix the emitter to generate correct duration formatting in header/query serialization.\n\nIMPORTANT: Fix the emitter to match the legacy API. Do NOT modify tests.",
           "phase": "phase-15",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [],

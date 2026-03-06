@@ -4982,3 +4982,36 @@ Optional collection properties (like `Element.Extension: IList<Extension>`) were
 - `test/e2e/.testignore` — removed special-words
 - `test/e2e/Spector.Tests/Spector.Tests.csproj` — re-enabled SpecialWords tests
 - `test/e2e/spector.test.ts` — maxBuffer fix
+
+## Task 15.4 — Fix duration header/query parameter encoding (DONE)
+**Date: 2026-03-06**
+
+### What was done
+- Fixed `getParamValueExpression()` in `RestClientFile.tsx` to use encoding-specific
+  `SerializationFormat` for duration parameters instead of hardcoded `Duration_ISO8601`.
+- Added `getDurationSerializationFormat()` function that maps `SdkDurationType.encode` ×
+  `wireType.kind` to the correct format: Duration_Seconds, Duration_Seconds_Float,
+  Duration_Seconds_Double, Duration_Milliseconds, Duration_Milliseconds_Float,
+  Duration_Milliseconds_Double, or Duration_ISO8601.
+- Added `getCollectionElementFormat()` to extend the existing bytes-only format helper
+  to also handle duration element types in arrays.
+- Updated `buildHeaderParamStatement()` to use `SetDelimited` with the correct format
+  for header arrays containing duration or bytes types.
+- Updated `buildQueryParamStatement()` to use the new `getCollectionElementFormat()`
+  for query arrays.
+- Re-enabled `PipelineRequestHeadersExtensionsFile` generation in `emitter.tsx` — it
+  was removed in task 13.22 but is needed for `SetDelimited<T>()` calls with format.
+- Added 9 unit tests in `test/duration-encoding.test.ts` covering all encoding variants.
+- Cleaned up `.expected-failures`: removed 20 passing Duration entries, reorganized
+  remaining DateTime-related entries under the correct section.
+
+### Key patterns
+- Duration encoding type comes from `SdkDurationType.encode` (TCGC resolution of @encode).
+- Wire type determines integer vs float variant (e.g., int32 → Duration_Seconds,
+  float32 → Duration_Seconds_Float, float64 → Duration_Seconds_Double).
+- Legacy mapping is in TypeFactory.cs (lines 360-378) of the legacy C# generator.
+- For arrays, @encode must be on a named scalar type, not directly on the parameter.
+
+### Results
+- 20 Duration e2e test failures resolved (down from 46 total to 26)
+- 1368 unit tests pass, 5 e2e tests pass, 0 unexpected failures

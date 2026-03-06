@@ -29,30 +29,7 @@ ExtensibleEnumSpaceDelimited
 HeaderRfc7231
 HeaderUnixTimestamp
 HeaderUnixTimestampArray
-HeaderISO8601Array
-
-# --- Encode/Duration: ClientResultException / NRE ---
-# Duration encoding/header/query parameter formatting issues
 HeaderDefault
-HeaderFloat64Milliseconds
-HeaderFloat64Seconds
-HeaderFloatMilliseconds
-HeaderFloatSeconds
-HeaderInt32Milliseconds
-HeaderInt32MillisecondsArray
-HeaderInt32MillisecondsLargerUnit
-HeaderInt32Seconds
-HeaderInt32SecondsLargerUnit
-QueryFloat64Milliseconds
-QueryFloat64Seconds
-QueryFloatMilliseconds
-QueryFloatSeconds
-QueryInt32Milliseconds
-QueryInt32MillisecondsArray
-QueryInt32MillisecondsLargerUnit
-QueryInt32Seconds
-QueryInt32SecondsArray
-QueryInt32SecondsLargerUnit
 QueryRfc7231
 QueryUnixTimestamp
 QueryUnixTimestampArray

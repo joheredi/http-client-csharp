@@ -3032,3 +3032,31 @@ The `dotnetBuild()` function in `spector.test.ts` uses Node.js `execSync` with `
 ### Task 15.16: CancellationToken collision fix
 **Approach chosen:** Manual collision detection with `resolveCancellationTokenParamName()` that checks user param names and appends numeric suffix (matching legacy emitter's `cancellationToken0` convention).
 **Rejected:** Using Alloy namekey/refkey for the CancellationToken parameter — the method body is constructed as strings, not JSX elements, so refkeys wouldn't track the rename. Would require restructuring the body generation.
+
+## Design Decisions — Task 15.4: Duration Header/Query Encoding
+
+**Decision**: Map `SdkDurationType.encode` × `wireType.kind` to the correct `SerializationFormat` enum
+in `getParamValueExpression()` for header/query parameters, matching the legacy C# generator's
+TypeFactory.cs mapping (lines 360-378).
+
+**Approach chosen**: Create `getDurationSerializationFormat(type: SdkDurationType)` function that
+mirrors the legacy mapping. Re-enable `PipelineRequestHeadersExtensionsFile` generation for header
+collection formatting via `SetDelimited`.
+
+**Rejected alternative**: Inline formatting code in header arrays using LINQ `.Select()` or manual
+foreach loops. This was rejected because: (1) it would add verbose inline code to every header array
+serialization, (2) the `PipelineRequestHeadersExtensions` class is the proper infrastructure
+component for this purpose, and (3) the legacy C# generator also uses `SetHeaderDelimited` which
+maps to the same extension method.
+
+**Gotcha**: `PipelineRequestHeadersExtensions.cs` was removed in task 13.22 because it "doesn't
+appear in golden test output." The golden files are stubs (`throw null`), so infrastructure files
+wouldn't appear there. The legacy C# generator produces this file at runtime. The new emitter must
+generate it unconditionally.
+
+**Gotcha**: `HeaderDefault` and `QueryDefault` in the expected-failures file are ambiguous —
+both Encode/Duration and Encode/DateTime test files have methods with these names. The Duration
+versions pass (both use ISO8601 format). The DateTime versions still fail.
+
+**Gotcha**: `QueryRfc7231`, `QueryUnixTimestamp`, `QueryUnixTimestampArray` were incorrectly
+categorized under Duration in `.expected-failures` — they are actually DateTime tests.
