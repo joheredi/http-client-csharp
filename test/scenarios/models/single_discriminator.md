@@ -125,7 +125,11 @@ public partial class Eagle : Bird
     {
         /// <summary> Initializes a new instance of <see cref="Eagle"/>. </summary>
         /// <param name="wingspan"></param>
-        public Eagle(int wingspan) : base("eagle", wingspan) {}
+        public Eagle(int wingspan) : base("eagle", wingspan)
+        {
+            Friends = new ChangeTrackingList<Bird>();
+            Hate = new ChangeTrackingDictionary<string, Bird>();
+        }
 
         /// <summary> Initializes a new instance of <see cref="Eagle"/>. </summary>
         /// <param name="kind"></param>

@@ -49,6 +49,7 @@ public partial class Resource
             Argument.AssertNotNull(name, nameof(name));
 
             Name = name;
+            Children = new ChangeTrackingList<Resource>();
         }
 
         /// <summary> Initializes a new instance of <see cref="Resource"/>. </summary>

@@ -3760,8 +3760,12 @@ describe("DeserializeVariableDeclarations", () => {
 
     // Required array property — uses collection interface matching constructor parameter type
     expect(content).toMatch(/IList<string> tags = default;/);
-    // Optional array property — same pattern (collections never nullable)
-    expect(content).toMatch(/IList<int> scores = default;/);
+    // Optional array property — initialized with ChangeTrackingList so that
+    // Optional.IsCollectionDefined() works correctly when the property is
+    // absent from JSON, and the collection is non-null for safe access.
+    expect(content).toMatch(
+      /IList<int> scores = new ChangeTrackingList<int>\(\);/,
+    );
   });
 });
 

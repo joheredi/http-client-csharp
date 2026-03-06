@@ -39,7 +39,7 @@
  */
 
 import { useCSharpNamePolicy } from "@alloy-js/csharp";
-import { code } from "@alloy-js/core";
+import { type Children, code } from "@alloy-js/core";
 import type {
   SdkModelPropertyType,
   SdkModelType,
@@ -48,6 +48,10 @@ import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import { SystemClientModelPrimitives } from "../../builtins/system-client-model.js";
 import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
 import { System } from "../../builtins/system.js";
+import {
+  getCollectionValueType,
+  isDictCollection,
+} from "../../utils/collections.js";
 import { renderCollectionPropertyType } from "../../utils/collection-type-expression.js";
 import {
   isCollectionType,
@@ -198,20 +202,45 @@ export function DeserializeVariableDeclarations(
           model.discriminatorValue !== undefined &&
           unwrapped.kind === "string";
 
-        const initializer = isStringDiscriminator
-          ? `"${model.discriminatorValue}"`
-          : "default";
+        // Compute the type expression for the variable declaration.
+        const typeExpr = isCollectionType(unwrapped) ? (
+          renderCollectionPropertyType(unwrapped, isPropertyReadOnly(p))
+        ) : (
+          <TypeExpression type={unwrapped.__raw!} />
+        );
+
+        // Compute the initializer expression. Optional collections use
+        // ChangeTrackingList/Dictionary so that Optional.IsCollectionDefined()
+        // correctly returns false (undefined) when the property is absent from
+        // JSON, and the collection is non-null for safe .Count access.
+        let initializerExpr: Children;
+        if (isStringDiscriminator) {
+          initializerExpr = `"${model.discriminatorValue}"`;
+        } else if (p.optional && isCollectionType(unwrapped)) {
+          const valueType = getCollectionValueType(p.type);
+          const vtUnwrapped = unwrapNullableType(valueType);
+          const isVTNullable = valueType.kind === "nullable";
+          const vtExpr = <TypeExpression type={vtUnwrapped.__raw!} />;
+          const valueTypeExpr: Children = isVTNullable ? (
+            <>{vtExpr}?</>
+          ) : (
+            vtExpr
+          );
+          initializerExpr = isDictCollection(p.type)
+            ? code`new ChangeTrackingDictionary<string, ${valueTypeExpr}>()`
+            : code`new ChangeTrackingList<${valueTypeExpr}>()`;
+        } else {
+          initializerExpr = "default";
+        }
 
         return (
           <>
             {"\n    "}
-            {isCollectionType(unwrapped) ? (
-              renderCollectionPropertyType(unwrapped, isPropertyReadOnly(p))
-            ) : (
-              <TypeExpression type={unwrapped.__raw!} />
-            )}
+            {typeExpr}
             {nullable ? "?" : ""}
-            {` ${varName} = ${initializer};`}
+            {` ${varName} = `}
+            {initializerExpr}
+            {";"}
           </>
         );
       })}

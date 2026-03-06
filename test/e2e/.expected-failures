@@ -62,11 +62,6 @@ QueryUnixTimestampArray
 OptionalPathParamIncluded(False)
 OptionalPathParamIncluded(True)
 
-# --- Type/Model/Inheritance: NullReferenceException in recursive models ---
-PutRecursiveModel
-RecursiveGet
-RecursivePut
-
 # --- Versioning: ClientResultException (body serialization issues) ---
 # URL routing is fixed (api-version in server URL template now handled),
 # but these specs have body serialization mismatches (400 Bad Request).

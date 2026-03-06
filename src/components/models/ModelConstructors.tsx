@@ -57,6 +57,10 @@ import { SystemClientModelPrimitives } from "../../builtins/system-client-model.
 import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
 import { System } from "../../builtins/system.js";
 import {
+  getCollectionValueType,
+  isDictCollection,
+} from "../../utils/collections.js";
+import {
   renderCollectionParameterType,
   renderCollectionPropertyType,
 } from "../../utils/collection-type-expression.js";
@@ -412,20 +416,21 @@ function buildNullChecks(
 
 /**
  * Renders the public constructor body as JSX children, combining null-check
- * elements (Alloy `code` template results with refkeys) and assignment strings.
+ * elements and assignment elements.
  *
- * This function exists because null checks use `code` template elements
- * (not plain strings) to reference the `Argument` class via its refkey,
- * enabling automatic `using` directive generation for cross-namespace
- * scenarios. Plain string `.join("\n")` cannot be used on Alloy Children.
+ * Both null checks and assignments use Alloy Children (not plain strings)
+ * to support `code` template elements with refkeys for automatic `using`
+ * directive generation. The ChangeTracking collection initializations
+ * (e.g., `new ChangeTrackingList<T>()`) require JSX for TypeExpression.
  *
  * @param nullChecks - Alloy Children elements for `Argument.AssertNotNull` calls.
- * @param assignments - Plain string assignment statements.
+ * @param assignments - Alloy Children elements for property assignments and
+ *   collection initializations.
  * @returns JSX children to pass to `<OverloadConstructor>`.
  */
 function renderPublicCtorBody(
   nullChecks: Children[],
-  assignments: string[],
+  assignments: Children[],
 ): Children {
   return (
     <>
@@ -436,7 +441,12 @@ function renderPublicCtorBody(
         </>
       ))}
       {nullChecks.length > 0 && assignments.length > 0 && "\n\n"}
-      {assignments.length > 0 && assignments.join("\n")}
+      {assignments.map((assignment, i) => (
+        <>
+          {i > 0 && "\n"}
+          {assignment}
+        </>
+      ))}
     </>
   );
 }
@@ -448,23 +458,30 @@ function renderPublicCtorBody(
  * - Constructor parameters (required scalars/refs) → direct assignment
  * - Required collections (arrays) → `.ToList()` conversion from IEnumerable parameter
  * - Required collections (dicts) → direct assignment (both sides are IDictionary)
- * - Optional collections → ChangeTracking initialization (deferred to tasks 5.1.3/5.1.4)
+ * - Optional collections (arrays) → `new ChangeTrackingList<T>()` initialization
+ * - Optional collections (dicts) → `new ChangeTrackingDictionary<string, T>()` initialization
  * - Optional non-collections → no initialization (remain default/null)
  * - Read-only / literal properties → skipped (not assigned in public constructor)
+ *
+ * ChangeTracking initialization is essential for optional collection properties
+ * because `Optional.IsCollectionDefined()` expects a non-null ChangeTracking
+ * instance to check whether the collection has been modified. Without it,
+ * serialization throws NullReferenceException on recursive/self-referencing
+ * model hierarchies (e.g., Element → Extension → Element).
  *
  * @param allProperties - All properties on the model.
  * @param ctorParams - Properties that are constructor parameters.
  * @param namePolicy - The C# naming policy.
- * @returns An array of C# assignment statements.
+ * @returns An array of C# assignment Children (strings or JSX elements).
  */
 function buildAssignments(
   allProperties: SdkModelPropertyType[],
   ctorParams: SdkModelPropertyType[],
   namePolicy: ReturnType<typeof useCSharpNamePolicy>,
   modelName: string,
-): string[] {
+): Children[] {
   const ctorParamSet = new Set(ctorParams);
-  const lines: string[] = [];
+  const lines: Children[] = [];
 
   for (const p of allProperties) {
     const kind = getPropertyInitializerKind(p);
@@ -484,9 +501,29 @@ function buildAssignments(
       // property type are both IDictionary<string, T>, so direct assignment works.
       const paramName = namePolicy.getName(effectiveName, "parameter");
       lines.push(`${propName} = ${paramName};`);
+    } else if (kind === "change-tracking-list" && !ctorParamSet.has(p)) {
+      // Optional array properties: initialize with ChangeTrackingList<T> so
+      // Optional.IsCollectionDefined() can distinguish "not set" from "empty".
+      const valueType = getCollectionValueType(p.type);
+      const unwrappedVT = unwrapNullableType(valueType);
+      const isVTNullable = valueType.kind === "nullable";
+      const vtExpr = <TypeExpression type={unwrappedVT.__raw!} />;
+      const valueTypeExpr: Children = isVTNullable ? <>{vtExpr}?</> : vtExpr;
+      lines.push(
+        code`${propName} = new ChangeTrackingList<${valueTypeExpr}>();`,
+      );
+    } else if (kind === "change-tracking-dict" && !ctorParamSet.has(p)) {
+      // Optional dictionary properties: initialize with ChangeTrackingDictionary<string, T>
+      // so Optional.IsCollectionDefined() can distinguish "not set" from "empty".
+      const valueType = getCollectionValueType(p.type);
+      const unwrappedVT = unwrapNullableType(valueType);
+      const isVTNullable = valueType.kind === "nullable";
+      const vtExpr = <TypeExpression type={unwrappedVT.__raw!} />;
+      const valueTypeExpr: Children = isVTNullable ? <>{vtExpr}?</> : vtExpr;
+      lines.push(
+        code`${propName} = new ChangeTrackingDictionary<string, ${valueTypeExpr}>();`,
+      );
     }
-    // change-tracking-list and change-tracking-dict require builtins (tasks 5.1.3/5.1.4)
-    // These initializations will be added by future tasks.
   }
 
   return lines;

@@ -1643,6 +1643,104 @@ describe("ModelConstructors", () => {
     }
     expect(foundExceptionBeforeInternalCtor).toBe(false);
   });
+
+  /**
+   * Validates that optional collection properties are initialized with
+   * ChangeTrackingList/ChangeTrackingDictionary in the public constructor.
+   *
+   * This is critical for preventing NullReferenceException when serializing
+   * models with optional collections. Without initialization:
+   * - Optional.IsCollectionDefined(null) throws NRE
+   * - Recursive models (e.g., Element→Extension→Element) fail at runtime
+   *
+   * The ChangeTracking types distinguish "not set" from "empty" — their
+   * IsUndefined property returns true until items are added, which lets
+   * Optional.IsCollectionDefined() correctly skip serialization of
+   * unmodified collections.
+   */
+  it("initializes optional collection properties with ChangeTracking types", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        tags?: string[];
+        metadata?: Record<int32>;
+      }
+
+      @route("/widgets")
+      op createWidget(@body body: Widget): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) =>
+      k.includes("Widget.cs"),
+    );
+    const content = outputs[modelFile!];
+
+    // Optional array: initialized with ChangeTrackingList<string>
+    expect(content).toContain(
+      "Tags = new ChangeTrackingList<string>();",
+    );
+    // Optional dictionary: initialized with ChangeTrackingDictionary<string, int>
+    expect(content).toContain(
+      "Metadata = new ChangeTrackingDictionary<string, int>();",
+    );
+  });
+
+  /**
+   * Validates that optional collections on recursive/self-referencing models
+   * are initialized with ChangeTracking types. This is the exact scenario
+   * that caused NullReferenceException in Type/Model/Inheritance/Recursive tests.
+   *
+   * The Element→Extension hierarchy is recursive: Extension extends Element,
+   * and Element has an optional IList<Extension> property. Without ChangeTracking
+   * initialization, constructing `new Extension(1)` leaves the inherited
+   * Extension property null, and serialization crashes on Optional.IsCollectionDefined(null).
+   */
+  it("initializes optional collections on recursive models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Element {
+        extension?: Extension[];
+      }
+
+      model Extension extends Element {
+        level: int8;
+      }
+
+      @route("/test")
+      op test(@body body: Element): Element;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    // Check base Element model constructor
+    const elementFile = Object.keys(outputs).find(
+      (k) => k.endsWith("Element.cs") && !k.includes("Serialization"),
+    );
+    const elementContent = outputs[elementFile!];
+    expect(elementContent).toContain(
+      "Extension = new ChangeTrackingList<Extension>();",
+    );
+
+    // Extension inherits from Element; its constructor chains to base()
+    // which initializes the Extension collection via ChangeTracking
+    const extensionFile = Object.keys(outputs).find(
+      (k) => k.endsWith("Extension.cs") && !k.includes("Serialization"),
+    );
+    const extensionContent = outputs[extensionFile!];
+    // Extension's constructor should call base() which handles initialization
+    expect(extensionContent).toMatch(/: base\(\)/);
+  });
 });
 
 /**

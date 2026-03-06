@@ -4938,3 +4938,24 @@ Task 15.1 (commit 91017ec) added `.ToList()` assignment for required array prope
   Result: 4 previously-failing e2e tests now pass (MadeOptional, TypeChangedFrom, NoOperationParams,
   WithOperationPathParam). 5 remain failing due to body serialization issues (separate from api-version).
   Key learning: TCGC endpoint type is often a union, not a simple SdkEndpointType.
+
+## 2026-03-06 — Task 15.3: Fix NullReferenceException in recursive model serialization
+
+**What was done:**
+- Fixed NRE in recursive model serialization (Type/Model/Inheritance/Recursive) by initializing optional collection properties with ChangeTracking types in two places:
+  1. **Public constructor** (`ModelConstructors.tsx` → `buildAssignments()`): Optional array properties now get `PropName = new ChangeTrackingList<T>();` and optional dict properties get `PropName = new ChangeTrackingDictionary<string, V>();`
+  2. **Deserialization variables** (`DeserializeVariableDeclarations.tsx`): Optional collection variables now initialized with ChangeTracking instead of `default` so absent JSON properties produce non-null but "undefined" collections
+- Changed `buildAssignments()` return type from `string[]` to `Children[]` to support JSX rendering of ChangeTracking initialization with TypeExpression
+- Updated `renderPublicCtorBody()` to handle `Children[]` assignments (map with newlines instead of .join)
+- Removed 3 entries from `.expected-failures`: PutRecursiveModel, RecursiveGet, RecursivePut
+- Updated 2 scenario baselines (single_discriminator Eagle, nested_merge_patch Resource)
+- Updated 1 existing unit test (deserialization variable declarations)
+- Added 2 new unit tests: ChangeTracking initialization for optional collections, recursive model constructor
+
+**Root cause:**
+Optional collection properties (like `Element.Extension: IList<Extension>`) were left as `null` because `buildAssignments()` had a TODO comment deferring ChangeTracking initialization. This caused NRE in `Optional.IsCollectionDefined()` during serialization and NRE on `.Count` access after deserialization of absent properties.
+
+**Key patterns:**
+- Used `getCollectionValueType()` + `unwrapNullableType()` + `TypeExpression` to render element types
+- Used `isDictCollection()` to distinguish array vs dict for ChangeTracking type selection
+- Pattern matches existing ChangeTracking usage in PropertyMatchingLoop.tsx and ModelFactoryMethod.tsx

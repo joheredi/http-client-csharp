@@ -731,7 +731,7 @@
           "title": "Fix NullReferenceException in recursive model serialization",
           "description": "Type/Model/Inheritance/Recursive tests (3 scenarios: PutRecursiveModel \u00d7 2 classes, RecursiveGet, RecursivePut) throw NullReferenceException when serializing recursive model hierarchies (NOTE: may be partially addressed by task 15.1 constructor fix). The generated code fails to handle null-checks on recursive child references.\n\nIMPORTANT: Fix the emitter to generate correct serialization code. Do NOT modify tests.",
           "phase": "phase-15",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [],

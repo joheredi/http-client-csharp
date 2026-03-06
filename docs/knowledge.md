@@ -3006,3 +3006,15 @@ Template arguments in `SdkEndpointType.templateArguments` (SdkPathParameter[]) f
 4. **Method parameter** — matches a param in `clientInitialization.parameters` → use field `_paramName`
 
 The `client/structure` specs use constant-type args (e.g., `client: "default"`). The `resiliency/srv-driven` specs use constant `serviceDeploymentVersion: "v1"`.
+
+## ChangeTracking Collection Initialization (Task 15.3)
+
+**Gotcha**: Optional collection properties MUST be initialized with `new ChangeTrackingList<T>()` or `new ChangeTrackingDictionary<string, V>()` in two places:
+1. The **public model constructor** body (`buildAssignments()` in `ModelConstructors.tsx`)
+2. The **deserialization variable declarations** (`DeserializeVariableDeclarations.tsx`)
+
+Without this, `Optional.IsCollectionDefined(null)` throws NRE during serialization, and `.Count` access on absent-from-JSON properties throws NRE after deserialization.
+
+**Design decision**: `buildAssignments()` returns `Children[]` (not `string[]`) because ChangeTracking initialization requires `TypeExpression` JSX for the element type. `renderPublicCtorBody()` renders assignments via `.map()` with newline separators instead of `.join("\n")`.
+
+**Validation**: The `PropertyMatchingLoop.tsx` comment at line 196 (`"leave ChangeTracking default"`) confirms the expectation that optional collections are pre-initialized with ChangeTracking instances in the deserialization variable declarations.
