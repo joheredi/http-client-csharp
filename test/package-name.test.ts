@@ -14,6 +14,7 @@ import {
   collectInvalidNamespaceSegments,
   cleanNamespace,
   cleanAllNamespaces,
+  isSystemTypeNameCollision,
 } from "../src/utils/package-name.js";
 
 /**
@@ -633,6 +634,55 @@ describe("cleanAllNamespaces", () => {
     expect(clients[1].namespace).toBe("_Type._File._Body");
     // Model namespace TypeSpec.Http has no invalid segments — unchanged
     expect(models[0].namespace).toBe("TypeSpec.Http");
+  });
+});
+
+/**
+ * Tests for isSystemTypeNameCollision (task 12.19).
+ *
+ * Validates detection of generated type names that collide with well-known
+ * .NET BCL types. When a generated client, model, or enum has one of these
+ * names (e.g., "Object", "Enum"), unqualified references become ambiguous
+ * with the system type (CS0104). Components use this function to decide
+ * whether to emit fully-qualified references.
+ */
+describe("isSystemTypeNameCollision", () => {
+  /**
+   * Core system types must be detected: Object (System.Object), Enum
+   * (System.Enum), Type (System.Type), Array (System.Array), File
+   * (System.IO.File). These are the most common sources of CS0104 errors.
+   */
+  it("returns true for well-known system type names", () => {
+    expect(isSystemTypeNameCollision("Object")).toBe(true);
+    expect(isSystemTypeNameCollision("Enum")).toBe(true);
+    expect(isSystemTypeNameCollision("Type")).toBe(true);
+    expect(isSystemTypeNameCollision("Array")).toBe(true);
+    expect(isSystemTypeNameCollision("File")).toBe(true);
+    expect(isSystemTypeNameCollision("Action")).toBe(true);
+    expect(isSystemTypeNameCollision("Attribute")).toBe(true);
+    expect(isSystemTypeNameCollision("Exception")).toBe(true);
+  });
+
+  /**
+   * Normal model/client names should not trigger the collision check.
+   * This ensures we don't over-qualify references for non-colliding names.
+   */
+  it("returns false for non-colliding type names", () => {
+    expect(isSystemTypeNameCollision("Widget")).toBe(false);
+    expect(isSystemTypeNameCollision("Pet")).toBe(false);
+    expect(isSystemTypeNameCollision("UserProfile")).toBe(false);
+    expect(isSystemTypeNameCollision("ActionRequest")).toBe(false);
+  });
+
+  /**
+   * The check is case-sensitive — "object" (lowercase) and "enum"
+   * (lowercase) are C# keywords handled separately by Alloy's keyword
+   * escaping, not by this collision detection.
+   */
+  it("is case-sensitive", () => {
+    expect(isSystemTypeNameCollision("object")).toBe(false);
+    expect(isSystemTypeNameCollision("enum")).toBe(false);
+    expect(isSystemTypeNameCollision("OBJECT")).toBe(false);
   });
 });
 

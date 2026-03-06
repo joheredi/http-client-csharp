@@ -115,7 +115,10 @@ export function RestClientFile(props: RestClientFileProps) {
   const { client, options } = props;
   const header = getLicenseHeader(options);
   const namePolicy = useCSharpNamePolicy();
-  const className = namePolicy.getName(getSimpleClientName(client.name), "class");
+  const className = namePolicy.getName(
+    getSimpleClientName(client.name),
+    "class",
+  );
   const fileName = getClientFileName(client, (name) =>
     namePolicy.getName(name, "class"),
   );

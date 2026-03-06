@@ -38,9 +38,7 @@ describe("modelNeedsSerialization", () => {
 
   it("returns true for models with both JSON and XML usage", () => {
     expect(
-      modelNeedsSerialization(
-        makeModel(UsageFlags.Json | UsageFlags.Xml),
-      ),
+      modelNeedsSerialization(makeModel(UsageFlags.Json | UsageFlags.Xml)),
     ).toBe(true);
   });
 
@@ -66,9 +64,7 @@ describe("modelNeedsSerialization", () => {
 
   it("returns false for spread-only models", () => {
     expect(
-      modelNeedsSerialization(
-        makeModel(UsageFlags.Spread | UsageFlags.Input),
-      ),
+      modelNeedsSerialization(makeModel(UsageFlags.Spread | UsageFlags.Input)),
     ).toBe(false);
   });
 
@@ -5010,7 +5006,9 @@ describe("PropertyMatchingLoop", () => {
 
     // Each property block should have assignment followed by continue
     const foreachBlock = content.substring(
-      content.indexOf("foreach (var jsonProperty in element.EnumerateObject())"),
+      content.indexOf(
+        "foreach (var jsonProperty in element.EnumerateObject())",
+      ),
     );
     const continueCount = (foreachBlock.match(/continue;/g) || []).length;
     // Should have at least 2 continues (one for each property)
@@ -5108,7 +5106,9 @@ describe("PropertyMatchingLoop", () => {
     // 8 spaces: if block inside foreach
     expect(content).toContain('        if (jsonProperty.NameEquals("name"u8))');
     // 12 spaces: assignment inside if block
-    expect(content).toContain("            name = jsonProperty.Value.GetString();");
+    expect(content).toContain(
+      "            name = jsonProperty.Value.GetString();",
+    );
     // 12 spaces: continue inside if block
     expect(content).toContain("            continue;");
   });
@@ -5177,7 +5177,9 @@ describe("PropertyMatchingLoop", () => {
     const content = outputs[fileKey!];
 
     expect(content).toContain('if (jsonProperty.NameEquals("endpoint"u8))');
-    expect(content).toContain("endpoint = new Uri(jsonProperty.Value.GetString());");
+    expect(content).toContain(
+      "endpoint = new Uri(jsonProperty.Value.GetString());",
+    );
   });
 
   /**
@@ -5293,7 +5295,9 @@ describe("PropertyMatchingLoop", () => {
     const content = outputs[fileKey!];
 
     expect(content).toContain('if (jsonProperty.NameEquals("createdAt"u8))');
-    expect(content).toContain('createdAt = jsonProperty.Value.GetDateTimeOffset("O");');
+    expect(content).toContain(
+      'createdAt = jsonProperty.Value.GetDateTimeOffset("O");',
+    );
   });
 
   /**
@@ -5396,7 +5400,9 @@ describe("PropertyMatchingLoop", () => {
     const content = outputs[fileKey!];
 
     expect(content).toContain('if (jsonProperty.NameEquals("birthDate"u8))');
-    expect(content).toContain('birthDate = jsonProperty.Value.GetDateTimeOffset("D");');
+    expect(content).toContain(
+      'birthDate = jsonProperty.Value.GetDateTimeOffset("D");',
+    );
   });
 
   /**
@@ -5428,7 +5434,9 @@ describe("PropertyMatchingLoop", () => {
     const content = outputs[fileKey!];
 
     expect(content).toContain('if (jsonProperty.NameEquals("startTime"u8))');
-    expect(content).toContain('startTime = jsonProperty.Value.GetTimeSpan("T");');
+    expect(content).toContain(
+      'startTime = jsonProperty.Value.GetTimeSpan("T");',
+    );
   });
 
   /**
@@ -5751,7 +5759,9 @@ describe("PropertyMatchingLoop", () => {
     // The type reference is namespace-qualified because the property name 'Pet' (PascalCase
     // of 'pet') shadows the type 'Pet' in the static DeserializeWidget method (CS0120).
     expect(content).toContain('if (jsonProperty.NameEquals("pet"u8))');
-    expect(content).toContain("pet = TestNamespace.Pet.DeserializePet(jsonProperty.Value, options);");
+    expect(content).toContain(
+      "pet = TestNamespace.Pet.DeserializePet(jsonProperty.Value, options);",
+    );
     expect(content).toContain("continue;");
   });
 
@@ -5978,7 +5988,9 @@ describe("PropertyMatchingLoop", () => {
     const content = outputs[fileKey!];
 
     expect(content).toContain('if (jsonProperty.NameEquals("status"u8))');
-    expect(content).toContain("status = jsonProperty.Value.GetString().ToStatus();");
+    expect(content).toContain(
+      "status = jsonProperty.Value.GetString().ToStatus();",
+    );
     expect(content).toContain("continue;");
   });
 
@@ -6021,7 +6033,9 @@ describe("PropertyMatchingLoop", () => {
     const content = outputs[fileKey!];
 
     expect(content).toContain('if (jsonProperty.NameEquals("priority"u8))');
-    expect(content).toContain("priority = jsonProperty.Value.GetInt32().ToPriority();");
+    expect(content).toContain(
+      "priority = jsonProperty.Value.GetInt32().ToPriority();",
+    );
   });
 
   /**
@@ -6061,7 +6075,9 @@ describe("PropertyMatchingLoop", () => {
     const content = outputs[fileKey!];
 
     expect(content).toContain('if (jsonProperty.NameEquals("rating"u8))');
-    expect(content).toContain("rating = jsonProperty.Value.GetSingle().ToRating();");
+    expect(content).toContain(
+      "rating = jsonProperty.Value.GetSingle().ToRating();",
+    );
   });
 
   /**
@@ -6103,7 +6119,9 @@ describe("PropertyMatchingLoop", () => {
     const content = outputs[fileKey!];
 
     expect(content).toContain('if (jsonProperty.NameEquals("color"u8))');
-    expect(content).toContain("color = new Color(jsonProperty.Value.GetString());");
+    expect(content).toContain(
+      "color = new Color(jsonProperty.Value.GetString());",
+    );
     expect(content).toContain("continue;");
   });
 
@@ -6145,7 +6163,9 @@ describe("PropertyMatchingLoop", () => {
     const content = outputs[fileKey!];
 
     expect(content).toContain('if (jsonProperty.NameEquals("level"u8))');
-    expect(content).toContain("level = new Level(jsonProperty.Value.GetInt32());");
+    expect(content).toContain(
+      "level = new Level(jsonProperty.Value.GetInt32());",
+    );
   });
 
   /**

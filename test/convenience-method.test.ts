@@ -1315,9 +1315,7 @@ describe("ConvenienceMethod", () => {
     const clientFile = outputs["src/Generated/TestServiceClient.cs"] ?? "";
 
     // String body uses FromObject directly (scalar type, no constructor wrapping)
-    expect(clientFile).toContain(
-      "BinaryContentHelper.FromObject(text)",
-    );
+    expect(clientFile).toContain("BinaryContentHelper.FromObject(text)");
   });
 
   /**

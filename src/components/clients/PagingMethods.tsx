@@ -95,7 +95,10 @@ export interface PagingMethodsProps {
 export function PagingMethods(props: PagingMethodsProps) {
   const { client } = props;
   const namePolicy = useCSharpNamePolicy();
-  const clientName = namePolicy.getName(getSimpleClientName(client.name), "class");
+  const clientName = namePolicy.getName(
+    getSimpleClientName(client.name),
+    "class",
+  );
   const siblingNames = buildSiblingNameSet(client.methods, (n) =>
     namePolicy.getName(n, "class"),
   );

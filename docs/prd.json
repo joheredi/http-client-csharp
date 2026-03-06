@@ -99,9 +99,7 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": [
-              "src/emitter.tsx"
-            ],
+            "modify": ["src/emitter.tsx"],
             "reference": [
               "src/utils/package-name.ts",
               "src/components/infrastructure/ArgumentFile.tsx",
@@ -127,9 +125,7 @@
               "src/components/clients/ProtocolMethod.tsx",
               "src/components/clients/ConvenienceMethod.tsx"
             ],
-            "reference": [
-              "src/components/HttpClientCSharpOutput.tsx"
-            ]
+            "reference": ["src/components/HttpClientCSharpOutput.tsx"]
           },
           "acceptance_criteria": [
             "special-words spec compiles without syntax errors from reserved keyword parameter names",
@@ -145,12 +141,8 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": [
-              "src/components/clients/ConvenienceMethod.tsx"
-            ],
-            "reference": [
-              "src/components/clients/ProtocolMethod.tsx"
-            ]
+            "modify": ["src/components/clients/ConvenienceMethod.tsx"],
+            "reference": ["src/components/clients/ProtocolMethod.tsx"]
           },
           "acceptance_criteria": [
             "Hyphenated parameter names are converted to valid camelCase C# identifiers in all usage sites",
@@ -166,9 +158,7 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": [
-              "src/components/model-factory/ModelFactoryFile.tsx"
-            ]
+            "modify": ["src/components/model-factory/ModelFactoryFile.tsx"]
           },
           "acceptance_criteria": [
             "Generated ModelFactory files include using System; when System types are used",
@@ -187,9 +177,7 @@
             "modify": [
               "src/components/infrastructure/CodeGenAttributeFiles.tsx"
             ],
-            "reference": [
-              "src/utils/package-name.ts"
-            ]
+            "reference": ["src/utils/package-name.ts"]
           },
           "acceptance_criteria": [
             "Internal helper files using System.Type compile even when namespace contains a Type segment",
@@ -205,12 +193,8 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": [
-              "src/components/clients/ConvenienceMethod.tsx"
-            ],
-            "reference": [
-              "src/components/clients/ProtocolMethod.tsx"
-            ]
+            "modify": ["src/components/clients/ConvenienceMethod.tsx"],
+            "reference": ["src/components/clients/ProtocolMethod.tsx"]
           },
           "acceptance_criteria": [
             "Convenience methods correctly convert CancellationToken to RequestOptions when calling protocol methods",
@@ -225,9 +209,7 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": [
-              "eng/scripts/emit-e2e.ts"
-            ]
+            "modify": ["eng/scripts/emit-e2e.ts"]
           },
           "acceptance_criteria": [
             "Stale output from testignored specs is either cleaned or excluded from project references",
@@ -311,7 +293,7 @@
           "title": "Add namespace collision detection for generated type names",
           "description": "Generated type names collide with system types or namespaces, causing ambiguous reference errors:\n- CS0104: 'Enum' ambiguous between generated _Specs_.Azure.Example.Basic.Enum and System.Enum (azure/example/basic)\n- CS0104: 'Object' ambiguous between generated union Object type and System.Object (type/union/discriminated)\n- CS0104: 'ContinuationToken' ambiguous between generated and System.ClientModel types (payload/pageable)\n- CS0118: 'Type' namespace segment shadows System.Type (type/property/optionality)\n\nThe fix should either: (a) add global:: qualification for system type references when collisions exist, (b) rename generated types that collide with well-known system types, or (c) use explicit namespace aliasing in the generated code.\n\nAffected specs: azure/example/basic, type/union/discriminated, type/property/optionality.\n\nTo reproduce: Remove these specs from test/e2e/.testignore, run pnpm emit:e2e --filter azure/example/basic, then dotnet build.",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [
@@ -364,9 +346,7 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": [
-              "src/components/serialization/PropertyMatchingLoop.tsx"
-            ],
+            "modify": ["src/components/serialization/PropertyMatchingLoop.tsx"],
             "reference": [
               "src/components/serialization/JsonModelCreateCore.tsx"
             ]
@@ -385,12 +365,8 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": [
-              "src/components/models/ModelProperty.tsx"
-            ],
-            "reference": [
-              "src/components/models/ModelFile.tsx"
-            ]
+            "modify": ["src/components/models/ModelProperty.tsx"],
+            "reference": ["src/components/models/ModelFile.tsx"]
           },
           "acceptance_criteria": [
             "Properties named the same as their enclosing class are renamed to avoid CS0542",
@@ -405,9 +381,7 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": [
-              "src/components/models/ModelFile.tsx"
-            ],
+            "modify": ["src/components/models/ModelFile.tsx"],
             "reference": [
               "src/components/infrastructure/ArgumentFile.tsx",
               "src/emitter.tsx"
@@ -427,9 +401,7 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": [
-              "src/components/clients/ConvenienceMethod.tsx"
-            ],
+            "modify": ["src/components/clients/ConvenienceMethod.tsx"],
             "reference": [
               "src/components/clients/ProtocolMethod.tsx",
               "src/components/clients/RestClientFile.tsx"
@@ -449,9 +421,7 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": [
-              "src/components/serialization/PropertySerializer.tsx"
-            ],
+            "modify": ["src/components/serialization/PropertySerializer.tsx"],
             "reference": [
               "src/components/serialization/PropertyMatchingLoop.tsx",
               "src/components/enums/ExtensibleEnumSerializationFile.tsx"
@@ -472,9 +442,7 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": [
-              "src/components/clients/ConvenienceMethod.tsx"
-            ],
+            "modify": ["src/components/clients/ConvenienceMethod.tsx"],
             "reference": [
               "src/components/models/ModelConstructors.tsx",
               "src/components/clients/RestClientFile.tsx"
@@ -542,9 +510,7 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": [
-              "src/emitter.tsx"
-            ],
+            "modify": ["src/emitter.tsx"],
             "reference": [
               "src/utils/namespace-brace-style.ts",
               "src/utils/reorder-header.ts",
@@ -577,9 +543,7 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": [
-              "src/components/clients/RestClientFile.tsx"
-            ],
+            "modify": ["src/components/clients/RestClientFile.tsx"],
             "reference": [
               "temp/e2e/Spector/http/azure/client-generator-core/client-initialization/default/src/Generated/ParamAliasClient.RestClient.cs"
             ]
@@ -622,9 +586,7 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": [
-              "src/components/models/ModelConstructors.tsx"
-            ],
+            "modify": ["src/components/models/ModelConstructors.tsx"],
             "reference": [
               "temp/e2e/Spector/http/azure/client-generator-core/access/src/Generated/Models/OuterModel.cs"
             ]
@@ -644,9 +606,7 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": [
-              "src/emitter.tsx"
-            ],
+            "modify": ["src/emitter.tsx"],
             "reference": [
               "src/components/infrastructure/BinaryContentHelperFile.tsx",
               "temp/e2e/Spector/http/encode/bytes/src/Generated/RequestBody.cs"
@@ -667,9 +627,7 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": [
-              "src/components/clients/RestClientFile.tsx"
-            ],
+            "modify": ["src/components/clients/RestClientFile.tsx"],
             "reference": [
               "temp/e2e/Spector/http/encode/bytes/src/Generated/Header.RestClient.cs",
               "temp/e2e/Spector/http/encode/bytes/src/Generated/Query.RestClient.cs"

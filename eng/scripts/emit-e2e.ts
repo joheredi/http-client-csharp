@@ -360,7 +360,8 @@ const ALIAS_PREFIXES = ["client/structure/", "versioning/", "resiliency/"];
  */
 const ALIAS_OVERRIDES: Record<string, string> = {
   "client/structure/default": "ClientStructureDefault",
-  "client/structure/client-operation-group": "ClientStructureClientOperationGroup",
+  "client/structure/client-operation-group":
+    "ClientStructureClientOperationGroup",
   "versioning/madeOptional/v1": "MadeOptionalV1",
   "versioning/madeOptional/v2": "MadeOptionalV2",
   "versioning/removed/v1": "RemovedV1",

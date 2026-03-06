@@ -154,7 +154,10 @@ function CollectionResultFile(props: CollectionResultFileProps) {
   // Use the immediate client name (not the full hierarchy) to match
   // PagingMethods.tsx naming. Since collection result classes are internal
   // and scoped to the client's own namespace, the parent names are redundant.
-  const clientName = namePolicy.getName(getSimpleClientName(client.name), "class");
+  const clientName = namePolicy.getName(
+    getSimpleClientName(client.name),
+    "class",
+  );
   const siblingNames = buildSiblingNameSet(client.methods, (n) =>
     namePolicy.getName(n, "class"),
   );
@@ -335,7 +338,11 @@ function CollectionResultFile(props: CollectionResultFileProps) {
             responseTypeExpr!,
             continuationTokenPropertyPath!,
           )
-      : buildSinglePageGetRawPagesBody(isAsync, requestMethodName, operationParams);
+      : buildSinglePageGetRawPagesBody(
+          isAsync,
+          requestMethodName,
+          operationParams,
+        );
 
   // Build GetContinuationToken method body.
   // Returns ContinuationToken from next-link URI, continuation token string,

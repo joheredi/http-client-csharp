@@ -64,7 +64,10 @@ import {
   isPropertyNullable,
   unwrapNullableType,
 } from "../../utils/nullable.js";
-import { resolvePropertyName, collectPropertyCSharpNames } from "../../utils/property.js";
+import {
+  resolvePropertyName,
+  collectPropertyCSharpNames,
+} from "../../utils/property.js";
 import { isDynamicModel } from "../models/DynamicModel.js";
 import {
   isBaseDiscriminatorOverride,
@@ -746,7 +749,12 @@ function renderArrayDeserialization(
     );
   } else {
     // Leaf type — use getReadExpression for the item value
-    const itemReadExpr = getReadExpression(itemType, namePolicy, itemVar, enclosingPropertyNames);
+    const itemReadExpr = getReadExpression(
+      itemType,
+      namePolicy,
+      itemVar,
+      enclosingPropertyNames,
+    );
     if (!itemReadExpr) return null;
 
     if (itemNeedsNullCheck(itemType)) {
@@ -986,7 +994,10 @@ export function PropertyMatchingLoop(props: PropertyMatchingLoopProps) {
   // Collect all PascalCase property names from the model hierarchy for CS0120
   // collision detection. Passed to getReadExpression so that model type references
   // that collide with property names are namespace-qualified.
-  const enclosingPropertyNames = collectPropertyCSharpNames(props.type, namePolicy);
+  const enclosingPropertyNames = collectPropertyCSharpNames(
+    props.type,
+    namePolicy,
+  );
 
   return (
     <>
@@ -1052,7 +1063,12 @@ export function PropertyMatchingLoop(props: PropertyMatchingLoopProps) {
         }
 
         // Simple expression-based deserialization for scalar types
-        const readExpr = getReadExpression(p.type, namePolicy, undefined, enclosingPropertyNames);
+        const readExpr = getReadExpression(
+          p.type,
+          namePolicy,
+          undefined,
+          enclosingPropertyNames,
+        );
         if (!readExpr) return null;
 
         return (

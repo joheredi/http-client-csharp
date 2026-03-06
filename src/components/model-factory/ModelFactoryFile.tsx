@@ -76,7 +76,7 @@ export function ModelFactoryFile(props: ModelFactoryFileProps) {
   return (
     <SourceFile
       path={`src/Generated/${factoryClassName}.cs`}
-      using={["System", "System.Collections.Generic", "System.Linq"]}
+      using={["System.Collections.Generic", "System.Linq"]}
     >
       {header}
       {"\n\n"}

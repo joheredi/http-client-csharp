@@ -23,7 +23,10 @@ import {
   isPropertyNullable,
   unwrapNullableType,
 } from "../../utils/nullable.js";
-import { isPropertyReadOnly, resolvePropertyName } from "../../utils/property.js";
+import {
+  isPropertyReadOnly,
+  resolvePropertyName,
+} from "../../utils/property.js";
 import { literalTypeRefkey } from "../../utils/refkey.js";
 import { needsLiteralWrapperStruct } from "../literal-types/collect.js";
 

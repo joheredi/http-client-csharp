@@ -158,8 +158,7 @@ function buildUnknownBaseInitializer(
   //   are C# value types without string constructors, matching legacy emitter)
   const discType = baseModel.discriminatorProperty?.type;
   const isEnumDiscriminator = discType?.kind === "enum";
-  const isFixedEnum =
-    isEnumDiscriminator && (discType as SdkEnumType).isFixed;
+  const isFixedEnum = isEnumDiscriminator && (discType as SdkEnumType).isFixed;
   const enumTypeName =
     isEnumDiscriminator && !isFixedEnum
       ? namePolicy.getName((discType as SdkEnumType).name, "class")

@@ -142,11 +142,6 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
   const extensibleEnums = enums.filter((e) => !e.isFixed);
   const allClients = getAllClients(clients);
 
-  // Collect literal type wrapper structs from model properties.
-  // These are optional/nullable constant-typed properties (excluding bool)
-  // that need readonly struct wrappers similar to extensible enums.
-  const literalTypes = collectLiteralTypes(models);
-
   // Resolve the package name for the generated library
   const packageName = resolvePackageName(sdkContext, options["package-name"]);
 
@@ -169,6 +164,13 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
   // segments to prevent CS0118 errors (e.g., "Parameters.Spread.Model" →
   // "Parameters.Spread._Model" when there is a client class named "Model").
   cleanAllNamespaces(allClients, models, enums);
+
+  // Collect literal type wrapper structs from model properties AFTER namespace
+  // cleaning. These structs capture the declaring model's namespace; collecting
+  // before cleanAllNamespaces() would snapshot the uncleaned namespace (e.g.,
+  // "Type.Property.Optional" instead of "_Type.Property.Optional"), creating a
+  // root-level "Type" namespace that shadows System.Type (CS0118).
+  const literalTypes = collectLiteralTypes(models);
 
   // Re-resolve rootNamespace after cleaning. cleanAllNamespaces mutates client
   // .namespace in place, so resolveRootNamespace now returns the cleaned value.

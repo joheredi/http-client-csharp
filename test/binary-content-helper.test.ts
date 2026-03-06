@@ -35,11 +35,21 @@ describe("BinaryContentHelper infrastructure", () => {
     const filePath = "src/Generated/Internal/BinaryContentHelper.cs";
     const content = outputs[filePath];
     expect(content, `Expected ${filePath} to be generated`).toBeDefined();
-    expect(content).toContain("internal static partial class BinaryContentHelper");
-    expect(content).toContain("public static BinaryContent FromObject(object value)");
-    expect(content).toContain("public static BinaryContent FromEnumerable<T>(IEnumerable<T> enumerable)");
-    expect(content).toContain("public static BinaryContent FromDictionary<T>(IDictionary<string, T> dictionary)");
-    expect(content).toContain("public static BinaryContent FromObject(BinaryData value)");
+    expect(content).toContain(
+      "internal static partial class BinaryContentHelper",
+    );
+    expect(content).toContain(
+      "public static BinaryContent FromObject(object value)",
+    );
+    expect(content).toContain(
+      "public static BinaryContent FromEnumerable<T>(IEnumerable<T> enumerable)",
+    );
+    expect(content).toContain(
+      "public static BinaryContent FromDictionary<T>(IDictionary<string, T> dictionary)",
+    );
+    expect(content).toContain(
+      "public static BinaryContent FromObject(BinaryData value)",
+    );
   });
 
   /**
@@ -61,7 +71,9 @@ describe("BinaryContentHelper infrastructure", () => {
     const filePath = "src/Generated/Internal/Utf8JsonBinaryContent.cs";
     const content = outputs[filePath];
     expect(content, `Expected ${filePath} to be generated`).toBeDefined();
-    expect(content).toContain("internal partial class Utf8JsonBinaryContent : BinaryContent");
+    expect(content).toContain(
+      "internal partial class Utf8JsonBinaryContent : BinaryContent",
+    );
     expect(content).toContain("public Utf8JsonWriter JsonWriter { get; }");
     expect(content).toContain("WriteToAsync");
     expect(content).toContain("TryComputeLength");

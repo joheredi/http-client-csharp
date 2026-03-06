@@ -54,7 +54,10 @@ import {
   isPropertyNullable,
   unwrapNullableType,
 } from "../../utils/nullable.js";
-import { isPropertyReadOnly, resolvePropertyName } from "../../utils/property.js";
+import {
+  isPropertyReadOnly,
+  resolvePropertyName,
+} from "../../utils/property.js";
 import {
   ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME,
   isBaseDiscriminatorOverride,

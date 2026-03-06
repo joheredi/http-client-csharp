@@ -81,7 +81,10 @@ export function ClientOptionsFile(props: ClientOptionsFileProps) {
   const header = getLicenseHeader(options);
   const namePolicy = useCSharpNamePolicy();
 
-  const clientName = namePolicy.getName(getSimpleClientName(client.name), "class");
+  const clientName = namePolicy.getName(
+    getSimpleClientName(client.name),
+    "class",
+  );
   const optionsClassName = `${clientName}Options`;
 
   // Build version member metadata: name, ordinal, and original string value

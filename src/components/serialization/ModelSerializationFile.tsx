@@ -87,9 +87,7 @@ export function getSerializationInterfaces(
   // by modelNeedsSerialization() before reaching this point. If they somehow get
   // here, default to IPersistableModel<T> (the minimal interface) rather than
   // IJsonModel<T> to avoid declaring methods that won't be implemented.
-  return [
-    code`${SystemClientModelPrimitives.IPersistableModel}<${modelName}>`,
-  ];
+  return [code`${SystemClientModelPrimitives.IPersistableModel}<${modelName}>`];
 }
 
 /**

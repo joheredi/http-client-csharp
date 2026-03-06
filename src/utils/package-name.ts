@@ -25,6 +25,37 @@ const INVALID_NAMESPACE_SEGMENTS: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * Well-known .NET BCL type names that cause CS0104 ambiguous reference errors
+ * when a generated type shares the same short name.
+ *
+ * When a generated client, model, or enum has one of these names, unqualified
+ * references to it become ambiguous with the system type brought in by
+ * `using System;` or other implicit imports. Components that generate type
+ * references should use the fully-qualified namespace path for these types
+ * instead of relying on Alloy's short-name + `using` resolution.
+ *
+ * This set covers the types most likely to collide in practice:
+ * - `Object` → `System.Object` (alias `object`)
+ * - `Enum` → `System.Enum`
+ * - `Type` → `System.Type`
+ * - `Array` → `System.Array`
+ * - `File` → `System.IO.File`
+ * - `Action` → `System.Action`
+ * - `Attribute` → `System.Attribute`
+ * - `Exception` → `System.Exception`
+ */
+const SYSTEM_TYPE_NAMES: ReadonlySet<string> = new Set([
+  "Object",
+  "Enum",
+  "Type",
+  "Array",
+  "File",
+  "Action",
+  "Attribute",
+  "Exception",
+]);
+
+/**
  * Converts a raw package name string into a valid C# namespace identifier.
  *
  * The conversion follows the legacy emitter's `getClientNamespaceStringHelper` logic:
@@ -47,6 +78,21 @@ export function toNamespace(name: string): string {
         : segment,
     )
     .join(".");
+}
+
+/**
+ * Checks whether a type name collides with a well-known .NET system type.
+ *
+ * When a generated type (client, model, or enum) has a name matching one of
+ * these system types, unqualified references to it become ambiguous with
+ * the system type (CS0104). Components should use fully-qualified references
+ * for these types instead of relying on short-name + `using` resolution.
+ *
+ * @param name - The type name to check (e.g., "Object", "Enum").
+ * @returns `true` if the name collides with a known system type.
+ */
+export function isSystemTypeNameCollision(name: string): boolean {
+  return SYSTEM_TYPE_NAMES.has(name);
 }
 
 /**

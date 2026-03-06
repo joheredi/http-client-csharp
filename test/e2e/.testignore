@@ -69,12 +69,11 @@ service/multi-service
 client/structure/client-operation-group
 
 # === Namespace / type name collisions ===
-# Generated type names collide with system types or namespaces:
-# CS0104: File, Object, Enum, ContinuationToken ambiguous with System types
-# CS0118: 'Type' namespace collides with System.Type
-# Requires adding namespace qualification or collision detection.
-azure/example/basic
-type/union/discriminated
+# (Partially resolved) Namespace collision detection added in task 12.19.
+# azure/example/basic and type/union/discriminated now compile.
+# type/property/optionality has pre-existing literal type serialization errors
+# (CS0103: _value not found, CS0266/CS1503: type conversion) that are
+# independent of the namespace collision fix.
 type/property/optionality
 
 # === (Resolved) Type mismatch in serialization ===

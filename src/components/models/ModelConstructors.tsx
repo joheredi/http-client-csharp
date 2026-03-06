@@ -837,10 +837,7 @@ function collectSerializationParamDocs(
   namePolicy: ReturnType<typeof useCSharpNamePolicy>,
 ): ParamDocInfo[] {
   if (model.baseModel) {
-    const baseDocs = collectSerializationParamDocs(
-      model.baseModel,
-      namePolicy,
-    );
+    const baseDocs = collectSerializationParamDocs(model.baseModel, namePolicy);
     const ownProps = model.properties.filter(
       (p) => !isBaseDiscriminatorOverride(p),
     );
@@ -979,10 +976,7 @@ function BaseModelConstructors(props: {
     className,
     toParamDocInfos(ctorParamProps, namePolicy, type.name),
     assertableParams.map((p) =>
-      namePolicy.getName(
-        resolvePropertyName(p.name, type.name),
-        "parameter",
-      ),
+      namePolicy.getName(resolvePropertyName(p.name, type.name), "parameter"),
     ),
   );
 
@@ -1171,10 +1165,7 @@ function DerivedModelConstructors(props: {
   const assertableParams = paramsToValidate
     .filter((p) => propertyRequiresNullCheck(p))
     .map((p) =>
-      namePolicy.getName(
-        resolvePropertyName(p.name, type.name),
-        "parameter",
-      ),
+      namePolicy.getName(resolvePropertyName(p.name, type.name), "parameter"),
     );
   const publicCtorDoc = buildConstructorXmlDoc(
     className,

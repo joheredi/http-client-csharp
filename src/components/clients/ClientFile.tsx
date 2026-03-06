@@ -31,6 +31,7 @@ import {
 import { getClientFileName, getSimpleClientName } from "../../utils/clients.js";
 import { formatDocLines } from "../../utils/doc.js";
 import { getLicenseHeader } from "../../utils/header.js";
+import { isSystemTypeNameCollision } from "../../utils/package-name.js";
 import { OverloadConstructor } from "../models/ModelConstructors.js";
 import { clientNeedsLinq, ConvenienceMethods } from "./ConvenienceMethod.js";
 import { PagingMethods } from "./PagingMethods.js";
@@ -113,7 +114,10 @@ export function ClientFile(props: ClientFileProps) {
   const { client, options } = props;
   const header = getLicenseHeader(options);
   const namePolicy = useCSharpNamePolicy();
-  const className = namePolicy.getName(getSimpleClientName(client.name), "class");
+  const className = namePolicy.getName(
+    getSimpleClientName(client.name),
+    "class",
+  );
   const fileName = getClientFileName(client, (name) =>
     namePolicy.getName(name, "class"),
   );
@@ -229,14 +233,17 @@ export function ClientFile(props: ClientFileProps) {
           ))}
           {children.map((child) => {
             const childName = namePolicy.getName(child.name, "class");
+            // Use fully-qualified type reference when the sub-client name
+            // collides with a .NET system type (e.g., "Object" → CS0104 with
+            // System.Object). The FQN bypasses Alloy's short-name resolution,
+            // which would add a `using` that makes the name ambiguous.
+            const childType = isSystemTypeNameCollision(child.name)
+              ? `${child.namespace}.${childName}`
+              : refkey(child);
             return (
               <>
                 {"\n"}
-                <Field
-                  private
-                  name={`cached${childName}`}
-                  type={refkey(child)}
-                />
+                <Field private name={`cached${childName}`} type={childType} />
               </>
             );
           })}
@@ -703,7 +710,11 @@ function SubClientFactoryMethods(props: SubClientFactoryMethodsProps) {
           ? `Get${childName}`
           : `Get${childName}Client`;
         const cachedFieldName = `_cached${childName}`;
-        const childRef = refkey(child);
+        // Use fully-qualified type reference when the sub-client name
+        // collides with a .NET system type (e.g., "Object" → CS0104).
+        const childRef = isSystemTypeNameCollision(child.name)
+          ? `${child.namespace}.${childName}`
+          : refkey(child);
 
         return (
           <>

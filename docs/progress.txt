@@ -4826,3 +4826,24 @@ Fixed 6 distinct compilation errors across 7 specs (out of 8 listed in the task)
 - The `routes` spec still has errors (separate root cause — route parameter expansion for complex types). Tracked in new task 12.28.
 - The `isPropertyReadOnly` function from utils/property.ts is key for determining collection interface variant.
 - Deserialization variable types must match constructor param types — both now use the same rendering path for collections.
+
+## 2026-03-06 — Task 12.19: Add namespace collision detection for generated type names
+
+### What was done
+Fixed three types of namespace/type name collision errors affecting azure/example/basic, type/union/discriminated, and type/property/optionality specs.
+
+### Root causes and fixes
+1. **Literal type namespace bug (CS0118 Type)**: `collectLiteralTypes()` in emitter.tsx was called BEFORE `cleanAllNamespaces()`, so literal type wrapper structs captured uncleaned namespaces (e.g., `Type.Property.Optional` instead of `_Type.Property.Optional`). Fix: moved the call AFTER namespace cleaning.
+
+2. **ModelFactory using System collision (CS0104 Enum)**: `ModelFactoryFile.tsx` explicitly added `using System;` via the SourceFile `using` prop, even though Alloy adds it automatically when needed via refkey resolution. This brought `System.Enum` into scope unnecessarily, colliding with generated `Enum` structs. Fix: removed `"System"` from explicit using list.
+
+3. **Sub-client Object collision (CS0104 Object)**: Sub-client named "Object" was referenced via `refkey(child)` in ClientFile, rendering as short name `Object` which collides with `System.Object`. Fix: added `isSystemTypeNameCollision()` utility that detects well-known BCL type names; ClientFile now uses fully-qualified namespace paths for colliding sub-client references.
+
+### Key patterns
+- `isSystemTypeNameCollision()` in `src/utils/package-name.ts` — checks type names against a set of known .NET BCL types
+- FQN approach bypasses Alloy's short-name + `using` resolution to avoid ambiguity
+- Literal type collection must happen AFTER namespace cleaning to capture cleaned namespaces
+
+### Note for next iterations
+- `type/property/optionality` has pre-existing literal type serialization errors (CS0103 _value, CS0266/CS1503 type conversion) unrelated to namespace collisions. These were masked by the CS0118 error.
+- The `"System"` removal from ModelFactory works because Alloy adds `using System;` automatically when types from the System namespace are referenced via refkeys.

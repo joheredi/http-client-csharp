@@ -2868,17 +2868,22 @@ using directive won't match the actual namespace.
 ## Design Decisions
 
 ### Spread body constructor arg ordering (Task 12.26)
+
 **Chosen**: Recover model property order by re-sorting filtered body params by original insertion `index` after the priority sort. This is computed in `buildConvenienceParams` and returned as `spreadBodyParamsInOrder`.
 **Rejected**: (a) Name-matching against `spreadBodyType.properties` — fragile due to naming policy transformations. (b) Adding `modelPropertyIndex` field to `ConvenienceParam` — pollutes the interface with spread-only metadata.
 
 ## DateTimeOffset nullable formatting (2026-03-05)
+
 **Gotcha**: `DateTimeOffset?.ToString("O")` causes CS1501 because `Nullable<T>` only has `ToString()` (no format overload). Always use `TypeFormatters.ConvertToString(value, SerializationFormat.DateTime_RFC3339)` for DateTimeOffset parameters in CreateRequest methods, which handles nullable via boxing and pattern matching.
 
 ## CreateRequest method name deduplication (2026-03-05)
+
 **Gotcha**: When two operations map to the same C# name (via `@clientName`), `<Method name={stringName}>` triggers Alloy's name dedup (`_2` suffix). Use `namekey(name, { ignoreNameConflict: true })` since C# method overloading handles same-name methods with different parameter signatures. Protocol methods reference CreateRequest by string interpolation and can't track Alloy's dedup.
 
 ## Design Decisions
+
 ### DateTime parameter formatting (2026-03-05)
+
 **Chosen**: `TypeFormatters.ConvertToString(name, SerializationFormat.DateTime_RFC3339)` for all datetime params.
 **Why**: Matches legacy emitter pattern; handles both nullable and non-nullable; works inside null-check guards where C# doesn't narrow `T?` to `T`.
 **Rejected**: `name.Value.ToString("O")` — requires conditional logic based on optionality; `.Value` would throw if called outside null guard.
@@ -2895,21 +2900,46 @@ using directive won't match the actual namespace.
 ## Design Decisions — Task 12.20
 
 ### Model factory additionalBinaryDataProperties position
+
 **Approach chosen**: Walk to root model to find property count for `additionalBinaryDataProperties` insertion position.
 **Why**: In the serialization constructor, `additionalBinaryDataProperties` always appears after the ROOT model's own properties, regardless of inheritance depth. Using the immediate parent's total property count (previous approach) misplaced the null argument for 3+ level hierarchies.
 **Rejected**: Computing position from the parent model's property count — this only works for 2-level hierarchies.
 
 ### Fixed vs extensible enum discriminator in Unknown variants
+
 **Approach chosen**: Three-way dispatch based on discriminator type:
+
 - Fixed enum (`isFixed=true`): pass through as-is (no guard)
 - Extensible enum: `kind != default ? kind : new EnumType("unknown")`
 - String: `kind ?? "unknown"`
-**Why**: Fixed C# enums are `enum` types without string constructors. Extensible enums are structs with `new EnumType(string)` constructors. The legacy emitter passes fixed enum discriminators through without a guard.
+  **Why**: Fixed C# enums are `enum` types without string constructors. Extensible enums are structs with `new EnumType(string)` constructors. The legacy emitter passes fixed enum discriminators through without a guard.
 
 ### Deserialization variable types for collections
+
 **Approach chosen**: Use `renderCollectionPropertyType(type, isPropertyReadOnly(p))` for deserialization variable declarations, matching constructor parameter types.
 **Why**: Variables must be assignable TO the constructor parameter type. Using raw `TypeExpression` produced `IDictionary` for all dicts, but read-only constructors expect `IReadOnlyDictionary`. The concrete `Dictionary` (from the matching loop) is assignable to both `IList`/`IReadOnlyList` and `IDictionary`/`IReadOnlyDictionary`.
 
 ### Scalar spread body handling
+
 **Approach chosen**: Early return in `buildSpreadProtocolCallExpr` for non-model types, using `BinaryContentHelper.FromObject(value)` directly.
 **Why**: Primitives (bool, decimal, string) don't have constructors like `new bool(value)`. The `new Type(value)` pattern only applies to model types with serialization constructors.
+
+## Literal Type Namespace Ordering (Task 12.19)
+
+**Gotcha**: `collectLiteralTypes()` captures `model.namespace` by value. If called before `cleanAllNamespaces()`, the literal types get uncleaned namespaces while models get cleaned ones, causing namespace mismatches and CS0118 errors.
+
+**Rule**: Always collect literal types AFTER `cleanAllNamespaces()` in emitter.tsx.
+
+## ModelFactory Using Statement (Task 12.19)
+
+**Gotcha**: The ModelFactory SourceFile had `using={["System", ...]}` explicitly, but Alloy adds `using System;` automatically when needed via refkey resolution. The explicit `"System"` caused unnecessary `using System;` in files that don't reference System types, triggering CS0104 collisions with generated types named "Enum", "Object", etc.
+
+**Rule**: Don't explicitly add `"System"` to SourceFile using props unless there are raw string references to System types that Alloy can't track.
+
+## Design Decisions
+
+### Task 12.19: Namespace collision approach
+
+**Chosen**: Hybrid — (a) remove unnecessary using statements + (c) use FQN for colliding references via `isSystemTypeNameCollision()`.
+**Rejected**: (b) Rename generated types with `_` prefix — changes public API surface unnecessarily.
+**Rejected**: Alloy modification — rule 999 prohibits changes in submodules.
