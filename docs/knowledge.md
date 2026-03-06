@@ -3316,3 +3316,219 @@ TCGC produces `SdkUnionType` with `kind === "union"` for multi-type unions (Cat 
 4. **`CSHARP_REFERENCE_TYPE_KINDS`** in property.ts — must include "union" since BinaryData is a reference type
 
 If any of these are missing, union-typed properties are silently skipped (they fall through to `return null` and get treated as additional binary data properties only).
+
+---
+
+## Azure & ARM Code Generation Architecture (Phase 16–19 Research)
+
+This section documents the architecture of the Azure and ARM code generation packages in the `azure-sdk-for-net` submodule. These are the reference implementations that the new Alloy emitter needs to replicate via the `flavor: "azure"` option.
+
+### Extension Hierarchy
+
+The Azure SDK code generation is a layered stack. Each layer wraps and extends the one below:
+
+```
+@typespec/http-client-csharp (base)
+  TypeScript emitter: $onMTGEmit() → JSON code model
+  C# generator: ScmCodeModelGenerator → System.ClientModel output
+      ↑
+@azure-typespec/http-client-csharp (Azure data plane)
+  TypeScript emitter: $onEmit() wraps $onMTGEmit(), adds Azure options
+  C# generator: AzureClientGenerator extends ScmCodeModelGenerator
+  Adds: 11 visitors, Azure type factory, Azure providers
+      ↑
+@azure-typespec/http-client-csharp-mgmt (Azure management/ARM)
+  TypeScript emitter: $onEmit() wraps Azure $onAzureEmit(), adds resource detection
+  C# generator: ManagementClientGenerator extends AzureClientGenerator
+  Adds: 10 visitors, management type factory, resource providers
+```
+
+Each TypeScript emitter wraps the parent's `$onEmit` function and injects additional options before delegating. Each C# generator extends the parent and registers additional visitors.
+
+### Azure Data Plane — Key Components
+
+#### Emitter (TypeScript side)
+**Location:** `submodules/azure-sdk-for-net/eng/packages/http-client-csharp/emitter/src/emitter.ts`
+
+The Azure emitter wraps the base emitter and adds:
+- Default options: `generator-name`, `emitter-extension-path`, `license`, `package-name`
+- Additional decorator: `@useSystemTextJsonConverter` (injected into all compilations)
+- `model-namespace` validation (models in `.Models` sub-namespace)
+- `generateMetadataFile()` — writes `metadata.json` with API version mapping from `@versioned` decorator
+
+#### Generator (C# side)
+**Location:** `submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/`
+
+**AzureClientGenerator** registers 11 visitors in this order:
+1. `ModelFactoryRenamerVisitor` — Renames model factory classes
+2. `NamespaceVisitor` — Moves models to `.Models` sub-namespace
+3. `DistributedTracingVisitor` — Adds `ClientDiagnostics` + diagnostic scopes to all methods
+4. `PipelinePropertyVisitor` — Makes `HttpPipeline` property virtual
+5. `LroVisitor` — Transforms LRO methods to return `Operation<T>`
+6. `MatchConditionsHeadersVisitor` — Adds ETag/If-Match/If-None-Match header support
+7. `ClientRequestIdHeaderVisitor` — Adds `x-ms-client-request-id` to all requests
+8. `SystemTextJsonConverterVisitor` — Adds `[JsonConverter]` attributes to models
+9. `MultiPartFormDataVisitor` — Azure multipart handling
+10. `InvokeDelimitedMethodVisitor` — Delimited parameter invocation
+11. `XmlSerializableVisitor` — Azure XML serialization patterns
+
+**AzureTypeFactory** maps provider instances (replacing System.ClientModel equivalents):
+```
+System.ClientModel type         → Azure.Core equivalent
+─────────────────────────────────────────────────────────
+ClientPipeline                  → HttpPipeline (Azure.Core.Pipeline)
+PipelineMessage                 → HttpMessage
+PipelineRequest                 → Request
+PipelineResponse                → Response
+ClientResult<T>                 → Response<T>
+ClientResultException           → RequestFailedException
+RequestOptions                  → RequestContext
+BinaryContent                   → RequestContent
+PipelineMessageClassifier       → ResponseClassifier
+```
+
+**AzureTypeFactory** also maps Azure.Core scalar types:
+```
+TypeSpec type                   → C# type
+─────────────────────────────────────────
+Azure.Core.azureLocation        → Azure.AzureLocation
+Azure.Core.armResourceIdentifier → Azure.Core.ResourceIdentifier
+Azure.Core.eTag                 → Azure.ETag
+Azure.ResponseError             → Azure.ResponseError
+Azure.Core.ipV4Address          → System.Net.IPAddress
+Azure.Core.ipV6Address          → System.Net.IPAddress
+Azure.Core.uuid                 → string
+```
+
+**Providers** (5 files in `Providers/`):
+- `AzureCollectionResultDefinition` — Azure-specific collection/list result
+- `ClientBuilderExtensionsDefinition` — Client builder extensions
+- `RawRequestUriBuilderExtensionsDefinition` — URI builder extensions
+- `RequestContextExtensionsDefinition` — RequestContext extensions
+- `RequestHeaderExtensionsDefinition` — Header handling extensions
+
+#### Test Structure
+
+The Azure Spector.Tests project has 27 Azure-specific test `.cs` files under `Http/Azure/`:
+- `Azure/Core/Basic` — Basic Azure client operations
+- `Azure/Core/Lro/Standard` and `Azure/Core/Lro/Rpc` — LRO patterns
+- `Azure/Core/Model` — Azure model handling
+- `Azure/Core/Page` — Paging with Azure types
+- `Azure/Core/Scalar` — Azure scalar types
+- `Azure/Core/Traits` — Azure traits
+- `Azure/ClientGeneratorCore/*` (14 files) — TCGC features (access, API version, client initialization, client location, hierarchy building, override, usage)
+- `Azure/Encode/Duration` — Duration encoding
+- `Azure/Example/Basic` — Example generation
+- `Azure/Payload/Pageable` — Azure pageable payloads
+- `Azure/SpecialHeaders/ClientRequestId` — x-ms-client-request-id
+- `Azure/Versioning/PreviewVersion/V1` and `V2` — Preview version handling
+
+The Azure .csproj also references `Azure.Core` NuGet and links 10 shared source files from `sdk/core/Azure.Core/src/Shared/`:
+- `AzureKeyCredentialPolicy.cs`, `RawRequestUriBuilder.cs`, `AppContextSwitchHelper.cs`
+- `ClientDiagnostics.cs`, `DiagnosticScopeFactory.cs`, `DiagnosticScope.cs`
+- `HttpMessageSanitizer.cs`, `TypeFormatters.cs`, `RequestHeaderExtensions.cs`
+- `ProcessTracker.cs` (from `Azure.Core.TestFramework`)
+
+### Azure Management (ARM) — Key Components
+
+#### Emitter (TypeScript side)
+**Location:** `submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/emitter/src/`
+
+The mgmt emitter wraps the Azure emitter and adds three transformations via `updateCodeModel()`:
+1. `transformSubscriptionIdParameters()` — Moves subscriptionId from client constructor to method parameters
+2. `updateClients()` — Applies ARM resource detection and schema
+3. `setFlattenProperty()` — Propagates `@flatten` decorator metadata
+
+**Resource Detection** (`resource-detection.ts`, 995 lines):
+This is the core ARM feature. It analyzes operation URL paths to identify ARM resources:
+
+Path pattern: `/subscriptions/{id}/resourceGroups/{rg}/providers/Microsoft.Foo/bars/{barName}`
+- Extracts: resource type = `Microsoft.Foo/bars`
+- Determines: scope = `ResourceGroup`
+- Classifies operations: Create, Read, Update, Delete, List, Action
+
+Two detection modes:
+- **Legacy** (`use-legacy-resource-detection=true`): Custom `buildArmProviderSchema()` function
+- **New** (`use-legacy-resource-detection=false`): Uses `resolveArmResources()` from `@azure-tools/typespec-azure-resource-manager`
+
+**Resource Metadata** (`resource-metadata.ts`, 585 lines):
+Key data structures:
+```typescript
+interface ResourceMetadata {
+  resourceIdPattern: string;       // /subscriptions/{id}/resourceGroups/{rg}/...
+  resourceType: string;            // Microsoft.Foo/bars
+  methods: ResourceMethod[];       // CRUD operations
+  resourceScope: ResourceScope;    // Tenant|Subscription|ResourceGroup|ManagementGroup|Extension
+  parentResourceId?: string;       // For child resources
+  singletonResourceName?: string;  // For singletons
+}
+
+enum ResourceScope { Tenant, Subscription, ResourceGroup, ManagementGroup, Extension }
+enum ResourceOperationKind { Action, Create, Delete, Read, List, Update }
+```
+
+**Options** (`options.ts`):
+```typescript
+interface AzureMgmtEmitterOptions extends AzureEmitterOptions {
+  "enable-wire-path-attribute"?: boolean;       // default: false
+  "use-legacy-resource-detection"?: boolean;    // default: true
+}
+```
+
+#### Generator (C# side)
+**Location:** `submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/Azure.Generator.Management/src/`
+
+**ManagementClientGenerator** registers 10 visitors (order matters):
+1. `NameVisitor` — ARM naming conventions
+2. `SerializationVisitor` — ARM serialization patterns
+3. `RestClientVisitor` — REST client generation
+4. `ResourceVisitor` — Resource-specific code
+5. `InheritableSystemObjectModelVisitor` — System.Object inheritance
+6. `FlattenPropertyVisitor` — Property flattening (46KB, largest visitor)
+7. `TypeFilterVisitor` — Filter unreferenced types
+8. `PaginationVisitor` — ARM pagination support
+9. `ModelFactoryVisitor` — Model factory generation
+10. `WirePathVisitor` — (optional, gated by `enable-wire-path-attribute`)
+
+**Provider System** (17 files generating specific code):
+- `ResourceClientProvider` — Client class per resource (CRUD methods)
+- `ResourceCollectionClientProvider` — Collection-level operations (List, CreateOrUpdate)
+- `MockableResourceProvider` — Mockable wrapper for testing
+- `MockableArmClientProvider` — Mockable ARM client extension
+- `ManagementLongRunningOperationProvider` — ARM LRO polling
+- `ExtensionProvider` — Extension methods for resources
+- `OperationSourceProvider` — Operation result extraction
+- `PageableWrapperProvider` — Pagination wrapper
+- `ResourceSerializationProvider` — JSON serialization helpers
+- `TagMethodProviders/*` (5 files) — Tag resource operations (SetTags, RemoveTags, ReplaceTags)
+
+**FlattenPropertyVisitor** (46KB) — The most complex visitor:
+- Detects `@flatten` decorator on model properties
+- Promotes nested property members up to the parent model
+- Adjusts serialization to preserve wire-format compatibility
+- Handles multiple levels of nested flattening
+- Resolves naming conflicts from promoted properties
+
+#### Test Structure
+
+The mgmt package uses Local test projects (not Spector) with 31 TypeSpec test files:
+- Resource type tests: `foo.tsp`, `bar.tsp`, `baz.tsp`, `zoo.tsp`, `joo.tsp`
+- Feature-specific: `flatten-with-customized-property.tsp`, `extensionresources.tsp`, `singleton.tsp`
+- Real-world examples: `redisenterprise.tsp`, `hcivm.tsp`, `chaos.tsp`, `networkaction.tsp`
+- Scope tests: `quota.tsp` (subscription-level), `scheduledaction.tsp` (action-based)
+
+Config: `tspconfig.yaml` emits `@azure-typespec/http-client-csharp-mgmt` with `namespace: Azure.Generator.MgmtTypeSpec.Tests`.
+
+### Implications for the New Emitter
+
+The new Alloy emitter must replicate these patterns using JSX components rather than the visitor pattern. Key architectural decisions:
+
+1. **Flavor-gated components**: Rather than visitors that transform a code model tree, the emitter should render different components based on `flavor`. For example, an `AzureClientClass` component that renders `HttpPipeline` instead of `ClientPipeline`.
+
+2. **Type mappings are conditionally applied**: The Azure type factory pattern maps to conditional logic in `CSharpTypeExpression.tsx` or dedicated Azure builtin libraries that are only active when `flavor: "azure"`.
+
+3. **The visitor sequence implies rendering order constraints**: The C# generator applies visitors sequentially (e.g., NameVisitor before ResourceVisitor). In the JSX model, these constraints translate to how components compose — outer components control namespace/naming, inner components emit the actual code.
+
+4. **Resource detection is emitter-side logic**: Unlike the C# visitors that run in the generator, resource detection runs in the TypeScript emitter before code generation. This logic can be ported directly to the new emitter as a utility function.
+
+5. **Shared source files in tests**: The Azure test projects link source files from `azure-sdk-for-net/sdk/core/Azure.Core/src/Shared/`. The new emitter's test project needs these same files linked to compile Azure test infrastructure.

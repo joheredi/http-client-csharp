@@ -10,3 +10,6 @@
 [submodule "submodules/typespec-azure"]
 	path = submodules/typespec-azure
 	url = git@github.com:Azure/typespec-azure.git
+[submodule "submodules/azure-sdk-for-net"]
+	path = submodules/azure-sdk-for-net
+	url = git@github.com:azure/azure-sdk-for-net.git
