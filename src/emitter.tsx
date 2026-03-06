@@ -231,6 +231,11 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
         packageName={rootNamespace}
         options={options}
         hasDynamicModels={models.some((m) => isDynamicModel(m))}
+        needsXmlSerialization={models.some((m) =>
+          m.properties.some(
+            (p) => p.kind === "property" && p.serializationOptions?.xml,
+          ),
+        )}
       />
       <ClientPipelineExtensionsFile
         packageName={rootNamespace}

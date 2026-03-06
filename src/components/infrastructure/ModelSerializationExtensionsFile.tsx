@@ -1,7 +1,8 @@
 import { Namespace, SourceFile } from "@alloy-js/csharp";
-import { code } from "@alloy-js/core";
+import { code, type Refkey } from "@alloy-js/core";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
+import { modelReaderWriterContextRefkey } from "../../utils/refkey.js";
 
 /**
  * Props for the {@link ModelSerializationExtensionsFile} component.
@@ -13,6 +14,8 @@ export interface ModelSerializationExtensionsFileProps {
   options: ResolvedCSharpEmitterOptions;
   /** Whether any dynamic (JSON Merge Patch) models exist, requiring patch-related extension methods. */
   hasDynamicModels?: boolean;
+  /** Whether any model uses XML serialization, requiring XML-specific fields and extension methods. */
+  needsXmlSerialization?: boolean;
 }
 
 /**
@@ -30,6 +33,113 @@ export interface ModelSerializationExtensionsFileProps {
  * The generated class matches the legacy emitter's output:
  * `src/Generated/Internal/ModelSerializationExtensions.cs`.
  */
+
+/**
+ * Generates XML serialization infrastructure in a partial class declaration.
+ *
+ * Adds the following when the project contains XML-serializable models:
+ * - `XmlWriterSettings` — internal static field with UTF-8 encoding (no BOM)
+ * - `XmlReaderSettings` — private static field with strict security settings
+ * - `XElement` extension methods — `GetDateTimeOffset`, `GetTimeSpan`, `GetBytesFromBase64`
+ *   for reading typed values from XML elements during deserialization
+ * - `XmlWriter` extension methods — `WriteStringValue` (DateTimeOffset, TimeSpan),
+ *   `WriteBase64StringValue` for writing formatted values during serialization
+ * - `WriteObjectValue<T>` for `XmlWriter` — serializes an `IPersistableModel<T>` by
+ *   round-tripping through `ModelReaderWriter.Write()` and piping the XML content
+ *   via `XmlReader` into the target `XmlWriter`, with optional `nameHint` wrapping
+ *
+ * These methods are only generated when `needsXmlSerialization` is true.
+ *
+ * @param contextKey - Refkey to the project's `ModelReaderWriterContext` subclass,
+ *   used in `ModelReaderWriter.Write()` calls (e.g., `PayloadXmlContext.Default`).
+ */
+function xmlExtensionMethods(contextKey: Refkey) {
+  return code`
+    internal static partial class ModelSerializationExtensions
+    {
+        internal static readonly XmlWriterSettings XmlWriterSettings = new XmlWriterSettings
+        {
+            Encoding = new UTF8Encoding(false)
+        };
+        private static readonly XmlReaderSettings XmlReaderSettings = new XmlReaderSettings
+        {
+            DtdProcessing = DtdProcessing.Prohibit,
+            XmlResolver = null,
+            MaxCharactersInDocument = 30000000,
+            IgnoreProcessingInstructions = true,
+            IgnoreComments = true
+        };
+
+        public static DateTimeOffset GetDateTimeOffset(this XElement element, string format) => format switch
+        {
+            "U" => DateTimeOffset.FromUnixTimeSeconds((long)element),
+            _ => TypeFormatters.ParseDateTimeOffset(element.Value, format)
+        };
+
+        public static TimeSpan GetTimeSpan(this XElement element, string format) => TypeFormatters.ParseTimeSpan(element.Value, format);
+
+        public static byte[] GetBytesFromBase64(this XElement element, string format) => format switch
+        {
+            "U" => TypeFormatters.FromBase64UrlString(element.Value),
+            "D" => Convert.FromBase64String(element.Value),
+            _ => throw new ArgumentException("Format is not supported: ", nameof(format))
+        };
+
+        public static void WriteStringValue(this XmlWriter writer, DateTimeOffset value, string format)
+        {
+            writer.WriteValue(TypeFormatters.ToString(value, format));
+        }
+
+        public static void WriteStringValue(this XmlWriter writer, TimeSpan value, string format)
+        {
+            writer.WriteValue(TypeFormatters.ToString(value, format));
+        }
+
+        public static void WriteBase64StringValue(this XmlWriter writer, byte[] value, string format)
+        {
+            writer.WriteValue(TypeFormatters.ToString(value, format));
+        }
+
+        public static void WriteObjectValue<T>(this XmlWriter writer, T value, ModelReaderWriterOptions options = null, string nameHint = null)
+        {
+            switch (value)
+            {
+                case IPersistableModel<T> persistableModel:
+                    BinaryData data = ModelReaderWriter.Write(persistableModel, options ?? WireOptions, ${contextKey}.Default);
+                    using (Stream stream = data.ToStream())
+                    {
+                        using (XmlReader reader = XmlReader.Create(stream, XmlReaderSettings))
+                        {
+                            reader.MoveToContent();
+                            if (nameHint != null)
+                            {
+                                writer.WriteStartElement(nameHint);
+                                reader.ReadStartElement();
+                                while (reader.NodeType != XmlNodeType.EndElement)
+                                {
+                                    writer.WriteNode(reader, true);
+                                }
+                                writer.WriteEndElement();
+                            }
+                            else
+                            {
+                                reader.ReadStartElement();
+                                while (reader.NodeType != XmlNodeType.EndElement)
+                                {
+                                    writer.WriteNode(reader, true);
+                                }
+                            }
+                        }
+                    }
+                    return;
+                default:
+                    throw new NotSupportedException($"Not supported type {typeof(T)}");
+            }
+        }
+    }
+  `;
+}
+
 /**
  * Generates extension methods required by dynamic (JSON Merge Patch) model
  * propagators and patch deserialization:
@@ -152,10 +262,17 @@ export function ModelSerializationExtensionsFile(
     ? ["System.Buffers.Text", "System.Text"]
     : [];
 
+  const xmlUsings = props.needsXmlSerialization
+    ? ["System.IO", "System.Text", "System.Xml", "System.Xml.Linq"]
+    : [];
+
+  // Deduplicate usings (System.Text may appear in both dynamic and XML sets)
+  const allUsings = [...new Set([...baseUsings, ...dynamicUsings, ...xmlUsings])].sort();
+
   return (
     <SourceFile
       path="src/Generated/Internal/ModelSerializationExtensions.cs"
-      using={[...baseUsings, ...dynamicUsings].sort()}
+      using={allUsings}
     >
       {header}
       {"\n\n"}
@@ -404,6 +521,7 @@ export function ModelSerializationExtensionsFile(
           }
         `}
         {props.hasDynamicModels && dynamicModelExtensionMethods()}
+        {props.needsXmlSerialization && xmlExtensionMethods(modelReaderWriterContextRefkey())}
       </Namespace>
     </SourceFile>
   );

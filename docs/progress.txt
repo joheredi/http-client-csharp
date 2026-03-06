@@ -4847,3 +4847,30 @@ Fixed three types of namespace/type name collision errors affecting azure/exampl
 ### Note for next iterations
 - `type/property/optionality` has pre-existing literal type serialization errors (CS0103 _value, CS0266/CS1503 type conversion) unrelated to namespace collisions. These were masked by the CS0118 error.
 - The `"System"` removal from ModelFactory works because Alloy adds `using System;` automatically when types from the System namespace are referenced via refkeys.
+
+## 2026-03-06 — Task 12.27: Complete XML serialization infrastructure (done)
+
+### What was done
+Added XML-specific fields and extension methods to `ModelSerializationExtensionsFile.tsx`, conditionally rendered when `needsXmlSerialization` is true:
+
+1. **Static fields**: `XmlWriterSettings` (internal, UTF-8 encoding no BOM) and `XmlReaderSettings` (private, strict security settings)
+2. **XElement extension methods**: `GetDateTimeOffset`, `GetTimeSpan`, `GetBytesFromBase64` — for reading typed values during XML deserialization
+3. **XmlWriter extension methods**: `WriteStringValue` (DateTimeOffset, TimeSpan), `WriteBase64StringValue` — for writing formatted values during serialization
+4. **`WriteObjectValue<T>` for XmlWriter** — serializes `IPersistableModel<T>` via `ModelReaderWriter.Write()` round-trip, piping XML through XmlReader with optional `nameHint` wrapping
+5. **Using directives**: System.IO, System.Text, System.Xml, System.Xml.Linq added conditionally
+
+### Key patterns
+- XML methods use same partial-class pattern as dynamic model methods (separate `internal static partial class` block)
+- `modelReaderWriterContextRefkey()` used in `code` template for context class reference (`PayloadXmlContext.Default`)
+- `needsXmlSerialization` prop threaded from `emitter.tsx` using same detection as `HttpClientCSharpOutput.tsx`
+- Using directive deduplication with Set (System.Text may appear in both dynamic + XML sets)
+
+### Files changed
+- `src/components/infrastructure/ModelSerializationExtensionsFile.tsx` — added XML fields and methods
+- `src/emitter.tsx` — pass `needsXmlSerialization` prop
+- `test/infrastructure-helpers.test.ts` — 7 new XML tests
+- `test/e2e/.testignore` — removed payload/xml (now compiles)
+
+### Gotchas
+- `IntegrationTester.compileAndDiagnose()` requires explicit `using TypeSpec.Http;` in test TypeSpec to resolve `@route` decorator (importLibraries doesn't auto-import for IntegrationTester)
+- payload/xml produces only warnings (CS1591 missing XML comments on model factory), zero errors

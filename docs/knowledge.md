@@ -2943,3 +2943,12 @@ using directive won't match the actual namespace.
 **Chosen**: Hybrid — (a) remove unnecessary using statements + (c) use FQN for colliding references via `isSystemTypeNameCollision()`.
 **Rejected**: (b) Rename generated types with `_` prefix — changes public API surface unnecessarily.
 **Rejected**: Alloy modification — rule 999 prohibits changes in submodules.
+
+### IntegrationTester requires explicit using statements
+- `IntegrationTester.compileAndDiagnose()` does NOT auto-import `using TypeSpec.Http;` even though `importLibraries()` is called. Tests using `@route` or other HTTP decorators must include `using TypeSpec.Http;` explicitly in the TypeSpec test code. This differs from `HttpTester` which handles it automatically.
+
+### XML extension methods use partial class pattern
+- XML fields (XmlWriterSettings, XmlReaderSettings) and extension methods are rendered as a separate `internal static partial class ModelSerializationExtensions` block, following the same pattern as `dynamicModelExtensionMethods()`. C# merges all partial class members.
+
+### Using directive deduplication
+- When both `hasDynamicModels` and `needsXmlSerialization` are true, `System.Text` appears in both using sets. Use `new Set()` to deduplicate before sorting.

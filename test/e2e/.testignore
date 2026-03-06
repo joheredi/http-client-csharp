@@ -47,12 +47,6 @@ payload/multipart
 type/file
 azure/client-generator-core/override
 
-# === XML serialization specs ===
-# XML serialization has missing extension methods (CS0117: XmlWriterSettings,
-# CS1929: WriteObjectValue) and type mismatches (CS0029: List vs array).
-# Requires completing XML serialization infrastructure.
-payload/xml
-
 # === Remaining issues (using directives fixed, other errors remain) ===
 # type/property/nullable: CS7036 (missing options param in DeserializeXxx calls),
 # CS0029 (ChangeTrackingList to array conversion). No more CS0246 using errors.

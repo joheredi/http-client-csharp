@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HttpTester, Tester } from "./test-host.js";
+import { HttpTester, IntegrationTester, Tester } from "./test-host.js";
 
 /**
  * Tests for the internal infrastructure helper files.
@@ -1478,6 +1478,168 @@ describe("ModelSerializationExtensionsFile", () => {
     const content =
       outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
     expect(content).toContain("namespace MySerializationLib");
+  });
+});
+
+/**
+ * Tests for XML extension methods in ModelSerializationExtensionsFile.
+ *
+ * When models use XML serialization (detected via `serializationOptions.xml`
+ * on model properties), the emitter must generate additional XML-specific
+ * infrastructure in ModelSerializationExtensions.cs:
+ *
+ * - XmlWriterSettings / XmlReaderSettings static fields
+ * - XElement extension methods for reading typed values during deserialization
+ * - XmlWriter extension methods for writing formatted values during serialization
+ * - WriteObjectValue<T> overload for XmlWriter (IPersistableModel round-trip)
+ *
+ * Without these, dotnet build fails with CS0117 (XmlWriterSettings not found)
+ * and CS1929 (WriteObjectValue not found for XmlWriter).
+ *
+ * Uses XmlTester which registers @typespec/xml to enable @attribute decorator.
+ */
+describe("ModelSerializationExtensionsFile — XML extension methods", () => {
+  /** TypeSpec definition that triggers XML serialization detection */
+  const xmlTypeSpec = `
+    using TypeSpec.Http;
+    using TypeSpec.Xml;
+
+    @service
+    namespace TestXml;
+
+    model XmlModel {
+      @attribute id: int32;
+      name: string;
+    }
+
+    @route("/xml")
+    op getXml(): XmlModel;
+  `;
+
+  /**
+   * Verifies XmlWriterSettings field is generated with UTF-8 encoding (no BOM).
+   * This field is referenced by all XML model serialization Write() methods
+   * when creating XmlWriter instances via XmlWriter.Create(stream, settings).
+   */
+  it("contains XmlWriterSettings field when XML models exist", async () => {
+    const [{ outputs }] = await IntegrationTester.compileAndDiagnose(xmlTypeSpec);
+    const content =
+      outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
+    expect(content).toContain(
+      "internal static readonly XmlWriterSettings XmlWriterSettings",
+    );
+    expect(content).toContain("Encoding = new UTF8Encoding(false)");
+  });
+
+  /**
+   * Verifies XmlReaderSettings field is generated with strict security
+   * configuration (DTD prohibited, no resolver, character limits).
+   * Used internally by the XML WriteObjectValue method when reading
+   * serialized model data via XmlReader.
+   */
+  it("contains XmlReaderSettings field with security settings", async () => {
+    const [{ outputs }] = await IntegrationTester.compileAndDiagnose(xmlTypeSpec);
+    const content =
+      outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
+    expect(content).toContain(
+      "private static readonly XmlReaderSettings XmlReaderSettings",
+    );
+    expect(content).toContain("DtdProcessing = DtdProcessing.Prohibit");
+    expect(content).toContain("XmlResolver = null");
+    expect(content).toContain("MaxCharactersInDocument = 30000000");
+  });
+
+  /**
+   * Verifies XElement extension methods for typed value reading during
+   * XML deserialization: GetDateTimeOffset, GetTimeSpan, GetBytesFromBase64.
+   * These parallel the JsonElement extension methods but operate on XElement.
+   */
+  it("contains XElement extension methods for typed value reading", async () => {
+    const [{ outputs }] = await IntegrationTester.compileAndDiagnose(xmlTypeSpec);
+    const content =
+      outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
+    expect(content).toContain(
+      "public static DateTimeOffset GetDateTimeOffset(this XElement element, string format)",
+    );
+    expect(content).toContain(
+      "public static TimeSpan GetTimeSpan(this XElement element, string format)",
+    );
+    expect(content).toContain(
+      "public static byte[] GetBytesFromBase64(this XElement element, string format)",
+    );
+  });
+
+  /**
+   * Verifies XmlWriter extension methods for writing formatted values:
+   * WriteStringValue (DateTimeOffset, TimeSpan) and WriteBase64StringValue.
+   * These are called by XmlModelWriteCore when serializing date/time/bytes fields.
+   */
+  it("contains XmlWriter WriteStringValue and WriteBase64StringValue overloads", async () => {
+    const [{ outputs }] = await IntegrationTester.compileAndDiagnose(xmlTypeSpec);
+    const content =
+      outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
+    expect(content).toContain(
+      "public static void WriteStringValue(this XmlWriter writer, DateTimeOffset value, string format)",
+    );
+    expect(content).toContain(
+      "public static void WriteStringValue(this XmlWriter writer, TimeSpan value, string format)",
+    );
+    expect(content).toContain(
+      "public static void WriteBase64StringValue(this XmlWriter writer, byte[] value, string format)",
+    );
+  });
+
+  /**
+   * Verifies WriteObjectValue<T> overload for XmlWriter. This is the XML
+   * counterpart to the JSON WriteObjectValue<T>. It serializes an
+   * IPersistableModel<T> by writing it through ModelReaderWriter.Write()
+   * and piping the resulting XML via XmlReader into the target XmlWriter.
+   * The nameHint parameter allows wrapping content in a custom element name.
+   */
+  it("contains WriteObjectValue<T> for XmlWriter with nameHint parameter", async () => {
+    const [{ outputs }] = await IntegrationTester.compileAndDiagnose(xmlTypeSpec);
+    const content =
+      outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
+    expect(content).toContain(
+      "public static void WriteObjectValue<T>(this XmlWriter writer, T value, ModelReaderWriterOptions options = null, string nameHint = null)",
+    );
+    expect(content).toContain("case IPersistableModel<T> persistableModel:");
+    expect(content).toContain("ModelReaderWriter.Write(persistableModel,");
+    expect(content).toContain("reader.MoveToContent()");
+    expect(content).toContain("writer.WriteNode(reader, true)");
+  });
+
+  /**
+   * Verifies XML-specific using directives are added when XML models exist.
+   * System.Xml (XmlWriter, XmlReader), System.Xml.Linq (XElement),
+   * System.IO (Stream), and System.Text (UTF8Encoding) are all required.
+   */
+  it("includes XML-specific using directives", async () => {
+    const [{ outputs }] = await IntegrationTester.compileAndDiagnose(xmlTypeSpec);
+    const content =
+      outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
+    expect(content).toContain("using System.IO;");
+    expect(content).toContain("using System.Text;");
+    expect(content).toContain("using System.Xml;");
+    expect(content).toContain("using System.Xml.Linq;");
+  });
+
+  /**
+   * Verifies that XML methods are NOT generated for JSON-only services.
+   * Without XML models, the infrastructure file should contain only JSON
+   * methods to keep the generated output minimal.
+   */
+  it("omits XML methods for JSON-only services", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace TestService;
+    `);
+    const content =
+      outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
+    expect(content).not.toContain("XmlWriterSettings");
+    expect(content).not.toContain("XmlReaderSettings");
+    expect(content).not.toContain("this XmlWriter writer");
+    expect(content).not.toContain("this XElement element");
   });
 });
 
