@@ -3060,3 +3060,14 @@ versions pass (both use ISO8601 format). The DateTime versions still fail.
 
 **Gotcha**: `QueryRfc7231`, `QueryUnixTimestamp`, `QueryUnixTimestampArray` were incorrectly
 categorized under Duration in `.expected-failures` — they are actually DateTime tests.
+
+## Dynamic Model Deserialization — BinaryData parameter (Task 15.18)
+
+**Gotcha**: Dynamic models (those with `UsageFlags.JsonMergePatch`) generate a 3-parameter `DeserializeXxx` method: `(JsonElement element, BinaryData data, ModelReaderWriterOptions options)`. Standard models only have 2 params `(element, options)`. Any code calling `DeserializeXxx` must check `isDynamicModel()` and pass the extra `BinaryData data` argument for dynamic models. The `data` parameter initializes `JsonPatch` for round-trip fidelity.
+
+**Affected callers**: `ExplicitClientResultOperator` (CastOperators.tsx), `PersistableModelCreateCore`, `JsonModelCreateCore`. The explicit operator passes `response.Content` for the data param.
+
+## Design Decisions — Task 15.18
+
+**Approach chosen**: Conditional argument passing based on `isDynamicModel()` check. 
+**Why**: The Deserialize method signature is already conditional (set in JsonDeserialize.tsx). Following the same pattern ensures consistency. Alternative approach of making `data` optional with a default `null` was rejected because it would change the method signature for all models, potentially breaking existing callers.

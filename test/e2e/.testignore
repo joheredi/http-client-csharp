@@ -48,11 +48,8 @@ type/file
 azure/client-generator-core/override
 
 # === Remaining issues (using directives fixed, other errors remain) ===
-# type/property/nullable: CS7036 (missing options param in DeserializeXxx calls),
-# CS0029 (ChangeTrackingList to array conversion). No more CS0246 using errors.
-type/property/nullable
-# payload/json-merge-patch: CS7036 (missing options param in DeserializeXxx calls).
-# No more CS0246 using errors for List<>/Dictionary<>.
+# payload/json-merge-patch: CS7036 fixed (BinaryData param forwarding), but
+# CS1503 remains in JsonMergePatchTests.cs (BinaryContent→ResourcePatch mismatch).
 payload/json-merge-patch
 
 # === Multi-namespace scope issues ===

@@ -32,6 +32,7 @@ import {
 } from "../../builtins/system-client-model.js";
 import { SystemTextJson } from "../../builtins/system-text-json.js";
 import { SystemXmlLinq } from "../../builtins/system-xml-linq.js";
+import { isDynamicModel } from "../models/DynamicModel.js";
 import { collectPropertyCSharpNames } from "../../utils/property.js";
 
 /**
@@ -243,6 +244,7 @@ export function ExplicitClientResultOperator(
 
   const supportsJson = (type.usage & UsageFlags.Json) !== 0;
   const supportsXml = (type.usage & UsageFlags.Xml) !== 0;
+  const isDynamic = isDynamicModel(type);
 
   const namePolicy = useCSharpNamePolicy();
   const modelName = namePolicy.getName(type.name, "class");
@@ -259,11 +261,11 @@ export function ExplicitClientResultOperator(
   // Select the appropriate operator body based on the model's serialization formats.
   // The dispatch mirrors the legacy emitter's GetExplicitFromClientResultMethod().
   if (supportsJson && supportsXml) {
-    return renderDualFormatOperator(modelName, typeRef);
+    return renderDualFormatOperator(modelName, typeRef, isDynamic);
   } else if (supportsXml) {
     return renderXmlOnlyOperator(modelName, typeRef);
   } else {
-    return renderJsonOnlyOperator(modelName, typeRef);
+    return renderJsonOnlyOperator(modelName, typeRef, isDynamic);
   }
 }
 
@@ -273,8 +275,21 @@ export function ExplicitClientResultOperator(
  * Extracts `PipelineResponse` from `ClientResult`, parses the response content
  * as a `JsonDocument`, and calls the model's `Deserialize` method with the root element.
  * The `response` variable is NOT declared with `using` (consistent with the legacy emitter).
+ *
+ * Dynamic models (JsonMergePatch) additionally pass `response.Content` as the
+ * `BinaryData data` parameter so that `JsonPatch` can be initialized with the
+ * raw binary data for round-trip fidelity.
  */
-function renderJsonOnlyOperator(modelName: string, typeRef: string) {
+function renderJsonOnlyOperator(
+  modelName: string,
+  typeRef: string,
+  isDynamic: boolean,
+) {
+  // Dynamic models need the BinaryData data parameter for JsonPatch initialization
+  const deserializeArgs = isDynamic
+    ? `document.RootElement, response.Content, ModelSerializationExtensions.WireOptions`
+    : `document.RootElement, ModelSerializationExtensions.WireOptions`;
+
   return (
     <>
       {`/// <param name="result"> The <see cref="ClientResult"/> to deserialize the <see cref="${modelName}"/> from. </param>`}
@@ -285,7 +300,7 @@ function renderJsonOnlyOperator(modelName: string, typeRef: string) {
       {code`${SystemClientModelPrimitives.PipelineResponse} response = result.GetRawResponse();`}
       {"\n    "}
       {code`using ${SystemTextJson.JsonDocument} document = ${SystemTextJson.JsonDocument}.Parse(response.Content, ModelSerializationExtensions.JsonDocumentOptions);`}
-      {`\n    return ${typeRef}.Deserialize${modelName}(document.RootElement, ModelSerializationExtensions.WireOptions);`}
+      {`\n    return ${typeRef}.Deserialize${modelName}(${deserializeArgs});`}
       {"\n}"}
     </>
   );
@@ -333,9 +348,22 @@ function renderXmlOnlyOperator(modelName: string, typeRef: string) {
  *
  * The `response` variable IS declared with `using` for dual-format models.
  *
+ * Dynamic models (JsonMergePatch) additionally pass `response.Content` as the
+ * `BinaryData data` parameter in the JSON path so that `JsonPatch` can be
+ * initialized with the raw binary data for round-trip fidelity.
+ *
  * The legacy emitter generates this in `BuildJsonAndXmlExplicitFromClientResult()`.
  */
-function renderDualFormatOperator(modelName: string, typeRef: string) {
+function renderDualFormatOperator(
+  modelName: string,
+  typeRef: string,
+  isDynamic: boolean,
+) {
+  // Dynamic models need the BinaryData data parameter for JsonPatch initialization
+  const jsonDeserializeArgs = isDynamic
+    ? `document.RootElement, response.Content, ModelSerializationExtensions.WireOptions`
+    : `document.RootElement, ModelSerializationExtensions.WireOptions`;
+
   return (
     <>
       {`/// <param name="result"> The <see cref="ClientResult"/> to deserialize the <see cref="${modelName}"/> from. </param>`}
@@ -350,7 +378,7 @@ function renderDualFormatOperator(modelName: string, typeRef: string) {
       {"\n    {"}
       {"\n        "}
       {code`using ${SystemTextJson.JsonDocument} document = ${SystemTextJson.JsonDocument}.Parse(response.Content, ModelSerializationExtensions.JsonDocumentOptions);`}
-      {`\n        return ${typeRef}.Deserialize${modelName}(document.RootElement, ModelSerializationExtensions.WireOptions);`}
+      {`\n        return ${typeRef}.Deserialize${modelName}(${jsonDeserializeArgs});`}
       {"\n    }"}
       {"\n"}
       {"\n    "}

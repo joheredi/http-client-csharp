@@ -458,6 +458,64 @@ describe("ExplicitClientResultOperator", () => {
       "return LongNamedResult.DeserializeLongNamedResult(document.RootElement, ModelSerializationExtensions.WireOptions);",
     );
   });
+
+  /**
+   * Validates that dynamic models (JsonMergePatch / RFC 7386) pass
+   * `response.Content` as the `BinaryData data` argument to the Deserialize
+   * method. Dynamic models have a 3-parameter Deserialize signature:
+   * `(JsonElement element, BinaryData data, ModelReaderWriterOptions options)`
+   * and the explicit operator must forward `response.Content` so that
+   * `JsonPatch` can be initialized with the raw binary data for round-trip fidelity.
+   *
+   * This test prevents regression of CS7036 compilation errors where the
+   * explicit operator was missing the `BinaryData data` argument when calling
+   * `DeserializeXxx` on dynamic models.
+   */
+  it("passes response.Content as BinaryData for dynamic (merge-patch) output models", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Resource {
+        name: string;
+        description?: string;
+      }
+
+      @route("/resources")
+      @get op getResource(): Resource;
+      @route("/resources")
+      @patch op updateResource(@body body: Resource, @header contentType: "application/merge-patch+json"): void;
+    `);
+
+    const errors = diagnostics.filter((d) => d.severity === "error");
+    expect(errors).toHaveLength(0);
+
+    const fileKey = Object.keys(outputs).find((k) =>
+      k.includes("Resource.Serialization.cs"),
+    );
+    expect(fileKey).toBeDefined();
+
+    const content = outputs[fileKey!];
+
+    // Should have explicit operator since the model is output
+    expect(content).toContain(
+      "public static explicit operator Resource(ClientResult result)",
+    );
+
+    // Dynamic models must pass response.Content as the BinaryData data param.
+    // Standard models call: DeserializeResource(document.RootElement, WireOptions)
+    // Dynamic models call: DeserializeResource(document.RootElement, response.Content, WireOptions)
+    expect(content).toContain(
+      "return Resource.DeserializeResource(document.RootElement, response.Content, ModelSerializationExtensions.WireOptions);",
+    );
+
+    // Verify the standard 2-arg call is NOT present (would cause CS7036)
+    expect(content).not.toContain(
+      "return Resource.DeserializeResource(document.RootElement, ModelSerializationExtensions.WireOptions);",
+    );
+  });
 });
 
 /**

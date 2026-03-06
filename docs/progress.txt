@@ -5040,3 +5040,24 @@ Optional collection properties (like `Element.Extension: IList<Extension>`) were
 **Pattern:** The fix follows the same pattern as `getDurationSerializationFormat()` and `getBytesSerializationFormat()` — a helper function that switches on `type.encode` to return the correct `SerializationFormat` string.
 
 **Note:** TCGC defaults `utcDateTime` in header context to `rfc7231` encoding (per HTTP spec), which is why the existing test for `If-Modified-Since` now correctly expects `DateTime_RFC7231` instead of `DateTime_RFC3339`.
+
+## 2026-03-06 — Task 15.18: Fix nullable model deserialization parameter forwarding
+
+**What was done:**
+- Fixed CS7036 compilation errors in `ExplicitClientResultOperator` (CastOperators.tsx)
+- Root cause: Dynamic models (JsonMergePatch) have a 3-param `DeserializeXxx(element, data, options)` 
+  but the explicit operator only passed 2 args `(element, options)`, missing the `BinaryData data` param
+- Fix: Check `isDynamicModel(type)` and conditionally pass `response.Content` as the `data` argument
+- Fixed both `renderJsonOnlyOperator` and `renderDualFormatOperator` functions
+- Removed `type/property/nullable` from .testignore and Compile Remove in Spector.Tests.csproj
+- Also fixes CS7036 in payload/json-merge-patch (task 15.23), but that spec has additional CS1503 errors
+
+**Files changed:**
+- `src/components/serialization/CastOperators.tsx` — import isDynamicModel, pass response.Content for dynamic models
+- `test/cast-operators.test.ts` — added test for dynamic model explicit operator
+- `test/e2e/.testignore` — removed type/property/nullable, updated json-merge-patch comment
+- `test/e2e/Spector.Tests/Spector.Tests.csproj` — removed Nullable/JsonMergePatch Compile Remove entries
+
+**Patterns used:** isDynamicModel() check from DynamicModel.tsx, same pattern used in JsonDeserialize.tsx
+
+**For next person:** Task 15.23 still needs work — CS7036 is fixed but CS1503 (BinaryContent→ResourcePatch) remains.
