@@ -311,6 +311,71 @@ describe("CSharpScalarOverrides", () => {
       expect(content).toContain("BinaryData");
       expect(content).not.toContain("Unresolved");
     });
+
+    /**
+     * Union of string-backed enums (e.g., `LR | UD`) should NOT map to
+     * BinaryData. TCGC resolves these into a single SdkEnumType, and the
+     * C# property type should be that generated enum type.
+     *
+     * Without this fix, `getVariantBaseKind` returns "Enum" for TypeSpec
+     * Enum-kind variants, which `isMultiTypeUnion` treats as multi-type
+     * (not in the "string"/"numeric"/"boolean" categories), incorrectly
+     * mapping to BinaryData. The fix classifies Enum types by their
+     * backing type: string-backed → "string", numeric-backed → "numeric".
+     *
+     * This is the primary fix for task 12.25: the type/union spec has
+     * `EnumsOnlyCases { lr: LR | UD; ud: UD | UD; }` where LR and UD
+     * are string-backed enums. Properties should be typed as the generated
+     * enum, not BinaryData.
+     */
+    it("does not map string-backed enum union to BinaryData", async () => {
+      const { test } = await runner.compile(`
+        enum LR { left, right }
+        enum UD { up, down }
+        model Test {
+          @test test: LR | UD;
+        }
+      `);
+      const type = (test as ModelProperty).type;
+      const content = renderType(type);
+      expect(content).not.toContain("BinaryData");
+    });
+
+    /**
+     * Union of numeric-backed enums should NOT map to BinaryData.
+     * Similar to the string-backed case, numeric enums should be treated
+     * as extensible enums (base kind "numeric"), not multi-type unions.
+     */
+    it("does not map numeric-backed enum union to BinaryData", async () => {
+      const { test } = await runner.compile(`
+        enum Priority { Low: 1, Medium: 2, High: 3 }
+        enum Severity { Minor: 10, Major: 20 }
+        model Test {
+          @test test: Priority | Severity;
+        }
+      `);
+      const type = (test as ModelProperty).type;
+      const content = renderType(type);
+      expect(content).not.toContain("BinaryData");
+    });
+
+    /**
+     * Union mixing a string-backed enum with a numeric-backed enum should
+     * map to BinaryData because the base kinds differ ("string" vs "numeric").
+     * This ensures heterogeneous enum unions are still correctly classified.
+     */
+    it("maps mixed-backing enum union to BinaryData", async () => {
+      const { test } = await runner.compile(`
+        enum Color { red, blue }
+        enum Priority { Low: 1, High: 2 }
+        model Test {
+          @test test: Color | Priority;
+        }
+      `);
+      const type = (test as ModelProperty).type;
+      const content = renderType(type);
+      expect(content).toContain("BinaryData");
+    });
   });
 
   describe("BinaryData library declaration", () => {

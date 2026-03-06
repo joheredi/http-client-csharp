@@ -2883,3 +2883,11 @@ using directive won't match the actual namespace.
 **Why**: Matches legacy emitter pattern; handles both nullable and non-nullable; works inside null-check guards where C# doesn't narrow `T?` to `T`.
 **Rejected**: `name.Value.ToString("O")` — requires conditional logic based on optionality; `.Value` would throw if called outside null guard.
 **Rejected**: `name.ToString("O")` — only works on non-nullable `DateTimeOffset`; fails on `DateTimeOffset?` with CS1501.
+
+## Task 12.25 — Enum union type mapping gotcha
+
+**Issue**: When a TypeSpec union contains Enum-type variants (e.g., `enum LR { left, right } ... model M { lr: LR | UD; }`), the `getVariantBaseKind()` function in `CSharpTypeExpression.tsx` must classify them by their backing type, not by their TypeSpec kind. Enum kind falls through to "Enum" string which `isMultiTypeUnion()` treats as multi-type, incorrectly mapping to BinaryData.
+
+**Fix**: Check `type.kind === "Enum"` and inspect member values to determine if string-backed or numeric-backed. Similarly for `EnumMember` kind.
+
+**Design Decision**: The fix was applied in `CSharpTypeExpression.tsx` (type expression layer) rather than `PropertySerializer.tsx` (serialization layer) because the root cause was incorrect type mapping — the property types themselves were wrong (`BinaryData` instead of the enum type). Fixing at the type expression level automatically corrects model properties, constructors, serialization variable declarations, and deserialization assignments.

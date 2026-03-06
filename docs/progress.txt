@@ -4777,3 +4777,17 @@ Alloy's `<Namespace>` component renders.
 
 ### E2E results
 - 84 specs succeeded (up from 81), 0 failed, 36 skipped
+
+## 2026-03-05 — Task 12.25: Fix union type serialization and conversion methods
+
+**Root cause**: `getVariantBaseKind()` in `CSharpTypeExpression.tsx` didn't handle TypeSpec `Enum` or `EnumMember` types. For unions of enums like `LR | UD`, variants had kind "Enum" which fell through to `return type.kind`. `isMultiTypeUnion()` then classified "Enum" as multi-type (not in "string"/"numeric"/"boolean"), incorrectly mapping to BinaryData.
+
+**Fix**: Added Enum and EnumMember handling in `getVariantBaseKind()` — string-backed enums return "string", numeric-backed return "numeric". This correctly classifies unions of homogeneous enums as single-type unions (extensible enums), matching the legacy emitter behavior.
+
+**Files changed**:
+- `src/components/CSharpTypeExpression.tsx` — Added Enum/EnumMember handling in `getVariantBaseKind()`, updated JSDoc
+- `test/type-expression.test.tsx` — Added 3 tests: string-backed enum union, numeric-backed enum union, mixed-backing enum union
+
+**Verification**: CS1929 and CS0029 errors for EnumsOnlyCases eliminated. Generated `EnumsOnlyCases` properties correctly typed as `EnumsOnlyCasesLr`/`EnumsOnlyCasesUd`. All 1337 unit tests + 5 e2e tests pass.
+
+**Note**: type/union spec has 2 remaining pre-existing CS1503 errors in `ModelsOnly.cs` (convenience method passes string where BinaryData expected for Cat|Dog model union). Not related to this task.

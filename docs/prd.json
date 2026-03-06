@@ -446,7 +446,7 @@
           "title": "Fix union type serialization and conversion methods",
           "description": "Union type serialization generates incorrect code:\n- CS1929: BinaryData.ToSerialString() \u2014 ToSerialString is an extension method for the union enum type, not BinaryData (4 errors)\n- CS0029: Cannot implicitly convert union enum types (EnumsOnlyCasesLr, EnumsOnlyCasesUd) to BinaryData (4 errors)\n\nThe serialization code tries to serialize union values using methods that don't exist on the generated types. The union type expression and serialization logic needs to handle the case where a union value needs to be serialized through its discriminated type.\n\nAffected spec: type/union.\n\nTo reproduce: Remove this spec from test/e2e/.testignore, run pnpm emit:e2e --filter type/union, then dotnet build.",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

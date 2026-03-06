@@ -1,6 +1,8 @@
 import { type Children } from "@alloy-js/core";
 import { Reference } from "@alloy-js/csharp";
 import type {
+  Enum,
+  EnumMember,
   IntrinsicType,
   Scalar,
   Type,
@@ -133,12 +135,18 @@ function hasNullVariant(union: Union): boolean {
  * Returns the base kind category of a TypeSpec type for union diversity checking.
  *
  * Maps each type to one of three base categories — "string", "boolean", or
- * "numeric" — for scalars and literals. Other type kinds (Model, Union, etc.)
- * return their own kind string, ensuring they are always treated as distinct.
+ * "numeric" — for scalars, literals, enums, and enum members. Other type kinds
+ * (Model, Union, etc.) return their own kind string, ensuring they are always
+ * treated as distinct.
  *
  * This categorization groups types that can coexist in a single extensible enum
  * (e.g., `string` scalar + `"red"` literal → both "string"), while separating
  * types that cannot (e.g., `"a"` string + `2` number → "string" vs "numeric").
+ *
+ * TypeSpec Enum types are classified by their backing type: string-backed enums
+ * (the default) return "string", numeric-backed enums return "numeric". This
+ * ensures that unions of homogeneous enums (e.g., `LR | UD` where both are
+ * string-backed) are treated as extensible enums, not multi-type unions.
  *
  * @param type - A TypeSpec type (variant type from a union).
  * @returns A category string used to determine union type diversity.
@@ -156,6 +164,21 @@ function getVariantBaseKind(type: Type): string {
     if (current.name === "boolean") return "boolean";
     // All numeric root scalars (integer, float, numeric, decimal) → "numeric"
     return "numeric";
+  }
+  // TypeSpec enum types — determine base kind from member values.
+  // String-backed enums (default or explicit string values) → "string".
+  // Numeric-backed enums (explicit number values) → "numeric".
+  // This allows unions of homogeneous enums (e.g., LR | UD where both are
+  // string-backed) to be treated as extensible enums rather than multi-type
+  // unions that would incorrectly map to BinaryData.
+  if (type.kind === "Enum") {
+    const firstMember = [...(type as Enum).members.values()][0];
+    if (firstMember && typeof firstMember.value === "number") return "numeric";
+    return "string";
+  }
+  if (type.kind === "EnumMember") {
+    if (typeof (type as EnumMember).value === "number") return "numeric";
+    return "string";
   }
   // Model, Union, Tuple, etc. — each is unique / multi-type
   return type.kind;
@@ -182,6 +205,7 @@ function getVariantBaseKind(type: Type): string {
  * - `"red" | "blue"` — all string literals
  * - `1 | 2 | 3` — all numeric literals
  * - `string | "red" | "blue"` — all string-based
+ * - `LR | UD` — all string-backed enums (classified by backing type)
  *
  * @param union - A TypeSpec Union type.
  * @returns `true` if the union has variants with different base kinds.
