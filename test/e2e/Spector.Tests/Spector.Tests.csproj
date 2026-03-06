@@ -99,8 +99,6 @@
     <!-- .testignore: payload/multipart (IJsonModel on non-JSON models) -->
     <Compile Remove="$(LegacyTestRoot)Http/Payload/Multipart/**/*.cs" />
 
-    <!-- .testignore: type/union (union type conversion errors) -->
-    <Compile Remove="$(LegacyTestRoot)Http/_Type/Union/**/*.cs" />
 
     <!-- .testignore: type/property/optionality (literal type serialization errors) -->
     <Compile Remove="$(LegacyTestRoot)Http/_Type/Property/Optionality/**/*.cs" />

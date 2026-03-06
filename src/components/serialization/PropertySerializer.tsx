@@ -494,7 +494,9 @@ export function getWriteMethodInfo(type: SdkType): WriteMethodInfo | null {
   }
 
   // Unknown types — BinaryData written as raw JSON value.
-  if (kind === "unknown") {
+  // Union types (e.g., Cat | Dog) are represented as BinaryData in C#,
+  // so they use the same raw JSON write pattern.
+  if (kind === "unknown" || kind === "union") {
     return { methodName: "WriteRawValue" };
   }
 

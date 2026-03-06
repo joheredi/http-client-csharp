@@ -25,13 +25,9 @@ ExtensibleEnumPipeDelimited
 ExtensibleEnumSpaceDelimited
 
 # --- Versioning: ClientResultException (body serialization issues) ---
-# URL routing is fixed (api-version in server URL template now handled),
-# but these specs have body serialization mismatches (400 Bad Request).
-Versioning_Added_InterfaceV2
-Versioning_Added_v1
-Versioning_Added_v2
-Versioning_RenamedFrom_NewInterface
-Versioning_RenamedFrom_NewOp
+# URL routing is fixed (api-version in server URL template now handled).
+# Union type serialization fix (task 15.19) resolved the remaining body
+# serialization mismatches for versioned models with union properties.
 
 # --- Encode/Bytes/RequestBody: raw binary content handling ---
 # Convenience methods use BinaryContentHelper.FromObject() which attempts

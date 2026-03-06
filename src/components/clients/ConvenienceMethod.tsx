@@ -747,6 +747,7 @@ function getConvenienceTypeInfo(type: SdkType): {
       return { expression: System.Uri, needsAssertion: true, isString: false };
     case "bytes":
     case "unknown":
+    case "union":
       return {
         expression: System.BinaryData,
         needsAssertion: true,

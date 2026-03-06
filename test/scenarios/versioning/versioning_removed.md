@@ -129,10 +129,11 @@ public partial class ModelV2
         /// <param name="prop"></param>
         /// <param name="enumProp"></param>
         /// <param name="unionProp"></param>
-        /// <exception cref="ArgumentNullException"> <paramref name="prop"/> is null. </exception>
+        /// <exception cref="ArgumentNullException"> <paramref name="prop"/> or <paramref name="unionProp"/> is null. </exception>
         public ModelV2(string prop, EnumV2 enumProp, BinaryData unionProp)
         {
             Argument.AssertNotNull(prop, nameof(prop));
+            Argument.AssertNotNull(unionProp, nameof(unionProp));
 
             Prop = prop;
             EnumProp = enumProp;

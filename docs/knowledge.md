@@ -3305,3 +3305,14 @@ For versioned specs (e.g., versioning/removed, versioning/added), the legacy emi
 ## Pre-existing Runtime Failures Uncovered by Task 15.14
 1. **MediaType text/plain**: `BinaryContentHelper.FromObject()` JSON-serializes text/plain strings. Needs raw text handling.
 2. **Resiliency V1**: Generated from main.tsp (v2 spec) instead of old.tsp (v1 spec), producing "client:v2" in URL when "client:v1" is expected.
+
+## Union type handling in serialization/deserialization
+
+TCGC produces `SdkUnionType` with `kind === "union"` for multi-type unions (Cat | Dog, mixed literals, etc.). Single-type unions are converted to `SdkEnumType` by TCGC. All `SdkUnionType` reaching the emitter map to `BinaryData` in C#. Three places must handle `kind === "union"`:
+
+1. **`getConvenienceTypeInfo()`** in ConvenienceMethod.tsx — returns `System.BinaryData` (same as bytes/unknown)
+2. **`getWriteMethodInfo()`** in PropertySerializer.tsx — returns `{ methodName: "WriteRawValue" }` (same as unknown)
+3. **`getReadExpression()`** in PropertyMatchingLoop.tsx — returns `BinaryData.FromString(accessor.GetRawText())` (same as unknown)
+4. **`CSHARP_REFERENCE_TYPE_KINDS`** in property.ts — must include "union" since BinaryData is a reference type
+
+If any of these are missing, union-typed properties are silently skipped (they fall through to `return null` and get treated as additional binary data properties only).

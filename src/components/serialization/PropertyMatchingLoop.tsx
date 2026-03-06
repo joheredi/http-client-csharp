@@ -620,7 +620,9 @@ export function getReadExpression(
   }
 
   // Unknown types — BinaryData from raw JSON text.
-  if (kind === "unknown") {
+  // Union types (e.g., Cat | Dog) are represented as BinaryData in C#,
+  // so they use the same raw JSON deserialization pattern.
+  if (kind === "unknown" || kind === "union") {
     return `BinaryData.FromString(${accessor}.GetRawText())`;
   }
 

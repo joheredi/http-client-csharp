@@ -42,6 +42,7 @@ const CSHARP_REFERENCE_TYPE_KINDS = new Set<string>([
   "bytes", // System.BinaryData (class)
   "url", // System.Uri (class)
   "unknown", // System.BinaryData (class)
+  "union", // System.BinaryData (class) — multi-type unions
 ]);
 
 /**

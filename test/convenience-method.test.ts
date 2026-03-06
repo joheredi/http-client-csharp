@@ -1508,4 +1508,39 @@ describe("ConvenienceMethod", () => {
     expect(clientFile).not.toContain("Argument.AssertNotNullOrEmpty(name");
     expect(clientFile).not.toContain("Argument.AssertNotNull(name");
   });
+
+  /**
+   * Verifies that a convenience method with a union-typed body parameter
+   * (e.g., Cat | Dog) uses BinaryData as the parameter type. C# has no native
+   * union type, so multi-type unions are represented as BinaryData to allow
+   * callers to pass any variant. Without this, the parameter falls through to
+   * the default `string` type which causes CS1503 compilation errors when
+   * constructing the request body model.
+   */
+  it("generates BinaryData parameter for union-typed body", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Cat { name: string; }
+      model Dog { bark: string; }
+
+      @route("/send")
+      @post op send(@body prop: Cat | Dog): void;
+    `);
+    // Filter out deprecation warnings — only assert no errors
+    const errors = diagnostics.filter((d) => d.severity === "error");
+    expect(errors).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"] ?? "";
+
+    // Union param must be BinaryData, not string
+    expect(clientFile).toContain("BinaryData prop");
+    expect(clientFile).not.toContain("string prop");
+
+    // Must have null assertion (BinaryData is a reference type)
+    expect(clientFile).toContain("Argument.AssertNotNull(prop, nameof(prop))");
+  });
 });

@@ -62,4 +62,3 @@ client/structure/client-operation-group
 
 # === Union type issues ===
 # CS0029/CS1929: Union type conversion and missing extension methods
-type/union

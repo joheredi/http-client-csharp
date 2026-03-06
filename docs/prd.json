@@ -1077,7 +1077,7 @@
           "title": "Fix union type generation (Type/Union)",
           "description": "Type/Union specs (~30 scenarios) are in .testignore due to CS0029 (cannot convert type) and CS1929 (missing extension methods). Union type conversion and serialization is a significant feature gap in the emitter. Note: task 12.25 addressed some union serialization but not enough to compile.\n\nFix the emitter's union type generation to produce correct conversion operators and extension methods.\n\nIMPORTANT: Fix the emitter to match the legacy API. NEVER update the test to workaround the API mismatch.",
           "phase": "phase-15",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

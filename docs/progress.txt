@@ -5443,3 +5443,35 @@ Re-enabled 7 test groups that were excluded due to API surface mismatches (CS172
 ### Patterns for future reference
 - Protocol method param defaults rule: NEVER add defaults when convenience exists. Only `RequestOptions = null` when body-only params (BinaryContent always differs from convenience's typed model).
 - Use `SCENARIOS_UPDATE=true pnpm test -- test/scenarios.test.ts` to auto-update scenario expectations.
+
+---
+## Task 15.19: Fix union type generation (Type/Union)
+**Date**: 2026-03-06
+**Status**: Done
+
+### What was done
+Enabled the `type/union` spec (~20 Spector tests) by fixing three gaps in union type handling:
+
+1. **Convenience method parameter type** (`ConvenienceMethod.tsx`): Added `case "union"` to `getConvenienceTypeInfo()` switch. Without this, union-typed parameters (e.g., `Cat | Dog`) fell through to `default` returning `string` instead of `BinaryData`, causing CS1503 errors.
+
+2. **Serialization/deserialization** (`PropertySerializer.tsx`, `PropertyMatchingLoop.tsx`): Added `kind === "union"` alongside `kind === "unknown"` in both `getWriteMethodInfo()` and `getReadExpression()`. Without this, BinaryData-typed union properties were completely skipped in JSON serialization (WriteRawValue) and deserialization (BinaryData.FromString), causing null properties and 400 Bad Request errors.
+
+3. **Reference type classification** (`property.ts`): Added `"union"` to `CSHARP_REFERENCE_TYPE_KINDS` set. This ensures union properties (BinaryData) get proper `Argument.AssertNotNull` validation and correct nullable access patterns (no `.Value` on reference types).
+
+### Files modified
+- `src/components/clients/ConvenienceMethod.tsx` — union case in getConvenienceTypeInfo
+- `src/components/serialization/PropertySerializer.tsx` — union case in getWriteMethodInfo  
+- `src/components/serialization/PropertyMatchingLoop.tsx` — union case in getReadExpression
+- `src/utils/property.ts` — union in CSHARP_REFERENCE_TYPE_KINDS
+- `test/e2e/.testignore` — removed type/union
+- `test/e2e/Spector.Tests/Spector.Tests.csproj` — removed union exclusion
+- `test/e2e/.expected-failures` — removed 5 now-passing versioning tests
+- `test/convenience-method.test.ts` — added BinaryData union parameter test
+- `test/scenarios/versioning/versioning_added.md` — updated union property assertions
+- `test/scenarios/versioning/versioning_removed.md` — updated union property assertions
+
+### Results
++20 new passing union e2e tests. +5 previously-failing versioning tests now pass (union serialization fix resolved body mismatches). All 70 vitest files pass (1396 tests). E2e tests pass with 0 unexpected failures.
+
+### Key pattern
+Union types (`SdkUnionType` with `kind === "union"`) map to `BinaryData` everywhere in C#. They follow the same serialization pattern as `unknown` types: `WriteRawValue` for serialization, `BinaryData.FromString(GetRawText())` for deserialization.
