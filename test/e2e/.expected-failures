@@ -24,16 +24,6 @@ ExtensibleEnumNewlineDelimited
 ExtensibleEnumPipeDelimited
 ExtensibleEnumSpaceDelimited
 
-# --- Encode/DateTime: ClientResultException (service request failures) ---
-# Generated client sends requests that don't match the Spector mock server expectations
-HeaderRfc7231
-HeaderUnixTimestamp
-HeaderUnixTimestampArray
-HeaderDefault
-QueryRfc7231
-QueryUnixTimestamp
-QueryUnixTimestampArray
-
 # --- Parameters/Path: ClientResultException ---
 # Server/Path/Multiple optional path parameter tests
 OptionalPathParamIncluded(False)

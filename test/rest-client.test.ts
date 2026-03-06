@@ -1515,14 +1515,184 @@ describe("RestClientFile", () => {
       outputs["src/Generated/TestServiceClient.RestClient.cs"] ?? "";
 
     // Optional datetime headers should use TypeFormatters.ConvertToString
+    // TCGC defaults utcDateTime in header context to rfc7231 encoding (per HTTP spec)
     expect(restClient).toContain(
-      'request.Headers.Set("If-Modified-Since", TypeFormatters.ConvertToString(ifModifiedSince, SerializationFormat.DateTime_RFC3339));',
+      'request.Headers.Set("If-Modified-Since", TypeFormatters.ConvertToString(ifModifiedSince, SerializationFormat.DateTime_RFC7231));',
     );
     expect(restClient).toContain(
-      'request.Headers.Set("If-Unmodified-Since", TypeFormatters.ConvertToString(ifUnmodifiedSince, SerializationFormat.DateTime_RFC3339));',
+      'request.Headers.Set("If-Unmodified-Since", TypeFormatters.ConvertToString(ifUnmodifiedSince, SerializationFormat.DateTime_RFC7231));',
     );
     // Should NOT use direct .ToString("O") which fails on nullable types
     expect(restClient).not.toContain('.ToString("O")');
+  });
+
+  /**
+   * Verifies that datetime header/query parameters use encoding-specific
+   * SerializationFormat values based on the @encode decorator.
+   *
+   * Why this test matters:
+   * - Before this fix, ALL datetime params used SerializationFormat.DateTime_RFC3339
+   *   regardless of encoding, causing RFC7231 and UnixTimestamp params to send
+   *   ISO 8601 strings instead of HTTP-date or epoch seconds.
+   * - The Spector server rejects requests with wrong datetime format, so the
+   *   format must match the encoding declared in the TypeSpec.
+   */
+  it("uses encoding-specific SerializationFormat for datetime header params", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/rfc7231")
+      @get op rfc7231Header(
+        @header("X-Date") @encode(DateTimeKnownEncoding.rfc7231) value: utcDateTime,
+      ): void;
+
+      @route("/unix")
+      @get op unixHeader(
+        @header("X-Date") @encode(DateTimeKnownEncoding.unixTimestamp, int64) value: utcDateTime,
+      ): void;
+
+      @route("/rfc3339")
+      @get op rfc3339Header(
+        @header("X-Date") @encode(DateTimeKnownEncoding.rfc3339) value: utcDateTime,
+      ): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const restClient =
+      outputs["src/Generated/TestServiceClient.RestClient.cs"] ?? "";
+
+    // RFC7231 encoding → DateTime_RFC7231
+    expect(restClient).toContain(
+      "SerializationFormat.DateTime_RFC7231",
+    );
+    // Unix timestamp encoding → DateTime_Unix
+    expect(restClient).toContain(
+      "SerializationFormat.DateTime_Unix",
+    );
+    // RFC3339 encoding → DateTime_RFC3339
+    expect(restClient).toContain(
+      "SerializationFormat.DateTime_RFC3339",
+    );
+  });
+
+  /**
+   * Verifies that datetime query parameters use encoding-specific
+   * SerializationFormat values based on the @encode decorator.
+   *
+   * Why this test matters:
+   * - Query parameters with UnixTimestamp encoding must send epoch seconds
+   *   (e.g., "1686566864"), not ISO 8601 strings.
+   * - Query parameters with RFC7231 encoding must send HTTP-date format.
+   * - The format is determined by the @encode decorator on the parameter.
+   */
+  it("uses encoding-specific SerializationFormat for datetime query params", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/query/rfc7231")
+      @get op rfc7231Query(
+        @query @encode(DateTimeKnownEncoding.rfc7231) value: utcDateTime,
+      ): void;
+
+      @route("/query/unix")
+      @get op unixQuery(
+        @query @encode(DateTimeKnownEncoding.unixTimestamp, int64) value: utcDateTime,
+      ): void;
+
+      @route("/query/default")
+      @get op defaultQuery(
+        @query value: utcDateTime,
+      ): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const restClient =
+      outputs["src/Generated/TestServiceClient.RestClient.cs"] ?? "";
+
+    // RFC7231 query → DateTime_RFC7231
+    expect(restClient).toContain(
+      "SerializationFormat.DateTime_RFC7231",
+    );
+    // Unix timestamp query → DateTime_Unix
+    expect(restClient).toContain(
+      "SerializationFormat.DateTime_Unix",
+    );
+  });
+
+  /**
+   * Verifies that datetime array header parameters use SetDelimited with
+   * encoding-specific SerializationFormat instead of plain string.Join.
+   *
+   * Why this test matters:
+   * - Array datetime headers need per-element formatting (e.g., each element
+   *   as unix timestamp) before joining with delimiter.
+   * - Without encoding-aware collection formatting, unix timestamp arrays
+   *   would be serialized as ISO 8601 strings.
+   */
+  it("uses SetDelimited with SerializationFormat for datetime array headers", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @encode(DateTimeKnownEncoding.unixTimestamp, int64)
+      scalar unixTimestamp extends utcDateTime;
+
+      @route("/unix-array")
+      @get op unixArrayHeader(
+        @header("X-Timestamps") value: unixTimestamp[],
+      ): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const restClient =
+      outputs["src/Generated/TestServiceClient.RestClient.cs"] ?? "";
+
+    // Array datetime header with unix encoding should use SetDelimited with format
+    expect(restClient).toContain("SetDelimited");
+    expect(restClient).toContain("SerializationFormat.DateTime_Unix");
+    // Should NOT fall back to plain string.Join (which doesn't format elements)
+    expect(restClient).not.toContain("string.Join");
+  });
+
+  /**
+   * Verifies that datetime array query parameters use AppendQueryDelimited with
+   * encoding-specific SerializationFormat.
+   *
+   * Why this test matters:
+   * - Array query params with unix timestamp encoding need per-element formatting
+   *   before joining with delimiter in the query string.
+   */
+  it("uses AppendQueryDelimited with SerializationFormat for datetime array query params", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @encode(DateTimeKnownEncoding.unixTimestamp, int64)
+      scalar unixTimestamp extends utcDateTime;
+
+      @route("/unix-array")
+      @get op unixArrayQuery(
+        @query value: unixTimestamp[],
+      ): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const restClient =
+      outputs["src/Generated/TestServiceClient.RestClient.cs"] ?? "";
+
+    // Array query param with unix encoding should use AppendQueryDelimited with format
+    expect(restClient).toContain("AppendQueryDelimited");
+    expect(restClient).toContain("SerializationFormat.DateTime_Unix");
   });
 
   /**

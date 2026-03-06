@@ -770,7 +770,7 @@
           "title": "Fix datetime header/query parameter encoding",
           "description": "Encode/DateTime tests (5 failures: HeaderRfc7231, HeaderUnixTimestamp, HeaderUnixTimestampArray, HeaderISO8601Array, PropertyUnixTimestampArray) fail with ClientResultException. The generated client sends datetime values in a format that doesn't match the Spector server's expectations. Fix the emitter's datetime formatting for header and query parameters.\n\nIMPORTANT: Fix the emitter to match the legacy API. Do NOT modify tests.",
           "phase": "phase-15",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [],

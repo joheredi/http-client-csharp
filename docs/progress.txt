@@ -5015,3 +5015,28 @@ Optional collection properties (like `Element.Extension: IList<Extension>`) were
 ### Results
 - 20 Duration e2e test failures resolved (down from 46 total to 26)
 - 1368 unit tests pass, 5 e2e tests pass, 0 unexpected failures
+
+---
+### Task 15.5: Fix datetime header/query parameter encoding
+**Date:** 2026-03-06
+
+**Problem:** All datetime header/query parameters used `SerializationFormat.DateTime_RFC3339` regardless of the `@encode` decorator, causing 7 e2e test failures (HeaderRfc7231, HeaderUnixTimestamp, HeaderUnixTimestampArray, HeaderDefault, QueryRfc7231, QueryUnixTimestamp, QueryUnixTimestampArray).
+
+**Root Cause:** `getParamValueExpression()` in `RestClientFile.tsx` hardcoded `SerializationFormat.DateTime_RFC3339` for all `utcDateTime`/`offsetDateTime` types, ignoring the `encode` property from `SdkDateTimeType`. Additionally, `getCollectionElementFormat()` didn't handle datetime array elements, only bytes and duration.
+
+**Fix:**
+1. Added `getDateTimeSerializationFormat()` helper that maps TCGC `SdkDateTimeType.encode` to the correct `SerializationFormat` enum value: `rfc7231` → `DateTime_RFC7231`, `unixTimestamp` → `DateTime_Unix`, `rfc3339`/default → `DateTime_RFC3339`.
+2. Updated `getParamValueExpression()` to call the new helper instead of hardcoding RFC3339.
+3. Updated `getCollectionElementFormat()` to handle `utcDateTime`/`offsetDateTime` array elements.
+4. Added `SdkDateTimeType` to imports.
+
+**Files Modified:**
+- `src/components/clients/RestClientFile.tsx` — core fix
+- `test/rest-client.test.ts` — updated existing test expectation + added 4 new tests
+- `test/e2e/.expected-failures` — removed 7 now-passing datetime entries
+
+**Tests Added:** 4 new unit tests validating encoding-specific format for scalar headers, scalar queries, array headers (SetDelimited), and array queries (AppendQueryDelimited).
+
+**Pattern:** The fix follows the same pattern as `getDurationSerializationFormat()` and `getBytesSerializationFormat()` — a helper function that switches on `type.encode` to return the correct `SerializationFormat` string.
+
+**Note:** TCGC defaults `utcDateTime` in header context to `rfc7231` encoding (per HTTP spec), which is why the existing test for `If-Modified-Since` now correctly expects `DateTime_RFC7231` instead of `DateTime_RFC3339`.

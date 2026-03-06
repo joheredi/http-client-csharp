@@ -13,6 +13,7 @@ import type {
   SdkBodyParameter,
   SdkBuiltInType,
   SdkClientType,
+  SdkDateTimeType,
   SdkDictionaryType,
   SdkDurationType,
   SdkHeaderParameter,
@@ -737,7 +738,8 @@ function getAcceptHeaderValue(responses: SdkHttpResponse[]): string | null {
  * or a header. Handles type-specific formatting:
  * - string → used directly
  * - bytes → TypeFormatters.ConvertToString(value, SerializationFormat.Bytes_Base64|Base64Url)
- * - utcDateTime/offsetDateTime → ToString("O") (ISO 8601)
+ * - utcDateTime/offsetDateTime → TypeFormatters.ConvertToString(value, SerializationFormat.DateTime_*)
+ *   with encoding-specific format (RFC3339, RFC7231, or Unix)
  * - boolean → TypeFormatters.ConvertToString(value)
  * - numeric types → ToString()
  * - constant → literal value expression
@@ -767,8 +769,10 @@ function getParamValueExpression(
 
   // DateTime → TypeFormatters.ConvertToString for nullable-safe formatting.
   // DateTimeOffset?.ToString("O") fails because Nullable<T> lacks the format overload.
+  // The encoding (rfc3339, rfc7231, unixTimestamp) determines the SerializationFormat.
   if (type.kind === "utcDateTime" || type.kind === "offsetDateTime") {
-    return `TypeFormatters.ConvertToString(${name}, SerializationFormat.DateTime_RFC3339)`;
+    const format = getDateTimeSerializationFormat(type as SdkDateTimeType);
+    return `TypeFormatters.ConvertToString(${name}, ${format})`;
   }
 
   // Duration → TypeFormatters with encoding-specific format
@@ -860,6 +864,30 @@ function getBytesSerializationFormat(type: SdkBuiltInType): string {
 }
 
 /**
+ * Returns the C# `SerializationFormat` enum value for a datetime type based on
+ * its encoding. Maps the TypeSpec `@encode` decorator to the runtime format
+ * used by `TypeFormatters.ConvertToString()` for header/query/path parameters.
+ *
+ * - `"rfc3339"` (default) → ISO 8601 round-trip (`"O"` format at runtime)
+ * - `"rfc7231"` → HTTP-date (`"R"` format at runtime)
+ * - `"unixTimestamp"` → seconds since epoch (`"U"` format at runtime)
+ *
+ * @param type - An `SdkDateTimeType` with encoding resolved by TCGC.
+ * @returns The `SerializationFormat` enum reference string.
+ */
+function getDateTimeSerializationFormat(type: SdkDateTimeType): string {
+  switch (type.encode) {
+    case "rfc7231":
+      return "SerializationFormat.DateTime_RFC7231";
+    case "unixTimestamp":
+      return "SerializationFormat.DateTime_Unix";
+    case "rfc3339":
+    default:
+      return "SerializationFormat.DateTime_RFC3339";
+  }
+}
+
+/**
  * Integer SDK type kinds used to determine whether a numeric duration
  * encoding maps to the integer SerializationFormat variant.
  *
@@ -923,11 +951,12 @@ function getDurationSerializationFormat(type: SdkDurationType): string {
 
 /**
  * Returns the C# `SerializationFormat` for a collection parameter's element type,
- * or null if no format is needed (non-bytes, non-duration elements).
+ * or null if no format is needed (non-bytes, non-duration, non-datetime elements).
  *
  * Used to generate the correct format argument for `AppendQueryDelimited` and
- * `SetDelimited` calls when the collection contains bytes (BinaryData) or
- * duration (TimeSpan) values that require encoding-specific formatting.
+ * `SetDelimited` calls when the collection contains bytes (BinaryData),
+ * duration (TimeSpan), or datetime (DateTimeOffset) values that require
+ * encoding-specific formatting.
  */
 function getCollectionElementFormat(type: SdkType): string | null {
   const unwrapped = unwrapType(type);
@@ -938,6 +967,9 @@ function getCollectionElementFormat(type: SdkType): string | null {
   }
   if (elementType.kind === "duration") {
     return getDurationSerializationFormat(elementType as SdkDurationType);
+  }
+  if (elementType.kind === "utcDateTime" || elementType.kind === "offsetDateTime") {
+    return getDateTimeSerializationFormat(elementType as SdkDateTimeType);
   }
   return null;
 }
