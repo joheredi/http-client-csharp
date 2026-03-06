@@ -13,6 +13,7 @@ import type {
   SdkClientType,
   SdkHttpOperation,
   SdkMethodParameter,
+  SdkPathParameter,
 } from "@azure-tools/typespec-client-generator-core";
 import {
   SystemClientModel,
@@ -29,6 +30,7 @@ import {
   getClientMethodParameters,
   getFieldTypeForParam,
   getServerPathSegments,
+  getServerTemplateConstructorParams,
 } from "../../utils/client-params.js";
 import { getClientFileName } from "../../utils/clients.js";
 import { formatDocLines } from "../../utils/doc.js";
@@ -162,6 +164,13 @@ export function ClientFile(props: ClientFileProps) {
   // build the full endpoint URI by appending these segments with parameter substitution.
   const serverPathSegments = isSubClient ? [] : getServerPathSegments(client);
 
+  // Server template parameters that become constructor parameters (e.g., ClientType
+  // enum in client/structure specs). These are non-primary, non-api-version template
+  // arguments that require user-provided values at construction time.
+  const serverTemplateParams = isSubClient
+    ? []
+    : getServerTemplateConstructorParams(client);
+
   // Add System.Linq when convenience methods use .ToList() for collection params
   // in spread body constructions (e.g., IEnumerable<T> → IList<T> conversion).
   // Add System.Collections.Generic when OAuth2 auth requires Dictionary<string, object>[] _flows.
@@ -239,6 +248,25 @@ export function ClientFile(props: ClientFileProps) {
               />
             </>
           ))}
+          {serverTemplateParams.map((param) => {
+            // For enum/model types, use refkey to reference the generated declaration.
+            // For primitive types (string, int, etc.), use the C# type name directly.
+            const fieldType =
+              param.type.kind === "enum" || param.type.kind === "model"
+                ? refkey(param.type)
+                : "string";
+            return (
+              <>
+                {"\n"}
+                <Field
+                  private
+                  readonly
+                  name={param.name}
+                  type={fieldType}
+                />
+              </>
+            );
+          })}
           {children.map((child) => {
             const childName = getClientFileName(child, toClassName);
             // Use fully-qualified type reference when the sub-client name
@@ -269,6 +297,7 @@ export function ClientFile(props: ClientFileProps) {
               apiVersionParams={apiVersionParams}
               optionsClassName={optionsClassName}
               serverPathSegments={serverPathSegments}
+              serverTemplateParams={serverTemplateParams}
             />
           )}
           {isSubClient && (
@@ -334,6 +363,8 @@ interface RootClientConstructorsProps {
   optionsClassName: string;
   /** Parsed server URL template path segments for endpoint URI construction. */
   serverPathSegments: ServerPathSegment[];
+  /** Server URL template parameters that become constructor params (e.g., ClientType enum). */
+  serverTemplateParams: SdkPathParameter[];
 }
 
 /**
@@ -362,12 +393,24 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
     apiVersionParams,
     optionsClassName,
     serverPathSegments,
+    serverTemplateParams,
   } = props;
 
   // Non-API-version method params become constructor parameters
   const methodCtorParams = nonApiVersionParams.map((p) => ({
     name: p.name,
     type: getFieldTypeForParam(p),
+  }));
+
+  // Server template params become constructor parameters with their TCGC type.
+  // For enum types (e.g., ClientType), uses refkey() to reference the generated enum,
+  // which enables Alloy to auto-add the appropriate `using` directive.
+  // For primitive types (e.g., string), uses the C# type name directly.
+  const templateCtorParams = serverTemplateParams.map((p) => ({
+    name: p.name,
+    type: (p.type.kind === "enum" || p.type.kind === "model"
+      ? refkey(p.type)
+      : "string") as Children,
   }));
 
   const endpointParam = { name: "endpoint", type: System.Uri };
@@ -383,6 +426,11 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
   const methodDocParams = nonApiVersionParams.map(
     (p) =>
       `/// <param name="${p.name}"> ${formatDocLines(p.doc ?? p.summary ?? `The ${p.name}.`)} </param>`,
+  );
+
+  const templateDocParams = serverTemplateParams.map(
+    (p) =>
+      `/// <param name="${p.name}"> ${formatDocLines(p.doc ?? `The ${p.name}.`)} </param>`,
   );
 
   // Build per-auth-scheme descriptors. Each descriptor has the auth param,
@@ -444,12 +492,13 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
         {"\n\n"}
         {`options ??= new ${optionsClassName}();`}
         {"\n\n"}
+        {serverTemplateParams.map((p) => `_${p.name} = ${p.name};\n`)}
         {serverPathSegments.length === 0
           ? `_endpoint = endpoint;`
           : buildEndpointFromTemplate(serverPathSegments, [
               ...nonApiVersionParams,
               ...apiVersionParams,
-            ])}
+            ], serverTemplateParams)}
         {scheme.fieldAssignment && `\n${scheme.fieldAssignment}`}
         {nonApiVersionParams.map((p) => `\n_${p.name} = ${p.name};`)}
         {"\n"}
@@ -468,6 +517,7 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
         const secondaryParams = [
           endpointParam,
           ...authParams,
+          ...templateCtorParams,
           ...methodCtorParams,
         ];
         const primaryParams = [...secondaryParams, optionsParam];
@@ -500,6 +550,12 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
                     {doc}
                   </>
                 ))}
+                {templateDocParams.map((doc) => (
+                  <>
+                    {"\n"}
+                    {doc}
+                  </>
+                ))}
                 {methodDocParams.map((doc) => (
                   <>
                     {"\n"}
@@ -525,6 +581,12 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
             {"\n"}
             {`/// <param name="endpoint"> Service endpoint. </param>`}
             {authDocLines.map((doc) => (
+              <>
+                {"\n"}
+                {doc}
+              </>
+            ))}
+            {templateDocParams.map((doc) => (
               <>
                 {"\n"}
                 {doc}
@@ -567,15 +629,18 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
  * 1. Api-version parameters → `options.Version`
  * 2. Constant-type parameters → their literal value (e.g., `"default"`, `"v1"`)
  * 3. Parameters with clientDefaultValue → the default value as a string literal
- * 4. Method parameters (from clientInitialization) → the field `_paramName`
+ * 4. Server template constructor parameters (e.g., ClientType enum) → `_paramName.ToSerialString()`
+ * 5. Method parameters (from clientInitialization) → the field `_paramName`
  *
  * @param segments - Parsed server URL template path segments from {@link getServerPathSegments}.
  * @param methodParams - Client method parameters for field resolution.
+ * @param serverTemplateParams - Server template parameters that are constructor params.
  * @returns A C# code string for the constructor body.
  */
 function buildEndpointFromTemplate(
   segments: ServerPathSegment[],
   methodParams: SdkMethodParameter[],
+  serverTemplateParams: SdkPathParameter[] = [],
 ): string {
   const lines: string[] = [];
   lines.push("ClientUriBuilder endpointBuilder = new ClientUriBuilder();");
@@ -590,7 +655,7 @@ function buildEndpointFromTemplate(
       lines.push(`\nendpointBuilder.AppendPath(options.Version, true);`);
     } else if (segment.param) {
       // Resolve the value for non-api-version template arguments.
-      const valueExpr = resolveTemplateArgValue(segment.param, methodParams);
+      const valueExpr = resolveTemplateArgValue(segment.param, methodParams, serverTemplateParams);
       lines.push(`\nendpointBuilder.AppendPath(${valueExpr}, true);`);
     }
   }
@@ -603,13 +668,16 @@ function buildEndpointFromTemplate(
  * Resolves the C# expression for a non-api-version server URL template argument.
  *
  * For constant-type parameters (e.g., `client: "default"` in the @server decorator),
- * returns the constant value as a string literal. For method parameters (e.g.,
- * `subscriptionId` that becomes a client field), returns the field reference `_paramName`.
- * Falls back to the parameter's clientDefaultValue if available.
+ * returns the constant value as a string literal. For server template constructor
+ * parameters with enum types (e.g., ClientType), returns the field reference with
+ * `.ToSerialString()` to convert the enum to its wire value. For method parameters
+ * (e.g., `subscriptionId` that becomes a client field), returns the field reference
+ * `_paramName`. Falls back to the parameter's clientDefaultValue if available.
  */
 function resolveTemplateArgValue(
   param: import("@azure-tools/typespec-client-generator-core").SdkPathParameter,
   methodParams: SdkMethodParameter[],
+  serverTemplateParams: SdkPathParameter[] = [],
 ): string {
   // Constant-type parameters: use the literal value directly
   if (param.type.kind === "constant" && param.type.value !== null) {
@@ -619,6 +687,16 @@ function resolveTemplateArgValue(
   // Check if there's a clientDefaultValue
   if (param.clientDefaultValue !== undefined && param.clientDefaultValue !== null) {
     return `"${param.clientDefaultValue}"`;
+  }
+
+  // Check if this is a server template constructor parameter (e.g., ClientType enum).
+  // Enum-typed params need .ToSerialString() to convert to their wire format string.
+  const templateParam = serverTemplateParams.find((p) => p.name === param.name);
+  if (templateParam) {
+    if (templateParam.type.kind === "enum") {
+      return `_${param.name}.ToSerialString()`;
+    }
+    return `_${param.name}`;
   }
 
   // Check if this is a method parameter on the client → use the field

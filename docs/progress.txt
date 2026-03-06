@@ -5380,3 +5380,40 @@ Fixed convenience methods to return typed `ClientResult<T>` instead of untyped `
 - `buildResponseInfo(responseType, namePolicy)` — Central function for typed convenience return logic
 - `getResponseElementTypeExpr(type, namePolicy)` — Element type for collection returns, preserves nullability
 - `buildScalarResponseInfo(keyword)` — Shortcut for scalar types using ToObjectFromJson
+
+## Task 15.13: Align Client/Structure namespace hierarchy with legacy emitter
+**Date**: 2026-03-06
+**Status**: Done
+
+### What was done
+Fixed Client/Structure specs (Default, MultiClient, RenamedOperation, TwoOperationGroup) to generate correct constructor signatures matching the legacy emitter. The namespace hierarchy was already correct — the actual issue was missing `ClientType` enum and constructor parameter.
+
+### Root causes found
+1. **Missing `ClientType` enum**: `collectRootTypes()` in `unreferenced-types.ts` didn't collect types from endpoint template arguments, so the `ClientType` enum was removed by unreferenced type handling.
+2. **Missing constructor parameter**: `getClientMethodParameters()` only included `kind === "method"` params. Server URL template parameters with enum/string types (like `ClientType client`) have `kind === "endpoint"` and were excluded.
+3. **Wrong URL construction**: `resolveTemplateArgValue()` fell back to the parameter NAME as a literal string instead of using the field value.
+
+### Changes made
+- **`src/utils/unreferenced-types.ts`**: Added `collectTypesFromInitializationParams()` to collect model/enum types from endpoint template arguments, preventing them from being removed.
+- **`src/utils/client-params.ts`**: Added `getServerTemplateConstructorParams()` to extract non-primary, non-api-version template params that need constructor parameters.
+- **`src/components/clients/ClientFile.tsx`**: 
+  - Added server template params as private readonly fields (using `refkey()` for enum types, `"string"` for primitive types)
+  - Included them in constructor parameter lists
+  - Added doc comments for template params
+  - Fixed `resolveTemplateArgValue()` to use `_fieldName.ToSerialString()` for enum fields
+  - Field assignment placed BEFORE URL construction to avoid using uninitialized fields
+- **`test/e2e/Spector.Tests/Spector.Tests.csproj`**: Removed Client/Structure exclusions (Default, MultiClient, RenamedOperation, TwoOperationGroup)
+
+### Patterns used
+- `refkey(param.type)` for enum types to enable Alloy auto-imports
+- `getFieldTypeForParam`-like logic for primitive vs complex type discrimination
+- Thread-safe lazy initialization for sub-client factory methods (existing pattern)
+
+### Key learnings
+- Server template params are `SdkPathParameter` objects inside `SdkEndpointType.templateArguments`, NOT top-level initialization parameters
+- The `kind === "endpoint"` filter in `getEndpointParameter()` finds the primary endpoint; other template args have their own types
+- The resiliency/srv-driven spec also has a string-typed server template param (`serviceDeploymentVersion`), requiring the fix to handle both enum and primitive types
+- Versioning/Removed issue is a DIFFERENT problem (Context class namespace), split to task 15.13b
+
+### Result
++36 new passing e2e tests (from 484 to 520). All 5 vitest tests pass. 0 unexpected failures.

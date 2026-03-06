@@ -286,6 +286,50 @@ function mapSdkTypeToFieldType(sdkType: SdkType): string {
 }
 
 /**
+ * Returns server URL template parameters that should become constructor parameters.
+ *
+ * These are non-primary, non-api-version endpoint template arguments that need
+ * user-provided values at client construction time. For example, in the
+ * `@server("{endpoint}/client/structure/{client}", ...)` decorator, the `client`
+ * parameter of type `ClientType` (enum) becomes a required constructor parameter.
+ *
+ * A template argument needs a constructor parameter when it:
+ * - Is NOT the primary endpoint (type.kind !== "url")
+ * - Is NOT an api-version parameter
+ * - Does NOT have a constant type value
+ * - Does NOT have a clientDefaultValue
+ *
+ * @param client - The TCGC SDK client type to inspect.
+ * @returns Array of SdkPathParameter objects that should become constructor params.
+ */
+export function getServerTemplateConstructorParams(
+  client: SdkClientType<SdkHttpOperation>,
+): SdkPathParameter[] {
+  const segments = getServerPathSegments(client);
+  return segments
+    .filter(
+      (s): s is ServerPathSegment & { param: SdkPathParameter } =>
+        s.kind === "parameter" && s.param !== undefined,
+    )
+    .map((s) => s.param)
+    .filter((p) => {
+      // Skip the primary endpoint (url type)
+      if (p.type.kind === "url") return false;
+      // Skip api-version params (handled separately via options.Version)
+      if (p.isApiVersionParam) return false;
+      // Skip constant-type params (value is hardcoded in the template)
+      if (p.type.kind === "constant" && p.type.value !== null) return false;
+      // Skip params with default values (value is known at codegen time)
+      if (
+        p.clientDefaultValue !== undefined &&
+        p.clientDefaultValue !== null
+      )
+        return false;
+      return true;
+    });
+}
+
+/**
  * Represents a segment of a parsed server URL template path.
  * Used to generate endpoint URI construction code in the client constructor
  * when the server URL template includes path segments beyond the endpoint placeholder.

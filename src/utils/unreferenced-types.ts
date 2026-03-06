@@ -168,7 +168,72 @@ export function collectRootTypes(
     processClient(client);
   }
 
+  // Collect types from client initialization parameters, specifically from
+  // server URL template arguments. This ensures enum types used as server
+  // template parameters (e.g., ClientType in client/structure specs) are
+  // considered referenced and not removed by unreferenced type handling.
+  for (const client of clients) {
+    collectTypesFromInitializationParams(client, roots);
+  }
+
   return roots;
+}
+
+/**
+ * Collects model and enum types referenced by a client's endpoint template arguments.
+ *
+ * Server URL templates can reference enum types (e.g., `{endpoint}/client/structure/{client}`
+ * where `client` has type `ClientType` enum). These types must be collected as root types
+ * to prevent them from being removed by unreferenced type handling.
+ *
+ * @param client - The client whose initialization parameters to inspect.
+ * @param roots - The set of root types to add to.
+ */
+function collectTypesFromInitializationParams(
+  client: SdkClientType<SdkHttpOperation>,
+  roots: Set<SdkModelType | SdkEnumType>,
+): void {
+  const params = client.clientInitialization?.parameters;
+  if (params) {
+    for (const param of params) {
+      if (param.kind === "endpoint") {
+        collectTypesFromEndpointType(param.type, roots);
+      }
+    }
+  }
+
+  if (client.children) {
+    for (const child of client.children) {
+      collectTypesFromInitializationParams(child, roots);
+    }
+  }
+}
+
+/**
+ * Extracts model/enum types from an endpoint type's template arguments.
+ * Handles both single SdkEndpointType and union of endpoint types.
+ */
+function collectTypesFromEndpointType(
+  type: SdkType,
+  roots: Set<SdkModelType | SdkEnumType>,
+): void {
+  if (type.kind === "endpoint") {
+    for (const arg of type.templateArguments) {
+      for (const t of extractModelOrEnumTypes(arg.type)) {
+        roots.add(t);
+      }
+    }
+  } else if (type.kind === "union") {
+    for (const variant of type.variantTypes) {
+      if (variant.kind === "endpoint") {
+        for (const arg of variant.templateArguments) {
+          for (const t of extractModelOrEnumTypes(arg.type)) {
+            roots.add(t);
+          }
+        }
+      }
+    }
+  }
 }
 
 /**

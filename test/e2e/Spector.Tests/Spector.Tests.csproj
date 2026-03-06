@@ -114,14 +114,10 @@
     <Compile Remove="$(LegacyTestRoot)Http/Authentication/Union/**/*.cs" />
 
     <!--
-      Namespace differences between legacy and new emitter.
-      Legacy tests expect sub-namespaces (e.g. Client.Structure.Service, Versioning.Removed.V1)
-      but the new emitter generates different namespace hierarchies.
+      Namespace differences between legacy and new emitter for Versioning/Removed.
+      Legacy generates VersioningRemovedV1Context in Versioning.Removed.V1 namespace;
+      new emitter generates VersioningRemovedContext in Versioning.Removed namespace.
     -->
-    <Compile Remove="$(LegacyTestRoot)Http/Client/Structure/Default/**/*.cs" />
-    <Compile Remove="$(LegacyTestRoot)Http/Client/Structure/MultiClient/**/*.cs" />
-    <Compile Remove="$(LegacyTestRoot)Http/Client/Structure/RenamedOperation/**/*.cs" />
-    <Compile Remove="$(LegacyTestRoot)Http/Client/Structure/TwoOperationGroup/**/*.cs" />
     <Compile Remove="$(LegacyTestRoot)Http/Versioning/Removed/**/*.cs" />
 
     <!--

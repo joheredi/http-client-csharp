@@ -3268,3 +3268,26 @@ The `decimal128` TCGC kind must be handled alongside `decimal` in ALL type-mappi
 **Chosen**: Use `ToObjectFromJson<T>()` for deserialization of scalars, simple arrays, simple dicts. Use enum-specific patterns (extension method for fixed, constructor for extensible).
 **Rejected**: JsonDocument/JsonElement manual parsing for all types — too complex for the common scalar/array/dict cases where `ToObjectFromJson` works correctly.
 **Rejected**: Generate explicit operators on scalar/collection types (like models have) — would require generating infrastructure code for every possible return type combination.
+
+## Server Template Constructor Parameters
+
+### Problem
+Server URL template parameters (defined via `@server` decorator) that are not the primary endpoint, not API version, and don't have constant values need to become constructor parameters. Examples: `ClientType` enum in client/structure specs, `serviceDeploymentVersion` string in resiliency/srv-driven specs.
+
+### How TCGC represents them
+These are `SdkPathParameter` objects in `SdkEndpointType.templateArguments` (accessed via `getEndpointParameter().type.templateArguments`). They are NOT in `client.clientInitialization.parameters` as separate entries — they're nested inside the endpoint parameter's type.
+
+### How to handle them
+1. Use `getServerTemplateConstructorParams()` from `client-params.ts` to extract them
+2. For field/param types: use `refkey(param.type)` for enum/model types, `"string"` for primitives
+3. For URL construction: use `_fieldName.ToSerialString()` for fixed enums, `_fieldName` for strings
+4. Assign the field BEFORE using it in URL construction
+5. Ensure `collectRootTypes()` collects types from endpoint template arguments to prevent unreferenced type removal
+
+### Design Decision
+Approach: Extract template params as constructor params at the ClientFile level, matching the legacy emitter's behavior. Rejected approach: modifying `getClientMethodParameters()` to return endpoint template params as method params (would conflate two different parameter kinds and require changes in many places).
+
+## Versioning Spec Model Namespaces
+
+### Finding
+For versioned specs (e.g., versioning/removed, versioning/added), the legacy emitter puts models in the ROOT namespace (`Versioning.Removed`), NOT in versioned sub-namespaces (`Versioning.Removed.V1`). Only the Context class goes in the versioned sub-namespace. The new emitter already matches this behavior for models.
