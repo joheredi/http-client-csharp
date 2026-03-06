@@ -13,6 +13,7 @@ import type {
   SdkBodyParameter,
   SdkBuiltInType,
   SdkClientType,
+  SdkDictionaryType,
   SdkHeaderParameter,
   SdkHttpOperation,
   SdkHttpResponse,
@@ -477,6 +478,14 @@ function getProtocolTypeExpression(type: SdkType): Children {
       return code`${SystemCollectionsGeneric.IEnumerable}<${elementTypeExpr}>`;
     }
 
+    // Dict → IDictionary<string, valueType> for record-style path/query params
+    case "dict": {
+      const valueTypeExpr = getProtocolTypeExpression(
+        (unwrapped as SdkDictionaryType).valueType,
+      );
+      return code`${SystemCollectionsGeneric.IDictionary}<string, ${valueTypeExpr}>`;
+    }
+
     // Default fallback for complex types
     default:
       return "string";
@@ -827,6 +836,14 @@ function isCollectionType(type: SdkType): boolean {
 }
 
 /**
+ * Checks if an SdkType represents a dictionary type after unwrapping
+ * nullable/constant wrappers.
+ */
+function isDictType(type: SdkType): boolean {
+  return unwrapType(type).kind === "dict";
+}
+
+/**
  * Returns the C# `SerializationFormat` enum value for a bytes type based on
  * its encoding. TCGC always sets the encoding — base64 is the default.
  *
@@ -978,6 +995,26 @@ function buildQueryParamStatement(
     }
   }
 
+  // Dictionary (record) parameter handling
+  if (isDictType(param.type)) {
+    if (isExplodedQueryParam(param)) {
+      // Exploded dict: each key-value pair becomes a separate query parameter
+      const inner = `foreach (var param0 in ${name})\n    {\n        uri.AppendQuery(param0.Key, TypeFormatters.ConvertToString(param0.Value), true);\n    }`;
+      if (param.optional) {
+        return `if (${name} != null)\n{\n    ${inner}\n}`;
+      }
+      return inner;
+    } else {
+      // Non-exploded dict: interleave keys and values with delimiter
+      const delimiter = getCollectionDelimiter(param.collectionFormat) ?? ",";
+      const stmt = `uri.AppendQueryDelimited("${serializedName}", ${name}, "${delimiter}", SerializationFormat.Default, true);`;
+      if (param.optional) {
+        return `if (${name} != null)\n{\n    ${stmt}\n}`;
+      }
+      return stmt;
+    }
+  }
+
   // Scalar parameter
   const valueExpr = getParamValueExpression(param, getParamName);
   if (param.optional) {
@@ -988,14 +1025,18 @@ function buildQueryParamStatement(
 
 /**
  * Builds the C# statement for appending a path parameter segment
- * to the URI builder. Handles both scalar and collection path params.
+ * to the URI builder. Handles scalar, collection (array), and
+ * dictionary (record) path params.
  *
  * For scalar parameters:
  *   `uri.AppendPath(value, escape);`
  *   where escape is `!allowReserved` (default true)
  *
- * For collection parameters:
- *   `uri.AppendPathDelimited(values, ",", escape);`
+ * For collection (array) parameters:
+ *   `uri.AppendPathDelimited(values, ",", escape: escape);`
+ *
+ * For dictionary (record) parameters:
+ *   `uri.AppendPathDelimited(values, ",", escape: escape);`
  */
 function buildPathParamStatement(
   param: SdkPathParameter,
@@ -1010,10 +1051,11 @@ function buildPathParamStatement(
     ? getOnClientFieldName(param, getParamName)
     : getParamName(param.name);
 
-  if (isCollectionType(param.type)) {
-    // Collection path parameter: use delimited serialization
+  if (isCollectionType(param.type) || isDictType(param.type)) {
+    // Collection/dict path parameter: use delimited serialization
     // Path params use "simple" style by default → comma-delimited
-    return `uri.AppendPathDelimited(${effectiveName}, ",", ${escape});`;
+    // Named `escape:` parameter avoids positional conflict with SerializationFormat
+    return `uri.AppendPathDelimited(${effectiveName}, ",", escape: ${escape});`;
   }
 
   // Scalar path parameter

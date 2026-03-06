@@ -396,6 +396,76 @@ describe("ProtocolMethod", () => {
   });
 
   /**
+   * Verifies that dictionary (Record<T>) path parameters use IDictionary<string, T>
+   * in protocol method signatures instead of falling back to string.
+   *
+   * Why this test matters:
+   * - Before this fix, dict types in getProtocolTypeExpression fell through to the
+   *   default case returning "string". This caused a mismatch between convenience
+   *   methods (IDictionary<string, int>) and protocol methods (string), leading to
+   *   CS1503 compilation errors when the convenience method called the protocol method.
+   * - The protocol method must accept the same dict type so overload resolution works.
+   */
+  it("generates IDictionary<string, T> for dict path parameters", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/items/{param}")
+      @get op getItem(@path param: Record<int32>): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Protocol method param should be IDictionary<string, int>, not string
+    expect(clientFile).toContain("IDictionary<string, int> param");
+
+    // Should have the using directive for System.Collections.Generic
+    expect(clientFile).toContain("using System.Collections.Generic;");
+
+    // Dict params are reference types → need assertion
+    expect(clientFile).toContain(
+      "Argument.AssertNotNull(param, nameof(param));",
+    );
+  });
+
+  /**
+   * Verifies that dictionary (Record<T>) query parameters use IDictionary<string, T>
+   * in protocol method signatures.
+   *
+   * Why this test matters:
+   * - Query parameters with dict types had the same bug as path parameters —
+   *   getProtocolTypeExpression returned "string" instead of IDictionary<string, T>.
+   * - Both protocol and convenience methods must agree on the type for C# overload
+   *   resolution to work correctly.
+   */
+  it("generates IDictionary<string, T> for dict query parameters", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/items")
+      @get op listItems(@query param: Record<int32>): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Protocol method param should be IDictionary<string, int>, not string
+    expect(clientFile).toContain("IDictionary<string, int> param");
+
+    // Should have the using directive for System.Collections.Generic
+    expect(clientFile).toContain("using System.Collections.Generic;");
+  });
+
+  /**
    * Verifies that multiline @doc text on parameters produces valid XML doc
    * comments where every continuation line starts with `///` in protocol methods.
    *

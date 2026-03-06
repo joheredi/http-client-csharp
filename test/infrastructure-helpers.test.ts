@@ -1522,7 +1522,8 @@ describe("ModelSerializationExtensionsFile — XML extension methods", () => {
    * when creating XmlWriter instances via XmlWriter.Create(stream, settings).
    */
   it("contains XmlWriterSettings field when XML models exist", async () => {
-    const [{ outputs }] = await IntegrationTester.compileAndDiagnose(xmlTypeSpec);
+    const [{ outputs }] =
+      await IntegrationTester.compileAndDiagnose(xmlTypeSpec);
     const content =
       outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
     expect(content).toContain(
@@ -1538,7 +1539,8 @@ describe("ModelSerializationExtensionsFile — XML extension methods", () => {
    * serialized model data via XmlReader.
    */
   it("contains XmlReaderSettings field with security settings", async () => {
-    const [{ outputs }] = await IntegrationTester.compileAndDiagnose(xmlTypeSpec);
+    const [{ outputs }] =
+      await IntegrationTester.compileAndDiagnose(xmlTypeSpec);
     const content =
       outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
     expect(content).toContain(
@@ -1555,7 +1557,8 @@ describe("ModelSerializationExtensionsFile — XML extension methods", () => {
    * These parallel the JsonElement extension methods but operate on XElement.
    */
   it("contains XElement extension methods for typed value reading", async () => {
-    const [{ outputs }] = await IntegrationTester.compileAndDiagnose(xmlTypeSpec);
+    const [{ outputs }] =
+      await IntegrationTester.compileAndDiagnose(xmlTypeSpec);
     const content =
       outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
     expect(content).toContain(
@@ -1575,7 +1578,8 @@ describe("ModelSerializationExtensionsFile — XML extension methods", () => {
    * These are called by XmlModelWriteCore when serializing date/time/bytes fields.
    */
   it("contains XmlWriter WriteStringValue and WriteBase64StringValue overloads", async () => {
-    const [{ outputs }] = await IntegrationTester.compileAndDiagnose(xmlTypeSpec);
+    const [{ outputs }] =
+      await IntegrationTester.compileAndDiagnose(xmlTypeSpec);
     const content =
       outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
     expect(content).toContain(
@@ -1597,7 +1601,8 @@ describe("ModelSerializationExtensionsFile — XML extension methods", () => {
    * The nameHint parameter allows wrapping content in a custom element name.
    */
   it("contains WriteObjectValue<T> for XmlWriter with nameHint parameter", async () => {
-    const [{ outputs }] = await IntegrationTester.compileAndDiagnose(xmlTypeSpec);
+    const [{ outputs }] =
+      await IntegrationTester.compileAndDiagnose(xmlTypeSpec);
     const content =
       outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
     expect(content).toContain(
@@ -1615,7 +1620,8 @@ describe("ModelSerializationExtensionsFile — XML extension methods", () => {
    * System.IO (Stream), and System.Text (UTF8Encoding) are all required.
    */
   it("includes XML-specific using directives", async () => {
-    const [{ outputs }] = await IntegrationTester.compileAndDiagnose(xmlTypeSpec);
+    const [{ outputs }] =
+      await IntegrationTester.compileAndDiagnose(xmlTypeSpec);
     const content =
       outputs["src/Generated/Internal/ModelSerializationExtensions.cs"];
     expect(content).toContain("using System.IO;");

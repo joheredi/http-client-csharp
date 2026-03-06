@@ -1035,6 +1035,45 @@ describe("ConvenienceMethod", () => {
   });
 
   /**
+   * Verifies that convenience methods with dict path parameters correctly
+   * call the protocol method, which also accepts IDictionary<string, T>.
+   *
+   * Why this test matters:
+   * - Before this fix, the convenience method accepted IDictionary<string, int>
+   *   but the protocol method accepted string for dict params. The convenience
+   *   method's call Record(param, cancellationToken.ToRequestOptions()) couldn't
+   *   find a matching protocol overload, causing CS1503 errors.
+   * - Both methods must have the same parameter type for overload resolution.
+   */
+  it("generates matching dict param types for convenience and protocol methods", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/items/{param}")
+      @get op getItem(@path param: Record<int32>): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Both convenience and protocol methods should use IDictionary<string, int>
+    // Convenience method (with CancellationToken)
+    expect(clientFile).toContain("IDictionary<string, int> param,\n");
+
+    // Protocol method (with RequestOptions) should also use IDictionary<string, int>
+    expect(clientFile).toContain(
+      "IDictionary<string, int> param, RequestOptions options",
+    );
+
+    // Convenience calls protocol with same param — verify no type conversion needed
+    expect(clientFile).toContain("param, cancellationToken.ToRequestOptions()");
+  });
+
+  /**
    * - TypeSpec @doc decorators can contain long descriptions that span multiple
    *   lines. Without proper formatting, continuation lines lack the `///` prefix,
    *   producing invalid C# that fails dotnet build.

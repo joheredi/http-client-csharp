@@ -4874,3 +4874,34 @@ Added XML-specific fields and extension methods to `ModelSerializationExtensions
 ### Gotchas
 - `IntegrationTester.compileAndDiagnose()` requires explicit `using TypeSpec.Http;` in test TypeSpec to resolve `@route` decorator (importLibraries doesn't auto-import for IntegrationTester)
 - payload/xml produces only warnings (CS1591 missing XML comments on model factory), zero errors
+
+## 2026-03-06 — Task 12.28: Fix convenience method parameter mapping for route parameter expansion
+
+### Problem
+Routes spec had 64 CS1503 compilation errors across two categories:
+1. **RequestOptions→CancellationToken (28 errors)**: Convenience methods with `IDictionary<string, int>` params called protocol methods with `string` params, causing overload resolution failure
+2. **bool→SerializationFormat (8 errors)**: `AppendPathDelimited(param, ",", true)` passed `bool` as 3rd positional arg where `SerializationFormat` was expected
+
+### Root Cause
+`getProtocolTypeExpression()` in both ProtocolMethod.tsx and RestClientFile.tsx was missing a `case "dict"` handler. Dict types fell to `default → "string"`, but convenience methods correctly used `IDictionary<string, T>`.
+
+### Fix (5 files modified)
+1. **ProtocolMethod.tsx**: Added `case "dict"` → returns `IDictionary<string, T>` via refkey
+2. **RestClientFile.tsx**: Added `case "dict"` to `getProtocolTypeExpression()`, added `isDictType()` helper, fixed `buildPathParamStatement()` to use named `escape:` arg and handle dict types, added dict handling to `buildQueryParamStatement()` for both exploded and non-exploded cases
+3. **ClientUriBuilderFile.tsx**: Added dict overloads for `AppendPathDelimited` and `AppendQueryDelimited` that serialize key-value pairs as interleaved comma-delimited strings
+4. **test/e2e/.testignore**: Removed routes from ignore list
+
+### Tests added (5 new tests)
+- protocol-method.test.ts: dict path params, dict query params
+- convenience-method.test.ts: matching dict param types between convenience and protocol methods
+- rest-client.test.ts: AppendPathDelimited escape parameter, dict path param handling
+
+### Patterns
+- Dict overloads in ClientUriBuilder use `SelectMany` to interleave keys/values
+- Named `escape:` parameter in `AppendPathDelimited` calls avoids SerializationFormat positional conflict
+- Both `getProtocolTypeExpression` copies (ProtocolMethod + RestClientFile) must stay in sync
+
+### Results
+- 1353 unit tests passing, 5 e2e tests passing
+- Routes spec compiles with 0 errors
+- API surface matches legacy emitter stubs

@@ -1524,4 +1524,74 @@ describe("RestClientFile", () => {
     // Should NOT use direct .ToString("O") which fails on nullable types
     expect(restClient).not.toContain('.ToString("O")');
   });
+
+  /**
+   * Verifies that array path parameters generate AppendPathDelimited calls with
+   * a named `escape:` argument to avoid positional conflict with SerializationFormat.
+   *
+   * Why this test matters:
+   * - AppendPathDelimited signature is: (IEnumerable<T>, string, SerializationFormat, bool)
+   *   The 3rd positional arg is SerializationFormat, NOT bool.
+   * - Before this fix, the generated code passed `true` as the 3rd arg, which tried
+   *   to convert bool to SerializationFormat → CS1503 compilation error.
+   * - The fix uses `escape: true` named argument to skip the optional SerializationFormat
+   *   and correctly target the bool escape parameter.
+   */
+  it("generates AppendPathDelimited with named escape parameter for array path params", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/items/{colors}")
+      @get op getItems(@path colors: string[]): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const restClient =
+      outputs["src/Generated/TestServiceClient.RestClient.cs"] ?? "";
+
+    // Must use named `escape:` parameter, not positional bool
+    expect(restClient).toContain(
+      'AppendPathDelimited(colors, ",", escape: true)',
+    );
+    // Must NOT use the old positional pattern that confuses bool with SerializationFormat
+    expect(restClient).not.toMatch(/AppendPathDelimited\([^)]+,\s*true\)/);
+  });
+
+  /**
+   * Verifies that dict (Record<T>) path parameters generate AppendPathDelimited calls
+   * with IDictionary<string, T> type in the CreateRequest method signature.
+   *
+   * Why this test matters:
+   * - Dict path params must use IDictionary<string, T> in the RestClient's CreateRequest
+   *   method to match the protocol method signature. Before the fix, dicts fell through
+   *   to string type, causing type mismatches.
+   * - The AppendPathDelimited dict overload serializes key-value pairs as
+   *   comma-delimited interleaved entries (key1,val1,key2,val2).
+   */
+  it("generates AppendPathDelimited for dict path parameters", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/items/{param}")
+      @get op getItems(@path param: Record<int32>): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const restClient =
+      outputs["src/Generated/TestServiceClient.RestClient.cs"] ?? "";
+
+    // CreateRequest method should accept IDictionary<string, int>
+    expect(restClient).toContain("IDictionary<string, int> param");
+
+    // Should use AppendPathDelimited for dict path params
+    expect(restClient).toContain(
+      'AppendPathDelimited(param, ",", escape: true)',
+    );
+  });
 });

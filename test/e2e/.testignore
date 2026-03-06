@@ -73,14 +73,7 @@ type/property/optionality
 # === (Resolved) Type mismatch in serialization ===
 # Most CS1503 type mismatch errors in serialization constructors have been
 # fixed (model factory arg order, Uri serialization, enum discriminator,
-# collection types, scalar body params). Remaining issue: routes.
-
-# === Route parameter expansion issues ===
-# CS1503: Convenience methods for route parameters with complex types
-# (label/matrix/path expansion) generate incorrect protocol method calls.
-# The convenience method parameter types (IDictionary, IEnumerable) don't
-# match the protocol method's serialized string parameter.
-routes
+# collection types, scalar body params, route parameter expansion).
 
 # === Model member / method issues ===
 

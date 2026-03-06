@@ -267,7 +267,9 @@ export function ModelSerializationExtensionsFile(
     : [];
 
   // Deduplicate usings (System.Text may appear in both dynamic and XML sets)
-  const allUsings = [...new Set([...baseUsings, ...dynamicUsings, ...xmlUsings])].sort();
+  const allUsings = [
+    ...new Set([...baseUsings, ...dynamicUsings, ...xmlUsings]),
+  ].sort();
 
   return (
     <SourceFile
@@ -521,7 +523,8 @@ export function ModelSerializationExtensionsFile(
           }
         `}
         {props.hasDynamicModels && dynamicModelExtensionMethods()}
-        {props.needsXmlSerialization && xmlExtensionMethods(modelReaderWriterContextRefkey())}
+        {props.needsXmlSerialization &&
+          xmlExtensionMethods(modelReaderWriterContextRefkey())}
       </Namespace>
     </SourceFile>
   );

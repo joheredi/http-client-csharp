@@ -5,6 +5,7 @@ import type {
   SdkArrayType,
   SdkBodyParameter,
   SdkClientType,
+  SdkDictionaryType,
   SdkHeaderParameter,
   SdkHttpOperation,
   SdkPathParameter,
@@ -527,6 +528,14 @@ function getProtocolTypeExpression(type: SdkType): Children {
         (unwrapped as SdkArrayType).valueType,
       );
       return code`${SystemCollectionsGeneric.IEnumerable}<${elementTypeExpr}>`;
+    }
+
+    // Dict → IDictionary<string, valueType> for record-style path/query params
+    case "dict": {
+      const valueTypeExpr = getProtocolTypeExpression(
+        (unwrapped as SdkDictionaryType).valueType,
+      );
+      return code`${SystemCollectionsGeneric.IDictionary}<string, ${valueTypeExpr}>`;
     }
 
     default:

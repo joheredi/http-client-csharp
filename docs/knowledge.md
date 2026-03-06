@@ -2945,10 +2945,23 @@ using directive won't match the actual namespace.
 **Rejected**: Alloy modification — rule 999 prohibits changes in submodules.
 
 ### IntegrationTester requires explicit using statements
+
 - `IntegrationTester.compileAndDiagnose()` does NOT auto-import `using TypeSpec.Http;` even though `importLibraries()` is called. Tests using `@route` or other HTTP decorators must include `using TypeSpec.Http;` explicitly in the TypeSpec test code. This differs from `HttpTester` which handles it automatically.
 
 ### XML extension methods use partial class pattern
+
 - XML fields (XmlWriterSettings, XmlReaderSettings) and extension methods are rendered as a separate `internal static partial class ModelSerializationExtensions` block, following the same pattern as `dynamicModelExtensionMethods()`. C# merges all partial class members.
 
 ### Using directive deduplication
+
 - When both `hasDynamicModels` and `needsXmlSerialization` are true, `System.Text` appears in both using sets. Use `new Set()` to deduplicate before sorting.
+
+## Dict Type in Protocol Methods (Task 12.28)
+
+**Gotcha**: Both copies of `getProtocolTypeExpression()` (in ProtocolMethod.tsx and RestClientFile.tsx) must handle `case "dict"` to return `IDictionary<string, T>`. Missing this causes dict types to fall to the `default` case returning `"string"`, which creates a type mismatch between convenience methods (which use `IDictionary`) and protocol methods.
+
+**Gotcha**: `AppendPathDelimited<T>(IEnumerable<T>, string, SerializationFormat, bool)` — the 3rd positional argument is `SerializationFormat`, not `bool`. Always use named `escape:` parameter when generating calls: `uri.AppendPathDelimited(param, ",", escape: true)`.
+
+**Pattern**: When adding new SDK type handling, check ALL copies of `getProtocolTypeExpression` — there are two (ProtocolMethod.tsx and RestClientFile.tsx) that must stay in sync. The doc comment in ProtocolMethod.tsx explicitly notes this: "This duplicates RestClientFile's getProtocolTypeExpression. Both must stay in sync."
+
+**Pattern**: For dict path/query params, `ClientUriBuilder` has dict overloads of `AppendPathDelimited` and `AppendQueryDelimited` that serialize `IDictionary<TKey, TValue>` by interleaving keys and values with `SelectMany`.

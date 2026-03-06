@@ -103,6 +103,13 @@ export function ClientUriBuilderFile(props: ClientUriBuilderFileProps) {
                 AppendPath(string.Join(delimiter, stringValues), escape);
             }
 
+            public void AppendPathDelimited<TKey, TValue>(IDictionary<TKey, TValue> value, string delimiter, SerializationFormat format = SerializationFormat.Default, bool escape = true)
+            {
+                delimiter ??= ",";
+                IEnumerable<string> stringValues = value.SelectMany(kvp => new[] { TypeFormatters.ConvertToString(kvp.Key, format), TypeFormatters.ConvertToString(kvp.Value, format) });
+                AppendPath(string.Join(delimiter, stringValues), escape);
+            }
+
             public void AppendQuery(string name, string value, bool escape)
             {
                 if (PathAndQuery.Length == _pathLength)
@@ -148,6 +155,13 @@ export function ClientUriBuilderFile(props: ClientUriBuilderFileProps) {
             {
                 delimiter ??= ",";
                 IEnumerable<string> stringValues = value.Select(v => TypeFormatters.ConvertToString(v, format));
+                AppendQuery(name, string.Join(delimiter, stringValues), escape);
+            }
+
+            public void AppendQueryDelimited<TKey, TValue>(string name, IDictionary<TKey, TValue> value, string delimiter, SerializationFormat format = SerializationFormat.Default, bool escape = true)
+            {
+                delimiter ??= ",";
+                IEnumerable<string> stringValues = value.SelectMany(kvp => new[] { TypeFormatters.ConvertToString(kvp.Key, format), TypeFormatters.ConvertToString(kvp.Value, format) });
                 AppendQuery(name, string.Join(delimiter, stringValues), escape);
             }
 
