@@ -712,7 +712,7 @@
           "title": "Fix NullReferenceException in XML model serialization",
           "description": "Payload/XML tests (7 scenarios) throw NullReferenceException during XML serialization (NOTE: task 15.1 fixed the constructor NRE for required collection properties, which resolved these 7 Payload/XML test failures. Verify this task is still needed or mark done if e2e confirms.) of models with arrays, dictionaries, and encoded names. The generated XML serialization code (e.g., ModelWithArrayOfModel.Serialization.cs line 129) dereferences null. Fix the emitter's XML serialization code generation.\n\nAffected tests: PutModelWithArrayOfModel, PutModelWithDictionary, PutModelWithEmptyArray, PutModelWithEncodedNames, PutModelWithRenamedArrays, PutModelWithSimpleArrays, PutModelWithUnwrappedArray.\n\nIMPORTANT: Fix the emitter to generate correct serialization code. Do NOT modify tests.",
           "phase": "phase-15",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [],

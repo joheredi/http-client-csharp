@@ -4920,3 +4920,7 @@ Fix applied:
 Impact: Fixed 10 previously failing e2e tests (7 Payload/XML + 3 Encode/DateTime/Duration). The 12 Encode/Array tests changed from NRE to 400 Bad Request — the constructor NRE is fixed but delimiter encoding is a separate issue.
 
 Pattern: `.ToList()` is already used in ConvenienceMethod.tsx and ModelFactoryMethod.tsx. System.Linq is added via SourceFile `using` prop, same pattern as ClientFile.tsx.
+
+## 2026-03-06 — Task 15.2: Verify NullReferenceException in XML model serialization (VERIFIED FIXED)
+
+Task 15.1 (commit 91017ec) added `.ToList()` assignment for required array properties in model constructors, which resolved the NRE that occurred when serializing XML models with arrays, dictionaries, and encoded names. Verified by running e2e tests — all 7 Payload/XML scenarios pass (not in .expected-failures or .expected-skips). No code changes needed; marked as done.

@@ -55,6 +55,7 @@
     "test:scenario": "vitest run --config vitest.scenario.config.ts",
     "test:smoke": "vitest run --config vitest.smoke.config.ts",
     "test:e2e": "pnpm emit:e2e && vitest run --config vitest.config.e2e.ts",
+    "check:coverage": "npx tsx eng/scripts/check-coverage.ts",
     "emit:e2e": "npx tsx eng/scripts/emit-e2e.ts",
     "test:watch": "vitest -w",
     "watch": "alloy build --watch",

@@ -1,13 +1,15 @@
 # Tests expected to be skipped in e2e runs.
 #
-# One fully-qualified NUnit test name per line.
+# One test method name per line (as reported by NUnit3TestAdapter).
 # Lines starting with # are comments; blank lines are ignored.
 #
 # When the emitter implements a scenario and a test starts passing,
 # remove it from this file. The e2e run will fail if:
 #   1. A test is skipped that is NOT listed here (unexpected skip)
 #   2. A test listed here actually passes (stale entry — remove it)
-#
-# NOTE: All legacy HTTP test files are currently excluded from compilation
-# (see Spector.Tests.csproj) because the new emitter's API surface differs
-# from the legacy emitter. As test files are re-enabled, add expected skips here.
+
+# --- Encode/Duration: Skipped by SpectorTestAttribute (not yet implemented) ---
+HeaderFloatMillisecondsLargerUnit
+HeaderFloatSecondsLargerUnit
+QueryFloatMillisecondsLargerUnit
+QueryFloatSecondsLargerUnit

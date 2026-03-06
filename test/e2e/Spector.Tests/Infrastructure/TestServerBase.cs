@@ -20,6 +20,18 @@ namespace TestProjects.Spector.Tests
 
         public TestServerBase(string processPath, string processArguments)
         {
+            // When SPECTOR_SERVER_PORT is set, reuse the external server (started by vitest)
+            // instead of spawning a new one. This ensures coverage is tracked in a single file.
+            var externalPort = Environment.GetEnvironmentVariable("SPECTOR_SERVER_PORT");
+            if (!string.IsNullOrEmpty(externalPort))
+            {
+                Port = externalPort;
+                Host = new Uri($"http://localhost:{Port}");
+                Client = new HttpClient { BaseAddress = Host };
+                _process = null;
+                return;
+            }
+
             var portPhrase = "Started server on ";
 
             var processStartInfo = new ProcessStartInfo("node", $"{processPath} {processArguments}")
