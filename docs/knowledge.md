@@ -2988,3 +2988,21 @@ Fixing the NRE unmasks the delimiter encoding bug. These are now expected failur
 ### Pattern: Adding `using` directives to model files
 Use the `SourceFile` component's `using` prop: `<SourceFile using={["System.Linq"]}>`
 Same pattern as `ClientFile.tsx` and `ModelFactoryFile.tsx`.
+
+## TCGC Endpoint Type Union Pattern (Task 15.6)
+
+When TypeSpec specs have `@versioned` + `@server` decorators, TCGC provides the endpoint parameter's type as `SdkUnionType<SdkEndpointType>` (kind: "union"), NOT a simple `SdkEndpointType`. The union has two variants:
+1. The versioned URL template (e.g., `{endpoint}/path/api-version:{version}`) with 2+ templateArguments
+2. A fallback simple template (`{endpoint}`) with 1 templateArgument
+
+To get the server URL template with version path, resolve the union by selecting the variant with the most `templateArguments`. Check `endpointParam.type.kind === "union"` and iterate `type.variantTypes`.
+
+## Server URL Template Argument Resolution (Task 15.6)
+
+Template arguments in `SdkEndpointType.templateArguments` (SdkPathParameter[]) fall into categories:
+1. **Endpoint placeholder** — `type.kind === "url"` or `name === "endpoint"` → handled by `uri.Reset(endpoint)`
+2. **Api-version** — `isApiVersionParam === true` → use `options.Version`
+3. **Constant-type** — `type.kind === "constant"` → use `type.value` as a string literal (e.g., `"default"`, `"v1"`)
+4. **Method parameter** — matches a param in `clientInitialization.parameters` → use field `_paramName`
+
+The `client/structure` specs use constant-type args (e.g., `client: "default"`). The `resiliency/srv-driven` specs use constant `serviceDeploymentVersion: "v1"`.

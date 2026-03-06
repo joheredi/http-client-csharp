@@ -230,7 +230,11 @@ public partial class AddedClient
 
             options ??= new AddedClientOptions();
 
-            _endpoint = endpoint;
+            ClientUriBuilder endpointBuilder = new ClientUriBuilder();
+            endpointBuilder.Reset(endpoint);
+            endpointBuilder.AppendPath("/versioning/added/api-version:", false);
+            endpointBuilder.AppendPath(options.Version, true);
+            _endpoint = endpointBuilder.ToUri();
             Pipeline = ClientPipeline.Create(options, Array.Empty<PipelinePolicy>(), new PipelinePolicy[] { new UserAgentPolicy(typeof(AddedClient).Assembly) }, Array.Empty<PipelinePolicy>());
         }
 

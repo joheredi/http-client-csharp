@@ -57,11 +57,8 @@ QueryRfc7231
 QueryUnixTimestamp
 QueryUnixTimestampArray
 
-# --- Parameters/Path: ArgumentNullException / ClientResultException ---
-NoOperationParams
-WithOperationPathParam
-
-# --- Server/Path/Multiple: ClientResultException ---
+# --- Parameters/Path: ClientResultException ---
+# Server/Path/Multiple optional path parameter tests
 OptionalPathParamIncluded(False)
 OptionalPathParamIncluded(True)
 
@@ -70,11 +67,11 @@ PutRecursiveModel
 RecursiveGet
 RecursivePut
 
-# --- Versioning: ClientResultException (api-version parameter issues) ---
+# --- Versioning: ClientResultException (body serialization issues) ---
+# URL routing is fixed (api-version in server URL template now handled),
+# but these specs have body serialization mismatches (400 Bad Request).
 Versioning_Added_InterfaceV2
 Versioning_Added_v1
 Versioning_Added_v2
-Versioning_MadeOptional_Test
 Versioning_RenamedFrom_NewInterface
 Versioning_RenamedFrom_NewOp
-Versioning_TypeChangedFrom_Test

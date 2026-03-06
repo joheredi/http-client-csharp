@@ -3,8 +3,10 @@ import type {
   SdkCredentialParameter,
   SdkCredentialType,
   SdkEndpointParameter,
+  SdkEndpointType,
   SdkHttpOperation,
   SdkMethodParameter,
+  SdkPathParameter,
   SdkType,
   SdkUnionType,
 } from "@azure-tools/typespec-client-generator-core";
@@ -281,4 +283,150 @@ function mapSdkTypeToFieldType(sdkType: SdkType): string {
     default:
       return "string";
   }
+}
+
+/**
+ * Represents a segment of a parsed server URL template path.
+ * Used to generate endpoint URI construction code in the client constructor
+ * when the server URL template includes path segments beyond the endpoint placeholder.
+ */
+export interface ServerPathSegment {
+  kind: "literal" | "parameter";
+  /** For literal segments, the literal text. */
+  value?: string;
+  /** For parameter segments, the TCGC path parameter from the template arguments. */
+  param?: SdkPathParameter;
+}
+
+/**
+ * Parses the server URL template from the endpoint parameter to extract
+ * path segments that appear after the endpoint placeholder.
+ *
+ * For versioned specs with server templates like
+ * `"{endpoint}/versioning/added/api-version:{version}"`,
+ * this returns the segments representing `/versioning/added/api-version:` (literal)
+ * and `{version}` (parameter with isApiVersionParam=true).
+ *
+ * TCGC may provide the endpoint type as either a single `SdkEndpointType` or a
+ * `SdkUnionType<SdkEndpointType>` with multiple variants (e.g., versioned +
+ * unversioned). When a union is present, we select the variant with the most
+ * template arguments, which is the one containing the version placeholder.
+ *
+ * Returns an empty array if the server URL template has no extra path segments
+ * beyond the endpoint placeholder (e.g., `"{endpoint}"`).
+ *
+ * @param client - The TCGC SDK client type to inspect.
+ * @returns Array of path segments for endpoint URI construction.
+ */
+export function getServerPathSegments(
+  client: SdkClientType<SdkHttpOperation>,
+): ServerPathSegment[] {
+  const endpointParam = getEndpointParameter(client);
+  if (!endpointParam) return [];
+
+  // Resolve the endpoint type, handling both single and union types.
+  // When TCGC provides a union (multiple @server variants), select the variant
+  // with the most template arguments — this is the one with version placeholders.
+  const resolvedEndpoint = resolveEndpointType(endpointParam.type);
+  if (!resolvedEndpoint) return [];
+
+  return parseServerUrlSegments(
+    resolvedEndpoint.serverUrl,
+    resolvedEndpoint.templateArguments,
+  );
+}
+
+/**
+ * Resolves an endpoint type that may be a single SdkEndpointType or a union.
+ * For unions, selects the variant with the most template arguments (the one
+ * containing version or other path parameters).
+ */
+function resolveEndpointType(
+  type: SdkEndpointType | SdkUnionType<SdkEndpointType>,
+): SdkEndpointType | undefined {
+  if (type.kind === "endpoint") {
+    return type;
+  }
+
+  if (type.kind === "union") {
+    // The union's variantTypes contains the different @server alternatives.
+    // Select the variant with the most template arguments — this is the one
+    // that includes version or other path template parameters.
+    const variants = (type as SdkUnionType<SdkEndpointType>).variantTypes;
+    if (!variants || variants.length === 0) return undefined;
+
+    let best: SdkEndpointType | undefined;
+    for (const variant of variants) {
+      if (variant.kind === "endpoint") {
+        if (
+          !best ||
+          variant.templateArguments.length > best.templateArguments.length
+        ) {
+          best = variant;
+        }
+      }
+    }
+    return best;
+  }
+
+  return undefined;
+}
+
+/**
+ * Parses a server URL template string into path segments after the endpoint placeholder.
+ */
+function parseServerUrlSegments(
+  serverUrl: string,
+  templateArgs: SdkPathParameter[],
+): ServerPathSegment[] {
+  if (!serverUrl || templateArgs.length <= 1) return [];
+
+  // Find the endpoint placeholder (the one whose type is url or named "endpoint")
+  const endpointArg = templateArgs.find(
+    (a) => a.type.kind === "url" || a.name === "endpoint",
+  );
+  if (!endpointArg) return [];
+
+  // Extract path after the endpoint placeholder
+  const endpointPlaceholder = `{${endpointArg.serializedName}}`;
+  const placeholderIndex = serverUrl.indexOf(endpointPlaceholder);
+  if (placeholderIndex === -1) return [];
+
+  const pathAfterEndpoint = serverUrl.slice(
+    placeholderIndex + endpointPlaceholder.length,
+  );
+  if (!pathAfterEndpoint) return [];
+
+  // Build a map of template arguments by serialized name for lookup
+  const paramMap = new Map(templateArgs.map((a) => [a.serializedName, a]));
+
+  // Parse path segments using regex to find {param} placeholders
+  const segments: ServerPathSegment[] = [];
+  const regex = /\{([^}]+)\}/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(pathAfterEndpoint)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({
+        kind: "literal",
+        value: pathAfterEndpoint.slice(lastIndex, match.index),
+      });
+    }
+    const paramName = match[1];
+    const param = paramMap.get(paramName);
+    if (param) {
+      segments.push({ kind: "parameter", param });
+    }
+    lastIndex = regex.lastIndex;
+  }
+
+  if (lastIndex < pathAfterEndpoint.length) {
+    segments.push({
+      kind: "literal",
+      value: pathAfterEndpoint.slice(lastIndex),
+    });
+  }
+
+  return segments;
 }

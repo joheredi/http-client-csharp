@@ -246,7 +246,11 @@ public partial class RemovedClient
 
             options ??= new RemovedClientOptions();
 
-            _endpoint = endpoint;
+            ClientUriBuilder endpointBuilder = new ClientUriBuilder();
+            endpointBuilder.Reset(endpoint);
+            endpointBuilder.AppendPath("/versioning/removed/api-version:", false);
+            endpointBuilder.AppendPath(options.Version, true);
+            _endpoint = endpointBuilder.ToUri();
             Pipeline = ClientPipeline.Create(options, Array.Empty<PipelinePolicy>(), new PipelinePolicy[] { new UserAgentPolicy(typeof(RemovedClient).Assembly) }, Array.Empty<PipelinePolicy>());
         }
 

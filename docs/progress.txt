@@ -4924,3 +4924,17 @@ Pattern: `.ToList()` is already used in ConvenienceMethod.tsx and ModelFactoryMe
 ## 2026-03-06 — Task 15.2: Verify NullReferenceException in XML model serialization (VERIFIED FIXED)
 
 Task 15.1 (commit 91017ec) added `.ToList()` assignment for required array properties in model constructors, which resolved the NRE that occurred when serializing XML models with arrays, dictionaries, and encoded names. Verified by running e2e tests — all 7 Payload/XML scenarios pass (not in .expected-failures or .expected-skips). No code changes needed; marked as done.
+
+2026-03-06 — Task 15.6: Fix api-version query parameter for versioned specs (done)
+  Problem: Versioned specs with @server URL templates like "{endpoint}/path/api-version:{version}"
+  were missing server path segments in the endpoint URI. Requests went to http://host/v1 instead of
+  http://host/versioning/added/api-version:v2/v1. 7 e2e tests failed with 404/400.
+  Fix: Added getServerPathSegments() utility to parse SdkEndpointType.serverUrl template and extract
+  path segments after {endpoint}. Modified ClientFile.tsx constructor to use ClientUriBuilder to build
+  the full endpoint URI when server URL template has extra path segments. Handles union endpoint types
+  (TCGC provides SdkUnionType<SdkEndpointType> with multiple @server variants — select the one with
+  most templateArguments). Handles constant-type template args (e.g., client: "default") and
+  api-version params (use options.Version).
+  Result: 4 previously-failing e2e tests now pass (MadeOptional, TypeChangedFrom, NoOperationParams,
+  WithOperationPathParam). 5 remain failing due to body serialization issues (separate from api-version).
+  Key learning: TCGC endpoint type is often a union, not a simple SdkEndpointType.

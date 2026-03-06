@@ -69,7 +69,11 @@ public partial class MultipleClient
 
             options ??= new MultipleClientOptions();
 
-            _endpoint = endpoint;
+            ClientUriBuilder endpointBuilder = new ClientUriBuilder();
+            endpointBuilder.Reset(endpoint);
+            endpointBuilder.AppendPath("/server/path/multiple/", false);
+            endpointBuilder.AppendPath(options.Version, true);
+            _endpoint = endpointBuilder.ToUri();
             Pipeline = ClientPipeline.Create(options, Array.Empty<PipelinePolicy>(), new PipelinePolicy[] { new UserAgentPolicy(typeof(MultipleClient).Assembly) }, Array.Empty<PipelinePolicy>());
         }
 

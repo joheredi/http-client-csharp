@@ -1664,4 +1664,95 @@ describe("ClientFile", () => {
     // Class name remains unchanged (no underscore prefix)
     expect(subClientFile).toContain("public partial class Model");
   });
+
+  /**
+   * Validates that versioned specs with server URL template arguments
+   * (e.g., "{endpoint}/path/api-version:{version}") generate endpoint URI
+   * construction code in the client constructor using ClientUriBuilder.
+   *
+   * Without this, the generated client only stores the raw endpoint URI
+   * and requests go to the wrong URL (missing server path and api-version).
+   *
+   * This is the root cause of 7 Versioning e2e test failures where the
+   * Spector mock server rejects requests due to missing api-version in the URL path.
+   */
+  it("generates endpoint URI construction for versioned server URL template", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+      using TypeSpec.Versioning;
+
+      @versioned(Versions)
+      @service
+      @server(
+        "{endpoint}/versioning/added/api-version:{version}",
+        "Testserver endpoint",
+        {
+          endpoint: url,
+          version: Versions,
+        }
+      )
+      namespace Versioning.Added;
+
+      enum Versions {
+        v1: "v1",
+        v2: "v2",
+      }
+
+      @route("/v1")
+      @post
+      op v1(): void;
+    `);
+
+    const errors = diagnostics.filter((d) => d.severity === "error");
+    expect(errors).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/AddedClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Verify endpoint URI construction using ClientUriBuilder
+    expect(clientFile).toContain(
+      "ClientUriBuilder endpointBuilder = new ClientUriBuilder();",
+    );
+    expect(clientFile).toContain("endpointBuilder.Reset(endpoint);");
+    expect(clientFile).toContain(
+      'endpointBuilder.AppendPath("/versioning/added/api-version:", false);',
+    );
+    expect(clientFile).toContain(
+      "endpointBuilder.AppendPath(options.Version, true);",
+    );
+    expect(clientFile).toContain("_endpoint = endpointBuilder.ToUri();");
+
+    // Verify simple _endpoint = endpoint is NOT present
+    // (it should be replaced by the ClientUriBuilder construction)
+    expect(clientFile).not.toContain("_endpoint = endpoint;");
+  });
+
+  /**
+   * Validates that non-versioned specs with a simple server URL template
+   * (just "{endpoint}") still use the direct endpoint assignment.
+   *
+   * This ensures the server URL template handling doesn't break the
+   * common case where no extra path segments are needed.
+   */
+  it("uses direct endpoint assignment for simple server URL template", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op testOp(): void;
+    `);
+
+    const errors = diagnostics.filter((d) => d.severity === "error");
+    expect(errors).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Simple case: direct assignment, no ClientUriBuilder
+    expect(clientFile).toContain("_endpoint = endpoint;");
+    expect(clientFile).not.toContain("ClientUriBuilder endpointBuilder");
+  });
 });

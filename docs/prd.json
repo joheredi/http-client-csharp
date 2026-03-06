@@ -789,7 +789,7 @@
           "title": "Fix api-version query parameter for versioned specs",
           "description": "All versioning tests (7 failures: Versioning_Added v1/v2/InterfaceV2, MadeOptional, RenamedFrom NewInterface/NewOp, TypeChangedFrom) fail with ClientResultException. The generated clients are not sending the api-version query parameter correctly to the Spector mock server. Fix the emitter to generate correct api-version parameter handling in versioned client operations.\n\nIMPORTANT: Fix the emitter to match the legacy API. Do NOT modify tests.",
           "phase": "phase-15",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [],

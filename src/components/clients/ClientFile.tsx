@@ -24,9 +24,11 @@ import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import {
   type ApiKeyAuthInfo,
   type OAuth2AuthInfo,
+  type ServerPathSegment,
   getAuthInfo,
   getClientMethodParameters,
   getFieldTypeForParam,
+  getServerPathSegments,
 } from "../../utils/client-params.js";
 import { getClientFileName, getSimpleClientName } from "../../utils/clients.js";
 import { formatDocLines } from "../../utils/doc.js";
@@ -154,6 +156,12 @@ export function ClientFile(props: ClientFileProps) {
   const apiVersionParams = methodParams.filter((p) => p.isApiVersionParam);
   const nonApiVersionParams = methodParams.filter((p) => !p.isApiVersionParam);
 
+  // Parse server URL template for endpoint URI construction.
+  // When the @server decorator has path segments beyond {endpoint} (e.g.,
+  // "{endpoint}/versioning/added/api-version:{version}"), the constructor must
+  // build the full endpoint URI by appending these segments with parameter substitution.
+  const serverPathSegments = isSubClient ? [] : getServerPathSegments(client);
+
   // Add System.Linq when convenience methods use .ToList() for collection params
   // in spread body constructions (e.g., IEnumerable<T> → IList<T> conversion).
   // Add System.Collections.Generic when OAuth2 auth requires Dictionary<string, object>[] _flows.
@@ -261,6 +269,7 @@ export function ClientFile(props: ClientFileProps) {
               apiVersionParams={apiVersionParams}
               hasApiVersions={hasApiVersions}
               optionsClassName={optionsClassName}
+              serverPathSegments={serverPathSegments}
             />
           )}
           {isSubClient && (
@@ -326,6 +335,8 @@ interface RootClientConstructorsProps {
   hasApiVersions: boolean;
   /** The generated options class name (e.g., "TestServiceClientOptions"). */
   optionsClassName: string;
+  /** Parsed server URL template path segments for endpoint URI construction. */
+  serverPathSegments: ServerPathSegment[];
 }
 
 /**
@@ -354,6 +365,7 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
     apiVersionParams,
     hasApiVersions,
     optionsClassName,
+    serverPathSegments,
   } = props;
 
   // Non-API-version method params become constructor parameters
@@ -440,7 +452,12 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
           ? `options ??= new ${optionsClassName}();`
           : code`options ??= new ${SystemClientModelPrimitives.ClientPipelineOptions}();`}
         {"\n\n"}
-        {`_endpoint = endpoint;`}
+        {serverPathSegments.length === 0
+          ? `_endpoint = endpoint;`
+          : buildEndpointFromTemplate(serverPathSegments, [
+              ...nonApiVersionParams,
+              ...apiVersionParams,
+            ])}
         {scheme.fieldAssignment && `\n${scheme.fieldAssignment}`}
         {nonApiVersionParams.map((p) => `\n_${p.name} = ${p.name};`)}
         {"\n"}
@@ -544,6 +561,83 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
       })}
     </>
   );
+}
+
+/**
+ * Generates C# code to construct the full endpoint URI from a server URL template.
+ *
+ * When a TypeSpec `@server` decorator includes path segments with template arguments
+ * (e.g., `"{endpoint}/versioning/added/api-version:{version}"`), the emitter must
+ * build the complete endpoint URI by appending the template path and substituting
+ * parameter values (such as `options.Version` for api-version parameters).
+ *
+ * Template arguments are resolved in this priority order:
+ * 1. Api-version parameters → `options.Version`
+ * 2. Constant-type parameters → their literal value (e.g., `"default"`, `"v1"`)
+ * 3. Parameters with clientDefaultValue → the default value as a string literal
+ * 4. Method parameters (from clientInitialization) → the field `_paramName`
+ *
+ * @param segments - Parsed server URL template path segments from {@link getServerPathSegments}.
+ * @param methodParams - Client method parameters for field resolution.
+ * @returns A C# code string for the constructor body.
+ */
+function buildEndpointFromTemplate(
+  segments: ServerPathSegment[],
+  methodParams: SdkMethodParameter[],
+): string {
+  const lines: string[] = [];
+  lines.push("ClientUriBuilder endpointBuilder = new ClientUriBuilder();");
+  lines.push("\nendpointBuilder.Reset(endpoint);");
+
+  for (const segment of segments) {
+    if (segment.kind === "literal") {
+      lines.push(
+        `\nendpointBuilder.AppendPath("${segment.value}", false);`,
+      );
+    } else if (segment.param?.isApiVersionParam) {
+      lines.push(`\nendpointBuilder.AppendPath(options.Version, true);`);
+    } else if (segment.param) {
+      // Resolve the value for non-api-version template arguments.
+      const valueExpr = resolveTemplateArgValue(segment.param, methodParams);
+      lines.push(`\nendpointBuilder.AppendPath(${valueExpr}, true);`);
+    }
+  }
+
+  lines.push("\n_endpoint = endpointBuilder.ToUri();");
+  return lines.join("");
+}
+
+/**
+ * Resolves the C# expression for a non-api-version server URL template argument.
+ *
+ * For constant-type parameters (e.g., `client: "default"` in the @server decorator),
+ * returns the constant value as a string literal. For method parameters (e.g.,
+ * `subscriptionId` that becomes a client field), returns the field reference `_paramName`.
+ * Falls back to the parameter's clientDefaultValue if available.
+ */
+function resolveTemplateArgValue(
+  param: import("@azure-tools/typespec-client-generator-core").SdkPathParameter,
+  methodParams: SdkMethodParameter[],
+): string {
+  // Constant-type parameters: use the literal value directly
+  if (param.type.kind === "constant" && param.type.value !== null) {
+    return `"${param.type.value}"`;
+  }
+
+  // Check if there's a clientDefaultValue
+  if (param.clientDefaultValue !== undefined && param.clientDefaultValue !== null) {
+    return `"${param.clientDefaultValue}"`;
+  }
+
+  // Check if this is a method parameter on the client → use the field
+  const methodParam = methodParams.find((p) => p.name === param.name);
+  if (methodParam) {
+    return `_${param.name}`;
+  }
+
+  // Fallback: use the parameter name as a string literal
+  // This handles cases where the value is hardcoded in the server template
+  return `"${param.name}"`;
 }
 
 /**
