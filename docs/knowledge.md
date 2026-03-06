@@ -3018,3 +3018,17 @@ Without this, `Optional.IsCollectionDefined(null)` throws NRE during serializati
 **Design decision**: `buildAssignments()` returns `Children[]` (not `string[]`) because ChangeTracking initialization requires `TypeExpression` JSX for the element type. `renderPublicCtorBody()` renders assignments via `.map()` with newline separators instead of `.join("\n")`.
 
 **Validation**: The `PropertyMatchingLoop.tsx` comment at line 196 (`"leave ChangeTracking default"`) confirms the expectation that optional collections are pre-initialized with ChangeTracking instances in the deserialization variable declarations.
+
+## CancellationToken Parameter Collision in ConvenienceMethod
+
+When a user-defined TypeSpec parameter is named `cancellationToken`, it collides with the CancellationToken parameter added by `ConvenienceMethod.tsx`. The `.ToRequestOptions()` call in the method body must reference the RENAMED CancellationToken parameter, not the user's string parameter. Use `resolveCancellationTokenParamName()` to detect collisions and generate a unique name with numeric suffix (e.g., `cancellationToken0`). This matches the legacy emitter's naming convention.
+
+## e2e Test maxBuffer Limit
+
+The `dotnetBuild()` function in `spector.test.ts` uses Node.js `execSync` with `stdio: ['pipe', 'pipe', 'pipe']`. With 95+ generated projects, dotnet's progress rendering output exceeds the default 1MB `maxBuffer`, causing `execSync` to kill the process (exit code `null`). The error message shows "dotnet build failed:" with no CS errors because the process was killed, not because compilation failed. Always set `maxBuffer: 10 * 1024 * 1024` when calling dotnet build through execSync.
+
+## Design Decisions
+
+### Task 15.16: CancellationToken collision fix
+**Approach chosen:** Manual collision detection with `resolveCancellationTokenParamName()` that checks user param names and appends numeric suffix (matching legacy emitter's `cancellationToken0` convention).
+**Rejected:** Using Alloy namekey/refkey for the CancellationToken parameter — the method body is constructed as strings, not JSX elements, so refkeys wouldn't track the rename. Would require restructuring the body generation.

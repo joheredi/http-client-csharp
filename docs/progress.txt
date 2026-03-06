@@ -4959,3 +4959,26 @@ Optional collection properties (like `Element.Extension: IList<Extension>`) were
 - Used `getCollectionValueType()` + `unwrapNullableType()` + `TypeExpression` to render element types
 - Used `isDictCollection()` to distinguish array vs dict for ChangeTracking type selection
 - Pattern matches existing ChangeTracking usage in PropertyMatchingLoop.tsx and ModelFactoryMethod.tsx
+
+## 2026-03-06 — Task 15.16: Fix SpecialWords compilation (CancellationToken parameter collision)
+
+**What was done:**
+- Fixed CS1929 error in SpecialWords spec caused by CancellationToken parameter name collision
+- In `ConvenienceMethod.tsx`, the CancellationToken parameter name was hardcoded as "cancellationToken" in three places:
+  1. Non-spread body protocol call expression (line ~158)
+  2. Spread body scalar case (line ~531)
+  3. Spread body model case (line ~587)
+- When a user-defined parameter is also named "cancellationToken" (as in SpecialWords), Alloy's `<Method>` component auto-renames the CancellationToken param, but the body strings still referenced the original name, calling `.ToRequestOptions()` on the user's string instead of the CancellationToken
+- Added `resolveCancellationTokenParamName()` function that detects collisions and uses `cancellationToken0` suffix (matching legacy emitter convention)
+- Updated all three `.ToRequestOptions()` call sites, the parameter definition, and the XML doc to use the resolved name
+- Fixed e2e test infrastructure: `dotnetBuild()` in `spector.test.ts` exceeded Node.js's default 1MB `maxBuffer` for `execSync` with 95 projects; increased to 10MB
+- Removed "special-words" from `.testignore` and re-enabled SpecialWords test files in `Spector.Tests.csproj`
+
+**Note:** The CS0542 issue (property name collision) was already fixed by `resolvePropertyName()` in a prior task. The actual remaining error was CS1929 (CancellationToken collision).
+
+**Files changed:**
+- `src/components/clients/ConvenienceMethod.tsx` — CancellationToken naming fix
+- `test/convenience-method.test.ts` — unit test for collision scenario
+- `test/e2e/.testignore` — removed special-words
+- `test/e2e/Spector.Tests/Spector.Tests.csproj` — re-enabled SpecialWords tests
+- `test/e2e/spector.test.ts` — maxBuffer fix

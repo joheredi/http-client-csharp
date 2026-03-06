@@ -1011,7 +1011,7 @@
           "title": "Fix property name collision with enclosing type name (SpecialWords)",
           "description": "SpecialWords specs (~100 scenarios) are in .testignore because generated code has CS0542: a property name matching the enclosing class name. The emitter needs to detect and resolve these collisions. Note: task 12.22 addressed some but not all of these.\n\nFix the emitter's property naming to avoid collisions with the enclosing type name for all SpecialWords scenarios. Once the generated code compiles, remove from .testignore and re-enable the test files.\n\nIMPORTANT: Fix the emitter to match the legacy API. NEVER update the test to workaround the API mismatch.",
           "phase": "phase-15",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

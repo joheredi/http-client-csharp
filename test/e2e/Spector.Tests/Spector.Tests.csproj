@@ -82,9 +82,6 @@
     Re-enable as the emitter adds support for these specs.
   -->
   <ItemGroup>
-    <!-- .testignore: special-words (CS0542: property name same as enclosing class) -->
-    <Compile Remove="$(LegacyTestRoot)Http/SpecialWords/**/*.cs" />
-
     <!-- .testignore: parameters/spread (CS7036: missing spread model params) -->
     <Compile Remove="$(LegacyTestRoot)Http/Parameters/Spread/**/*.cs" />
 

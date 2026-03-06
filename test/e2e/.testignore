@@ -77,9 +77,6 @@ type/property/optionality
 
 # === Model member / method issues ===
 
-# CS0542: Property name same as enclosing class name
-special-words
-
 # CS0103: 'Argument' helper class not found (missing infrastructure using)
 
 # === Union type issues ===

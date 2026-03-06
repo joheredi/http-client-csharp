@@ -64,6 +64,7 @@ function dotnetBuild(): { success: boolean; output: string } {
         encoding: "utf-8",
         stdio: ["pipe", "pipe", "pipe"],
         timeout: 300_000, // 5 minutes
+        maxBuffer: 10 * 1024 * 1024, // 10 MB — dotnet progress rendering can exceed the 1 MB default
       },
     );
     return { success: true, output };

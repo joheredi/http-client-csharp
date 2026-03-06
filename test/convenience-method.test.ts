@@ -1428,4 +1428,45 @@ describe("ConvenienceMethod", () => {
       "new SpreadRequest(requiredName, optionalCount, requiredTag, default)",
     );
   });
+
+  /**
+   * Verifies that when a user-defined parameter is named "cancellationToken",
+   * the CancellationToken parameter gets a numeric suffix to avoid collision.
+   *
+   * Without this fix, the generated code calls `.ToRequestOptions()` on the
+   * user's string parameter instead of the CancellationToken, causing CS1929
+   * at compile time. This is the scenario triggered by the SpecialWords spec's
+   * `WithCancellationToken(cancellationToken: string)` operation.
+   *
+   * The legacy emitter uses `cancellationToken0` as the suffix convention.
+   */
+  it("renames CancellationToken param when user param named cancellationToken", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @post op withCancellationToken(@query cancellationToken: string): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"] ?? "";
+
+    // The CancellationToken parameter should be renamed to cancellationToken0
+    // to avoid colliding with the user-defined string "cancellationToken" param.
+    expect(clientFile).toContain(
+      "CancellationToken cancellationToken0 = default",
+    );
+
+    // The .ToRequestOptions() call must reference the renamed parameter,
+    // not the user's string parameter.
+    expect(clientFile).toContain("cancellationToken0.ToRequestOptions()");
+
+    // The XML doc should also reference the renamed parameter.
+    expect(clientFile).toContain(
+      '/// <param name="cancellationToken0"> The cancellation token',
+    );
+  });
 });

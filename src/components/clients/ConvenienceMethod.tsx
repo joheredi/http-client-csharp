@@ -144,6 +144,12 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
         const requiredParams = params.params.filter((p) => !p.optional);
         const assertableParams = requiredParams.filter((p) => p.needsAssertion);
 
+        // Resolve CancellationToken parameter name, avoiding collision with
+        // user-defined parameters. When a user parameter is named
+        // "cancellationToken" (e.g., SpecialWords spec), append a numeric
+        // suffix matching the legacy emitter's convention (cancellationToken0).
+        const ctParamName = resolveCancellationTokenParamName(params.params);
+
         // Build protocol method call argument list.
         // When the body is spread, replace individual body params with
         // a model constructor call: new BodyType(param1, param2, ...).
@@ -152,10 +158,11 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
               params.params,
               params.spreadBodyType,
               params.spreadBodyParamsInOrder!,
+              ctParamName,
             )
           : [
               ...params.params.map((p) => p.protocolCallArg),
-              "cancellationToken.ToRequestOptions()",
+              `${ctParamName}.ToRequestOptions()`,
             ].join(", ");
 
         // Build <Method> parameter props
@@ -166,7 +173,7 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
             ...(p.optional ? { default: "default" } : {}),
           })),
           {
-            name: "cancellationToken",
+            name: ctParamName,
             type: SystemThreading.CancellationToken as Children,
             default: "default",
           },
@@ -199,6 +206,7 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
           description,
           params.params,
           assertableParams,
+          ctParamName,
         );
         const validation = buildConvenienceValidation(assertableParams);
 
@@ -500,11 +508,15 @@ export function buildConvenienceParams(
  * Maintains parameter ordering: non-body args at their original positions,
  * the body construction at the first body param's position, and
  * `cancellationToken.ToRequestOptions()` at the end.
+ *
+ * @param ctParamName - The resolved CancellationToken parameter name (may be
+ * suffixed to avoid collision with user parameters).
  */
 function buildSpreadProtocolCallExpr(
   params: ConvenienceParam[],
   spreadBodyType: SdkType,
   bodyParamsInModelOrder: ConvenienceParam[],
+  ctParamName: string,
 ): Children {
   // For non-model spread body types (scalars like bool, decimal, string),
   // pass the value directly to BinaryContentHelper.FromObject instead of
@@ -528,7 +540,7 @@ function buildSpreadProtocolCallExpr(
         parts.push(p.protocolCallArg);
       }
     }
-    parts.push(", cancellationToken.ToRequestOptions()");
+    parts.push(`, ${ctParamName}.ToRequestOptions()`);
     return parts;
   }
 
@@ -584,9 +596,42 @@ function buildSpreadProtocolCallExpr(
       parts.push(p.protocolCallArg);
     }
   }
-  parts.push(", cancellationToken.ToRequestOptions()");
+  parts.push(`, ${ctParamName}.ToRequestOptions()`);
 
   return parts;
+}
+
+/**
+ * Resolves the CancellationToken parameter name for a convenience method,
+ * avoiding collisions with user-defined parameter names.
+ *
+ * When a user parameter is named `cancellationToken` (e.g., the SpecialWords
+ * spec has an operation with a `cancellationToken: string` parameter), the
+ * CancellationToken parameter name is suffixed with a numeric index to avoid
+ * ambiguity. This matches the legacy emitter's convention of using
+ * `cancellationToken0`, `cancellationToken1`, etc.
+ *
+ * The resolved name is used consistently in the method parameter list and
+ * the `.ToRequestOptions()` call in the method body. Without this, the
+ * body would call `.ToRequestOptions()` on the user's string parameter
+ * instead of the CancellationToken, causing CS1929 at compile time.
+ *
+ * @param params - The user-defined convenience method parameters.
+ * @returns The collision-free CancellationToken parameter name.
+ */
+function resolveCancellationTokenParamName(
+  params: ConvenienceParam[],
+): string {
+  const userNames = new Set(params.map((p) => p.name));
+  let name = "cancellationToken";
+  if (userNames.has(name)) {
+    let suffix = 0;
+    while (userNames.has(`${name}${suffix}`)) {
+      suffix++;
+    }
+    name = `${name}${suffix}`;
+  }
+  return name;
 }
 
 /**
@@ -882,6 +927,7 @@ export function buildConvenienceXmlDoc(
   description: string,
   params: ConvenienceParam[],
   assertableParams: ConvenienceParam[],
+  ctParamName: string = "cancellationToken",
 ): string[] {
   const lines: string[] = [];
 
@@ -894,7 +940,7 @@ export function buildConvenienceXmlDoc(
     lines.push(`/// <param name="${p.name}">${docContent}</param>`);
   }
   lines.push(
-    `/// <param name="cancellationToken"> The cancellation token that can be used to cancel the operation. </param>`,
+    `/// <param name="${ctParamName}"> The cancellation token that can be used to cancel the operation. </param>`,
   );
 
   // Exception docs — ArgumentNullException for required reference-type params
