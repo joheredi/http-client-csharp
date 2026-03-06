@@ -141,6 +141,10 @@ const VERSIONED_SPECS: Record<
   },
   "versioning/typeChangedFrom": { versions: ["v1", "v2"], source: "core" },
   "resiliency/srv-driven": { versions: ["v1", "v2"], source: "azure" },
+  "azure/versioning/previewVersion": {
+    versions: ["v1", "v2"],
+    source: "azure",
+  },
 };
 
 function pascalCase(s: string): string {
@@ -304,6 +308,10 @@ async function compileSpec(spec: SpecEntry): Promise<CompileResult> {
       );
     }
 
+    if (spec.source === "azure") {
+      args.push("--option", "http-client-csharp.flavor=azure");
+    }
+
     await execFileAsync("npx", args, {
       cwd: projectRoot,
       maxBuffer: 10 * 1024 * 1024,
@@ -351,7 +359,12 @@ const propsFilePath = join(
  * Directories where multiple generated projects share a namespace prefix
  * and need assembly aliases to avoid ambiguity in C# compilation.
  */
-const ALIAS_PREFIXES = ["client/structure/", "versioning/", "resiliency/"];
+const ALIAS_PREFIXES = [
+  "client/structure/",
+  "versioning/",
+  "resiliency/",
+  "azure/versioning/",
+];
 
 /**
  * Custom alias overrides for specs where the test files (from the legacy
@@ -372,6 +385,8 @@ const ALIAS_OVERRIDES: Record<string, string> = {
   "versioning/typeChangedFrom/v2": "TypeChangedFromV2",
   "resiliency/srv-driven/v1": "SrvDrivenV1",
   "resiliency/srv-driven/v2": "SrvDrivenV2",
+  "azure/versioning/previewVersion/v1": "PreviewVersionV1",
+  "azure/versioning/previewVersion/v2": "PreviewVersionV2",
 };
 
 function needsAlias(specDir: string): boolean {

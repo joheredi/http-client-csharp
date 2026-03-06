@@ -5489,3 +5489,21 @@ Added the `flavor` emitter option that controls whether Azure SDK or unbranded S
 **Design decision:** Added flavor as a first-class option with a default (approach 1) rather than inferring it at runtime from namespace heuristics (approach 2, used by Java/Python emitters). The explicit option is simpler, matches the PRD spec, and lets emit-e2e.ts pass `--option http-client-csharp.flavor=azure` directly.
 
 **Results:** Build passes, all 569 tests pass (39 expected failures, 14 expected skips), all 4 e2e tests pass.
+
+## Task 16.2: Update emit-e2e.ts to pass `flavor: azure` for Azure specs
+- **Date**: 2026-03-06
+- **Status**: Done
+
+Updated `eng/scripts/emit-e2e.ts` so Azure specs are compiled with `--option http-client-csharp.flavor=azure` while core specs continue using the default unbranded flavor.
+
+**Changes to `eng/scripts/emit-e2e.ts`:**
+1. Added `flavor=azure` conditional in `compileSpec()`: when `spec.source === "azure"`, passes `--option http-client-csharp.flavor=azure` to the tsp compile args.
+2. Added `azure/versioning/previewVersion` to `VERSIONED_SPECS` with versions `["v1", "v2"]` and source `"azure"`.
+3. Added `"azure/versioning/"` to `ALIAS_PREFIXES` so versioned Azure specs get assembly aliases.
+4. Added `PreviewVersionV1` and `PreviewVersionV2` to `ALIAS_OVERRIDES`.
+
+**Validation:**
+- `pnpm emit:e2e --filter azure/core/basic` succeeds with flavor=azure.
+- `pnpm emit:e2e --filter azure/versioning/previewVersion` compiles both v1 and v2 with correct aliases.
+- Generated project references show correct aliases: PreviewVersionV1, PreviewVersionV2.
+- Build passes, all 1,399 tests pass (128 skips), 0 failures.

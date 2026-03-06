@@ -1222,7 +1222,7 @@
           "title": "Update emit-e2e.ts to pass `flavor: azure` for Azure specs",
           "description": "Modify eng/scripts/emit-e2e.ts so that when compiling specs sourced from @azure-tools/azure-http-specs (source: 'azure'), the script passes `--option http-client-csharp.flavor=azure`. Core specs from @typespec/http-specs should continue using the default unbranded flavor.\n\nSpecific changes:\n1. In the compileSpec() function (around line 281), add a conditional: if spec.source === 'azure', add `--option http-client-csharp.flavor=azure` to the args array.\n2. Add azure/versioning/previewVersion to VERSIONED_SPECS with versions ['v1', 'v2'] and source 'azure' (this spec needs versioned compilation like other versioning specs).\n3. Add alias overrides for PreviewVersionV1 and PreviewVersionV2 to ALIAS_OVERRIDES and add 'azure/versioning/' to ALIAS_PREFIXES.\n\nThe SpecEntry interface already has a `source: 'core' | 'azure'` field that distinguishes the spec origin, so no structural changes are needed.\n\nReference files:\n- eng/scripts/emit-e2e.ts (current implementation, study compileSpec at line 272, VERSIONED_SPECS at line 130, ALIAS_OVERRIDES at line 361)",
           "phase": "phase-16",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "16.1"
           ],
