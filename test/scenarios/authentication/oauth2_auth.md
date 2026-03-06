@@ -63,7 +63,7 @@ public partial class OAuth2Client
         public OAuth2Client(
             Uri endpoint,
             AuthenticationTokenProvider tokenProvider
-        ) : this(endpoint, tokenProvider, new ClientPipelineOptions())
+        ) : this(endpoint, tokenProvider, new OAuth2ClientOptions())
         {
         }
 
@@ -72,12 +72,12 @@ public partial class OAuth2Client
         /// <param name="tokenProvider"> A token provider used to authenticate to the service. </param>
         /// <param name="options"> The options for configuring the client. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> or <paramref name="tokenProvider"/> is null. </exception>
-        public OAuth2Client(Uri endpoint, AuthenticationTokenProvider tokenProvider, ClientPipelineOptions options)
+        public OAuth2Client(Uri endpoint, AuthenticationTokenProvider tokenProvider, OAuth2ClientOptions options)
         {
             Argument.AssertNotNull(endpoint, nameof(endpoint));
             Argument.AssertNotNull(tokenProvider, nameof(tokenProvider));
 
-            options ??= new ClientPipelineOptions();
+            options ??= new OAuth2ClientOptions();
 
             _endpoint = endpoint;
             _tokenProvider = tokenProvider;

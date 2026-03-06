@@ -56,7 +56,7 @@ public partial class SpreadClient
         /// <summary> Initializes a new instance of SpreadClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> is null. </exception>
-        public SpreadClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions())
+        public SpreadClient(Uri endpoint) : this(endpoint, new SpreadClientOptions())
         {
         }
 
@@ -64,11 +64,11 @@ public partial class SpreadClient
         /// <param name="endpoint"> Service endpoint. </param>
         /// <param name="options"> The options for configuring the client. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> is null. </exception>
-        public SpreadClient(Uri endpoint, ClientPipelineOptions options)
+        public SpreadClient(Uri endpoint, SpreadClientOptions options)
         {
             Argument.AssertNotNull(endpoint, nameof(endpoint));
 
-            options ??= new ClientPipelineOptions();
+            options ??= new SpreadClientOptions();
 
             _endpoint = endpoint;
             Pipeline = ClientPipeline.Create(options, Array.Empty<PipelinePolicy>(), new PipelinePolicy[] { new UserAgentPolicy(typeof(SpreadClient).Assembly) }, Array.Empty<PipelinePolicy>());

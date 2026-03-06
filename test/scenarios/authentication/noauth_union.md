@@ -63,7 +63,7 @@ public partial class UnionClient
         public UnionClient(
             Uri endpoint,
             AuthenticationTokenProvider tokenProvider
-        ) : this(endpoint, tokenProvider, new ClientPipelineOptions())
+        ) : this(endpoint, tokenProvider, new UnionClientOptions())
         {
         }
 
@@ -72,12 +72,12 @@ public partial class UnionClient
         /// <param name="tokenProvider"> A token provider used to authenticate to the service. </param>
         /// <param name="options"> The options for configuring the client. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> or <paramref name="tokenProvider"/> is null. </exception>
-        public UnionClient(Uri endpoint, AuthenticationTokenProvider tokenProvider, ClientPipelineOptions options)
+        public UnionClient(Uri endpoint, AuthenticationTokenProvider tokenProvider, UnionClientOptions options)
         {
             Argument.AssertNotNull(endpoint, nameof(endpoint));
             Argument.AssertNotNull(tokenProvider, nameof(tokenProvider));
 
-            options ??= new ClientPipelineOptions();
+            options ??= new UnionClientOptions();
 
             _endpoint = endpoint;
             _tokenProvider = tokenProvider;

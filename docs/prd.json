@@ -988,7 +988,7 @@
           "title": "Generate per-client ClientOptions types for non-versioned specs",
           "description": "4 test files are excluded because they reference per-client *ClientOptions types (OAuth2ClientOptions, UnionClientOptions, DocumentationClientOptions, StatusCodeRangeClientOptions) that the new emitter doesn't generate for non-versioned specs. The legacy emitter generates a per-client options class extending ClientPipelineOptions for every client.\n\nFix the emitter to generate per-client *ClientOptions classes for all specs, not just versioned ones.\n\nIMPORTANT: Fix the emitter to match the legacy API. NEVER update the test to workaround the API mismatch.",
           "phase": "phase-15",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

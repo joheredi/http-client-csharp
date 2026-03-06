@@ -43,7 +43,7 @@ public partial class SingleClient
         /// <summary> Initializes a new instance of SingleClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> is null. </exception>
-        public SingleClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions())
+        public SingleClient(Uri endpoint) : this(endpoint, new SingleClientOptions())
         {
         }
 
@@ -51,11 +51,11 @@ public partial class SingleClient
         /// <param name="endpoint"> Service endpoint. </param>
         /// <param name="options"> The options for configuring the client. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> is null. </exception>
-        public SingleClient(Uri endpoint, ClientPipelineOptions options)
+        public SingleClient(Uri endpoint, SingleClientOptions options)
         {
             Argument.AssertNotNull(endpoint, nameof(endpoint));
 
-            options ??= new ClientPipelineOptions();
+            options ??= new SingleClientOptions();
 
             _endpoint = endpoint;
             Pipeline = ClientPipeline.Create(options, Array.Empty<PipelinePolicy>(), new PipelinePolicy[] { new UserAgentPolicy(typeof(SingleClient).Assembly) }, Array.Empty<PipelinePolicy>());

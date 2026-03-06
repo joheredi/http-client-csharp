@@ -65,7 +65,7 @@ public partial class UnionClient
         public UnionClient(
             Uri endpoint,
             ApiKeyCredential credential
-        ) : this(endpoint, credential, new ClientPipelineOptions())
+        ) : this(endpoint, credential, new UnionClientOptions())
         {
         }
 
@@ -74,12 +74,12 @@ public partial class UnionClient
         /// <param name="credential"> A credential used to authenticate to the service. </param>
         /// <param name="options"> The options for configuring the client. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> or <paramref name="credential"/> is null. </exception>
-        public UnionClient(Uri endpoint, ApiKeyCredential credential, ClientPipelineOptions options)
+        public UnionClient(Uri endpoint, ApiKeyCredential credential, UnionClientOptions options)
         {
             Argument.AssertNotNull(endpoint, nameof(endpoint));
             Argument.AssertNotNull(credential, nameof(credential));
 
-            options ??= new ClientPipelineOptions();
+            options ??= new UnionClientOptions();
 
             _endpoint = endpoint;
             _keyCredential = credential;
@@ -91,12 +91,12 @@ public partial class UnionClient
         /// <param name="tokenProvider"> A token provider used to authenticate to the service. </param>
         /// <param name="options"> The options for configuring the client. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> or <paramref name="tokenProvider"/> is null. </exception>
-        public UnionClient(Uri endpoint, AuthenticationTokenProvider tokenProvider, ClientPipelineOptions options)
+        public UnionClient(Uri endpoint, AuthenticationTokenProvider tokenProvider, UnionClientOptions options)
         {
             Argument.AssertNotNull(endpoint, nameof(endpoint));
             Argument.AssertNotNull(tokenProvider, nameof(tokenProvider));
 
-            options ??= new ClientPipelineOptions();
+            options ??= new UnionClientOptions();
 
             _endpoint = endpoint;
             _tokenProvider = tokenProvider;

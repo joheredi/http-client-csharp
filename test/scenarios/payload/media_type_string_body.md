@@ -57,7 +57,7 @@ public partial class MediaTypeClient
         /// <summary> Initializes a new instance of MediaTypeClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> is null. </exception>
-        public MediaTypeClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions())
+        public MediaTypeClient(Uri endpoint) : this(endpoint, new MediaTypeClientOptions())
         {
         }
 
@@ -65,11 +65,11 @@ public partial class MediaTypeClient
         /// <param name="endpoint"> Service endpoint. </param>
         /// <param name="options"> The options for configuring the client. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> is null. </exception>
-        public MediaTypeClient(Uri endpoint, ClientPipelineOptions options)
+        public MediaTypeClient(Uri endpoint, MediaTypeClientOptions options)
         {
             Argument.AssertNotNull(endpoint, nameof(endpoint));
 
-            options ??= new ClientPipelineOptions();
+            options ??= new MediaTypeClientOptions();
 
             _endpoint = endpoint;
             Pipeline = ClientPipeline.Create(options, Array.Empty<PipelinePolicy>(), new PipelinePolicy[] { new UserAgentPolicy(typeof(MediaTypeClient).Assembly) }, Array.Empty<PipelinePolicy>());

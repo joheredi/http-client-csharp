@@ -1099,7 +1099,7 @@ describe("ConvenienceMethod", () => {
     `);
     expect(diagnostics).toHaveLength(0);
     const clientFile = Object.values(outputs).find((o) =>
-      o.includes("class TestServiceClient"),
+      o.includes("class TestServiceClient\n"),
     )!;
     // Each continuation line in the param doc must start with ///
     expect(clientFile).toContain("/// client.");

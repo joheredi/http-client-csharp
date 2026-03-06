@@ -35,7 +35,7 @@ public partial class NotDefinedClient
         /// <summary> Initializes a new instance of NotDefinedClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> is null. </exception>
-        public NotDefinedClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions())
+        public NotDefinedClient(Uri endpoint) : this(endpoint, new NotDefinedClientOptions())
         {
         }
 
@@ -43,11 +43,11 @@ public partial class NotDefinedClient
         /// <param name="endpoint"> Service endpoint. </param>
         /// <param name="options"> The options for configuring the client. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> is null. </exception>
-        public NotDefinedClient(Uri endpoint, ClientPipelineOptions options)
+        public NotDefinedClient(Uri endpoint, NotDefinedClientOptions options)
         {
             Argument.AssertNotNull(endpoint, nameof(endpoint));
 
-            options ??= new ClientPipelineOptions();
+            options ??= new NotDefinedClientOptions();
 
             _endpoint = endpoint;
             Pipeline = ClientPipeline.Create(options, Array.Empty<PipelinePolicy>(), new PipelinePolicy[] { new UserAgentPolicy(typeof(NotDefinedClient).Assembly) }, Array.Empty<PipelinePolicy>());

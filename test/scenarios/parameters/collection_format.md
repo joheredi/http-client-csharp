@@ -55,7 +55,7 @@ public partial class CollectionFormatClient
         /// <summary> Initializes a new instance of CollectionFormatClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> is null. </exception>
-        public CollectionFormatClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions())
+        public CollectionFormatClient(Uri endpoint) : this(endpoint, new CollectionFormatClientOptions())
         {
         }
 
@@ -63,11 +63,11 @@ public partial class CollectionFormatClient
         /// <param name="endpoint"> Service endpoint. </param>
         /// <param name="options"> The options for configuring the client. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> is null. </exception>
-        public CollectionFormatClient(Uri endpoint, ClientPipelineOptions options)
+        public CollectionFormatClient(Uri endpoint, CollectionFormatClientOptions options)
         {
             Argument.AssertNotNull(endpoint, nameof(endpoint));
 
-            options ??= new ClientPipelineOptions();
+            options ??= new CollectionFormatClientOptions();
 
             _endpoint = endpoint;
             Pipeline = ClientPipeline.Create(options, Array.Empty<PipelinePolicy>(), new PipelinePolicy[] { new UserAgentPolicy(typeof(CollectionFormatClient).Assembly) }, Array.Empty<PipelinePolicy>());

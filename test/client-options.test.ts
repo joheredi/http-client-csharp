@@ -149,13 +149,16 @@ describe("ClientOptionsFile", () => {
   });
 
   /**
-   * Verifies that unversioned services do not generate a ClientOptions file.
+   * Verifies that unversioned services generate a simple empty ClientOptions
+   * class that extends ClientPipelineOptions, matching the legacy emitter.
    *
-   * When a TypeSpec service has no @versioned decorator, the SdkClientType
-   * has an empty apiVersions array, and no options class should be emitted.
-   * This prevents generating an options class with an empty ServiceVersion enum.
+   * The legacy emitter generates per-client options types for ALL specs,
+   * including unversioned ones. For unversioned specs, the generated class
+   * is an empty partial class that simply extends ClientPipelineOptions,
+   * providing a type-safe per-client options type that consumers can
+   * customize via partial class extensions.
    */
-  it("does not generate client options for unversioned service", async () => {
+  it("generates empty client options for unversioned service", async () => {
     const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
@@ -172,11 +175,29 @@ describe("ClientOptionsFile", () => {
 
     expect(diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
 
-    // No ClientOptions file should be generated
+    // Should generate a ClientOptions file
     const optionsKey = Object.keys(outputs).find((k) =>
       k.includes("ClientOptions"),
     );
-    expect(optionsKey).toBeUndefined();
+    expect(optionsKey).toBeDefined();
+    expect(optionsKey).toContain("src/Generated/");
+
+    const optionsFile = outputs[optionsKey!];
+
+    // Verify class declaration and base class
+    expect(optionsFile).toContain(
+      "UnversionedServiceClientOptions : ClientPipelineOptions",
+    );
+    expect(optionsFile).toContain("public partial class");
+
+    // Should use System.ClientModel.Primitives for ClientPipelineOptions
+    expect(optionsFile).toContain("using System.ClientModel.Primitives;");
+
+    // Should NOT contain ServiceVersion enum, LatestVersion, or Version property
+    expect(optionsFile).not.toContain("ServiceVersion");
+    expect(optionsFile).not.toContain("LatestVersion");
+    expect(optionsFile).not.toContain("Version");
+    expect(optionsFile).not.toContain("NotSupportedException");
   });
 
   /**

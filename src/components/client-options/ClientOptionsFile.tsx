@@ -32,19 +32,26 @@ export interface ClientOptionsFileProps {
 /**
  * Generates a C# source file containing the client options class.
  *
- * The generated class inherits from `ClientPipelineOptions` and contains:
+ * For versioned services (with API versions), the generated class inherits
+ * from `ClientPipelineOptions` and contains:
  * - A nested `ServiceVersion` enum with a monotonic ordinal for each API version
  * - A `LatestVersion` const field pointing to the latest enum member
  * - A constructor that maps each `ServiceVersion` member to its string value
  *   via a switch expression
  * - An internal `Version` string property exposing the resolved version string
  *
- * This matches the legacy generator's `ClientOptionsProvider` output format.
+ * For non-versioned services (no API versions), the generated class is an
+ * empty partial class that simply extends `ClientPipelineOptions`. This
+ * provides a dedicated per-client options type that consumers can customize
+ * via partial class extensions.
+ *
+ * This matches the legacy generator's `ClientOptionsProvider` output format,
+ * which generates per-client options types for all specs regardless of
+ * versioning.
+ *
  * The file is placed at `src/Generated/{OptionsClassName}.cs`.
  *
- * If the client has no API versions, no file is generated (returns `false`).
- *
- * @example Generated output:
+ * @example Generated output for a versioned service:
  * ```csharp
  * public partial class MyClientOptions : ClientPipelineOptions
  * {
@@ -68,15 +75,17 @@ export interface ClientOptionsFileProps {
  *     }
  * }
  * ```
+ *
+ * @example Generated output for a non-versioned service:
+ * ```csharp
+ * public partial class MyClientOptions : ClientPipelineOptions
+ * {
+ * }
+ * ```
  */
 export function ClientOptionsFile(props: ClientOptionsFileProps) {
   const { client, options } = props;
   const apiVersions = client.apiVersions;
-
-  // Don't generate options file if the client has no API versions
-  if (apiVersions.length === 0) {
-    return false;
-  }
 
   const header = getLicenseHeader(options);
   const namePolicy = useCSharpNamePolicy();
@@ -86,6 +95,27 @@ export function ClientOptionsFile(props: ClientOptionsFileProps) {
     "class",
   );
   const optionsClassName = `${clientName}Options`;
+
+  // Non-versioned services get an empty options class extending ClientPipelineOptions.
+  // This matches the legacy emitter which generates per-client options for all specs.
+  if (apiVersions.length === 0) {
+    return (
+      <SourceFile path={`src/Generated/${optionsClassName}.cs`}>
+        {header}
+        {"\n\n"}
+        <Namespace name={client.namespace}>
+          {`/// <summary> Client options for <see cref="${clientName}"/>. </summary>`}
+          {"\n"}
+          <ClassDeclaration
+            public
+            partial
+            name={optionsClassName}
+            baseType={SystemClientModelPrimitives.ClientPipelineOptions}
+          />
+        </Namespace>
+      </SourceFile>
+    );
+  }
 
   // Build version member metadata: name, ordinal, and original string value
   const versionMembers = apiVersions.map((version, index) => ({

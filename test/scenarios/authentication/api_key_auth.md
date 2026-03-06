@@ -48,7 +48,7 @@ public partial class ApiKeyClient
         public ApiKeyClient(
             Uri endpoint,
             ApiKeyCredential credential
-        ) : this(endpoint, credential, new ClientPipelineOptions())
+        ) : this(endpoint, credential, new ApiKeyClientOptions())
         {
         }
 
@@ -57,12 +57,12 @@ public partial class ApiKeyClient
         /// <param name="credential"> A credential used to authenticate to the service. </param>
         /// <param name="options"> The options for configuring the client. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> or <paramref name="credential"/> is null. </exception>
-        public ApiKeyClient(Uri endpoint, ApiKeyCredential credential, ClientPipelineOptions options)
+        public ApiKeyClient(Uri endpoint, ApiKeyCredential credential, ApiKeyClientOptions options)
         {
             Argument.AssertNotNull(endpoint, nameof(endpoint));
             Argument.AssertNotNull(credential, nameof(credential));
 
-            options ??= new ClientPipelineOptions();
+            options ??= new ApiKeyClientOptions();
 
             _endpoint = endpoint;
             _keyCredential = credential;

@@ -5061,3 +5061,30 @@ Optional collection properties (like `Element.Extension: IList<Extension>`) were
 **Patterns used:** isDynamicModel() check from DynamicModel.tsx, same pattern used in JsonDeserialize.tsx
 
 **For next person:** Task 15.23 still needs work — CS7036 is fixed but CS1503 (BinaryContent→ResourcePatch) remains.
+
+## Task 15.15: Generate per-client ClientOptions types for non-versioned specs (2026-03-06)
+
+**What was done:**
+- Modified `ClientOptionsFile.tsx` to generate an empty `{ClientName}Options : ClientPipelineOptions {}` class for non-versioned specs (previously returned `false` / no file).
+- Modified `ClientFile.tsx` (`RootClientConstructors`) to always use the per-client options class in constructor signatures, instead of raw `ClientPipelineOptions`.
+- Removed the `hasApiVersions` prop from `RootClientConstructors` since all root clients now use per-client options.
+- Updated `test/client-options.test.ts` — changed "does not generate" test to "generates empty" test.
+- Updated `test/client-file.test.ts` — 7 tests updated to expect per-client options class names.
+- Updated 14 scenario test `.md` files to use per-client options class names.
+- Fixed `test/model.test.ts` — 2 tests using `k.includes("Options.cs")` now exclude ClientOptions files.
+- Fixed `test/convenience-method.test.ts` and `test/protocol-method.test.ts` — substring match for class name disambiguation.
+- Removed e2e exclusions for Documentation and StatusCodeRange tests (now pass).
+- Kept e2e exclusions for OAuth2 and Union auth tests (separate issue: missing 1-arg tokenProvider constructor).
+- Added `BulletPointsModel` to `.expected-skips` (Documentation model enum not yet generated correctly).
+
+**Patterns used:**
+- Alloy `<ClassDeclaration>` with self-closing tag for empty class bodies
+- Split `hasApiVersions` from options-class logic (root clients always use per-client options)
+
+**Key learnings:**
+- `TestServiceClientOptions` is longer than `ClientPipelineOptions`, which can push OAuth2 constructor lines past the formatter's line-length threshold, switching to multi-line parameter formatting.
+- Test file searches like `k.includes("Options.cs")` or `o.includes("class TestServiceClient")` can match ClientOptions files as substring — use more specific patterns.
+
+**Next person should know:**
+- OAuth2 and Union auth tests still excluded: they call single-arg constructors `new OAuth2Client(tokenProvider)` which the new emitter doesn't generate. Tracked as a separate issue.
+- Documentation's `BulletPointsModel` test is skipped — the model uses a `BulletPointsEnum` not yet generated correctly by the new emitter.

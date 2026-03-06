@@ -1307,8 +1307,8 @@ describe("ModelConstructors", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const modelFile = Object.keys(outputs).find((k) =>
-      k.includes("Options.cs"),
+    const modelFile = Object.keys(outputs).find(
+      (k) => k.includes("Options.cs") && !k.includes("ClientOptions"),
     );
     expect(modelFile).toBeDefined();
     const content = outputs[modelFile!];
@@ -2006,8 +2006,8 @@ describe("SerializationConstructor", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const modelFile = Object.keys(outputs).find((k) =>
-      k.includes("Options.cs"),
+    const modelFile = Object.keys(outputs).find(
+      (k) => k.includes("Options.cs") && !k.includes("ClientOptions"),
     );
     expect(modelFile).toBeDefined();
     const content = outputs[modelFile!];

@@ -44,7 +44,7 @@ public partial class CustomClient
         /// <summary> Initializes a new instance of CustomClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> is null. </exception>
-        public CustomClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions())
+        public CustomClient(Uri endpoint) : this(endpoint, new CustomClientOptions())
         {
         }
 
@@ -52,11 +52,11 @@ public partial class CustomClient
         /// <param name="endpoint"> Service endpoint. </param>
         /// <param name="options"> The options for configuring the client. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> is null. </exception>
-        public CustomClient(Uri endpoint, ClientPipelineOptions options)
+        public CustomClient(Uri endpoint, CustomClientOptions options)
         {
             Argument.AssertNotNull(endpoint, nameof(endpoint));
 
-            options ??= new ClientPipelineOptions();
+            options ??= new CustomClientOptions();
 
             _endpoint = endpoint;
             Pipeline = ClientPipeline.Create(options, Array.Empty<PipelinePolicy>(), new PipelinePolicy[] { new UserAgentPolicy(typeof(CustomClient).Assembly) }, Array.Empty<PipelinePolicy>());

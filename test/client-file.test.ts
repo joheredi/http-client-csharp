@@ -488,11 +488,11 @@ describe("ClientFile", () => {
    * with a default options instance.
    *
    * The secondary constructor pattern `(Uri endpoint) : this(endpoint, new
-   * ClientPipelineOptions())` allows consumers to create a client without
+   * TestServiceClientOptions())` allows consumers to create a client without
    * manually specifying options.
    *
-   * When the client has no API versions, the options type falls back to
-   * `ClientPipelineOptions` from System.ClientModel.Primitives.
+   * Root clients always use the per-client options class (e.g.,
+   * TestServiceClientOptions) matching the legacy emitter's behavior.
    */
   it("generates secondary constructor for root client without auth", async () => {
     const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
@@ -511,7 +511,7 @@ describe("ClientFile", () => {
 
     // Secondary constructor delegates to primary via : this(...)
     expect(clientFile).toContain(
-      ": this(endpoint, new ClientPipelineOptions())",
+      ": this(endpoint, new TestServiceClientOptions())",
     );
 
     // Secondary constructor has only endpoint parameter
@@ -547,7 +547,7 @@ describe("ClientFile", () => {
 
     // Primary constructor with endpoint + options parameters
     expect(clientFile).toContain(
-      "public TestServiceClient(Uri endpoint, ClientPipelineOptions options)",
+      "public TestServiceClient(Uri endpoint, TestServiceClientOptions options)",
     );
 
     // Argument validation
@@ -556,7 +556,7 @@ describe("ClientFile", () => {
     );
 
     // Options null-coalescing
-    expect(clientFile).toContain("options ??= new ClientPipelineOptions();");
+    expect(clientFile).toContain("options ??= new TestServiceClientOptions();");
 
     // Endpoint field assignment
     expect(clientFile).toContain("_endpoint = endpoint;");
@@ -603,12 +603,12 @@ describe("ClientFile", () => {
 
     // Secondary constructor with credential parameter
     expect(clientFile).toContain(
-      ": this(endpoint, credential, new ClientPipelineOptions())",
+      ": this(endpoint, credential, new TestServiceClientOptions())",
     );
 
     // Primary constructor with credential + options
     expect(clientFile).toContain(
-      "ApiKeyCredential credential, ClientPipelineOptions options)",
+      "ApiKeyCredential credential, TestServiceClientOptions options)",
     );
 
     // Credential validation
@@ -662,13 +662,16 @@ describe("ClientFile", () => {
 
     // Secondary constructor with token provider parameter
     expect(clientFile).toContain(
-      ": this(endpoint, tokenProvider, new ClientPipelineOptions())",
+      ": this(endpoint, tokenProvider, new TestServiceClientOptions())",
     );
 
     // Primary constructor with token provider + options
+    // Parameters may be on separate lines due to line length formatting
     expect(clientFile).toContain(
-      "AuthenticationTokenProvider tokenProvider, ClientPipelineOptions options)",
+      "AuthenticationTokenProvider tokenProvider,",
     );
+    expect(clientFile).toContain("TestServiceClientOptions options");
+    expect(clientFile).toContain("options ??= new TestServiceClientOptions();");
 
     // Token provider validation
     expect(clientFile).toContain(
@@ -811,7 +814,7 @@ describe("ClientFile", () => {
       "public TestServiceClient(Uri endpoint)",
     );
     const primaryIdx = clientFile.indexOf(
-      "public TestServiceClient(Uri endpoint, ClientPipelineOptions options)",
+      "public TestServiceClient(Uri endpoint, TestServiceClientOptions options)",
     );
 
     expect(mockingIdx).toBeGreaterThan(-1);
@@ -863,26 +866,28 @@ describe("ClientFile", () => {
 
     // Short (convenience) constructor for FIRST auth scheme (API key) only
     expect(clientFile).toContain(
-      ": this(endpoint, credential, new ClientPipelineOptions())",
+      ": this(endpoint, credential, new TestServiceClientOptions())",
     );
 
     // Full API key constructor with credential + options
     expect(clientFile).toContain(
-      "ApiKeyCredential credential, ClientPipelineOptions options)",
+      "ApiKeyCredential credential, TestServiceClientOptions options)",
     );
 
     // Full OAuth2 constructor with tokenProvider + options
+    // Parameters may be on separate lines due to line length formatting
     expect(clientFile).toContain(
-      "AuthenticationTokenProvider tokenProvider, ClientPipelineOptions options)",
+      "AuthenticationTokenProvider tokenProvider,",
     );
+    expect(clientFile).toContain("TestServiceClientOptions options");
 
     // API key constructor body assigns only _keyCredential
     // Find the API key constructor body and verify it doesn't assign _tokenProvider
     const apiKeyCtorStart = clientFile.indexOf(
-      "ApiKeyCredential credential, ClientPipelineOptions options)",
+      "ApiKeyCredential credential, TestServiceClientOptions options)",
     );
     const oauth2CtorStart = clientFile.indexOf(
-      "AuthenticationTokenProvider tokenProvider, ClientPipelineOptions options)",
+      "AuthenticationTokenProvider tokenProvider,",
     );
     expect(apiKeyCtorStart).toBeGreaterThan(-1);
     expect(oauth2CtorStart).toBeGreaterThan(-1);
@@ -915,7 +920,7 @@ describe("ClientFile", () => {
 
     // Should NOT have a short constructor for OAuth2 (only first auth gets short)
     expect(clientFile).not.toContain(
-      ": this(endpoint, tokenProvider, new ClientPipelineOptions())",
+      ": this(endpoint, tokenProvider, new TestServiceClientOptions())",
     );
   });
 
@@ -953,7 +958,7 @@ describe("ClientFile", () => {
 
     // Secondary constructor with :this() should also have multiline empty body
     expect(clientFile).toContain(
-      ": this(endpoint, new ClientPipelineOptions())\n        {\n        }",
+      ": this(endpoint, new TestServiceClientOptions())\n        {\n        }",
     );
   });
 

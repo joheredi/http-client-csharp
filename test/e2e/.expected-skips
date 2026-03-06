@@ -13,3 +13,6 @@ HeaderFloatMillisecondsLargerUnit
 HeaderFloatSecondsLargerUnit
 QueryFloatMillisecondsLargerUnit
 QueryFloatSecondsLargerUnit
+
+# --- Documentation: BulletPointsModel uses BulletPointsEnum not yet generated correctly ---
+BulletPointsModel

@@ -50,7 +50,7 @@ public partial class ContentNegotiationClient
         /// <summary> Initializes a new instance of ContentNegotiationClient. </summary>
         /// <param name="endpoint"> Service endpoint. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> is null. </exception>
-        public ContentNegotiationClient(Uri endpoint) : this(endpoint, new ClientPipelineOptions())
+        public ContentNegotiationClient(Uri endpoint) : this(endpoint, new ContentNegotiationClientOptions())
         {
         }
 
@@ -58,11 +58,11 @@ public partial class ContentNegotiationClient
         /// <param name="endpoint"> Service endpoint. </param>
         /// <param name="options"> The options for configuring the client. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="endpoint"/> is null. </exception>
-        public ContentNegotiationClient(Uri endpoint, ClientPipelineOptions options)
+        public ContentNegotiationClient(Uri endpoint, ContentNegotiationClientOptions options)
         {
             Argument.AssertNotNull(endpoint, nameof(endpoint));
 
-            options ??= new ClientPipelineOptions();
+            options ??= new ContentNegotiationClientOptions();
 
             _endpoint = endpoint;
             Pipeline = ClientPipeline.Create(options, Array.Empty<PipelinePolicy>(), new PipelinePolicy[] { new UserAgentPolicy(typeof(ContentNegotiationClient).Assembly) }, Array.Empty<PipelinePolicy>());

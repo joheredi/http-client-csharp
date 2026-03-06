@@ -3071,3 +3071,26 @@ categorized under Duration in `.expected-failures` — they are actually DateTim
 
 **Approach chosen**: Conditional argument passing based on `isDynamicModel()` check. 
 **Why**: The Deserialize method signature is already conditional (set in JsonDeserialize.tsx). Following the same pattern ensures consistency. Alternative approach of making `data` optional with a default `null` was rejected because it would change the method signature for all models, potentially breaking existing callers.
+
+## Design Decisions
+
+### Task 15.15: Per-client ClientOptions for non-versioned specs
+
+**Decision:** Modified `ClientOptionsFile` to generate an empty `{ClientName}Options : ClientPipelineOptions {}` class for non-versioned specs, and `RootClientConstructors` to always use the per-client options class.
+
+**Approach chosen:** Single conditional branch in `ClientOptionsFile` — return empty class when `apiVersions.length === 0`, full versioned class otherwise.
+
+**Rejected:** Creating a separate component for non-versioned options. This would add unnecessary complexity for a simple conditional.
+
+**Rationale:** The legacy emitter generates per-client options for ALL specs (76 files across TestProjects). Matching this surface is required for e2e test compatibility.
+
+## Gotchas
+
+### Substring matching in test file lookups
+When searching output keys with `k.includes("Options.cs")`, the ClientOptions file (`TestServiceClientOptions.cs`) will also match. Always exclude `ClientOptions` from model file lookups: `k.includes("Options.cs") && !k.includes("ClientOptions")`.
+
+### Multi-line constructor formatting triggered by longer type names
+Changing `ClientPipelineOptions` (21 chars) to `TestServiceClientOptions` (24 chars) can push OAuth2 constructor lines past the Alloy formatter's line-length threshold, switching to multi-line parameter format. Test assertions should match individual parameter fragments rather than full parameter lists.
+
+### OAuth2/Union auth tests need single-arg convenience constructors
+Legacy tests call `new OAuth2Client(tokenProvider)` with just 1 arg. The new emitter generates `(endpoint, tokenProvider)` as minimum. These tests remain excluded until the emitter supports endpoint-defaulting convenience constructors.

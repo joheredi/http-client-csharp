@@ -151,7 +151,6 @@ export function ClientFile(props: ClientFileProps) {
 
   // Constructor setup for root clients.
   // API version params are assigned from options.Version, not passed as constructor params.
-  const hasApiVersions = !isSubClient && client.apiVersions.length > 0;
   const optionsClassName = `${className}Options`;
   const apiVersionParams = methodParams.filter((p) => p.isApiVersionParam);
   const nonApiVersionParams = methodParams.filter((p) => !p.isApiVersionParam);
@@ -267,7 +266,6 @@ export function ClientFile(props: ClientFileProps) {
               oauth2Auth={oauth2Auth}
               nonApiVersionParams={nonApiVersionParams}
               apiVersionParams={apiVersionParams}
-              hasApiVersions={hasApiVersions}
               optionsClassName={optionsClassName}
               serverPathSegments={serverPathSegments}
             />
@@ -331,8 +329,6 @@ interface RootClientConstructorsProps {
   nonApiVersionParams: SdkMethodParameter[];
   /** API version parameters assigned from options.Version. */
   apiVersionParams: SdkMethodParameter[];
-  /** Whether the client has API versions (determines options class). */
-  hasApiVersions: boolean;
   /** The generated options class name (e.g., "TestServiceClientOptions"). */
   optionsClassName: string;
   /** Parsed server URL template path segments for endpoint URI construction. */
@@ -363,7 +359,6 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
     oauth2Auth,
     nonApiVersionParams,
     apiVersionParams,
-    hasApiVersions,
     optionsClassName,
     serverPathSegments,
   } = props;
@@ -375,16 +370,14 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
   }));
 
   const endpointParam = { name: "endpoint", type: System.Uri };
-  const optionsParam = hasApiVersions
-    ? { name: "options", type: optionsClassName }
-    : {
-        name: "options",
-        type: SystemClientModelPrimitives.ClientPipelineOptions,
-      };
+  // Root clients always use the per-client options class (e.g., TestServiceClientOptions),
+  // matching the legacy emitter which generates {ClientName}Options for all specs.
+  const optionsParam = {
+    name: "options",
+    type: optionsClassName,
+  };
 
-  const optionsDefault = hasApiVersions
-    ? `new ${optionsClassName}()`
-    : "new ClientPipelineOptions()";
+  const optionsDefault = `new ${optionsClassName}()`;
 
   const methodDocParams = nonApiVersionParams.map(
     (p) =>
@@ -448,9 +441,7 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
           (p) => `\nArgument.AssertNotNull(${p.name}, nameof(${p.name}));`,
         )}
         {"\n\n"}
-        {hasApiVersions
-          ? `options ??= new ${optionsClassName}();`
-          : code`options ??= new ${SystemClientModelPrimitives.ClientPipelineOptions}();`}
+        {`options ??= new ${optionsClassName}();`}
         {"\n\n"}
         {serverPathSegments.length === 0
           ? `_endpoint = endpoint;`
