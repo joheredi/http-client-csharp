@@ -2982,19 +2982,18 @@ describe("UnknownDiscriminatorModel", () => {
   });
 
   /**
-   * Validates that enum discriminator Unknown variants use the default-check
-   * pattern instead of null-coalescing.
+   * Validates that fixed enum discriminator Unknown variants pass the
+   * discriminator through without a null-guard.
    *
-   * Extensible enums in C# are structs (value types) and cannot be null.
-   * Instead, the pattern `kind != default ? kind : "unknown"` checks for
-   * the default struct value. The "unknown" string is implicitly converted
-   * to the extensible enum type.
+   * Fixed enums in C# are regular `enum` types (value types) — they can't
+   * be null and don't have string constructors. The legacy emitter passes
+   * the discriminator through as-is: `base(kind, weight, ...)`.
    *
-   * Reference: UnknownDog.cs —
-   * `internal UnknownDog(DogKind kind, ...)
-   *     : base(kind != default ? kind : "unknown", ...)`
+   * Reference: UnknownSnake.cs (legacy) —
+   * `internal UnknownSnake(SnakeKind kind, ...)
+   *     : base(kind, ...)`
    */
-  it("generates constructor with enum discriminator default-check guard", async () => {
+  it("generates constructor with fixed enum discriminator passthrough", async () => {
     const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
@@ -3033,9 +3032,59 @@ describe("UnknownDiscriminatorModel", () => {
       /internal\s+UnknownDog\([\s\S]*?DogKind\s+kind[\s\S]*?int\s+weight[\s\S]*?IDictionary<string,\s*BinaryData>\s+additionalBinaryDataProperties[\s\S]*?\)/,
     );
 
-    // Base call with default-check guard for enum discriminator
+    // Base call passes fixed enum discriminator through without null-guard
     expect(content).toMatch(
-      /:\s*base\(kind\s*!=\s*default\s*\?\s*kind\s*:\s*"unknown",\s*weight,\s*additionalBinaryDataProperties\)/,
+      /:\s*base\(kind,\s*weight,\s*additionalBinaryDataProperties\)/,
+    );
+  });
+
+  /**
+   * Validates that extensible enum (union) discriminator Unknown variants use
+   * the default-check pattern with enum constructor fallback.
+   *
+   * Extensible enums in C# are structs with a string constructor. The Unknown
+   * variant guards against the default struct value:
+   * `kind != default ? kind : new DogKind("unknown")`
+   */
+  it("generates constructor with extensible enum discriminator default-check guard", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      union DogKind {
+        golden: "golden",
+        husky: "husky",
+        string,
+      }
+
+      @discriminator("kind")
+      model Dog {
+        kind: DogKind;
+        weight: int32;
+      }
+
+      model Golden extends Dog {
+        kind: DogKind.golden;
+      }
+
+      @route("/test")
+      op test(): Dog;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const unknownFile = Object.keys(outputs).find((k) =>
+      k.includes("UnknownDog.cs"),
+    );
+    expect(unknownFile).toBeDefined();
+    const content = outputs[unknownFile!];
+
+    // Base call with default-check guard for extensible enum discriminator.
+    // Uses `new DogKind("unknown")` because extensible enums are structs.
+    expect(content).toMatch(
+      /:\s*base\(kind\s*!=\s*default\s*\?\s*kind\s*:\s*new DogKind\("unknown"\),\s*weight,\s*additionalBinaryDataProperties\)/,
     );
   });
 

@@ -150,7 +150,7 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
         const protocolCallExpr: Children = params.spreadBodyType
           ? buildSpreadProtocolCallExpr(
               params.params,
-              params.spreadBodyType as SdkModelType,
+              params.spreadBodyType,
               params.spreadBodyParamsInOrder!,
             )
           : [
@@ -503,9 +503,35 @@ export function buildConvenienceParams(
  */
 function buildSpreadProtocolCallExpr(
   params: ConvenienceParam[],
-  spreadBodyType: SdkModelType,
+  spreadBodyType: SdkType,
   bodyParamsInModelOrder: ConvenienceParam[],
 ): Children {
+  // For non-model spread body types (scalars like bool, decimal, string),
+  // pass the value directly to BinaryContentHelper.FromObject instead of
+  // wrapping in a constructor call. Primitive types don't have constructors
+  // that accept a single value (e.g., `new bool(value)` is invalid C#).
+  if (spreadBodyType.kind !== "model") {
+    const parts: Children[] = [];
+    let bodyInserted = false;
+    for (const p of params) {
+      if (p.isBody) {
+        if (!bodyInserted) {
+          if (parts.length > 0) parts.push(", ");
+          const bodyParamName = escapeCSharpKeyword(
+            bodyParamsInModelOrder[0].name,
+          );
+          parts.push(`BinaryContentHelper.FromObject(${bodyParamName})`);
+          bodyInserted = true;
+        }
+      } else {
+        if (parts.length > 0) parts.push(", ");
+        parts.push(p.protocolCallArg);
+      }
+    }
+    parts.push(", cancellationToken.ToRequestOptions()");
+    return parts;
+  }
+
   const bodyTypeExpr = <TypeExpression type={spreadBodyType.__raw!} />;
 
   // Build argument expressions for body params in MODEL PROPERTY ORDER,
@@ -525,19 +551,17 @@ function buildSpreadProtocolCallExpr(
       spreadArgs.push(escapedName);
     }
   }
-  // Only model types have serialization constructors with an additionalBinaryDataProperties
-  // (or patch for dynamic models) trailing parameter. Non-model spread body types
-  // (e.g., string primitives with @body decorator) don't have this parameter.
-  if (spreadBodyType.kind === "model") {
-    spreadArgs.push(", default");
-  }
+  // Model types have serialization constructors with an additionalBinaryDataProperties
+  // (or patch for dynamic models) trailing parameter.
+  spreadArgs.push(", default");
 
   // Determine whether the spread body model needs explicit BinaryContent conversion.
   // Models with UsageFlags.Input have an implicit operator BinaryContent.
   // Models without it (typically internal spread-only models) need wrapping via
   // BinaryContentHelper.FromObject, which uses WriteObjectValue → IPersistableModel.
-  const needsExplicitConversion =
-    !hasImplicitBinaryContentOperator(spreadBodyType);
+  const needsExplicitConversion = !hasImplicitBinaryContentOperator(
+    spreadBodyType as SdkModelType,
+  );
 
   const parts: Children[] = [];
   let bodyInserted = false;

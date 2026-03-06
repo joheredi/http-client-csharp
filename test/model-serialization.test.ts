@@ -2720,8 +2720,8 @@ describe("RequiredNullableWritePattern", () => {
     const content = outputs[fileKey!];
 
     expect(content).toContain("if (Optional.IsDefined(Endpoint))");
-    // URL is a reference type — no .Value
-    expect(content).toContain("writer.WriteStringValue(Endpoint);");
+    // URL is a reference type — serialize via .AbsoluteUri to convert Uri to string
+    expect(content).toContain("writer.WriteStringValue(Endpoint.AbsoluteUri);");
     expect(content).not.toContain("Endpoint.Value");
     expect(content).toContain('writer.WriteNull("endpoint"u8);');
   });
@@ -3762,10 +3762,10 @@ describe("DeserializeVariableDeclarations", () => {
     );
     const content = outputs[fileKey!];
 
-    // Required array property — not nullable
-    expect(content).toMatch(/string\[\] tags = default;/);
-    // Optional array property — still not nullable (collections never nullable)
-    expect(content).toMatch(/int\[\] scores = default;/);
+    // Required array property — uses collection interface matching constructor parameter type
+    expect(content).toMatch(/IList<string> tags = default;/);
+    // Optional array property — same pattern (collections never nullable)
+    expect(content).toMatch(/IList<int> scores = default;/);
   });
 });
 

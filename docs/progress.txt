@@ -4791,3 +4791,38 @@ Alloy's `<Namespace>` component renders.
 **Verification**: CS1929 and CS0029 errors for EnumsOnlyCases eliminated. Generated `EnumsOnlyCases` properties correctly typed as `EnumsOnlyCasesLr`/`EnumsOnlyCasesUd`. All 1337 unit tests + 5 e2e tests pass.
 
 **Note**: type/union spec has 2 remaining pre-existing CS1503 errors in `ModelsOnly.cs` (convenience method passes string where BinaryData expected for Cat|Dog model union). Not related to this task.
+
+## 2026-03-06 — Task 12.20: Fix type mapping in serialization constructors for inherited models
+
+### What was done
+Fixed 6 distinct compilation errors across 7 specs (out of 8 listed in the task):
+
+1. **Model factory argument order** (not-discriminated, nested-discriminator, hierarchy-building):
+   - Root cause: `basePropertyCount` in `ModelFactoryMethod.tsx` used immediate parent's total property count instead of root model's. For multi-level inheritance (e.g., Siamese→Cat→Pet), `additionalBinaryDataProperties` was inserted at the wrong position.
+   - Fix: Added `getRootModelPropertyCount()` helper that walks to the root ancestor. The `null` for additionalBinaryDataProperties is now always inserted after the root model's own properties.
+
+2. **Enum discriminator Unknown model** (enum-discriminator):
+   - Root cause: Unknown variant used `"unknown"` string literal for all enum discriminators, but fixed C# enums don't have string constructors.
+   - Fix: Differentiated between fixed enums (pass through as-is, matching legacy emitter), extensible enums (`new EnumType("unknown")`), and string discriminators (`?? "unknown"`).
+
+3. **Uri serialization** (deserialize-empty-string-as-null):
+   - Root cause: `PropertySerializer.tsx` grouped `url` with `string` kinds, generating `writer.WriteStringValue(Uri)` but `Utf8JsonWriter` has no Uri overload.
+   - Fix: Separated `url` handling with `valueTransform: (name) => \`\${name}.AbsoluteUri\`` to produce `writer.WriteStringValue(Url.AbsoluteUri)`.
+
+4. **IReadOnlyDictionary type mismatch** (type/model/visibility):
+   - Root cause: `DeserializeVariableDeclarations.tsx` and `ModelFactoryMethod.tsx` used raw `TypeExpression` for collection types, ignoring read-only flag. Constructor params used `IReadOnlyDictionary` but variables used `IDictionary`.
+   - Fix: Both components now use `renderCollectionPropertyType(type, isPropertyReadOnly(p))` for collection types, matching constructor parameter types.
+
+5. **Scalar body type wrapping** (type/scalar):
+   - Root cause: `buildSpreadProtocolCallExpr` in `ConvenienceMethod.tsx` unconditionally wrapped all spread body types in `new Type(value)`, but C# primitives (bool, decimal) don't have constructors.
+   - Fix: Added early return for non-model spread body types that uses `BinaryContentHelper.FromObject(value)` directly.
+
+### Patterns used
+- `getRootModelPropertyCount()` walks inheritance chain to find root property count
+- `renderCollectionPropertyType()` reused for variable declarations (not just constructor params)
+- `isFixed` flag on SdkEnumType distinguishes fixed vs extensible enums
+
+### What the next person should know
+- The `routes` spec still has errors (separate root cause — route parameter expansion for complex types). Tracked in new task 12.28.
+- The `isPropertyReadOnly` function from utils/property.ts is key for determining collection interface variant.
+- Deserialization variable types must match constructor param types — both now use the same rendering path for collections.

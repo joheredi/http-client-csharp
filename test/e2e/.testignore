@@ -77,18 +77,16 @@ azure/example/basic
 type/union/discriminated
 type/property/optionality
 
-# === Type mismatch in serialization ===
-# CS1503: Wrong type arguments in deserialization constructors (e.g., Uri
-# passed where DateTime expected, wrong scalar type conversions).
-# CS0029: Cannot convert between string/Uri, array/List in serialization.
-# Requires fixing type mapping in serialization code generation.
-azure/client-generator-core/deserialize-empty-string-as-null
-azure/client-generator-core/hierarchy-building
-type/model/inheritance/enum-discriminator
-type/model/inheritance/nested-discriminator
-type/model/inheritance/not-discriminated
-type/model/visibility
-type/scalar
+# === (Resolved) Type mismatch in serialization ===
+# Most CS1503 type mismatch errors in serialization constructors have been
+# fixed (model factory arg order, Uri serialization, enum discriminator,
+# collection types, scalar body params). Remaining issue: routes.
+
+# === Route parameter expansion issues ===
+# CS1503: Convenience methods for route parameters with complex types
+# (label/matrix/path expansion) generate incorrect protocol method calls.
+# The convenience method parameter types (IDictionary, IEnumerable) don't
+# match the protocol method's serialized string parameter.
 routes
 
 # === Model member / method issues ===

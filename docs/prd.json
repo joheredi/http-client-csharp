@@ -333,9 +333,9 @@
         {
           "id": "12.20",
           "title": "Fix type mapping in serialization constructors for inherited models",
-          "description": "Deserialization constructors and model factory methods pass arguments in wrong order or with wrong types for inherited models. Specific issues:\n- CS1503: Uri passed where DateTime expected (deserialize-empty-string-as-null)\n- CS1503: int passed where IDictionary<string, BinaryData> expected \u2014 model factory argument order mismatch for inherited models (not-discriminated, nested-discriminator, hierarchy-building)\n- CS1503: Wrong scalar type in deserialization for various type conversions (type/scalar, routes, type/model/visibility)\n- CS1503: RequestOptions passed where CancellationToken expected (routes) \u2014 convenience method calls protocol method with wrong argument types\n\nThe root cause for inheritance models is that the model factory passes arguments in property order, but the serialization constructor has additionalBinaryDataProperties interleaved between base and own properties.\n\nAffected specs: azure/client-generator-core/deserialize-empty-string-as-null, azure/client-generator-core/hierarchy-building, type/model/inheritance/enum-discriminator, type/model/inheritance/nested-discriminator, type/model/inheritance/not-discriminated, type/model/visibility, type/scalar, routes.\n\nTo reproduce: Remove these specs from test/e2e/.testignore, run pnpm emit:e2e --filter type/model/inheritance/not-discriminated, then dotnet build.",
+          "description": "Deserialization constructors and model factory methods pass arguments in wrong order or with wrong types for inherited models. Specific issues:\n- CS1503: Uri passed where DateTime expected (deserialize-empty-string-as-null)\n- CS1503: int passed where IDictionary<string, BinaryData> expected \u2014 model factory argument order mismatch for inherited models (not-discriminated, nested-discriminator, hierarchy-building)\n- CS1503: Wrong scalar type in deserialization for various type conversions (type/scalar, routes, type/model/visibility)\n- CS1503: RequestOptions passed where CancellationToken expected (routes) \u2014 convenience method calls protocol method with wrong argument types\n\nThe root cause for inheritance models is that the model factory passes arguments in property order, but the serialization constructor has additionalBinaryDataProperties interleaved between base and own properties.\n\nAffected specs: azure/client-generator-core/deserialize-empty-string-as-null, azure/client-generator-core/hierarchy-building, type/model/inheritance/enum-discriminator, type/model/inheritance/nested-discriminator, type/model/inheritance/not-discriminated, type/model/visibility, type/scalar, routes.\n\nTo reproduce: Remove these specs from test/e2e/.testignore, run pnpm emit:e2e --filter type/model/inheritance/not-discriminated, then dotnet build.\n\nNote: 7 of 8 specs fixed. The routes spec has a separate root cause (route parameter expansion for complex types) tracked in task 12.28.",
           "phase": "phase-12",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [
@@ -504,6 +504,26 @@
             "ModelSerializationExtensions includes XmlWriterSettings property and WriteObjectValue<T> method",
             "XML deserialization correctly converts List<T> to T[] where needed",
             "payload/xml compiles without errors"
+          ]
+        },
+        {
+          "id": "12.28",
+          "title": "Fix convenience method parameter mapping for route parameter expansion",
+          "description": "Convenience methods for operations with label/matrix/path parameter expansion generate incorrect protocol method calls. The convenience method accepts complex types (IDictionary, IEnumerable) for path parameters but the protocol method expects serialized string parameters. The convenience method then calls the protocol method directly, causing CS1503 type mismatches (RequestOptions\u2192CancellationToken, bool\u2192SerializationFormat). The fix should properly serialize complex route parameters before passing to the protocol method.\n\nAffected spec: routes.\n\nTo reproduce: Remove routes from test/e2e/.testignore, run pnpm emit:e2e --filter routes, then dotnet build.",
+          "phase": "phase-12",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "src/components/clients/ConvenienceMethod.tsx",
+              "src/components/clients/ProtocolMethod.tsx"
+            ],
+            "reference": []
+          },
+          "acceptance_criteria": [
+            "Convenience methods correctly serialize complex route parameters before calling protocol methods",
+            "CS1503 errors for RequestOptions/CancellationToken and bool/SerializationFormat mismatches are eliminated",
+            "routes spec compiles without errors"
           ]
         }
       ]

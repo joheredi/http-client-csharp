@@ -2891,3 +2891,25 @@ using directive won't match the actual namespace.
 **Fix**: Check `type.kind === "Enum"` and inspect member values to determine if string-backed or numeric-backed. Similarly for `EnumMember` kind.
 
 **Design Decision**: The fix was applied in `CSharpTypeExpression.tsx` (type expression layer) rather than `PropertySerializer.tsx` (serialization layer) because the root cause was incorrect type mapping — the property types themselves were wrong (`BinaryData` instead of the enum type). Fixing at the type expression level automatically corrects model properties, constructors, serialization variable declarations, and deserialization assignments.
+
+## Design Decisions — Task 12.20
+
+### Model factory additionalBinaryDataProperties position
+**Approach chosen**: Walk to root model to find property count for `additionalBinaryDataProperties` insertion position.
+**Why**: In the serialization constructor, `additionalBinaryDataProperties` always appears after the ROOT model's own properties, regardless of inheritance depth. Using the immediate parent's total property count (previous approach) misplaced the null argument for 3+ level hierarchies.
+**Rejected**: Computing position from the parent model's property count — this only works for 2-level hierarchies.
+
+### Fixed vs extensible enum discriminator in Unknown variants
+**Approach chosen**: Three-way dispatch based on discriminator type:
+- Fixed enum (`isFixed=true`): pass through as-is (no guard)
+- Extensible enum: `kind != default ? kind : new EnumType("unknown")`
+- String: `kind ?? "unknown"`
+**Why**: Fixed C# enums are `enum` types without string constructors. Extensible enums are structs with `new EnumType(string)` constructors. The legacy emitter passes fixed enum discriminators through without a guard.
+
+### Deserialization variable types for collections
+**Approach chosen**: Use `renderCollectionPropertyType(type, isPropertyReadOnly(p))` for deserialization variable declarations, matching constructor parameter types.
+**Why**: Variables must be assignable TO the constructor parameter type. Using raw `TypeExpression` produced `IDictionary` for all dicts, but read-only constructors expect `IReadOnlyDictionary`. The concrete `Dictionary` (from the matching loop) is assignable to both `IList`/`IReadOnlyList` and `IDictionary`/`IReadOnlyDictionary`.
+
+### Scalar spread body handling
+**Approach chosen**: Early return in `buildSpreadProtocolCallExpr` for non-model types, using `BinaryContentHelper.FromObject(value)` directly.
+**Why**: Primitives (bool, decimal, string) don't have constructors like `new bool(value)`. The `new Type(value)` pattern only applies to model types with serialization constructors.

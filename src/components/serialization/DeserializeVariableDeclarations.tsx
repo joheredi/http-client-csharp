@@ -48,11 +48,13 @@ import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import { SystemClientModelPrimitives } from "../../builtins/system-client-model.js";
 import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
 import { System } from "../../builtins/system.js";
+import { renderCollectionPropertyType } from "../../utils/collection-type-expression.js";
 import {
+  isCollectionType,
   isPropertyNullable,
   unwrapNullableType,
 } from "../../utils/nullable.js";
-import { resolvePropertyName } from "../../utils/property.js";
+import { isPropertyReadOnly, resolvePropertyName } from "../../utils/property.js";
 import {
   ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME,
   isBaseDiscriminatorOverride,
@@ -200,7 +202,11 @@ export function DeserializeVariableDeclarations(
         return (
           <>
             {"\n    "}
-            <TypeExpression type={unwrapped.__raw!} />
+            {isCollectionType(unwrapped) ? (
+              renderCollectionPropertyType(unwrapped, isPropertyReadOnly(p))
+            ) : (
+              <TypeExpression type={unwrapped.__raw!} />
+            )}
             {nullable ? "?" : ""}
             {` ${varName} = ${initializer};`}
           </>

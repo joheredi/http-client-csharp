@@ -38,7 +38,10 @@ import {
   useCSharpNamePolicy,
 } from "@alloy-js/csharp";
 import type { Children } from "@alloy-js/core";
-import type { SdkModelType } from "@azure-tools/typespec-client-generator-core";
+import type {
+  SdkEnumType,
+  SdkModelType,
+} from "@azure-tools/typespec-client-generator-core";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { efCsharpRefkey, unknownModelRefkey } from "../../utils/refkey.js";
@@ -147,15 +150,30 @@ function buildUnknownBaseInitializer(
     current = current.baseModel;
   }
 
-  // Determine the discriminator type for null-guard style
-  const isEnumDiscriminator =
-    baseModel.discriminatorProperty?.type.kind === "enum";
+  // Determine the discriminator type for null-guard style.
+  // - String discriminators: `kind ?? "unknown"` (null-coalescing)
+  // - Extensible enum discriminators: `kind != default ? kind : new EnumType("unknown")`
+  //   (extensible enums are structs with a string constructor)
+  // - Fixed enum discriminators: pass through as-is (no fallback — fixed enums
+  //   are C# value types without string constructors, matching legacy emitter)
+  const discType = baseModel.discriminatorProperty?.type;
+  const isEnumDiscriminator = discType?.kind === "enum";
+  const isFixedEnum =
+    isEnumDiscriminator && (discType as SdkEnumType).isFixed;
+  const enumTypeName =
+    isEnumDiscriminator && !isFixedEnum
+      ? namePolicy.getName((discType as SdkEnumType).name, "class")
+      : undefined;
 
   const parts: string[] = serParams.map((param) => {
     const paramName = param.name as string;
     if (discParamNames.has(paramName)) {
-      if (isEnumDiscriminator) {
-        return `${paramName} != default ? ${paramName} : "unknown"`;
+      if (isFixedEnum) {
+        // Fixed enums are value types — no null-guard needed, pass through
+        return paramName;
+      }
+      if (isEnumDiscriminator && enumTypeName) {
+        return `${paramName} != default ? ${paramName} : new ${enumTypeName}("unknown")`;
       }
       return `${paramName} ?? "unknown"`;
     }

@@ -111,7 +111,7 @@ export interface WritePropertySerializationProps {
 }
 
 /** Primitive SDK type kinds that map to `writer.WriteStringValue`. */
-const STRING_KINDS = new Set(["string", "url"]);
+const STRING_KINDS = new Set(["string"]);
 
 /**
  * Primitive SDK type kinds that map to `writer.WriteNumberValue`.
@@ -431,6 +431,14 @@ export function getWriteMethodInfo(type: SdkType): WriteMethodInfo | null {
   if (STRING_KINDS.has(kind)) return { methodName: "WriteStringValue" };
   if (NUMBER_KINDS.has(kind)) return { methodName: "WriteNumberValue" };
   if (BOOLEAN_KINDS.has(kind)) return { methodName: "WriteBooleanValue" };
+
+  // URI types — C#'s Utf8JsonWriter doesn't accept Uri directly,
+  // so we access the .AbsoluteUri string property.
+  if (kind === "url")
+    return {
+      methodName: "WriteStringValue",
+      valueTransform: (name) => `${name}.AbsoluteUri`,
+    };
 
   // DateTime types — encoding determines method + format specifier.
   if (kind === "utcDateTime" || kind === "offsetDateTime") {

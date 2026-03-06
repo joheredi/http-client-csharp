@@ -60,11 +60,12 @@ import {
   isArrayCollection,
   isDictCollection,
 } from "../../utils/collections.js";
+import { renderCollectionPropertyType } from "../../utils/collection-type-expression.js";
 import {
   isPropertyNullable,
   unwrapNullableType,
 } from "../../utils/nullable.js";
-import { resolvePropertyName } from "../../utils/property.js";
+import { isPropertyReadOnly, resolvePropertyName } from "../../utils/property.js";
 import { efCsharpRefkey, unknownModelRefkey } from "../../utils/refkey.js";
 import {
   ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME,
@@ -201,6 +202,27 @@ function getDiscriminatorLiteral(
 }
 
 /**
+ * Returns the number of properties on the root (top-most) model in the
+ * inheritance hierarchy. This count determines where
+ * `additionalBinaryDataProperties` is positioned in the serialization
+ * constructor's parameter list.
+ *
+ * In the legacy emitter, `additionalBinaryDataProperties` always follows the
+ * root model's own properties and precedes any intermediate/derived model
+ * properties — regardless of hierarchy depth.
+ *
+ * @param model - Any model in an inheritance hierarchy.
+ * @returns The property count of the root ancestor model.
+ */
+function getRootModelPropertyCount(model: SdkModelType): number {
+  let current = model;
+  while (current.baseModel) {
+    current = current.baseModel;
+  }
+  return current.properties.length;
+}
+
+/**
  * Metadata collected for each collection parameter in the factory method.
  *
  * Used to generate the null-coalescing initialization statements that appear
@@ -241,14 +263,18 @@ export function ModelFactoryMethod(props: ModelFactoryMethodProps) {
   const allProperties = computeSerializationProperties(props.type);
   const allPropertyInfos = computeSerializationPropertyInfos(props.type);
 
-  // Compute the number of base-model properties so we can insert the
-  // additionalBinaryDataProperties argument at the correct constructor position.
-  // For derived models, the constructor order is:
-  //   [base-props, additionalBinaryDataProperties, own-props]
-  // For root models (no base), the order is:
-  //   [all-props, additionalBinaryDataProperties]
+  // Compute the position at which additionalBinaryDataProperties must be
+  // inserted in the constructor call. In the serialization constructor,
+  // additionalBinaryDataProperties always appears after the ROOT model's
+  // properties — not after the immediate parent's properties. For example:
+  //   Pet:     [name, additionalBinaryData]
+  //   Cat:     [name, additionalBinaryData, age]
+  //   Siamese: [name, additionalBinaryData, age, smart]
+  // The root model (Pet) has 1 property, so additionalBinaryData is at index 1
+  // for ALL descendants, regardless of inheritance depth.
+  const rootPropertyCount = getRootModelPropertyCount(props.type);
   const basePropertyCount = props.type.baseModel
-    ? computeSerializationProperties(props.type.baseModel).length
+    ? rootPropertyCount
     : allProperties.length;
 
   // Three parallel data structures built from the property list:
@@ -315,15 +341,20 @@ export function ModelFactoryMethod(props: ModelFactoryMethodProps) {
       ctorArgs.push(`${paramName}.ToArray()`);
       ctorArgIndex++;
     } else if (isDictCollection(p.type)) {
-      // Dict → keep IDictionary type, ChangeTrackingDictionary init, pass as-is
+      // Dict → use matching collection type (IDictionary or IReadOnlyDictionary
+      // depending on property access), ChangeTrackingDictionary init, pass as-is
       const valueType = getCollectionValueType(p.type);
       const unwrappedVT = unwrapNullableType(valueType);
       const isVTNullable = valueType.kind === "nullable";
       const vtExpr = <TypeExpression type={unwrappedVT.__raw!} />;
       const valueTypeExpr: Children = isVTNullable ? <>{vtExpr}?</> : vtExpr;
 
-      // Use TypeExpression for the full dict type to get correct rendering
-      const baseType = <TypeExpression type={unwrapped.__raw!} />;
+      // Use renderCollectionPropertyType to match the constructor parameter type,
+      // respecting IReadOnlyDictionary for read-only properties
+      const baseType = renderCollectionPropertyType(
+        unwrapped,
+        isPropertyReadOnly(p),
+      );
       factoryParams.push({
         name: paramName,
         type: nullable ? <>{baseType}?</> : baseType,
