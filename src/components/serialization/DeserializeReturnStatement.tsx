@@ -27,6 +27,7 @@ import { useCSharpNamePolicy } from "@alloy-js/csharp";
 import type { SdkModelType } from "@azure-tools/typespec-client-generator-core";
 import { resolvePropertyName } from "../../utils/property.js";
 import { ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME } from "../models/ModelConstructors.js";
+import { ADDITIONAL_PROPERTIES_PARAM_NAME } from "../../utils/additional-properties.js";
 import { computeVariableInfos } from "./DeserializeVariableDeclarations.js";
 
 /**
@@ -60,6 +61,9 @@ export function DeserializeReturnStatement(
   const paramNames = variableInfos.map((info) => {
     if (info.kind === "additional-binary-data") {
       return ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME;
+    }
+    if (info.kind === "additional-properties") {
+      return ADDITIONAL_PROPERTIES_PARAM_NAME;
     }
     if (info.kind === "patch") {
       return "patch";

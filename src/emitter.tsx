@@ -56,6 +56,8 @@ import { UnknownDiscriminatorModelFile } from "./components/models/UnknownDiscri
 import { AdditionalBinaryDataRead } from "./components/serialization/AdditionalBinaryDataRead.js";
 import { UnknownDiscriminatorModelSerializationFile } from "./components/serialization/UnknownDiscriminatorModelSerializationFile.js";
 import { AdditionalBinaryDataWrite } from "./components/serialization/AdditionalBinaryDataWrite.js";
+import { AdditionalPropertiesRead } from "./components/serialization/AdditionalPropertiesRead.js";
+import { AdditionalPropertiesWrite } from "./components/serialization/AdditionalPropertiesWrite.js";
 import { DynamicPatchRead } from "./components/serialization/DynamicPatchRead.js";
 import {
   ExplicitClientResultOperator,
@@ -94,6 +96,11 @@ import {
 } from "./utils/package-name.js";
 import { applyUnreferencedTypeHandling } from "./utils/unreferenced-types.js";
 import { isMultipartOnlyModel } from "./utils/model.js";
+import {
+  hasAdditionalProperties,
+  hasInheritedAdditionalProperties,
+  getAdditionalPropertiesDefiningModel,
+} from "./utils/additional-properties.js";
 import { fixAllNamespaceBraceStyles } from "./utils/namespace-brace-style.js";
 import { reorderAllFileHeaders } from "./utils/reorder-header.js";
 
@@ -357,9 +364,13 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
               {supportsJson && "\n\n"}
               {supportsJson && (
                 <JsonModelWriteCore type={m}>
-                  {!m.baseModel && !isDynamicModel(m) && (
-                    <AdditionalBinaryDataWrite />
-                  )}
+                  {!m.baseModel &&
+                    !isDynamicModel(m) &&
+                    (hasAdditionalProperties(m) ? (
+                      <AdditionalPropertiesWrite type={m} />
+                    ) : (
+                      <AdditionalBinaryDataWrite />
+                    ))}
                 </JsonModelWriteCore>
               )}
               {supportsJson && "\n\n"}
@@ -373,6 +384,10 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
                   <PropertyMatchingLoop type={m}>
                     {isDynamicModel(m) ? (
                       <DynamicPatchRead />
+                    ) : hasInheritedAdditionalProperties(m) ? (
+                      <AdditionalPropertiesRead
+                        type={getAdditionalPropertiesDefiningModel(m)!}
+                      />
                     ) : (
                       <AdditionalBinaryDataRead />
                     )}

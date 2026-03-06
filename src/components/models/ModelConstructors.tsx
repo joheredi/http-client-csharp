@@ -79,6 +79,12 @@ import {
 } from "../../utils/property.js";
 import { ensureTrailingPeriod, formatDocLines } from "../../utils/doc.js";
 import { argumentRefkey, efCsharpRefkey, literalTypeRefkey } from "../../utils/refkey.js";
+import {
+  ADDITIONAL_PROPERTIES_PARAM_NAME,
+  ADDITIONAL_PROPERTIES_PROP_NAME,
+  hasAdditionalProperties,
+  renderAdditionalPropertiesValueType,
+} from "../../utils/additional-properties.js";
 import { needsLiteralWrapperStruct } from "../literal-types/collect.js";
 import { hasDynamicModelProperties, isDynamicModel } from "./DynamicModel.js";
 
@@ -508,6 +514,7 @@ function buildAssignments(
   ctorParams: SdkModelPropertyType[],
   namePolicy: ReturnType<typeof useCSharpNamePolicy>,
   modelName: string,
+  model?: SdkModelType,
 ): Children[] {
   const ctorParamSet = new Set(ctorParams);
   const lines: Children[] = [];
@@ -553,6 +560,17 @@ function buildAssignments(
         code`${propName} = new ChangeTrackingDictionary<string, ${valueTypeExpr}>();`,
       );
     }
+  }
+
+  // Initialize typed additional properties dictionary in the public constructor.
+  // Uses ChangeTrackingDictionary<string, T> so the property is non-null from construction.
+  if (model && hasAdditionalProperties(model)) {
+    const valueTypeExpr = renderAdditionalPropertiesValueType(
+      model.additionalProperties!,
+    );
+    lines.push(
+      code`${ADDITIONAL_PROPERTIES_PROP_NAME} = new ChangeTrackingDictionary<string, ${valueTypeExpr}>();`,
+    );
   }
 
   return lines;
@@ -664,6 +682,7 @@ export function buildSerializationParameters(
   namePolicy: ReturnType<typeof useCSharpNamePolicy>,
   isDynamic: boolean = false,
   modelName: string = "",
+  model?: SdkModelType,
 ): ParameterProps[] {
   const propParams = buildPropertyTypeParameters(
     properties,
@@ -676,6 +695,24 @@ export function buildSerializationParameters(
       name: "patch",
       type: SystemClientModelPrimitives.JsonPatch,
       in: true,
+    });
+  } else if (model && hasAdditionalProperties(model)) {
+    // When the model has typed additional properties (extends/spread Record<T>),
+    // use a typed IDictionary<string, T> parameter instead of the raw
+    // _additionalBinaryDataProperties field.
+    const valueTypeExpr = renderAdditionalPropertiesValueType(
+      model.additionalProperties!,
+    );
+    propParams.push({
+      name: ADDITIONAL_PROPERTIES_PARAM_NAME,
+      type: (
+        <>
+          {SystemCollectionsGeneric.IDictionary}
+          {"<string, "}
+          {valueTypeExpr}
+          {">"}
+        </>
+      ),
     });
   } else {
     propParams.push({
@@ -722,6 +759,7 @@ function buildSerializationAssignments(
   isDynamic: boolean = false,
   hasNestedDynamicProps: boolean = false,
   modelName: string = "",
+  model?: SdkModelType,
 ): string[] {
   const lines: string[] = [];
 
@@ -738,6 +776,10 @@ function buildSerializationAssignments(
       if (hasNestedDynamicProps) {
         lines.push("_patch.SetPropagators(PropagateSet, PropagateGet);");
       }
+    } else if (model && hasAdditionalProperties(model)) {
+      lines.push(
+        `${ADDITIONAL_PROPERTIES_PROP_NAME} = ${ADDITIONAL_PROPERTIES_PARAM_NAME};`,
+      );
     } else {
       lines.push(
         `${ADDITIONAL_BINARY_DATA_PROPS_FIELD_NAME} = ${ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME};`,
@@ -797,6 +839,7 @@ export function computeSerializationCtorParams(
     namePolicy,
     isDynamicModel(model),
     model.name,
+    model,
   );
 }
 
@@ -1074,6 +1117,7 @@ function BaseModelConstructors(props: {
     ctorParamProps,
     namePolicy,
     type.name,
+    type,
   );
 
   const body = renderPublicCtorBody(nullChecks, assignments);
@@ -1100,6 +1144,7 @@ function BaseModelConstructors(props: {
     namePolicy,
     isDynamic,
     type.name,
+    type,
   );
   const serializationAssignments = buildSerializationAssignments(
     type.properties,
@@ -1108,6 +1153,7 @@ function BaseModelConstructors(props: {
     isDynamic,
     hasNestedDynamic,
     type.name,
+    type,
   );
   const serializationBody = serializationAssignments.join("\n");
 

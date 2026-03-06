@@ -21,6 +21,11 @@ import { ensureTrailingPeriod } from "../../utils/doc.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { isModelStruct } from "../../utils/model.js";
 import { resolvePropertyName } from "../../utils/property.js";
+import {
+  ADDITIONAL_PROPERTIES_PROP_NAME,
+  hasAdditionalProperties,
+  renderAdditionalPropertiesValueType,
+} from "../../utils/additional-properties.js";
 import { efCsharpRefkey } from "../../utils/refkey.js";
 import { DynamicModelMembers, isDynamicModel } from "./DynamicModel.js";
 import {
@@ -137,6 +142,11 @@ export function ModelFile(props: ModelFileProps) {
   const needsLinq = modelNeedsLinqImport(props.type, isStruct);
   const additionalUsings = needsLinq ? ["System.Linq"] : undefined;
 
+  // Determine whether this model has typed additional properties (from
+  // extends/spread Record<T>). When present, the typed AdditionalProperties
+  // property replaces the raw _additionalBinaryDataProperties field.
+  const hasTypedAdditionalProps = hasAdditionalProperties(props.type);
+
   const members = (
     <>
       {isRoot && isDynamic && (
@@ -145,7 +155,7 @@ export function ModelFile(props: ModelFileProps) {
           {"\n\n"}
         </>
       )}
-      {isRoot && !isDynamic && (
+      {isRoot && !isDynamic && !hasTypedAdditionalProps && (
         <>
           {code`/// <summary> Keeps track of any properties unknown to the library. </summary>\n${fieldModifier} readonly ${SystemCollectionsGeneric.IDictionary}<string, ${System.BinaryData}> _additionalBinaryDataProperties;`}
           {"\n\n"}
@@ -162,6 +172,12 @@ export function ModelFile(props: ModelFileProps) {
           />
         )}
       </For>
+      {hasTypedAdditionalProps && (
+        <>
+          {renderProperties.length > 0 ? "\n\n" : "\n\n"}
+          {code`/// <summary> Additional properties that are not explicitly defined in the model schema. </summary>\npublic ${SystemCollectionsGeneric.IDictionary}<string, ${renderAdditionalPropertiesValueType(props.type.additionalProperties!)}> ${ADDITIONAL_PROPERTIES_PROP_NAME} { get; }`}
+        </>
+      )}
       {props.children}
     </>
   );

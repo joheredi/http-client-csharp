@@ -67,8 +67,17 @@ import {
   modelReaderWriterContextRefkey,
 } from "../../utils/refkey.js";
 import { ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME } from "../models/ModelConstructors.js";
+import {
+  ADDITIONAL_PROPERTIES_PARAM_NAME,
+  renderAdditionalPropertiesValueType,
+} from "../../utils/additional-properties.js";
 import { getRootModelType } from "./PersistableModelCreateCore.js";
 import { AdditionalBinaryDataRead } from "./AdditionalBinaryDataRead.js";
+import { AdditionalPropertiesRead } from "./AdditionalPropertiesRead.js";
+import {
+  hasInheritedAdditionalProperties,
+  getAdditionalPropertiesDefiningModel,
+} from "../../utils/additional-properties.js";
 import { PropertyMatchingLoop } from "./PropertyMatchingLoop.js";
 import { computeVariableInfos } from "./DeserializeVariableDeclarations.js";
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
@@ -305,6 +314,9 @@ export function UnknownDiscriminatorModelSerializationFile(
       if (info.kind === "additional-binary-data") {
         return ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME;
       }
+      if (info.kind === "additional-properties") {
+        return "additionalProperties";
+      }
       if (info.kind === "patch") {
         return "patch";
       }
@@ -346,7 +358,13 @@ export function UnknownDiscriminatorModelSerializationFile(
           {supportsJson && <UnknownDeserializeVariables type={baseModel} />}
           {supportsJson && (
             <PropertyMatchingLoop type={baseModel}>
-              <AdditionalBinaryDataRead />
+              {hasInheritedAdditionalProperties(baseModel) ? (
+                <AdditionalPropertiesRead
+                  type={getAdditionalPropertiesDefiningModel(baseModel)!}
+                />
+              ) : (
+                <AdditionalBinaryDataRead />
+              )}
             </PropertyMatchingLoop>
           )}
           {supportsJson && deserializeReturnStmt}
@@ -368,7 +386,9 @@ function UnknownDeserializeVariables(props: { type: SdkModelType }) {
 
   // Filter out "patch" items first so the map never returns null
   // (which crashes the Babel JSX plugin)
-  const filteredInfos = variableInfos.filter((info) => info.kind !== "patch");
+  const filteredInfos = variableInfos.filter(
+    (info) => info.kind !== "patch",
+  );
 
   return (
     <>
@@ -378,6 +398,18 @@ function UnknownDeserializeVariables(props: { type: SdkModelType }) {
             <>
               {"\n    "}
               {code`${SystemCollectionsGeneric.IDictionary}<string, ${System.BinaryData}> ${ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME} = new ChangeTrackingDictionary<string, ${System.BinaryData}>();`}
+            </>
+          );
+        }
+
+        if (info.kind === "additional-properties") {
+          const valueTypeExpr = renderAdditionalPropertiesValueType(
+            info.model.additionalProperties!,
+          );
+          return (
+            <>
+              {"\n    "}
+              {code`${SystemCollectionsGeneric.IDictionary}<string, ${valueTypeExpr}> ${ADDITIONAL_PROPERTIES_PARAM_NAME} = new ${SystemCollectionsGeneric.Dictionary}<string, ${valueTypeExpr}>();`}
             </>
           );
         }

@@ -5236,3 +5236,39 @@ Property initializers (`= true`, `= ExtendedEnum.EnumValue2`) are set on the PRO
 - Several other test exclusions in `Spector.Tests.csproj` may also be stale (tasks completed but exclusions not removed). Worth checking: `type/property/optionality` has 2 remaining errors (CS0117: literal type wrapper struct static members `_125` and `_1` not generated).
 - Encode/Bytes and Encode/Numeric still have real errors (CS0029: convenience methods return `ClientResult` instead of `BinaryData`, and `string` instead of `uint?`).
 - E2e test count: 378 passed, 5 expected skips, 17 expected failures.
+
+## 2026-03-06 — Task 15.9: Add typed AdditionalProperties for spread/extends Record<T> models (DONE)
+
+**What**: Implemented the typed `AdditionalProperties` property on models that extend or spread `Record<T>`. Previously, only the raw `_additionalBinaryDataProperties` catch-all existed. Now, when `SdkModelType.additionalProperties` is defined, models generate a typed `IDictionary<string, T> AdditionalProperties` property with full serialization/deserialization support.
+
+**Type mapping rules**:
+- Simple scalars (float, string, int, bool, etc.) → typed dictionary (e.g., `IDictionary<string, float>`)
+- Model types → `IDictionary<string, BinaryData>` (via ModelReaderWriter for round-trip)
+- Array types → `IDictionary<string, BinaryData[]>` (each element serialized as BinaryData)
+- Unknown → `IDictionary<string, BinaryData>`
+
+**Files created**:
+- `src/utils/additional-properties.tsx` — Utility functions for type mapping, rendering, and checks
+- `src/components/serialization/AdditionalPropertiesWrite.tsx` — Typed dictionary serialization (replaces AdditionalBinaryDataWrite for models with typed additional properties)
+- `src/components/serialization/AdditionalPropertiesRead.tsx` — Typed dictionary deserialization (replaces AdditionalBinaryDataRead)
+- `test/additional-properties.test.ts` — 10 unit tests
+
+**Files modified**:
+- `src/components/models/ModelFile.tsx` — Conditionally renders typed property vs raw field
+- `src/components/models/ModelConstructors.tsx` — Typed parameter in serialization constructor, ChangeTrackingDictionary init in public constructor
+- `src/components/serialization/DeserializeVariableDeclarations.tsx` — New `additional-properties` VariableInfo kind
+- `src/components/serialization/DeserializeReturnStatement.tsx` — Handles new kind
+- `src/components/serialization/UnknownDiscriminatorModelSerializationFile.tsx` — Handles additional properties in unknown discriminator models
+- `src/emitter.tsx` — Wires new components, uses inherited additional properties check for derived models
+- `test/e2e/Spector.Tests/Spector.Tests.csproj` — Removed blanket exclusion of AdditionalProperties/**; kept AdditionalPropertiesTests.cs excluded due to MultipleSpreadRecord (needs AdditionalSingleProperties not yet implemented)
+
+**Key patterns**:
+- `hasAdditionalProperties(m)` — checks if the model itself defines additional properties
+- `hasInheritedAdditionalProperties(m)` — checks the entire inheritance chain (needed for derived model serialization)
+- `getAdditionalPropertiesDefiningModel(m)` — walks hierarchy to find the defining model
+- `renderAdditionalPropertiesValueType(type)` — maps TCGC type to C# value type for IDictionary
+- `isAdditionalPropertiesBinaryData(type)` — true for model/union/unknown types
+- `isAdditionalPropertiesArray(type)` — true for array types
+
+**Not yet supported**:
+- `AdditionalSingleProperties` (multiple spread Record<T> patterns) — needed for MultipleSpreadRecord tests

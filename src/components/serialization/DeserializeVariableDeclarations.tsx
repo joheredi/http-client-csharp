@@ -70,6 +70,11 @@ import {
   isBaseDiscriminatorOverride,
   isDerivedDiscriminatedModel,
 } from "../models/ModelConstructors.js";
+import {
+  ADDITIONAL_PROPERTIES_PARAM_NAME,
+  hasAdditionalProperties,
+  renderAdditionalPropertiesValueType,
+} from "../../utils/additional-properties.js";
 import { isDynamicModel } from "../models/DynamicModel.js";
 
 /**
@@ -82,18 +87,21 @@ export interface DeserializeVariableDeclarationsProps {
 
 /**
  * Represents a single variable to declare in the deserialization method.
- * Either a model property variable or the synthetic additionalBinaryDataProperties.
+ * Either a model property variable, the synthetic additionalBinaryDataProperties,
+ * or a typed additional properties dictionary.
  */
 export type VariableInfo =
   | { kind: "property"; property: SdkModelPropertyType; modelName: string }
   | { kind: "additional-binary-data" }
+  | { kind: "additional-properties"; model: SdkModelType }
   | { kind: "patch" };
 
 /**
  * Computes the flat list of variables to declare, in the same order as
  * the serialization constructor parameters.
  *
- * For base/standalone models: all own properties + additionalBinaryDataProperties.
+ * For base/standalone models: all own properties + additionalBinaryDataProperties
+ * (or typed additional properties if the model has `additionalProperties`).
  * For derived models (both discriminated and non-discriminated): base model
  * variables (recursive) + own non-override properties. This mirrors
  * `computeSerializationCtorParams` from ModelConstructors.tsx.
@@ -119,6 +127,17 @@ export function computeVariableInfos(model: SdkModelType): VariableInfo[] {
     ];
   }
 
+  // Determine the trailing variable: typed additional properties, dynamic patch,
+  // or raw binary data catch-all.
+  let trailingVar: VariableInfo;
+  if (isDynamicModel(model)) {
+    trailingVar = { kind: "patch" };
+  } else if (hasAdditionalProperties(model)) {
+    trailingVar = { kind: "additional-properties", model };
+  } else {
+    trailingVar = { kind: "additional-binary-data" };
+  }
+
   return [
     ...model.properties.map(
       (p): VariableInfo => ({
@@ -127,9 +146,7 @@ export function computeVariableInfos(model: SdkModelType): VariableInfo[] {
         modelName: model.name,
       }),
     ),
-    isDynamicModel(model)
-      ? { kind: "patch" as const }
-      : { kind: "additional-binary-data" as const },
+    trailingVar,
   ];
 }
 
@@ -184,6 +201,18 @@ export function DeserializeVariableDeclarations(
               {
                 "#pragma warning restore SCME0001 // Type is for evaluation purposes only and is subject to change or removal in future updates."
               }
+            </>
+          );
+        }
+
+        if (info.kind === "additional-properties") {
+          const valueTypeExpr = renderAdditionalPropertiesValueType(
+            info.model.additionalProperties!,
+          );
+          return (
+            <>
+              {"\n    "}
+              {code`${SystemCollectionsGeneric.IDictionary}<string, ${valueTypeExpr}> ${ADDITIONAL_PROPERTIES_PARAM_NAME} = new ${SystemCollectionsGeneric.Dictionary}<string, ${valueTypeExpr}>();`}
             </>
           );
         }

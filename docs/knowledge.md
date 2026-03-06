@@ -3172,3 +3172,23 @@ Missing any of these causes CS0266/CS1503 type conversion errors.
 - Deserialization: `BinaryData.FromString(jsonProperty.Value.GetRawText())` — reads raw JSON text
 
 **`formatCSharpConstant()`**: Exported from ModelConstructors.tsx. Handles string (`"value"`), boolean (`true`/`false`), float32 (`43.125F` with F suffix), and other numeric types.
+
+## AdditionalProperties Type Mapping (Task 15.9)
+
+**Gotcha: Legacy emitter uses BinaryData for complex additional property types.**
+For additional properties from `extends Record<T>` or `...Record<T>`, the C# type mapping is:
+- Simple scalars (float, string, int, bool) → typed dictionary (e.g., `IDictionary<string, float>`)
+- Model types → `IDictionary<string, BinaryData>` (tests use ModelReaderWriter.Read/Write for conversion)
+- Array types → `IDictionary<string, BinaryData[]>` (each array element is BinaryData)
+- Unknown → `IDictionary<string, BinaryData>`
+
+Do NOT use the model's refkey for model-typed additional properties — the legacy emitter stores them as BinaryData.
+
+**Gotcha: Derived models need `hasInheritedAdditionalProperties` check.**
+When a derived model's base has `additionalProperties`, the derived model uses the typed variable name (`additionalProperties`) not the binary data name (`additionalBinaryDataProperties`). The emitter must use `hasInheritedAdditionalProperties(m)` (not `hasAdditionalProperties(m)`) when selecting which deserialization catch-all component to render.
+
+**Gotcha: `_additionalBinaryDataProperties` field is conditionally rendered.**
+When `model.additionalProperties` is defined, the typed `AdditionalProperties` property REPLACES the `_additionalBinaryDataProperties` field. Only models without typed additional properties keep the raw field.
+
+**Design Decision: AdditionalSingleProperties deferred.**
+Models with multiple spread Record<T> types (e.g., `model M { ...Record<string>; ...Record<float>; }`) need a second property `AdditionalSingleProperties`. This is a separate feature and should not be conflated with the base `AdditionalProperties` support.

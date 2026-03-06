@@ -141,7 +141,13 @@
     <Compile Remove="$(LegacyTestRoot)Http/SpecialHeaders/ConditionalRequest/**/*.cs" />
     <Compile Remove="$(LegacyTestRoot)Http/Versioning/ReturnTypeChangedFrom/**/*.cs" />
     <Compile Remove="$(LegacyTestRoot)Http/_Type/Dictionary/**/*.cs" />
-    <Compile Remove="$(LegacyTestRoot)Http/_Type/Property/AdditionalProperties/**/*.cs" />
+    <!--
+      AdditionalPropertiesTests.cs contains tests for MultipleSpreadRecord which
+      requires AdditionalSingleProperties (multi-spread Record<T>) — not yet supported.
+      The generated models/serialization code compiles correctly; only the test file
+      is excluded due to unsupported patterns in specific test methods.
+    -->
+    <Compile Remove="$(LegacyTestRoot)Http/_Type/Property/AdditionalProperties/AdditionalPropertiesTests.cs" />
     <Compile Remove="$(LegacyTestRoot)Http/_Type/Scalar/**/*.cs" />
     <Compile Remove="$(LegacyTestRoot)Http/_Type/_Array/**/*.cs" />
     <Compile Remove="$(LegacyTestRoot)Http/_Type/_Enum/**/*.cs" />
