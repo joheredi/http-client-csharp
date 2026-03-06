@@ -85,8 +85,16 @@
     <!-- .testignore: client/structure/client-operation-group (multi-namespace scope) -->
     <Compile Remove="$(LegacyTestRoot)Http/Client/Structure/ClientOperationGroup/**/*.cs" />
 
-    <!-- .testignore: payload/pageable (CollectionResult parameter mismatch) -->
-    <Compile Remove="$(LegacyTestRoot)Http/Payload/Pageable/**/*.cs" />
+    <!--
+      payload/pageable: Tests that reference APIs not yet matching the legacy emitter.
+      ContinuationTokenPaginationTests: calls GetServerDrivenPaginationContinuationTokenClient()
+        but the new emitter generates GetContinuationTokenClient() (sub-client naming mismatch,
+        tracked by task 15.13).
+      XmlPaginationTests: CS0121 ambiguous overload between (string, RequestOptions) and
+        (string, CancellationToken) — method signature alignment issue.
+    -->
+    <Compile Remove="$(LegacyTestRoot)Http/Payload/Pageable/ContinuationTokenPaginationTests.cs" />
+    <Compile Remove="$(LegacyTestRoot)Http/Payload/Pageable/XmlPaginationTests.cs" />
 
     <!-- .testignore: payload/multipart (IJsonModel on non-JSON models) -->
     <Compile Remove="$(LegacyTestRoot)Http/Payload/Multipart/**/*.cs" />

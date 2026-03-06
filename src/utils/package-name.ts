@@ -53,6 +53,7 @@ const SYSTEM_TYPE_NAMES: ReadonlySet<string> = new Set([
   "Action",
   "Attribute",
   "Exception",
+  "ContinuationToken",
 ]);
 
 /**

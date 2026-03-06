@@ -5272,3 +5272,22 @@ Property initializers (`= true`, `= ExtendedEnum.EnumValue2`) are set on the PRO
 
 **Not yet supported**:
 - `AdditionalSingleProperties` (multiple spread Record<T> patterns) — needed for MultipleSpreadRecord tests
+
+## 2026-03-06 — Task 15.20: Fix CollectionResult paging parameter forwarding (DONE)
+
+Fixed 3 compilation errors blocking 5 paging specs (payload/pageable, azure/core/basic, azure/core/page, azure/payload/pageable, azure/client-generator-core/next-link-verb):
+
+1. **Missing CreateNextXxxRequest methods (CS1061, ~52 errors)**: Added `CreateNextRequestMethod` component to `RestClientFile.tsx` that generates `CreateNext{Op}Request(Uri nextPage, RequestOptions options)` methods for paging operations with next-link segments. These methods handle absolute vs relative URI resolution.
+
+2. **String-to-Uri next-link conversion (CS0029, ~12 errors)**: Added `isStringType()` helper to `CollectionResultFile.tsx` to detect string next-link properties. When the next-link is a string (not Uri), generates explicit `new Uri(nextLink)` conversion in both `GetRawPages` and `GetContinuationToken` methods.
+
+3. **ContinuationToken namespace collision (CS0104, 2 errors)**: Added "ContinuationToken" to `SYSTEM_TYPE_NAMES` in `package-name.ts` so sub-clients named ContinuationToken use FQN references, avoiding ambiguity with `System.ClientModel.ContinuationToken`.
+
+Results: E2e tests went from 378→391 passed (13 new passing tests). Remaining payload/pageable test failures are due to sub-client naming (task 15.13) and method overload ambiguity — tracked separately.
+
+Files modified:
+- src/components/clients/RestClientFile.tsx — CreateNextRequestMethod component
+- src/components/collection-results/CollectionResultFile.tsx — isStringType, string next-link handling
+- src/utils/package-name.ts — ContinuationToken collision fix
+- test/e2e/.testignore — removed paging spec exclusions
+- test/e2e/Spector.Tests/Spector.Tests.csproj — re-enabled paging test files

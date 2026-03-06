@@ -235,6 +235,12 @@ function CollectionResultFile(props: CollectionResultFileProps) {
     ? buildResponsePropertyPath(nextLinkSegments!, namePolicy)
     : undefined;
 
+  // Check if the next-link property is a string type (vs Uri).
+  // Some specs use string next-link properties instead of url/Uri.
+  // When the property is a string, we need to convert it to Uri for
+  // the paging loop and GetContinuationToken method.
+  const isNextLinkString = hasNextLink && isStringType(nextLinkSegments!);
+
   // Extract continuation-token metadata for multi-page paging.
   // Continuation-token takes effect only when next-link is absent (matching
   // the legacy emitter's precedence: nextLink > continuationToken > single-page).
@@ -320,6 +326,7 @@ function CollectionResultFile(props: CollectionResultFileProps) {
         responseTypeExpr!,
         nextLinkPropertyPath!,
         operationParams,
+        isNextLinkString,
       )
     : hasContinuationToken
       ? isContinuationTokenHeader
@@ -352,6 +359,7 @@ function CollectionResultFile(props: CollectionResultFileProps) {
         responseTypeExpr!,
         nextLinkPropertyPath!,
         scmContinuationToken,
+        isNextLinkString,
       )
     : hasContinuationToken
       ? isContinuationTokenHeader
@@ -561,6 +569,7 @@ function buildSinglePageGetRawPagesBody(
  * @param responseTypeExpr - JSX expression for the response model type (used for casting)
  * @param nextLinkPropertyPath - C# property path to the next-link value (e.g., "NextLink" or "Nested?.NextLink")
  * @param params - All operation parameters to pass to the initial request factory
+ * @param isStringNextLink - Whether the next-link property is a string type (vs Uri)
  */
 function buildNextLinkGetRawPagesBody(
   isAsync: boolean,
@@ -569,12 +578,23 @@ function buildNextLinkGetRawPagesBody(
   responseTypeExpr: Children,
   nextLinkPropertyPath: string,
   params: { name: string }[],
+  isStringNextLink: boolean,
 ): Children[] {
   const processMessage = isAsync
     ? code`await _client.Pipeline.ProcessMessageAsync(message, _options).ConfigureAwait(false)`
     : code`_client.Pipeline.ProcessMessage(message, _options)`;
 
   const requestArgs = buildStoredFieldArgs(params);
+
+  // For string next-link properties, extract the string and convert to Uri.
+  // For Uri next-link properties, assign directly.
+  const nextLinkExtraction: Children[] = isStringNextLink
+    ? [
+        code`    string nextLink = ((${responseTypeExpr})result).${nextLinkPropertyPath};`,
+        "\n",
+        code`    nextPageUri = nextLink != null ? new ${System.Uri}(nextLink) : null;`,
+      ]
+    : [code`    nextPageUri = ((${responseTypeExpr})result).${nextLinkPropertyPath};`];
 
   return [
     code`${SystemClientModelPrimitives.PipelineMessage} message = _client.${requestMethodName}(${requestArgs});`,
@@ -593,7 +613,7 @@ function buildNextLinkGetRawPagesBody(
     "    yield return result;",
     "\n",
     "\n",
-    code`    nextPageUri = ((${responseTypeExpr})result).${nextLinkPropertyPath};`,
+    ...nextLinkExtraction,
     "\n",
     "    if (nextPageUri == null)",
     "\n",
@@ -619,12 +639,32 @@ function buildNextLinkGetRawPagesBody(
  *
  * @param responseTypeExpr - JSX expression for the response model type (used for casting)
  * @param nextLinkPropertyPath - C# property path to the next-link value
+ * @param isStringNextLink - Whether the next-link property is a string type (vs Uri)
  */
 function buildNextLinkGetContinuationTokenBody(
   responseTypeExpr: Children,
   nextLinkPropertyPath: string,
   scmContinuationToken: Children,
+  isStringNextLink: boolean,
 ): Children[] {
+  if (isStringNextLink) {
+    // String next-link: extract string directly, check null/empty, and wrap in ContinuationToken
+    return [
+      code`string nextPage = ((${responseTypeExpr})page).${nextLinkPropertyPath};`,
+      "\n",
+      "if (!string.IsNullOrEmpty(nextPage))",
+      "\n",
+      "{",
+      "\n",
+      code`    return ${scmContinuationToken}.FromBytes(${System.BinaryData}.FromString(nextPage));`,
+      "\n",
+      "}",
+      "\n",
+      "return null;",
+    ];
+  }
+
+  // Uri next-link: extract Uri, check null, serialize via IsAbsoluteUri
   return [
     code`${System.Uri} nextPage = ((${responseTypeExpr})page).${nextLinkPropertyPath};`,
     "\n",
@@ -966,4 +1006,29 @@ function buildGetValuesFromPageDoc(): string[] {
     `\n/// <param name="page"></param>`,
     `\n/// <returns> The values from the specified page. </returns>`,
   ];
+}
+
+/**
+ * Checks if the last segment of a next-link path is a string type (not a url/Uri).
+ *
+ * Some TypeSpec specs define next-link properties as `string` instead of `url`.
+ * When the property is a string, the generated code needs to explicitly convert
+ * the string value to a Uri for the paging loop.
+ *
+ * @param segments - The next-link segments from TCGC paging metadata
+ * @returns True if the final segment's type is a string (not url/Uri)
+ */
+function isStringType(
+  segments: (SdkServiceResponseHeader | SdkModelPropertyType)[],
+): boolean {
+  if (segments.length === 0) return false;
+  const lastSegment = segments[segments.length - 1];
+  // SdkModelPropertyType has a .type field with kind info
+  if ("type" in lastSegment) {
+    const sdkType = lastSegment.type;
+    // TCGC "string" kind maps to C# string; "url" kind maps to C# Uri.
+    // When the next-link property is string (not url), we need conversion.
+    return sdkType.kind === "string";
+  }
+  return false;
 }

@@ -28,15 +28,8 @@ azure/resource-manager/operation-templates
 azure/resource-manager/resources
 
 # === Paging / CollectionResult specs ===
-# CollectionResult constructor parameter mismatch: PagingMethods passes all
-# operation parameters but CollectionResultFile only accepts them for
-# continuation-token paging. Also missing CreateXxxRequest parameter alignment.
-# Requires implementing full paging parameter forwarding in CollectionResultFile.tsx.
-azure/core/basic
-azure/core/page
-azure/payload/pageable
-payload/pageable
-azure/client-generator-core/next-link-verb
+# (Resolved in task 15.20) Added CreateNextXxxRequest methods in RestClientFile,
+# string-to-Uri next-link conversion, and ContinuationToken namespace collision fix.
 
 # === Multipart / file upload specs ===
 # type/file: Convenience methods reference File model types via refkeys, but

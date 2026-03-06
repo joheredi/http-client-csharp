@@ -172,6 +172,24 @@ export function RestClientFile(props: RestClientFileProps) {
               />
             </>
           ))}
+          {methods
+            .filter(isPagingWithNextLink)
+            .map((method) => (
+              <>
+                {"\n\n"}
+                <CreateNextRequestMethod
+                  method={
+                    method as SdkServiceMethod<SdkHttpOperation> &
+                      (
+                        | SdkPagingServiceMethod<SdkHttpOperation>
+                        | SdkLroPagingServiceMethod<SdkHttpOperation>
+                      )
+                  }
+                  classifiers={classifiers}
+                  siblingNames={siblingNames}
+                />
+              </>
+            ))}
         </ClassDeclaration>
       </Namespace>
     </SourceFile>
@@ -326,6 +344,137 @@ function CreateRequestMethod(props: CreateRequestMethodProps) {
       name={namekey(methodName, { ignoreNameConflict: true })}
       returns={SystemClientModelPrimitives.PipelineMessage}
       parameters={methodParams}
+    >
+      {body}
+    </Method>
+  );
+}
+
+/**
+ * Checks if a service method is a paging method with next-link segments.
+ * These methods need an additional `CreateNext{Op}Request` method
+ * that builds the request from a next-page URI.
+ */
+function isPagingWithNextLink(
+  method: SdkServiceMethod<SdkHttpOperation>,
+): boolean {
+  if (method.kind !== "paging" && method.kind !== "lropaging") return false;
+  const pagingMethod = method as
+    | SdkPagingServiceMethod<SdkHttpOperation>
+    | SdkLroPagingServiceMethod<SdkHttpOperation>;
+  const nextLinkSegments = pagingMethod.pagingMetadata.nextLinkSegments;
+  return nextLinkSegments !== undefined && nextLinkSegments.length > 0;
+}
+
+/**
+ * Props for the {@link CreateNextRequestMethod} component.
+ */
+interface CreateNextRequestMethodProps {
+  method: SdkServiceMethod<SdkHttpOperation> &
+    (
+      | SdkPagingServiceMethod<SdkHttpOperation>
+      | SdkLroPagingServiceMethod<SdkHttpOperation>
+    );
+  classifiers: ClassifierInfo[];
+  siblingNames: Set<string>;
+}
+
+/**
+ * Generates a `CreateNext{Op}Request(Uri nextPage, RequestOptions options)` method
+ * for paging operations that use next-link pagination.
+ *
+ * This method creates an HTTP request from a next-page URI extracted from a
+ * previous response. It handles both absolute and relative URIs, combining
+ * relative URIs with the client's base endpoint.
+ *
+ * @example Generated output:
+ * ```csharp
+ * internal PipelineMessage CreateNextGetItemsRequest(Uri nextPage, RequestOptions options)
+ * {
+ *     ClientUriBuilder uri = new ClientUriBuilder();
+ *     if (nextPage.IsAbsoluteUri)
+ *     {
+ *         uri.Reset(nextPage);
+ *     }
+ *     else
+ *     {
+ *         uri.Reset(new Uri(_endpoint, nextPage));
+ *     }
+ *     PipelineMessage message = Pipeline.CreateMessage(
+ *         uri.ToUri(), "GET", PipelineMessageClassifier200);
+ *     PipelineRequest request = message.Request;
+ *     request.Headers.Set("Accept", "application/json");
+ *     message.Apply(options);
+ *     return message;
+ * }
+ * ```
+ */
+function CreateNextRequestMethod(props: CreateNextRequestMethodProps) {
+  const { method, siblingNames } = props;
+  const operation = method.operation;
+  const namePolicy = useCSharpNamePolicy();
+
+  const operationName = cleanOperationName(
+    namePolicy.getName(method.name, "class"),
+    siblingNames,
+  );
+  const methodName = `CreateNext${operationName}Request`;
+
+  // HTTP method (uppercase): "get" → "GET"
+  const httpVerb = operation.verb.toUpperCase();
+
+  // Get the classifier for this operation's success status codes
+  const statusCodes = getSuccessStatusCodes(method);
+  const classifierSuffix = statusCodes.join("");
+  const classifierRef = `PipelineMessageClassifier${classifierSuffix}`;
+
+  // Accept header from operation responses
+  const acceptHeader = getAcceptHeaderValue(operation.responses);
+
+  // Build method body: URI handling + message creation + headers + options
+  const body: Children[] = [
+    "ClientUriBuilder uri = new ClientUriBuilder();",
+    "\n",
+    "if (nextPage.IsAbsoluteUri)",
+    "\n",
+    "{",
+    "\n",
+    "    uri.Reset(nextPage);",
+    "\n",
+    "}",
+    "\n",
+    "else",
+    "\n",
+    "{",
+    "\n",
+    code`    uri.Reset(new ${System.Uri}(_endpoint, nextPage));`,
+    "\n",
+    "}",
+    "\n",
+    `PipelineMessage message = Pipeline.CreateMessage(uri.ToUri(), "${httpVerb}", ${classifierRef});`,
+    "\n",
+    "PipelineRequest request = message.Request;",
+  ];
+
+  // Add Accept header if the operation specifies one
+  if (acceptHeader) {
+    body.push("\n", `request.Headers.Set("Accept", "${acceptHeader}");`);
+  }
+
+  body.push("\n", "message.Apply(options);", "\n", "return message;");
+
+  return (
+    <Method
+      internal
+      name={namekey(methodName, { ignoreNameConflict: true })}
+      returns={SystemClientModelPrimitives.PipelineMessage}
+      parameters={[
+        { name: "nextPage", type: System.Uri as Children },
+        {
+          name: "options",
+          type: SystemClientModelPrimitives.RequestOptions as Children,
+        },
+      ]}
     >
       {body}
     </Method>

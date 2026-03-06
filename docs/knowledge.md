@@ -3192,3 +3192,18 @@ When `model.additionalProperties` is defined, the typed `AdditionalProperties` p
 
 **Design Decision: AdditionalSingleProperties deferred.**
 Models with multiple spread Record<T> types (e.g., `model M { ...Record<string>; ...Record<float>; }`) need a second property `AdditionalSingleProperties`. This is a separate feature and should not be conflated with the base `AdditionalProperties` support.
+
+## Paging: CreateNextRequest methods (task 15.20)
+
+### Gotcha: Missing CreateNextXxxRequest in RestClient
+The CollectionResultFile generates calls to `_client.CreateNext{Op}Request(nextPageUri, _options)` for next-link paging, but RestClientFile did not generate these methods. Added `CreateNextRequestMethod` component that generates the next-page request factory method (handles absolute/relative URI, Accept header, same classifier as original operation).
+
+### Gotcha: String vs Uri next-link property types
+Some TypeSpec specs define next-link properties as `string` instead of `url`. The TCGC `nextLinkSegments` last segment's type has `kind === "string"` for string properties. CollectionResultFile now detects this via `isStringType()` and generates explicit `new Uri(nextLink)` conversion code for both GetRawPages and GetContinuationToken methods.
+
+### Gotcha: ContinuationToken namespace collision
+When a sub-client is named "ContinuationToken", it collides with `System.ClientModel.ContinuationToken`. The `isSystemTypeNameCollision` check in package-name.ts now includes "ContinuationToken" so sub-client field and return types use FQN, preventing Alloy from adding a conflicting `using` directive.
+
+### Design Decision: Approach for CreateNextRequest
+**Chosen**: Generate as a separate component (`CreateNextRequestMethod`) rendered after all regular `CreateRequestMethod` components. Uses raw string body pattern (matching existing `buildRequestBody`) with hardcoded next-page URI handling.
+**Rejected**: Modifying `CreateRequestMethod` to conditionally render a next-link variant — too complex, hard to understand, and the next-page request has completely different URI construction logic (no path/query building, just URI forwarding).
