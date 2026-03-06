@@ -168,7 +168,10 @@ public partial class Base64urlArrayBytesProperty
 
         /// <summary> Initializes a new instance of <see cref="Base64urlArrayBytesProperty"/>. </summary>
         /// <param name="value"></param>
-        public Base64urlArrayBytesProperty(IEnumerable<BinaryData> value) {}
+        public Base64urlArrayBytesProperty(IEnumerable<BinaryData> value)
+        {
+            Value = value.ToList();
+        }
 
         /// <summary> Initializes a new instance of <see cref="Base64urlArrayBytesProperty"/>. </summary>
         /// <param name="value"></param>

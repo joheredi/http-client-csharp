@@ -4905,3 +4905,18 @@ Routes spec had 64 CS1503 compilation errors across two categories:
 - 1353 unit tests passing, 5 e2e tests passing
 - Routes spec compiles with 0 errors
 - API surface matches legacy emitter stubs
+
+2026-03-06 — Task 15.1 — Fix NullReferenceException in array property serialization
+
+Root cause: `buildAssignments()` in ModelConstructors.tsx only handled `direct-assign` kind properties, skipping `to-list` and `to-dict`. This left public constructor bodies empty for models with required collection properties — Value was never assigned, causing NRE during serialization.
+
+Fix applied:
+- `ModelConstructors.tsx` / `buildAssignments()`: Added `to-list` → `PropName = paramName.ToList();` and `to-dict` → direct assignment
+- `ModelConstructors.tsx` / `modelNeedsLinqImport()`: New exported function to check if a model needs `System.Linq`
+- `ModelFile.tsx`: Adds `using System.Linq;` to SourceFile when model has required array properties
+- Unit test added in model.test.ts verifying `.ToList()` assignment and `System.Linq` import
+- Updated 2 scenario test expectations (bytes_encoding.md, datetime_encoding.md)
+
+Impact: Fixed 10 previously failing e2e tests (7 Payload/XML + 3 Encode/DateTime/Duration). The 12 Encode/Array tests changed from NRE to 400 Bad Request — the constructor NRE is fixed but delimiter encoding is a separate issue.
+
+Pattern: `.ToList()` is already used in ConvenienceMethod.tsx and ModelFactoryMethod.tsx. System.Linq is added via SourceFile `using` prop, same pattern as ClientFile.tsx.

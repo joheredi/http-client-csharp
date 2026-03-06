@@ -207,7 +207,10 @@ public partial class UnixTimestampArrayDatetimeProperty
 
         /// <summary> Initializes a new instance of <see cref="UnixTimestampArrayDatetimeProperty"/>. </summary>
         /// <param name="value"></param>
-        public UnixTimestampArrayDatetimeProperty(IEnumerable<DateTimeOffset> value) {}
+        public UnixTimestampArrayDatetimeProperty(IEnumerable<DateTimeOffset> value)
+        {
+            Value = value.ToList();
+        }
 
         /// <summary> Initializes a new instance of <see cref="UnixTimestampArrayDatetimeProperty"/>. </summary>
         /// <param name="value"></param>

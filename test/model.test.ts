@@ -1169,6 +1169,50 @@ describe("ModelConstructors", () => {
   });
 
   /**
+   * Validates that required array properties in the public constructor body
+   * are assigned via `.ToList()`, converting the `IEnumerable<T>` parameter
+   * to the `IList<T>` property type.
+   *
+   * Without this conversion, the property remains null after construction,
+   * causing NullReferenceException during serialization when the code
+   * iterates `foreach (item in Value)`.
+   *
+   * Also verifies that `using System.Linq;` is included in the model file
+   * since `.ToList()` is an extension method from `System.Linq.Enumerable`.
+   */
+  it("assigns required array properties via .ToList() in public constructor", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestNamespace;
+
+      model Widget {
+        name: string;
+        tags: string[];
+      }
+
+      @route("/widgets")
+      op createWidget(@body body: Widget): Widget;
+    `);
+
+    expect(diagnostics).toHaveLength(0);
+
+    const modelFile = Object.keys(outputs).find((k) =>
+      k.endsWith("/Widget.cs"),
+    );
+    expect(modelFile).toBeDefined();
+    const content = outputs[modelFile!];
+
+    // Scalar property is direct-assigned
+    expect(content).toContain("Name = name;");
+    // Array property uses .ToList() conversion
+    expect(content).toContain("Tags = tags.ToList();");
+    // System.Linq is required for .ToList()
+    expect(content).toContain("using System.Linq;");
+  });
+
+  /**
    * Validates that output-only models generate an internal constructor.
    * Output models are populated by deserialization — external users never
    * construct them directly. The internal access modifier restricts

@@ -2965,3 +2965,26 @@ using directive won't match the actual namespace.
 **Pattern**: When adding new SDK type handling, check ALL copies of `getProtocolTypeExpression` — there are two (ProtocolMethod.tsx and RestClientFile.tsx) that must stay in sync. The doc comment in ProtocolMethod.tsx explicitly notes this: "This duplicates RestClientFile's getProtocolTypeExpression. Both must stay in sync."
 
 **Pattern**: For dict path/query params, `ClientUriBuilder` has dict overloads of `AppendPathDelimited` and `AppendQueryDelimited` that serialize `IDictionary<TKey, TValue>` by interleaving keys and values with `SelectMany`.
+
+## Task 15.1: Constructor collection assignment
+
+### Gotcha: Required collection properties need `.ToList()` in public constructors
+The `buildAssignments` function in `ModelConstructors.tsx` generates public constructor body assignments. Required array properties return `"to-list"` from `getPropertyInitializerKind` and need `PropName = paramName.ToList();` (not direct assignment) because the parameter is `IEnumerable<T>` while the property is `IList<T>`. Don't forget `using System.Linq;` in the model file.
+
+### Design Decision: `.ToList()` vs `new List<T>(param)`
+Chose `.ToList()` over `new List<T>(param)` because:
+- Already used extensively in the codebase (ConvenienceMethod.tsx, ModelFactoryMethod.tsx)
+- Doesn't require rendering type parameters as JSX — works as a plain string
+- The `System.Linq` import is handled via SourceFile `using` prop
+
+Rejected: `new List<T>(param)` — requires knowing element type, which means `buildAssignments` would need to return `Children[]` instead of `string[]`, cascading changes to `renderPublicCtorBody`.
+
+### Gotcha: Encode/Array tests have TWO bugs
+The 12 Encode/Array tests had two stacked bugs:
+1. NRE from empty constructor body (fixed by task 15.1)
+2. 400 Bad Request from incorrect delimiter encoding (separate issue, still failing)
+Fixing the NRE unmasks the delimiter encoding bug. These are now expected failures with a different root cause.
+
+### Pattern: Adding `using` directives to model files
+Use the `SourceFile` component's `using` prop: `<SourceFile using={["System.Linq"]}>`
+Same pattern as `ClientFile.tsx` and `ModelFactoryFile.tsx`.

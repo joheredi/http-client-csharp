@@ -28,6 +28,7 @@ import {
   isDerivedDiscriminatedModel,
   isModelAbstract,
   ModelConstructors,
+  modelNeedsLinqImport,
 } from "./ModelConstructors.js";
 import { ModelProperty } from "./ModelProperty.js";
 
@@ -131,6 +132,11 @@ export function ModelFile(props: ModelFileProps) {
   const isDynamic = isDynamicModel(props.type);
   const fieldModifier = isStruct ? "private" : "private protected";
 
+  // When the public constructor converts IEnumerable<T> parameters to
+  // IList<T> via .ToList(), the model file needs `using System.Linq;`.
+  const needsLinq = modelNeedsLinqImport(props.type, isStruct);
+  const additionalUsings = needsLinq ? ["System.Linq"] : undefined;
+
   const members = (
     <>
       {isRoot && isDynamic && (
@@ -161,7 +167,7 @@ export function ModelFile(props: ModelFileProps) {
   );
 
   return (
-    <SourceFile path={`src/Generated/Models/${modelName}.cs`}>
+    <SourceFile path={`src/Generated/Models/${modelName}.cs`} using={additionalUsings}>
       {header}
       {"\n\n"}
       <Namespace name={effectiveNamespace}>

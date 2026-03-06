@@ -99,7 +99,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["src/emitter.tsx"],
+            "modify": [
+              "src/emitter.tsx"
+            ],
             "reference": [
               "src/utils/package-name.ts",
               "src/components/infrastructure/ArgumentFile.tsx",
@@ -125,7 +127,9 @@
               "src/components/clients/ProtocolMethod.tsx",
               "src/components/clients/ConvenienceMethod.tsx"
             ],
-            "reference": ["src/components/HttpClientCSharpOutput.tsx"]
+            "reference": [
+              "src/components/HttpClientCSharpOutput.tsx"
+            ]
           },
           "acceptance_criteria": [
             "special-words spec compiles without syntax errors from reserved keyword parameter names",
@@ -141,8 +145,12 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["src/components/clients/ConvenienceMethod.tsx"],
-            "reference": ["src/components/clients/ProtocolMethod.tsx"]
+            "modify": [
+              "src/components/clients/ConvenienceMethod.tsx"
+            ],
+            "reference": [
+              "src/components/clients/ProtocolMethod.tsx"
+            ]
           },
           "acceptance_criteria": [
             "Hyphenated parameter names are converted to valid camelCase C# identifiers in all usage sites",
@@ -158,7 +166,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["src/components/model-factory/ModelFactoryFile.tsx"]
+            "modify": [
+              "src/components/model-factory/ModelFactoryFile.tsx"
+            ]
           },
           "acceptance_criteria": [
             "Generated ModelFactory files include using System; when System types are used",
@@ -177,7 +187,9 @@
             "modify": [
               "src/components/infrastructure/CodeGenAttributeFiles.tsx"
             ],
-            "reference": ["src/utils/package-name.ts"]
+            "reference": [
+              "src/utils/package-name.ts"
+            ]
           },
           "acceptance_criteria": [
             "Internal helper files using System.Type compile even when namespace contains a Type segment",
@@ -193,8 +205,12 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["src/components/clients/ConvenienceMethod.tsx"],
-            "reference": ["src/components/clients/ProtocolMethod.tsx"]
+            "modify": [
+              "src/components/clients/ConvenienceMethod.tsx"
+            ],
+            "reference": [
+              "src/components/clients/ProtocolMethod.tsx"
+            ]
           },
           "acceptance_criteria": [
             "Convenience methods correctly convert CancellationToken to RequestOptions when calling protocol methods",
@@ -209,7 +225,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["eng/scripts/emit-e2e.ts"]
+            "modify": [
+              "eng/scripts/emit-e2e.ts"
+            ]
           },
           "acceptance_criteria": [
             "Stale output from testignored specs is either cleaned or excluded from project references",
@@ -346,7 +364,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["src/components/serialization/PropertyMatchingLoop.tsx"],
+            "modify": [
+              "src/components/serialization/PropertyMatchingLoop.tsx"
+            ],
             "reference": [
               "src/components/serialization/JsonModelCreateCore.tsx"
             ]
@@ -365,8 +385,12 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["src/components/models/ModelProperty.tsx"],
-            "reference": ["src/components/models/ModelFile.tsx"]
+            "modify": [
+              "src/components/models/ModelProperty.tsx"
+            ],
+            "reference": [
+              "src/components/models/ModelFile.tsx"
+            ]
           },
           "acceptance_criteria": [
             "Properties named the same as their enclosing class are renamed to avoid CS0542",
@@ -381,7 +405,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["src/components/models/ModelFile.tsx"],
+            "modify": [
+              "src/components/models/ModelFile.tsx"
+            ],
             "reference": [
               "src/components/infrastructure/ArgumentFile.tsx",
               "src/emitter.tsx"
@@ -401,7 +427,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["src/components/clients/ConvenienceMethod.tsx"],
+            "modify": [
+              "src/components/clients/ConvenienceMethod.tsx"
+            ],
             "reference": [
               "src/components/clients/ProtocolMethod.tsx",
               "src/components/clients/RestClientFile.tsx"
@@ -421,7 +449,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["src/components/serialization/PropertySerializer.tsx"],
+            "modify": [
+              "src/components/serialization/PropertySerializer.tsx"
+            ],
             "reference": [
               "src/components/serialization/PropertyMatchingLoop.tsx",
               "src/components/enums/ExtensibleEnumSerializationFile.tsx"
@@ -442,7 +472,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["src/components/clients/ConvenienceMethod.tsx"],
+            "modify": [
+              "src/components/clients/ConvenienceMethod.tsx"
+            ],
             "reference": [
               "src/components/models/ModelConstructors.tsx",
               "src/components/clients/RestClientFile.tsx"
@@ -510,7 +542,9 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/emitter.tsx"],
+            "modify": [
+              "src/emitter.tsx"
+            ],
             "reference": [
               "src/utils/namespace-brace-style.ts",
               "src/utils/reorder-header.ts",
@@ -543,7 +577,9 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/components/clients/RestClientFile.tsx"],
+            "modify": [
+              "src/components/clients/RestClientFile.tsx"
+            ],
             "reference": [
               "temp/e2e/Spector/http/azure/client-generator-core/client-initialization/default/src/Generated/ParamAliasClient.RestClient.cs"
             ]
@@ -586,7 +622,9 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/components/models/ModelConstructors.tsx"],
+            "modify": [
+              "src/components/models/ModelConstructors.tsx"
+            ],
             "reference": [
               "temp/e2e/Spector/http/azure/client-generator-core/access/src/Generated/Models/OuterModel.cs"
             ]
@@ -606,7 +644,9 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/emitter.tsx"],
+            "modify": [
+              "src/emitter.tsx"
+            ],
             "reference": [
               "src/components/infrastructure/BinaryContentHelperFile.tsx",
               "temp/e2e/Spector/http/encode/bytes/src/Generated/RequestBody.cs"
@@ -627,7 +667,9 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/components/clients/RestClientFile.tsx"],
+            "modify": [
+              "src/components/clients/RestClientFile.tsx"
+            ],
             "reference": [
               "temp/e2e/Spector/http/encode/bytes/src/Generated/Header.RestClient.cs",
               "temp/e2e/Spector/http/encode/bytes/src/Generated/Query.RestClient.cs"
@@ -637,6 +679,503 @@
             "BinaryData parameters in headers are converted to string correctly",
             "BinaryData parameters in queries are converted to string correctly",
             "pnpm test:e2e passes for encode/bytes specs"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "E2E Spector Coverage Gaps",
+      "description": "Tasks to close Spector scenario coverage gaps identified by the e2e runtime test infrastructure. Current coverage: 100/928 (10.8%). Each task fixes the emitter to match the legacy API surface so existing legacy tests pass without modification. IMPORTANT: API mismatches must be fixed by updating the emitter to match the legacy API \u2014 NEVER modify tests to work around API differences.",
+      "tasks": [
+        {
+          "id": "15.1",
+          "title": "Fix NullReferenceException in array property serialization",
+          "description": "Encode/Array tests (12 scenarios) throw NullReferenceException during serialization of delimited array properties (CommaDelimited, PipeDelimited, SpaceDelimited, NewlineDelimited, and their Enum/ExtensibleEnum variants). The generated serialization code in *ArrayProperty.Serialization.cs line 99 dereferences a null value. Fix the emitter's serialization code generation to properly handle array properties with delimiter encoding.\n\nTo reproduce: pnpm test:e2e, check .expected-failures for CommaDelimited, PipeDelimited, etc.\n\nIMPORTANT: Fix the emitter to generate correct serialization code. Do NOT modify tests.",
+          "phase": "phase-15",
+          "status": "done",
+          "dependencies": [],
+          "files": {
+            "modify": [],
+            "reference": [
+              "test/e2e/.expected-failures"
+            ]
+          },
+          "acceptance_criteria": [
+            "All 12 Encode/Array scenarios pass (CommaDelimited, PipeDelimited, SpaceDelimited, NewlineDelimited \u00d7 plain/Enum/ExtensibleEnum)",
+            "Remove these 12 entries from test/e2e/.expected-failures",
+            "pnpm test:e2e passes with 0 unexpected failures",
+            "pnpm check:coverage shows Encode_Array at 12/12"
+          ]
+        },
+        {
+          "id": "15.2",
+          "title": "Fix NullReferenceException in XML model serialization",
+          "description": "Payload/XML tests (7 scenarios) throw NullReferenceException during XML serialization (NOTE: task 15.1 fixed the constructor NRE for required collection properties, which resolved these 7 Payload/XML test failures. Verify this task is still needed or mark done if e2e confirms.) of models with arrays, dictionaries, and encoded names. The generated XML serialization code (e.g., ModelWithArrayOfModel.Serialization.cs line 129) dereferences null. Fix the emitter's XML serialization code generation.\n\nAffected tests: PutModelWithArrayOfModel, PutModelWithDictionary, PutModelWithEmptyArray, PutModelWithEncodedNames, PutModelWithRenamedArrays, PutModelWithSimpleArrays, PutModelWithUnwrappedArray.\n\nIMPORTANT: Fix the emitter to generate correct serialization code. Do NOT modify tests.",
+          "phase": "phase-15",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [],
+            "reference": [
+              "test/e2e/.expected-failures"
+            ]
+          },
+          "acceptance_criteria": [
+            "All 7 Payload/XML Put scenarios pass",
+            "Remove 7 entries from test/e2e/.expected-failures",
+            "pnpm check:coverage shows Payload_Xml at 25/25"
+          ]
+        },
+        {
+          "id": "15.3",
+          "title": "Fix NullReferenceException in recursive model serialization",
+          "description": "Type/Model/Inheritance/Recursive tests (3 scenarios: PutRecursiveModel \u00d7 2 classes, RecursiveGet, RecursivePut) throw NullReferenceException when serializing recursive model hierarchies (NOTE: may be partially addressed by task 15.1 constructor fix). The generated code fails to handle null-checks on recursive child references.\n\nIMPORTANT: Fix the emitter to generate correct serialization code. Do NOT modify tests.",
+          "phase": "phase-15",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [],
+            "reference": [
+              "test/e2e/.expected-failures"
+            ]
+          },
+          "acceptance_criteria": [
+            "PutRecursiveModel, RecursiveGet, RecursivePut all pass",
+            "Remove 3 entries from test/e2e/.expected-failures",
+            "pnpm check:coverage shows Type_Model fully covered"
+          ]
+        },
+        {
+          "id": "15.4",
+          "title": "Fix duration header/query parameter encoding",
+          "description": "Encode/Duration tests (25 failures + 4 skips) fail with ClientResultException because the generated client sends duration values in a format the Spector mock server doesn't expect. Covers header, query, and property encoding for int32-seconds, float-seconds, float64-seconds, int32-milliseconds, float-milliseconds, float64-milliseconds, and ISO8601 array formats. Fix the emitter to generate correct duration formatting in header/query serialization.\n\nIMPORTANT: Fix the emitter to match the legacy API. Do NOT modify tests.",
+          "phase": "phase-15",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [],
+            "reference": [
+              "test/e2e/.expected-failures",
+              "test/e2e/.expected-skips"
+            ]
+          },
+          "acceptance_criteria": [
+            "All Encode/Duration Header*, Query*, Property* tests pass",
+            "Remove ~25 entries from .expected-failures and 4 from .expected-skips",
+            "pnpm check:coverage shows Encode_Duration at 42/42"
+          ]
+        },
+        {
+          "id": "15.5",
+          "title": "Fix datetime header/query parameter encoding",
+          "description": "Encode/DateTime tests (5 failures: HeaderRfc7231, HeaderUnixTimestamp, HeaderUnixTimestampArray, HeaderISO8601Array, PropertyUnixTimestampArray) fail with ClientResultException. The generated client sends datetime values in a format that doesn't match the Spector server's expectations. Fix the emitter's datetime formatting for header and query parameters.\n\nIMPORTANT: Fix the emitter to match the legacy API. Do NOT modify tests.",
+          "phase": "phase-15",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [],
+            "reference": [
+              "test/e2e/.expected-failures"
+            ]
+          },
+          "acceptance_criteria": [
+            "All 5 failing Encode/DateTime tests pass",
+            "Remove 5 entries from .expected-failures",
+            "pnpm check:coverage shows Encode_Datetime at 19/19"
+          ]
+        },
+        {
+          "id": "15.6",
+          "title": "Fix api-version query parameter for versioned specs",
+          "description": "All versioning tests (7 failures: Versioning_Added v1/v2/InterfaceV2, MadeOptional, RenamedFrom NewInterface/NewOp, TypeChangedFrom) fail with ClientResultException. The generated clients are not sending the api-version query parameter correctly to the Spector mock server. Fix the emitter to generate correct api-version parameter handling in versioned client operations.\n\nIMPORTANT: Fix the emitter to match the legacy API. Do NOT modify tests.",
+          "phase": "phase-15",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [],
+            "reference": [
+              "test/e2e/.expected-failures"
+            ]
+          },
+          "acceptance_criteria": [
+            "All 7 Versioning tests pass",
+            "Remove 7 entries from .expected-failures",
+            "pnpm check:coverage shows Versioning_Added, MadeOptional, RenamedFrom, TypeChangedFrom all covered"
+          ]
+        },
+        {
+          "id": "15.7",
+          "title": "Fix path parameter expansion and optional path params",
+          "description": "Parameters/Path tests (2 failures: NoOperationParams, WithOperationPathParam) fail with ArgumentNullException/ClientResultException. Server/Path/Multiple tests (2 failures: OptionalPathParamIncluded True/False) fail with ClientResultException. Fix the emitter's path parameter expansion and optional path parameter handling.\n\nIMPORTANT: Fix the emitter to match the legacy API. Do NOT modify tests.",
+          "phase": "phase-15",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [],
+            "reference": [
+              "test/e2e/.expected-failures"
+            ]
+          },
+          "acceptance_criteria": [
+            "NoOperationParams, WithOperationPathParam, OptionalPathParamIncluded(True/False) all pass",
+            "Remove 4 entries from .expected-failures",
+            "pnpm check:coverage shows Parameters_Path and Server_Path fully covered"
+          ]
+        },
+        {
+          "id": "15.8",
+          "title": "Align Type/Property/ValueTypes API surface with legacy emitter",
+          "description": "Type/Property/ValueTypes tests (~120 scenarios) are excluded from compilation due to CS1061 (member not found) and CS1729 (constructor mismatch). The legacy tests use constructor patterns, property accessors, and factory methods that the new emitter doesn't generate. This is the SINGLE LARGEST coverage gap.\n\nFix the emitter to generate the same API surface as the legacy emitter for value type properties (constructors, property names, factory methods). Compare generated output in temp/e2e/Spector/http/type/property/value-types/ with what the legacy test expects.\n\nIMPORTANT: Fix the emitter to match the legacy API. NEVER update the test to workaround the API mismatch. Once fixed, remove the Compile Remove entry for _Type/Property/ValueTypes in Spector.Tests.csproj.",
+          "phase": "phase-15",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
+            "reference": [
+              "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/_Type/Property/ValueTypes/ValueTypesTests.cs"
+            ]
+          },
+          "acceptance_criteria": [
+            "ValueTypesTests.cs compiles against new emitter output",
+            "Remove _Type/Property/ValueTypes Compile Remove entry from .csproj",
+            "All ~120 Type_Property_ValueTypes scenarios covered in check:coverage",
+            "pnpm test:e2e passes"
+          ]
+        },
+        {
+          "id": "15.9",
+          "title": "Align Type/Property/AdditionalProperties API surface with legacy emitter",
+          "description": "Type/Property/AdditionalProperties tests (~57 scenarios) are excluded due to CS1061: generated Spread* models (SpreadFloatRecord, SpreadModelRecord, SpreadStringRecord, etc.) are missing the AdditionalProperties property that the legacy emitter generates. Fix the emitter to generate the AdditionalProperties/AdditionalSingleProperties properties on spread/dictionary models.\n\nNote: DifferentSpreadStringDerivedTests.cs and MultipleSpreadRecordTests.cs also need SpectorModelJsonTests<T> infrastructure \u2014 keep those excluded separately.\n\nIMPORTANT: Fix the emitter to match the legacy API. NEVER update the test to workaround the API mismatch.",
+          "phase": "phase-15",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
+            "reference": [
+              "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/_Type/Property/AdditionalProperties/AdditionalPropertiesTests.cs"
+            ]
+          },
+          "acceptance_criteria": [
+            "AdditionalPropertiesTests.cs compiles against new emitter output",
+            "Remove _Type/Property/AdditionalProperties Compile Remove from .csproj (keep DifferentSpread/MultipleSpread excluded)",
+            "Type_Property AdditionalProperties scenarios covered in check:coverage",
+            "pnpm test:e2e passes"
+          ]
+        },
+        {
+          "id": "15.10",
+          "title": "Align Routes API surface with legacy emitter",
+          "description": "Routes tests (~44 scenarios: PathParameterTests.cs ~29, QueryTests.cs ~15) are excluded due to CS1061: the legacy tests call route parameter methods that the new emitter doesn't generate. The RoutesClient method signatures, parameter expansion patterns, and sub-client method names differ.\n\nFix the emitter to generate route parameter methods matching the legacy API. Compare the generated RoutesClient in temp/e2e/Spector/http/routes/ with what PathParameterTests.cs and QueryTests.cs expect.\n\nIMPORTANT: Fix the emitter to match the legacy API. NEVER update the test to workaround the API mismatch.",
+          "phase": "phase-15",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
+            "reference": [
+              "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/Routes/PathParameterTests.cs",
+              "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/Routes/QueryTests.cs"
+            ]
+          },
+          "acceptance_criteria": [
+            "PathParameterTests.cs and QueryTests.cs compile against new emitter output",
+            "Remove Routes Compile Remove entry from .csproj",
+            "Routes_PathParameters and Routes_QueryParameters scenarios covered",
+            "pnpm test:e2e passes"
+          ]
+        },
+        {
+          "id": "15.11",
+          "title": "Align Type/Array, Dictionary, Scalar, Enum API surface with legacy emitter",
+          "description": "Type collection tests (~73 scenarios total: Array 28, Dictionary 22, Scalar 16, Enum 7) are excluded due to CS1061/CS1503: method signature differences in model constructors, property accessors, and type conversions. These likely share root causes \u2014 the new emitter generates different constructor signatures, property types, or accessor patterns for collection-related models.\n\nFix the emitter to generate matching constructor signatures, property names, and type accessors for array, dictionary, scalar, and enum types. Compare generated models with what ArrayTests.cs, DictionaryTests.cs, ScalarTests.cs, ExtensibleTests.cs, and FixedTests.cs expect.\n\nIMPORTANT: Fix the emitter to match the legacy API. NEVER update the test to workaround the API mismatch.",
+          "phase": "phase-15",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
+            "reference": [
+              "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/_Type/_Array/ArrayTests.cs",
+              "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/_Type/Dictionary/DictionaryTests.cs",
+              "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/_Type/Scalar/ScalarTests.cs",
+              "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/_Type/_Enum/Extensible/ExtensibleTests.cs",
+              "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/_Type/_Enum/Fixed/FixedTests.cs"
+            ]
+          },
+          "acceptance_criteria": [
+            "ArrayTests.cs, DictionaryTests.cs, ScalarTests.cs, ExtensibleTests.cs, FixedTests.cs all compile",
+            "Remove _Type/_Array, _Type/Dictionary, _Type/Scalar, _Type/_Enum Compile Remove entries from .csproj",
+            "~73 Type_Array/Dictionary/Scalar/Enum scenarios covered",
+            "pnpm test:e2e passes"
+          ]
+        },
+        {
+          "id": "15.12",
+          "title": "Align Encode/Bytes and Encode/Numeric API surface with legacy emitter",
+          "description": "Encode/Bytes tests (~22 scenarios) and Encode/Numeric tests (~3 scenarios) are excluded due to CS1061/CS1503: encoding method API differences. The legacy tests use encoding methods and parameter types that the new emitter generates differently.\n\nFix the emitter to generate matching encoding method signatures and parameter types.\n\nIMPORTANT: Fix the emitter to match the legacy API. NEVER update the test to workaround the API mismatch.",
+          "phase": "phase-15",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
+            "reference": [
+              "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/Encode/Bytes/EncodeBytesTests.cs",
+              "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/Encode/Numeric/EncodeNumericTests.cs"
+            ]
+          },
+          "acceptance_criteria": [
+            "EncodeBytesTests.cs and EncodeNumericTests.cs compile against new emitter output",
+            "Remove Encode/Bytes and Encode/Numeric Compile Remove entries from .csproj",
+            "Encode_Bytes and Encode_Numeric scenarios covered",
+            "pnpm test:e2e passes"
+          ]
+        },
+        {
+          "id": "15.13",
+          "title": "Align Client/Structure namespace hierarchy with legacy emitter",
+          "description": "Client/Structure tests (~20 scenarios across Default, MultiClient, RenamedOperation, TwoOperationGroup) are excluded because the new emitter generates different namespace hierarchies. Legacy expects Client.Structure.Service.* with types like BazFoo, QuxBar at the root; new emitter generates Client.Structure.Service._Baz.BazFoo etc. Also MultiClient uses Client.Structure.MultiClient vs Service namespace.\n\nFix the emitter's namespace generation for client structure specs to match the legacy hierarchy. Also fix Versioning/Removed (~8 scenarios) which has a similar issue: legacy expects Versioning.Removed.V1/V2 sub-namespaces, new emitter generates flat Versioning.Removed.\n\nIMPORTANT: Fix the emitter to match the legacy API. NEVER update the test to workaround the API mismatch.",
+          "phase": "phase-15",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
+            "reference": [
+              "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/Client/Structure/Default/DefaultTests.cs",
+              "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/Client/Structure/MultiClient/MultiClientTests.cs",
+              "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/Versioning/Removed/V1/VersioningRemovedV1Tests.cs"
+            ]
+          },
+          "acceptance_criteria": [
+            "Client/Structure Default, MultiClient, RenamedOperation, TwoOperationGroup tests compile",
+            "Versioning/Removed V1 and V2 tests compile",
+            "Remove corresponding Compile Remove entries from .csproj",
+            "~28 Client_Structure and Versioning_Removed scenarios covered",
+            "pnpm test:e2e passes"
+          ]
+        },
+        {
+          "id": "15.14",
+          "title": "Align remaining PLUG-IN test APIs with legacy emitter",
+          "description": "Several smaller test groups are excluded due to API surface differences (CS1061/CS1729):\n\n- Authentication/Http/Custom (~2 scenarios): CS1729 constructor takes 3 args, new emitter generates 2\n- Parameters/BodyOptionality (~5 scenarios): CS1061 body parameter API differences\n- Payload/ContentNegotiation (~5 scenarios): CS1061 content negotiation API\n- Payload/MediaType (~3 scenarios): CS1061 media type API\n- Resiliency/SrvDriven V1+V2 (~5 scenarios): CS1061 resiliency API\n- SpecialHeaders/ConditionalRequest (~5 scenarios): CS1061 header API\n- Versioning/ReturnTypeChangedFrom (~3 scenarios): CS1061 return type API\n\nFix the emitter to generate APIs matching the legacy emitter for each case.\n\nIMPORTANT: Fix the emitter to match the legacy API. NEVER update the test to workaround the API mismatch.",
+          "phase": "phase-15",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
+            "reference": []
+          },
+          "acceptance_criteria": [
+            "All listed test files compile against new emitter output",
+            "Remove corresponding Compile Remove entries from .csproj",
+            "~28 additional scenarios covered",
+            "pnpm test:e2e passes"
+          ]
+        },
+        {
+          "id": "15.15",
+          "title": "Generate per-client ClientOptions types for non-versioned specs",
+          "description": "4 test files are excluded because they reference per-client *ClientOptions types (OAuth2ClientOptions, UnionClientOptions, DocumentationClientOptions, StatusCodeRangeClientOptions) that the new emitter doesn't generate for non-versioned specs. The legacy emitter generates a per-client options class extending ClientPipelineOptions for every client.\n\nFix the emitter to generate per-client *ClientOptions classes for all specs, not just versioned ones.\n\nIMPORTANT: Fix the emitter to match the legacy API. NEVER update the test to workaround the API mismatch.",
+          "phase": "phase-15",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
+            "reference": [
+              "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/Authentication/OAuth2/OAuth2Tests.cs",
+              "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/Documentation/DocumentationTests.cs"
+            ]
+          },
+          "acceptance_criteria": [
+            "OAuth2Tests, UnionAuthTests, DocumentationTests, StatusCodeRangeTests compile",
+            "Remove OAuth2, Union, Documentation, StatusCodeRange Compile Remove entries from .csproj",
+            "~12 additional scenarios covered",
+            "pnpm test:e2e passes"
+          ]
+        },
+        {
+          "id": "15.16",
+          "title": "Fix property name collision with enclosing type name (SpecialWords)",
+          "description": "SpecialWords specs (~100 scenarios) are in .testignore because generated code has CS0542: a property name matching the enclosing class name. The emitter needs to detect and resolve these collisions. Note: task 12.22 addressed some but not all of these.\n\nFix the emitter's property naming to avoid collisions with the enclosing type name for all SpecialWords scenarios. Once the generated code compiles, remove from .testignore and re-enable the test files.\n\nIMPORTANT: Fix the emitter to match the legacy API. NEVER update the test to workaround the API mismatch.",
+          "phase": "phase-15",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "test/e2e/.testignore",
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
+            "reference": []
+          },
+          "acceptance_criteria": [
+            "SpecialWords specs removed from .testignore",
+            "Generated code compiles without CS0542",
+            "SpecialWords test files re-enabled in .csproj",
+            "~100 SpecialWords scenarios covered",
+            "pnpm test:e2e passes"
+          ]
+        },
+        {
+          "id": "15.17",
+          "title": "Fix literal type serialization for Type/Property/Optionality",
+          "description": "Type/Property/Optionality specs (~74 scenarios) are in .testignore due to CS0103 (_value not found) and CS0266/CS1503 (type conversion errors) in literal type serialization. The emitter generates incorrect serialization code for literal/optional property types.\n\nFix the emitter's literal type handling in model serialization code generation.\n\nIMPORTANT: Fix the emitter to match the legacy API. NEVER update the test to workaround the API mismatch.",
+          "phase": "phase-15",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "test/e2e/.testignore",
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
+            "reference": []
+          },
+          "acceptance_criteria": [
+            "type/property/optionality removed from .testignore",
+            "Generated code compiles without CS0103/CS0266/CS1503",
+            "OptionalityTests.cs re-enabled and passing",
+            "~74 Type_Property optionality scenarios covered",
+            "pnpm test:e2e passes"
+          ]
+        },
+        {
+          "id": "15.18",
+          "title": "Fix nullable model deserialization parameter forwarding",
+          "description": "Type/Property/Nullable specs (~35 scenarios) are in .testignore due to CS7036 (missing options param in Deserialize calls) and CS0029 (ChangeTrackingList to array conversion). The emitter's deserialization code generation is missing required parameters.\n\nFix the emitter to forward the options parameter in all Deserialize* calls and handle ChangeTrackingList-to-array conversions.\n\nIMPORTANT: Fix the emitter to match the legacy API. NEVER update the test to workaround the API mismatch.",
+          "phase": "phase-15",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "test/e2e/.testignore",
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
+            "reference": []
+          },
+          "acceptance_criteria": [
+            "type/property/nullable removed from .testignore",
+            "Generated code compiles without CS7036/CS0029",
+            "NullableTests.cs re-enabled and passing",
+            "~35 Type_Property nullable scenarios covered",
+            "pnpm test:e2e passes"
+          ]
+        },
+        {
+          "id": "15.19",
+          "title": "Fix union type generation (Type/Union)",
+          "description": "Type/Union specs (~30 scenarios) are in .testignore due to CS0029 (cannot convert type) and CS1929 (missing extension methods). Union type conversion and serialization is a significant feature gap in the emitter. Note: task 12.25 addressed some union serialization but not enough to compile.\n\nFix the emitter's union type generation to produce correct conversion operators and extension methods.\n\nIMPORTANT: Fix the emitter to match the legacy API. NEVER update the test to workaround the API mismatch.",
+          "phase": "phase-15",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "test/e2e/.testignore",
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
+            "reference": []
+          },
+          "acceptance_criteria": [
+            "type/union removed from .testignore",
+            "Generated code compiles without CS0029/CS1929",
+            "UnionTests.cs re-enabled and passing",
+            "~30 Type_Union scenarios covered",
+            "pnpm test:e2e passes"
+          ]
+        },
+        {
+          "id": "15.20",
+          "title": "Fix CollectionResult paging parameter forwarding",
+          "description": "Paging specs (payload/pageable ~15 scenarios, azure/core/basic, azure/core/page, azure/payload/pageable, azure/client-generator-core/next-link-verb \u2014 combined ~41 scenarios) are in .testignore due to CollectionResult constructor parameter mismatch. The PagingMethods component passes all operation parameters but CollectionResultFile only accepts them for continuation-token paging. Note: task 12.16 partially addressed this.\n\nFix the paging parameter forwarding in CollectionResultFile.tsx to handle all paging patterns.\n\nIMPORTANT: Fix the emitter to match the legacy API. NEVER update the test to workaround the API mismatch.",
+          "phase": "phase-15",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "test/e2e/.testignore",
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
+            "reference": []
+          },
+          "acceptance_criteria": [
+            "Paging specs removed from .testignore",
+            "Generated paging code compiles",
+            "Pageable test files re-enabled",
+            "pnpm test:e2e passes"
+          ]
+        },
+        {
+          "id": "15.21",
+          "title": "Fix spread parameter model constructors",
+          "description": "Parameters/Spread specs (~10 scenarios) are in .testignore due to CS7036: missing required parameters in spread model constructors. The emitter generates constructors that don't include all required parameters from the spread model. Note: task 12.26 addressed the additionalBinaryDataProperties parameter but other parameters remain missing.\n\nFix the emitter's spread parameter handling to generate complete constructors.\n\nIMPORTANT: Fix the emitter to match the legacy API. NEVER update the test to workaround the API mismatch.",
+          "phase": "phase-15",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "test/e2e/.testignore",
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
+            "reference": []
+          },
+          "acceptance_criteria": [
+            "parameters/spread removed from .testignore",
+            "Generated spread models compile",
+            "SpreadTests.cs re-enabled and passing",
+            "~10 Parameters_Spread scenarios covered",
+            "pnpm test:e2e passes"
+          ]
+        },
+        {
+          "id": "15.22",
+          "title": "Fix IJsonModel on non-JSON models (Multipart/File)",
+          "description": "Payload/Multipart (~17 scenarios) and type/file specs are in .testignore due to CS0535: IJsonModel<T> interface is declared on multipart and file models that don't have JSON serialization. The emitter generates IJsonModel/IPersistableModel interfaces for all models regardless of content type. Note: task 12.17 partially addressed this.\n\nFix the emitter to not emit IJsonModel interface for non-JSON models (multipart, file, form-data).\n\nIMPORTANT: Fix the emitter to match the legacy API. NEVER update the test to workaround the API mismatch.",
+          "phase": "phase-15",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "test/e2e/.testignore",
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
+            "reference": []
+          },
+          "acceptance_criteria": [
+            "payload/multipart and type/file removed from .testignore",
+            "Generated multipart/file models compile without CS0535",
+            "MultipartTests.cs re-enabled",
+            "pnpm test:e2e passes"
+          ]
+        },
+        {
+          "id": "15.23",
+          "title": "Fix JsonMergePatch deserialization options parameter",
+          "description": "Payload/JsonMergePatch specs (~5 scenarios) are in .testignore due to CS7036: missing options parameter in Deserialize* calls. The emitter's deserialization code generation omits the required ModelReaderWriterOptions parameter.\n\nFix the emitter to pass the options parameter in all Deserialize calls for merge-patch models.\n\nIMPORTANT: Fix the emitter to match the legacy API. NEVER update the test to workaround the API mismatch.",
+          "phase": "phase-15",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "test/e2e/.testignore"
+            ],
+            "reference": []
+          },
+          "acceptance_criteria": [
+            "payload/json-merge-patch removed from .testignore",
+            "Generated merge-patch code compiles without CS7036",
+            "JsonMergePatchTests.cs re-enabled",
+            "pnpm test:e2e passes"
           ]
         }
       ]

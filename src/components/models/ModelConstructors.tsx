@@ -446,7 +446,8 @@ function renderPublicCtorBody(
  *
  * Iterates all model properties and generates the appropriate initialization:
  * - Constructor parameters (required scalars/refs) → direct assignment
- * - Required collections → `.ToList()` / `.ToDictionary()` (deferred to task 1.1.3)
+ * - Required collections (arrays) → `.ToList()` conversion from IEnumerable parameter
+ * - Required collections (dicts) → direct assignment (both sides are IDictionary)
  * - Optional collections → ChangeTracking initialization (deferred to tasks 5.1.3/5.1.4)
  * - Optional non-collections → no initialization (remain default/null)
  * - Read-only / literal properties → skipped (not assigned in public constructor)
@@ -473,13 +474,49 @@ function buildAssignments(
     if (kind === "direct-assign" && ctorParamSet.has(p)) {
       const paramName = namePolicy.getName(effectiveName, "parameter");
       lines.push(`${propName} = ${paramName};`);
+    } else if (kind === "to-list" && ctorParamSet.has(p)) {
+      // Required array properties: convert from IEnumerable<T> parameter to
+      // IList<T> property via .ToList(). Requires `using System.Linq;`.
+      const paramName = namePolicy.getName(effectiveName, "parameter");
+      lines.push(`${propName} = ${paramName}.ToList();`);
+    } else if (kind === "to-dict" && ctorParamSet.has(p)) {
+      // Required dictionary properties: the public constructor parameter and
+      // property type are both IDictionary<string, T>, so direct assignment works.
+      const paramName = namePolicy.getName(effectiveName, "parameter");
+      lines.push(`${propName} = ${paramName};`);
     }
-    // to-list and to-dict require collection type utilities (task 1.1.3)
     // change-tracking-list and change-tracking-dict require builtins (tasks 5.1.3/5.1.4)
     // These initializations will be added by future tasks.
   }
 
   return lines;
+}
+
+/**
+ * Determines whether a model's constructor generates `.ToList()` conversions,
+ * which requires `using System.Linq;` in the source file.
+ *
+ * Returns true when any non-inherited constructor parameter property is a
+ * required array (kind `"to-list"`). Derived discriminated models only check
+ * their own (non-override) properties since base class properties are
+ * assigned in the base constructor.
+ *
+ * @param model - The TCGC SDK model type.
+ * @param isStruct - Whether the model is a struct.
+ * @returns `true` if the model file needs `using System.Linq;`.
+ */
+export function modelNeedsLinqImport(
+  model: SdkModelType,
+  isStruct: boolean = false,
+): boolean {
+  const properties = isDerivedDiscriminatedModel(model)
+    ? model.properties.filter((p) => !isBaseDiscriminatorOverride(p))
+    : model.properties;
+  return properties.some(
+    (p) =>
+      isConstructorParameter(p, isStruct) &&
+      getPropertyInitializerKind(p) === "to-list",
+  );
 }
 
 /**

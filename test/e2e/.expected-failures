@@ -1,0 +1,80 @@
+# Tests expected to fail in e2e runs.
+#
+# One test method name per line (as reported by NUnit3TestAdapter).
+# Lines starting with # are comments; blank lines are ignored.
+#
+# When the emitter fixes a scenario and a test starts passing,
+# remove it from this file. The e2e run will fail if:
+#   1. A test fails that is NOT listed here (unexpected failure)
+#   2. A test listed here actually passes (stale entry — remove it)
+
+# --- Encode/Array: ClientResultException (delimiter encoding issues) ---
+# Constructor NRE fixed (task 15.1), but the generated client now sends
+# delimited array query/header values in a format the Spector server rejects (400).
+CommaDelimited
+NewlineDelimited
+PipeDelimited
+SpaceDelimited
+EnumCommaDelimited
+EnumNewlineDelimited
+EnumPipeDelimited
+EnumSpaceDelimited
+ExtensibleEnumCommaDelimited
+ExtensibleEnumNewlineDelimited
+ExtensibleEnumPipeDelimited
+ExtensibleEnumSpaceDelimited
+
+# --- Encode/DateTime: ClientResultException (service request failures) ---
+# Generated client sends requests that don't match the Spector mock server expectations
+HeaderRfc7231
+HeaderUnixTimestamp
+HeaderUnixTimestampArray
+HeaderISO8601Array
+
+# --- Encode/Duration: ClientResultException / NRE ---
+# Duration encoding/header/query parameter formatting issues
+HeaderDefault
+HeaderFloat64Milliseconds
+HeaderFloat64Seconds
+HeaderFloatMilliseconds
+HeaderFloatSeconds
+HeaderInt32Milliseconds
+HeaderInt32MillisecondsArray
+HeaderInt32MillisecondsLargerUnit
+HeaderInt32Seconds
+HeaderInt32SecondsLargerUnit
+QueryFloat64Milliseconds
+QueryFloat64Seconds
+QueryFloatMilliseconds
+QueryFloatSeconds
+QueryInt32Milliseconds
+QueryInt32MillisecondsArray
+QueryInt32MillisecondsLargerUnit
+QueryInt32Seconds
+QueryInt32SecondsArray
+QueryInt32SecondsLargerUnit
+QueryRfc7231
+QueryUnixTimestamp
+QueryUnixTimestampArray
+
+# --- Parameters/Path: ArgumentNullException / ClientResultException ---
+NoOperationParams
+WithOperationPathParam
+
+# --- Server/Path/Multiple: ClientResultException ---
+OptionalPathParamIncluded(False)
+OptionalPathParamIncluded(True)
+
+# --- Type/Model/Inheritance: NullReferenceException in recursive models ---
+PutRecursiveModel
+RecursiveGet
+RecursivePut
+
+# --- Versioning: ClientResultException (api-version parameter issues) ---
+Versioning_Added_InterfaceV2
+Versioning_Added_v1
+Versioning_Added_v2
+Versioning_MadeOptional_Test
+Versioning_RenamedFrom_NewInterface
+Versioning_RenamedFrom_NewOp
+Versioning_TypeChangedFrom_Test
