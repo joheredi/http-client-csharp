@@ -1,11 +1,61 @@
 # Specs to skip during e2e generation.
 # One path per line (relative to specs root). Lines starting with # are comments.
 
-# === ARM resource-manager specs ===
+# ============================================================
+# AZURE DATA PLANE SPECS — Baseline (task 16.4, 2026-03-06)
+# ============================================================
+# All Azure data plane specs emit and compile with flavor=azure.
+# Generated code uses System.ClientModel (not Azure.Core) until
+# tasks 17.1–17.10 add Azure-specific type mappings.
+# Test files are excluded in Spector.Tests.csproj (task 16.3)
+# until the generated API surface matches Azure.Core expectations.
+#
+# Status: ✅ = emits + compiles, ❌ = ignored (generation/build fails)
+#
+# --- azure/client-generator-core (15 specs) — ✅ all pass ---
+# access, alternate-type, api-version/{header,path,query},
+# client-default-value, client-initialization/{default,individually,individuallyParent},
+# client-location/{move-method-parameter-to-client,move-to-existing-sub-client,
+#   move-to-new-sub-client,move-to-root-client},
+# deserialize-empty-string-as-null, flatten-property, hierarchy-building,
+# next-link-verb, override, usage
+# Tests blocked on: Azure.Response, Azure.RequestContext (tasks 17.1, 17.3)
+#
+# --- azure/core (7 specs) — ✅ all pass ---
+# basic, lro/rpc, lro/standard, model, page, scalar, traits
+# Tests blocked on: Azure.Response, Azure.AsyncPageable<T>, Azure.Operation<T>,
+#   Azure.WaitUntil (tasks 17.1, 17.3, 17.5)
+#
+# --- azure/encode (1 spec) — ✅ passes ---
+# duration
+# Tests blocked on: Azure.Response (task 17.1)
+#
+# --- azure/example (1 spec) — ✅ passes ---
+# basic
+# Tests blocked on: Azure.Response (task 17.1)
+#
+# --- azure/payload (1 spec) — ✅ passes ---
+# pageable
+# Tests blocked on: Azure.AsyncPageable<T> (tasks 17.1, 17.3)
+#
+# --- azure/special-headers (1 spec) — ✅ passes ---
+# client-request-id
+# Tests blocked on: Azure.Core.Pipeline.HttpPipeline (tasks 17.3, 17.7)
+#
+# --- azure/versioning (1 spec + v1/v2 versions) — ✅ passes ---
+# previewVersion (v1, v2)
+# Tests blocked on: Azure.Response (task 17.1)
+#
+# Total: 32 Azure data plane specs emit + compile (0 failures)
+# Total: 27 Azure test files excluded (awaiting phase 17)
+
+# ============================================================
+# AZURE ARM RESOURCE-MANAGER SPECS — ❌ ignored
+# ============================================================
 # All ARM specs have model-level compilation errors (CS0103: 'Argument' not
 # found in extensible enum structs, CS0191: readonly field assignment in
 # model deserialization). These are unrelated to authentication and will be
-# resolved by future model generation tasks.
+# resolved by future ARM generation tasks (phase 18–19).
 
 # CS0103 (Argument in extensible enums) + CS0191 (readonly field assignment)
 azure/resource-manager/common-properties
@@ -27,9 +77,9 @@ azure/resource-manager/operation-templates
 # CS0103/CS0191 (model errors) + CS1983 (async paging methods)
 azure/resource-manager/resources
 
-# === Paging / CollectionResult specs ===
-# (Resolved in task 15.20) Added CreateNextXxxRequest methods in RestClientFile,
-# string-to-Uri next-link conversion, and ContinuationToken namespace collision fix.
+# ============================================================
+# NON-AZURE SPECS — ignored
+# ============================================================
 
 # === Multipart / file upload specs ===
 # type/file: Convenience methods reference File model types via refkeys, but
@@ -38,27 +88,9 @@ azure/resource-manager/resources
 # instead of model types in convenience methods.
 type/file
 
-# === Remaining issues (using directives fixed, other errors remain) ===
-
 # === Multi-namespace scope issues ===
 # Internal infrastructure types (ClientUriBuilder, Argument, extension methods)
 # are generated in one namespace but referenced from sub-clients in a different
 # namespace. Individual project builds succeed; fails in combined E2E build.
 service/multi-service
 client/structure/client-operation-group
-
-# === Namespace / type name collisions ===
-# (Partially resolved) Namespace collision detection added in task 12.19.
-# azure/example/basic and type/union/discriminated now compile.
-
-# === (Resolved) Type mismatch in serialization ===
-# Most CS1503 type mismatch errors in serialization constructors have been
-# fixed (model factory arg order, Uri serialization, enum discriminator,
-# collection types, scalar body params, route parameter expansion).
-
-# === Model member / method issues ===
-
-# CS0103: 'Argument' helper class not found (missing infrastructure using)
-
-# === Union type issues ===
-# CS0029/CS1929: Union type conversion and missing extension methods

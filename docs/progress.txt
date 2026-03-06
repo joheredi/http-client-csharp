@@ -5533,3 +5533,30 @@ Configured test/e2e/Spector.Tests/Spector.Tests.csproj with full Azure test infr
 - `pnpm build` passes
 - `pnpm test` passes (569 pass, 39 expected failures, 14 expected skips)
 - `pnpm test:e2e` passes (5/5 tests pass)
+
+## Task 16.4 — Enable Azure data plane specs in .testignore and track progress (2026-03-06)
+
+**Status**: Done
+
+**Summary**:
+Ran `pnpm emit:e2e --filter azure/` to compile all 32 Azure data plane specs with `flavor=azure`
+(enabled in task 16.2). All 32 specs emit and compile successfully — no generation or build failures.
+
+**Baseline established**:
+- 32 Azure data plane specs: ✅ emit + compile (System.ClientModel, not Azure.Core yet)
+- 27 Azure test files: excluded in csproj (awaiting phase 17 Azure.Core type generation)
+- 9 ARM specs: ❌ ignored in .testignore (model-level compilation errors, tracked for phase 18-19)
+- E2E results unchanged: 569 passed, 14 skipped, 39 expected failures
+
+**Changes**:
+- Reorganized `test/e2e/.testignore` with three clear sections:
+  1. Azure Data Plane Specs — tracking comments documenting all 7 spec categories with status and blocking tasks
+  2. Azure ARM Resource-Manager Specs — existing ignore entries with improved comments
+  3. Non-Azure Specs — existing ignore entries (type/file, multi-namespace scope)
+- Removed stale resolved-issue comment sections (paging, namespace collisions, type mismatch, etc.)
+
+**Key finding**: The `flavor=azure` option doesn't cause any new issues because the emitter
+doesn't yet differentiate behavior based on flavor. Generated code still uses System.ClientModel
+types. Phase 17 tasks (17.1-17.10) will progressively replace these with Azure.Core types.
+
+**Next**: Task 17.1 (Add Azure.Core built-in type mappings) is the next unblocked task.

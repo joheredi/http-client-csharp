@@ -1270,7 +1270,7 @@
           "title": "Enable Azure data plane specs in .testignore and track progress",
           "description": "Update test/e2e/.testignore and test/e2e/.expected-failures to reflect the current state of Azure spec support.\n\nThe .testignore currently lists 9 azure/resource-manager/* specs. Azure data plane specs (azure/core/*, azure/client-generator-core/*, azure/encode/*, azure/example/*, azure/payload/*, azure/special-headers/*, azure/versioning/*) are NOT in .testignore \u2014 they already compile through emit-e2e.ts.\n\nHowever, these specs currently compile WITHOUT Azure flavor. After task 16.2, they will compile WITH flavor=azure, which may cause new generation/compilation issues because the emitter doesn't yet produce Azure.Core types.\n\nSteps:\n1. Run `pnpm emit:e2e --filter azure/` to compile all Azure specs with the new flavor option\n2. Check which specs fail generation and add them to .testignore temporarily\n3. Check which specs generate but fail dotnet build and add test names to .expected-failures\n4. Document the baseline state of Azure test coverage\n5. Create a tracking comment in .testignore for each category of Azure spec\n\nThis task establishes the baseline from which subsequent Phase 17 tasks will progressively improve Azure support.\n\nReference files:\n- test/e2e/.testignore (current ignore list)\n- test/e2e/.expected-failures (current expected failures)\n- test/e2e/.expected-skips (current expected skips)",
           "phase": "phase-16",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "16.3"
           ],
