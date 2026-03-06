@@ -9,9 +9,12 @@
  * @module
  */
 
-import { Property } from "@alloy-js/csharp";
+import { Property, useCSharpNamePolicy } from "@alloy-js/csharp";
+import type { Children } from "@alloy-js/core";
+import { code } from "@alloy-js/core";
 import type {
   SdkConstantType,
+  SdkEnumValueType,
   SdkModelPropertyType,
 } from "@azure-tools/typespec-client-generator-core";
 import { UsageFlags } from "@azure-tools/typespec-client-generator-core";
@@ -27,8 +30,9 @@ import {
   isPropertyReadOnly,
   resolvePropertyName,
 } from "../../utils/property.js";
-import { literalTypeRefkey } from "../../utils/refkey.js";
+import { efCsharpRefkey, literalTypeRefkey } from "../../utils/refkey.js";
 import { needsLiteralWrapperStruct } from "../literal-types/collect.js";
+import { formatCSharpConstant } from "../models/ModelConstructors.js";
 
 /**
  * Props for the {@link ModelProperty} component.
@@ -162,6 +166,12 @@ export function ModelProperty(props: ModelPropertyProps) {
     <TypeExpression type={type.__raw!} />
   );
 
+  // Constant/literal properties get a property initializer so their value
+  // is always correct without explicit constructor initialization.
+  // This matches the legacy emitter where literal properties are expression-bodied
+  // members returning a fixed value (e.g., `public bool Property => true;`).
+  const initializer = getPropertyInitializer(property, modelUsage);
+
   return (
     <Property
       public={!isDiscriminator}
@@ -172,6 +182,48 @@ export function ModelProperty(props: ModelPropertyProps) {
       set={hasSetter}
       nullable={nullable}
       doc={formattedDoc}
+      initializer={initializer}
     />
   );
+}
+
+/**
+ * Computes a property initializer for constant and enum value literal properties
+ * on input models.
+ *
+ * Constant properties (e.g., `contentType: "application/json"`) and enum value
+ * literals (e.g., `property: ExtendedEnum.EnumValue2`) have fixed values. For
+ * input models (where users create instances via the public constructor), the
+ * property initializer ensures the correct value is always present — even when
+ * the property is not a constructor parameter.
+ *
+ * Output-only models skip initializers because instances are only created via
+ * the internal serialization constructor, which always sets all properties.
+ *
+ * @param property - The TCGC SDK model property.
+ * @param modelUsage - The UsageFlags bitmap of the containing model.
+ * @returns A Children expression for the initializer, or undefined.
+ */
+function getPropertyInitializer(
+  property: SdkModelPropertyType,
+  modelUsage: UsageFlags,
+): Children | undefined {
+  const isInput = (modelUsage & UsageFlags.Input) !== 0;
+  if (!isInput) return undefined;
+
+  const namePolicy = useCSharpNamePolicy();
+  const type = unwrapNullableType(property.type);
+
+  if (type.kind === "constant") {
+    return formatCSharpConstant(type as SdkConstantType);
+  }
+
+  if (type.kind === "enumvalue") {
+    const enumValue = type as SdkEnumValueType;
+    const enumTypeRefkey = efCsharpRefkey(enumValue.enumType.__raw!);
+    const memberName = namePolicy.getName(enumValue.name, "enum-member");
+    return code`${enumTypeRefkey}.${memberName}`;
+  }
+
+  return undefined;
 }

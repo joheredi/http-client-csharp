@@ -454,6 +454,31 @@ function renderPublicCtorBody(
 }
 
 /**
+ * Formats a TCGC constant value as a C# literal expression.
+ *
+ * Handles the mapping from TCGC constant types to C# syntax:
+ * - `string` → `"value"` (C# string literal)
+ * - `boolean` → `true` / `false` (C# keywords)
+ * - `float32` → `43.125F` (float suffix required to avoid double→float narrowing)
+ * - `int32`, `int64`, etc. → `42` (numeric literal)
+ * - `float64`, `decimal`, etc. → `43.125` (numeric literal)
+ *
+ * @param constant - The TCGC constant type with a value and underlying value type.
+ * @returns A C# literal string suitable for property initialization.
+ */
+export function formatCSharpConstant(constant: SdkConstantType): string {
+  const { value, valueType } = constant;
+  if (typeof value === "string") return `"${value}"`;
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "number") {
+    // float32 needs F suffix to avoid implicit double→float conversion error
+    if (valueType.kind === "float32") return `${value}F`;
+    return `${value}`;
+  }
+  return "default";
+}
+
+/**
  * Builds property assignment lines for the constructor body.
  *
  * Iterates all model properties and generates the appropriate initialization:
@@ -462,8 +487,10 @@ function renderPublicCtorBody(
  * - Required collections (dicts) → direct assignment (both sides are IDictionary)
  * - Optional collections (arrays) → `new ChangeTrackingList<T>()` initialization
  * - Optional collections (dicts) → `new ChangeTrackingDictionary<string, T>()` initialization
+ * - Constant literals → hardcoded value (e.g., `Property = true;`)
+ * - Enum value literals → enum member reference (e.g., `Property = ExtendedEnum.EnumValue2;`)
  * - Optional non-collections → no initialization (remain default/null)
- * - Read-only / literal properties → skipped (not assigned in public constructor)
+ * - Read-only properties → skipped (not assigned in public constructor)
  *
  * ChangeTracking initialization is essential for optional collection properties
  * because `Optional.IsCollectionDefined()` expects a non-null ChangeTracking

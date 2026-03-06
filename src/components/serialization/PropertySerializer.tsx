@@ -90,6 +90,7 @@ import {
   type SdkDictionaryType,
   type SdkDurationType,
   type SdkEnumType,
+  type SdkEnumValueType,
   type SdkModelPropertyType,
   type SdkType,
 } from "@azure-tools/typespec-client-generator-core";
@@ -464,10 +465,21 @@ export function getWriteMethodInfo(type: SdkType): WriteMethodInfo | null {
     return getEnumWriteInfo(unwrapped as SdkEnumType);
   }
 
+  // Enum value literals (e.g., ExtendedEnum.EnumValue2) — serialize using
+  // the parent enum type's serialization method.
+  if (kind === "enumvalue") {
+    return getEnumWriteInfo((unwrapped as SdkEnumValueType).enumType);
+  }
+
   // Bytes types — encoding determines base64 format specifier.
   // BinaryData needs .ToArray() conversion to byte[].
   if (kind === "bytes") {
     return getBytesWriteInfo(unwrapped as SdkBuiltInType);
+  }
+
+  // Unknown types — BinaryData written as raw JSON value.
+  if (kind === "unknown") {
+    return { methodName: "WriteRawValue" };
   }
 
   return null;

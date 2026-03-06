@@ -286,6 +286,22 @@ describe("isConstructorParameter", () => {
   });
 
   /**
+   * Enum value literal properties (e.g., ExtendedEnum.EnumValue2) are NOT
+   * constructor parameters. Like constants, their value is fixed at compile
+   * time. Without this, models with literal enum values would require the
+   * user to pass the literal as a constructor argument, which breaks the
+   * legacy API surface (e.g., `new UnionEnumValueProperty()` must work
+   * without arguments).
+   */
+  it("returns false for enumvalue/literal property", () => {
+    const prop = makeProperty({
+      type: { kind: "enumvalue" } as SdkType,
+      optional: false,
+    });
+    expect(isConstructorParameter(prop)).toBe(false);
+  });
+
+  /**
    * For structs, ALL non-readonly properties are constructor parameters
    * regardless of optional status. C# structs require all fields to be
    * initialized in the constructor.

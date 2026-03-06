@@ -53,6 +53,7 @@ import type {
   SdkDictionaryType,
   SdkDurationType,
   SdkEnumType,
+  SdkEnumValueType,
   SdkModelPropertyType,
   SdkModelType,
   SdkType,
@@ -586,6 +587,11 @@ export function getReadExpression(
     return getBytesReadExpression(unwrapped as SdkBuiltInType, accessor);
   }
 
+  // Unknown types — BinaryData from raw JSON text.
+  if (kind === "unknown") {
+    return `BinaryData.FromString(${accessor}.GetRawText())`;
+  }
+
   // Plain date/time — fixed ISO format specifiers using custom extension methods.
   if (kind === "plainDate") {
     return `${accessor}.GetDateTimeOffset("D")`;
@@ -604,6 +610,16 @@ export function getReadExpression(
   if (kind === "enum" && namePolicy) {
     return getEnumReadExpression(
       unwrapped as SdkEnumType,
+      namePolicy,
+      accessor,
+    );
+  }
+
+  // Enum value literals (e.g., ExtendedEnum.EnumValue2) — deserialize using
+  // the parent enum type's deserialization method.
+  if (kind === "enumvalue" && namePolicy) {
+    return getEnumReadExpression(
+      (unwrapped as SdkEnumValueType).enumType,
       namePolicy,
       accessor,
     );

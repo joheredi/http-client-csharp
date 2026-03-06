@@ -827,7 +827,7 @@
           "title": "Align Type/Property/ValueTypes API surface with legacy emitter",
           "description": "Type/Property/ValueTypes tests (~120 scenarios) are excluded from compilation due to CS1061 (member not found) and CS1729 (constructor mismatch). The legacy tests use constructor patterns, property accessors, and factory methods that the new emitter doesn't generate. This is the SINGLE LARGEST coverage gap.\n\nFix the emitter to generate the same API surface as the legacy emitter for value type properties (constructors, property names, factory methods). Compare generated output in temp/e2e/Spector/http/type/property/value-types/ with what the legacy test expects.\n\nIMPORTANT: Fix the emitter to match the legacy API. NEVER update the test to workaround the API mismatch. Once fixed, remove the Compile Remove entry for _Type/Property/ValueTypes in Spector.Tests.csproj.",
           "phase": "phase-15",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

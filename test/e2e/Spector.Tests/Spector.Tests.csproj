@@ -145,7 +145,6 @@
     <Compile Remove="$(LegacyTestRoot)Http/Versioning/ReturnTypeChangedFrom/**/*.cs" />
     <Compile Remove="$(LegacyTestRoot)Http/_Type/Dictionary/**/*.cs" />
     <Compile Remove="$(LegacyTestRoot)Http/_Type/Property/AdditionalProperties/**/*.cs" />
-    <Compile Remove="$(LegacyTestRoot)Http/_Type/Property/ValueTypes/**/*.cs" />
     <Compile Remove="$(LegacyTestRoot)Http/_Type/Scalar/**/*.cs" />
     <Compile Remove="$(LegacyTestRoot)Http/_Type/_Array/**/*.cs" />
     <Compile Remove="$(LegacyTestRoot)Http/_Type/_Enum/**/*.cs" />

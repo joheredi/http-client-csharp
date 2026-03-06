@@ -5184,3 +5184,36 @@ Fixed 6 compilation errors (CS0103, CS0266, CS1503) that blocked type/property/o
 - src/components/serialization/PropertySerializer.tsx
 - src/components/model-factory/ModelFactoryMethod.tsx
 - test/e2e/.testignore (removed type/property/optionality entry + orphaned comment)
+
+## 2026-03-06 — Task 15.8: Align Type/Property/ValueTypes API surface with legacy emitter (complete)
+
+Fixed 3 emitter bugs that prevented ValueTypesTests.cs from compiling and passing:
+
+### Bug 1: `isConstructorParameter()` didn't exclude `enumvalue` typed properties
+- `UnionEnumValueProperty` required `ExtendedEnum` in constructor, but test called `new UnionEnumValueProperty()` (no args)
+- Fixed `src/utils/property.ts` to exclude `property.type.kind === "enumvalue"` (same as `"constant"`)
+- This also fixed `DeserializationConstructor` automatically — `needsDeserializationConstructor()` calls `computePublicCtorParams()` which uses `isConstructorParameter()`
+
+### Bug 2: Serialization/deserialization didn't handle `enumvalue` and `unknown` types
+- `getWriteMethodInfo()` in PropertySerializer.tsx returned null for `enumvalue` → property not serialized
+- `getReadExpression()` in PropertyMatchingLoop.tsx returned null for `enumvalue` → property not deserialized
+- Same issue for `unknown` (BinaryData) type properties
+- Fixed by adding `enumvalue` → delegate to parent enum's serialization, `unknown` → `WriteRawValue`/`BinaryData.FromString(GetRawText())`
+
+### Bug 3: Literal properties not initialized with correct values
+- `BooleanLiteralProperty` had `bool Property { get; set; }` defaulting to `false` instead of `true`
+- Fixed by adding property initializers via `Property`'s `initializer` prop in ModelProperty.tsx
+- Only applies to input models (output-only models use serialization constructor)
+- `formatCSharpConstant()` handles string/boolean/numeric C# literal formatting
+
+### Key design decision
+Property initializers (`= true`, `= ExtendedEnum.EnumValue2`) are set on the PROPERTY DECLARATION, not in the constructor body. This avoids issues when a model has both constant properties and required constructor parameters (like `PngImageAsJson`).
+
+### Files changed
+- `src/utils/property.ts` — `isConstructorParameter()` excludes `enumvalue`
+- `src/components/models/ModelConstructors.tsx` — exported `formatCSharpConstant()`
+- `src/components/models/ModelProperty.tsx` — `getPropertyInitializer()` for constant/enumvalue props
+- `src/components/serialization/PropertySerializer.tsx` — `enumvalue` + `unknown` write handling
+- `src/components/serialization/PropertyMatchingLoop.tsx` — `enumvalue` + `unknown` read handling
+- `test/property-utils.test.ts` — unit test for enumvalue constructor exclusion
+- `test/e2e/Spector.Tests/Spector.Tests.csproj` — removed ValueTypes Compile Remove entry

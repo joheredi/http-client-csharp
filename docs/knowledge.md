@@ -3154,3 +3154,21 @@ When a model property uses a literal wrapper struct (checked via `needsLiteralWr
 4. `ModelFactoryMethod.tsx` — factory method parameter type
 5. `PropertySerializer.tsx` — serialization write (needs `.ToSerialXxx()` / `.ToString()` value transform)
 Missing any of these causes CS0266/CS1503 type conversion errors.
+
+### Literal Property Initialization (Task 15.8)
+
+**Property initializers vs constructor initialization**: For constant/enumvalue properties, use the `Property` component's `initializer` prop (`{ get; set; } = value`) instead of adding assignments in the constructor body. Constructor-level initialization breaks when a model has BOTH literal properties AND required constructor parameters (e.g., `PngImageAsJson`). Property initializers work regardless of constructor shape.
+
+**Input-only guard**: Only add property initializers for models with `UsageFlags.Input`. Output-only models are only created via the serialization constructor (which sets all properties), so initializers are redundant and break scenario tests.
+
+**`enumvalue` type handling**: TCGC `SdkEnumValueType` (kind: `"enumvalue"`) represents a specific enum member literal (like `ExtendedEnum.EnumValue2`). It must be handled in:
+- `isConstructorParameter()` → exclude (same as `"constant"`)
+- `getWriteMethodInfo()` → delegate to parent `enumType` via `getEnumWriteInfo()`
+- `getReadExpression()` → delegate to parent `enumType` via `getEnumReadExpression()`
+- Property initializers → use refkey for `EnumType.MemberName` expression
+
+**`unknown` type handling**: TCGC `unknown` kind maps to `BinaryData` in C#.
+- Serialization: `writer.WriteRawValue(Property)` — writes BinaryData as raw JSON
+- Deserialization: `BinaryData.FromString(jsonProperty.Value.GetRawText())` — reads raw JSON text
+
+**`formatCSharpConstant()`**: Exported from ModelConstructors.tsx. Handles string (`"value"`), boolean (`true`/`false`), float32 (`43.125F` with F suffix), and other numeric types.

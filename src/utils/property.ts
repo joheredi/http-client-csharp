@@ -102,6 +102,9 @@ export function isConstructorParameter(
   if (property.optional) return false;
   // Literal constants with values don't need constructor params
   if (property.type.kind === "constant") return false;
+  // Enum value literals (e.g., ExtendedEnum.EnumValue2) are also fixed
+  // values that don't need constructor params — same logic as constants.
+  if (property.type.kind === "enumvalue") return false;
   return true;
 }
 
