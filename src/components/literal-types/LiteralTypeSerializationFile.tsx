@@ -26,6 +26,7 @@ import {
   StructDeclaration,
   useCSharpNamePolicy,
 } from "@alloy-js/csharp";
+import { namekey } from "@alloy-js/core";
 import type { SdkConstantType } from "@azure-tools/typespec-client-generator-core";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
@@ -94,13 +95,19 @@ export function LiteralTypeSerializationFile(
   const structName = namePolicy.getName(props.type.name, "enum");
   const typeInfo = getCSharpNumericTypeInfo(props.type.valueType.kind);
 
+  // Use namekey with ignoreNameConflict to prevent Alloy's symbol deduplication.
+  // The main literal type file (LiteralTypeFile.tsx) already declares a
+  // StructDeclaration with the same name — without this flag, Alloy would
+  // rename this partial declaration with a "_2" suffix.
+  const partialName = namekey(structName, { ignoreNameConflict: true });
+
   return (
     <SourceFile path={`src/Generated/Models/${structName}.Serialization.cs`}>
       {header}
       {"\n\n"}
       <Namespace name={props.namespace}>
         {`/// <summary></summary>\n`}
-        <StructDeclaration public readonly partial name={structName}>
+        <StructDeclaration public readonly partial name={partialName as unknown as string}>
           {`internal ${typeInfo.keyword} ToSerial${typeInfo.frameworkName}() => _value;`}
         </StructDeclaration>
       </Namespace>

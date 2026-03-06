@@ -51,6 +51,7 @@ import {
 } from "@alloy-js/csharp";
 import { code, type Children } from "@alloy-js/core";
 import type {
+  SdkConstantType,
   SdkModelPropertyType,
   SdkModelType,
 } from "@azure-tools/typespec-client-generator-core";
@@ -62,6 +63,7 @@ import {
 } from "../../utils/collections.js";
 import { renderCollectionPropertyType } from "../../utils/collection-type-expression.js";
 import {
+  isCollectionType,
   isPropertyNullable,
   unwrapNullableType,
 } from "../../utils/nullable.js";
@@ -69,7 +71,8 @@ import {
   isPropertyReadOnly,
   resolvePropertyName,
 } from "../../utils/property.js";
-import { efCsharpRefkey, unknownModelRefkey } from "../../utils/refkey.js";
+import { efCsharpRefkey, literalTypeRefkey, unknownModelRefkey } from "../../utils/refkey.js";
+import { needsLiteralWrapperStruct } from "../literal-types/collect.js";
 import {
   ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME,
   isBaseDiscriminatorOverride,
@@ -368,8 +371,16 @@ export function ModelFactoryMethod(props: ModelFactoryMethodProps) {
       ctorArgs.push(paramName);
       ctorArgIndex++;
     } else {
-      // Non-collection — standard TypeExpression for the type
-      const baseType = <TypeExpression type={unwrapped.__raw!} />;
+      // Non-collection — use literal wrapper struct refkey for literal types
+      // that need wrapper structs, standard TypeExpression for other types
+      const isLiteralWrapper =
+        unwrapped.kind === "constant" &&
+        needsLiteralWrapperStruct(unwrapped, nullable);
+      const baseType = isLiteralWrapper ? (
+        literalTypeRefkey(unwrapped as SdkConstantType)
+      ) : (
+        <TypeExpression type={unwrapped.__raw!} />
+      );
       factoryParams.push({
         name: paramName,
         type: nullable ? <>{baseType}?</> : baseType,

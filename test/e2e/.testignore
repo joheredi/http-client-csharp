@@ -57,10 +57,6 @@ client/structure/client-operation-group
 # === Namespace / type name collisions ===
 # (Partially resolved) Namespace collision detection added in task 12.19.
 # azure/example/basic and type/union/discriminated now compile.
-# type/property/optionality has pre-existing literal type serialization errors
-# (CS0103: _value not found, CS0266/CS1503: type conversion) that are
-# independent of the namespace collision fix.
-type/property/optionality
 
 # === (Resolved) Type mismatch in serialization ===
 # Most CS1503 type mismatch errors in serialization constructors have been

@@ -3134,3 +3134,23 @@ Legacy tests call `new OAuth2Client(tokenProvider)` with just 1 arg. The new emi
 - **Chosen**: Check `bodyParam.contentTypes` for `application/merge-patch+json` (content-type based filtering)
 - **Rejected**: Check model `UsageFlags.JsonMergePatch` on the body param type — this would require additional type traversal and doesn't align with the existing pattern (multipart uses content-type check)
 - **Reason**: Consistent with `isMultipartOperation()` pattern already in ConvenienceMethod.tsx
+
+## Design Decisions
+
+### Task 15.17: Literal type serialization fix approach
+**Chosen**: Fix all 5 code paths (serialization file, constructor, deserialization vars, serializer write, factory) to consistently use wrapper struct types.
+**Rejected**: Adding implicit/explicit conversion operators to the wrapper struct to accept the primitive type directly in constructors — this would diverge from the legacy API surface.
+
+## Gotchas
+
+### Partial type declarations in Alloy
+When creating a second `StructDeclaration` or `ClassDeclaration` for a C# partial type (e.g., a `.Serialization.cs` file for an existing model), do NOT use the same `refkey` as the primary declaration. Instead, use `namekey(name, { ignoreNameConflict: true })` to tell Alloy this is intentionally the same type. Using the same refkey causes Alloy to treat both as competing declarations and append `_2` to the second one. See `ModelSerializationFile.tsx` line 156 for the canonical example.
+
+### Literal wrapper struct type must be used consistently in 5 locations
+When a model property uses a literal wrapper struct (checked via `needsLiteralWrapperStruct()`), these 5 locations must all use `literalTypeRefkey()` instead of `TypeExpression`:
+1. `ModelProperty.tsx` — property type declaration
+2. `ModelConstructors.tsx` — serialization constructor parameter type
+3. `DeserializeVariableDeclarations.tsx` — deserialization local variable type
+4. `ModelFactoryMethod.tsx` — factory method parameter type
+5. `PropertySerializer.tsx` — serialization write (needs `.ToSerialXxx()` / `.ToString()` value transform)
+Missing any of these causes CS0266/CS1503 type conversion errors.

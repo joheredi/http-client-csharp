@@ -48,6 +48,7 @@ import {
   MemberName,
 } from "@alloy-js/core";
 import type {
+  SdkConstantType,
   SdkModelPropertyType,
   SdkModelType,
 } from "@azure-tools/typespec-client-generator-core";
@@ -77,7 +78,8 @@ import {
   resolvePropertyName,
 } from "../../utils/property.js";
 import { ensureTrailingPeriod, formatDocLines } from "../../utils/doc.js";
-import { argumentRefkey, efCsharpRefkey } from "../../utils/refkey.js";
+import { argumentRefkey, efCsharpRefkey, literalTypeRefkey } from "../../utils/refkey.js";
+import { needsLiteralWrapperStruct } from "../literal-types/collect.js";
 import { hasDynamicModelProperties, isDynamicModel } from "./DynamicModel.js";
 
 /**
@@ -606,8 +608,16 @@ function buildPropertyTypeParameters(
     const unwrapped = unwrapNullableType(p.type);
     // Serialization constructor uses property types: IList<T>/IReadOnlyList<T>
     // for arrays, IDictionary/IReadOnlyDictionary for dicts.
+    // Literal wrapper types use the wrapper struct refkey instead of the
+    // underlying primitive type, so the constructor accepts the same type
+    // as the property declaration.
+    const isLiteralWrapper =
+      unwrapped.kind === "constant" &&
+      needsLiteralWrapperStruct(unwrapped, nullable);
     const baseType = isCollectionType(p.type) ? (
       renderCollectionPropertyType(unwrapped, isPropertyReadOnly(p))
+    ) : isLiteralWrapper ? (
+      literalTypeRefkey(unwrapped as SdkConstantType)
     ) : (
       <TypeExpression type={unwrapped.__raw!} />
     );

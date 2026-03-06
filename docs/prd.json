@@ -1033,7 +1033,7 @@
           "title": "Fix literal type serialization for Type/Property/Optionality",
           "description": "Type/Property/Optionality specs (~74 scenarios) are in .testignore due to CS0103 (_value not found) and CS0266/CS1503 (type conversion errors) in literal type serialization. The emitter generates incorrect serialization code for literal/optional property types.\n\nFix the emitter's literal type handling in model serialization code generation.\n\nIMPORTANT: Fix the emitter to match the legacy API. NEVER update the test to workaround the API mismatch.",
           "phase": "phase-15",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

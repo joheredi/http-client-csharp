@@ -41,6 +41,7 @@
 import { useCSharpNamePolicy } from "@alloy-js/csharp";
 import { type Children, code } from "@alloy-js/core";
 import type {
+  SdkConstantType,
   SdkModelPropertyType,
   SdkModelType,
 } from "@azure-tools/typespec-client-generator-core";
@@ -62,6 +63,8 @@ import {
   isPropertyReadOnly,
   resolvePropertyName,
 } from "../../utils/property.js";
+import { literalTypeRefkey } from "../../utils/refkey.js";
+import { needsLiteralWrapperStruct } from "../literal-types/collect.js";
 import {
   ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME,
   isBaseDiscriminatorOverride,
@@ -203,8 +206,17 @@ export function DeserializeVariableDeclarations(
           unwrapped.kind === "string";
 
         // Compute the type expression for the variable declaration.
+        // Literal wrapper types use the wrapper struct refkey so the variable
+        // type matches the property type (e.g., FloatLiteralPropertyProperty?
+        // instead of double?). The implicit conversion from the raw primitive
+        // (returned by GetSingle/GetInt32/etc.) handles the assignment.
+        const isLiteralWrapper =
+          unwrapped.kind === "constant" &&
+          needsLiteralWrapperStruct(unwrapped, nullable);
         const typeExpr = isCollectionType(unwrapped) ? (
           renderCollectionPropertyType(unwrapped, isPropertyReadOnly(p))
+        ) : isLiteralWrapper ? (
+          literalTypeRefkey(unwrapped as SdkConstantType)
         ) : (
           <TypeExpression type={unwrapped.__raw!} />
         );
