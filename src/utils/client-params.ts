@@ -330,10 +330,7 @@ export function getServerTemplateConstructorParams(
       // Skip constant-type params (value is hardcoded in the template)
       if (p.type.kind === "constant" && p.type.value !== null) return false;
       // Skip params with default values (value is known at codegen time)
-      if (
-        p.clientDefaultValue !== undefined &&
-        p.clientDefaultValue !== null
-      )
+      if (p.clientDefaultValue !== undefined && p.clientDefaultValue !== null)
         return false;
       return true;
     });

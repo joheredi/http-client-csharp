@@ -13,7 +13,7 @@
  * <Property name="Result" type={SystemClientModel.ClientResult} get />
  * ```
  */
-export { Azure, AzureCore } from "./azure.js";
+export { Azure, AzureCore, AzureCorePipeline } from "./azure.js";
 export { System } from "./system.js";
 export { SystemComponentModel } from "./system-component-model.js";
 export { SystemIO } from "./system-io.js";

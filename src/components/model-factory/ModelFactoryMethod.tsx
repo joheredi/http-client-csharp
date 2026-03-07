@@ -71,7 +71,11 @@ import {
   isPropertyReadOnly,
   resolvePropertyName,
 } from "../../utils/property.js";
-import { efCsharpRefkey, literalTypeRefkey, unknownModelRefkey } from "../../utils/refkey.js";
+import {
+  efCsharpRefkey,
+  literalTypeRefkey,
+  unknownModelRefkey,
+} from "../../utils/refkey.js";
 import { needsLiteralWrapperStruct } from "../literal-types/collect.js";
 import {
   ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME,

@@ -20,6 +20,16 @@ export const Tester = ApiTester.emit("http-client-csharp");
 export const HttpTester = Tester.importLibraries();
 
 /**
+ * Emitter tester configured with Azure flavor.
+ * Use this when testing Azure-specific code generation (HttpPipeline,
+ * AzureKeyCredential, ClientDiagnostics, etc.). The `flavor: "azure"`
+ * option activates Azure SDK type mappings throughout the emitter pipeline.
+ */
+export const AzureHttpTester = ApiTester.emit("http-client-csharp", {
+  flavor: "azure",
+}).importLibraries();
+
+/**
  * Tester for integration tests that registers all libraries needed
  * by the full SampleService TypeSpec (rest, xml, azure-core).
  */

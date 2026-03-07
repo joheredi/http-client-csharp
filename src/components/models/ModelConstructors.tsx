@@ -79,7 +79,11 @@ import {
   resolvePropertyName,
 } from "../../utils/property.js";
 import { ensureTrailingPeriod, formatDocLines } from "../../utils/doc.js";
-import { argumentRefkey, efCsharpRefkey, literalTypeRefkey } from "../../utils/refkey.js";
+import {
+  argumentRefkey,
+  efCsharpRefkey,
+  literalTypeRefkey,
+} from "../../utils/refkey.js";
 import {
   ADDITIONAL_PROPERTIES_PARAM_NAME,
   ADDITIONAL_PROPERTIES_PROP_NAME,
@@ -680,10 +684,13 @@ function buildPropertyTypeParameters(
         resolvePropertyName(p.name, modelName),
         "parameter",
       ),
-      type:
-        isOptionalStringEncodedNumeric ? baseType
-        : nullable ? <>{baseType}?</>
-        : baseType,
+      type: isOptionalStringEncodedNumeric ? (
+        baseType
+      ) : nullable ? (
+        <>{baseType}?</>
+      ) : (
+        baseType
+      ),
     };
   });
 }

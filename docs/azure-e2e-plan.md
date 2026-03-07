@@ -15,11 +15,11 @@ This document describes the plan to bring Azure-specific e2e tests and code gene
 
 ### Design Decisions
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| **Flavor architecture** | Emitter option `flavor: "azure" \| "unbranded"` (default: `"unbranded"`) | Single emitter entry point; components check flavor to toggle Azure-specific output |
-| **Azure.Core dependency** | NuGet package reference in generated `.csproj` | Matches Azure SDK production pattern; simpler than linking source files |
-| **Test file strategy** | Link from Azure submodule | Mirrors current approach for base tests; avoids test file duplication |
+| Decision                  | Choice                                                                   | Rationale                                                                           |
+| ------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| **Flavor architecture**   | Emitter option `flavor: "azure" \| "unbranded"` (default: `"unbranded"`) | Single emitter entry point; components check flavor to toggle Azure-specific output |
+| **Azure.Core dependency** | NuGet package reference in generated `.csproj`                           | Matches Azure SDK production pattern; simpler than linking source files             |
+| **Test file strategy**    | Link from Azure submodule                                                | Mirrors current approach for base tests; avoids test file duplication               |
 
 ---
 
@@ -38,6 +38,7 @@ Modify `eng/scripts/emit-e2e.ts` to pass `--option http-client-csharp.flavor=azu
 ### 16.3 — Configure Spector.Tests for Azure
 
 Modify `test/e2e/Spector.Tests/Spector.Tests.csproj`:
+
 - Add `<PackageReference Include="Azure.Core" />`
 - Add `AzureTestRoot` property pointing to the Azure submodule's `Spector.Tests/`
 - Link Azure-specific test files: `$(AzureTestRoot)Http/Azure/**/*.cs`
@@ -57,13 +58,13 @@ Implement Azure-specific code generation features, gated by `flavor: "azure"`.
 
 Map TypeSpec Azure types to C# Azure.Core types:
 
-| TypeSpec Type | C# Type | Namespace |
-|---|---|---|
-| `Azure.Core.azureLocation` | `AzureLocation` | `Azure` |
-| `Azure.Core.armResourceIdentifier` | `ResourceIdentifier` | `Azure.Core` |
-| `Azure.Core.eTag` | `ETag` | `Azure` |
-| `Azure.ResponseError` | `ResponseError` | `Azure` |
-| `Azure.Core.ipV4Address` / `ipV6Address` | `IPAddress` | `System.Net` |
+| TypeSpec Type                            | C# Type              | Namespace    |
+| ---------------------------------------- | -------------------- | ------------ |
+| `Azure.Core.azureLocation`               | `AzureLocation`      | `Azure`      |
+| `Azure.Core.armResourceIdentifier`       | `ResourceIdentifier` | `Azure.Core` |
+| `Azure.Core.eTag`                        | `ETag`               | `Azure`      |
+| `Azure.ResponseError`                    | `ResponseError`      | `Azure`      |
+| `Azure.Core.ipV4Address` / `ipV6Address` | `IPAddress`          | `System.Net` |
 
 Reference: `AzureTypeFactory.cs` in Azure submodule, `KnownAzureTypes.cs`.
 
@@ -173,16 +174,16 @@ Phase 19 (Mgmt Code Gen) ← Depends on Phase 18 for validation
 
 ## Key References
 
-| Resource | Path |
-|----------|------|
-| Azure emitter | `submodules/azure-sdk-for-net/eng/packages/http-client-csharp/emitter/src/` |
-| Azure generator | `submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/` |
-| Azure test files | `submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/Azure/` |
-| Azure .csproj | `submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/TestProjects/Spector.Tests/TestProjects.Spector.Tests.csproj` |
-| Mgmt emitter | `submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/emitter/src/` |
-| Mgmt generator | `submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/Azure.Generator.Management/src/` |
-| Mgmt test specs | `submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/TestProjects/Local/Mgmt-TypeSpec/` |
-| Current emitter options | `src/options.ts` |
-| E2E emit script | `eng/scripts/emit-e2e.ts` |
-| E2E test project | `test/e2e/Spector.Tests/Spector.Tests.csproj` |
-| Test ignore list | `test/e2e/.testignore` |
+| Resource                | Path                                                                                                                                  |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Azure emitter           | `submodules/azure-sdk-for-net/eng/packages/http-client-csharp/emitter/src/`                                                           |
+| Azure generator         | `submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/`                                         |
+| Azure test files        | `submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/Azure/`                       |
+| Azure .csproj           | `submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/TestProjects/Spector.Tests/TestProjects.Spector.Tests.csproj` |
+| Mgmt emitter            | `submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/emitter/src/`                                                      |
+| Mgmt generator          | `submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/Azure.Generator.Management/src/`                         |
+| Mgmt test specs         | `submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/TestProjects/Local/Mgmt-TypeSpec/`                       |
+| Current emitter options | `src/options.ts`                                                                                                                      |
+| E2E emit script         | `eng/scripts/emit-e2e.ts`                                                                                                             |
+| E2E test project        | `test/e2e/Spector.Tests/Spector.Tests.csproj`                                                                                         |
+| Test ignore list        | `test/e2e/.testignore`                                                                                                                |

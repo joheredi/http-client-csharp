@@ -592,7 +592,9 @@ function buildNextLinkGetRawPagesBody(
         "\n",
         code`    nextPageUri = nextLink != null ? new ${System.Uri}(nextLink) : null;`,
       ]
-    : [code`    nextPageUri = ((${responseTypeExpr})result).${nextLinkPropertyPath};`];
+    : [
+        code`    nextPageUri = ((${responseTypeExpr})result).${nextLinkPropertyPath};`,
+      ];
 
   return [
     code`${SystemClientModelPrimitives.PipelineMessage} message = _client.${requestMethodName}(${requestArgs});`,

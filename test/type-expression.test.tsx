@@ -472,7 +472,9 @@ describe("CSharpScalarOverrides", () => {
      * - ipV6Address → IPAddress (System.Net.IPAddress)
      * - uuid → Guid (System.Guid)
      */
-    let azureRunner: Awaited<ReturnType<typeof IntegrationApiTester.createInstance>>;
+    let azureRunner: Awaited<
+      ReturnType<typeof IntegrationApiTester.createInstance>
+    >;
 
     beforeEach(async () => {
       azureRunner = await IntegrationApiTester.createInstance();

@@ -79,7 +79,9 @@ const READ_METHOD_MAP: ReadonlyMap<string, string> = new Map([
  * @returns A string or JSX fragment rendering the read expression,
  *   or null if the type requires block-level rendering (e.g., arrays).
  */
-function renderValueRead(type: SdkType): ReturnType<typeof code> | string | null {
+function renderValueRead(
+  type: SdkType,
+): ReturnType<typeof code> | string | null {
   const unwrapped = unwrapNullableType(type);
 
   // BinaryData types (model, array, union, unknown) use raw JSON capture.
@@ -126,7 +128,9 @@ export function AdditionalPropertiesRead(props: AdditionalPropertiesReadProps) {
       <>
         {"\n        {"}
         {code`\n            ${SystemCollectionsGeneric.List}<${System.BinaryData}> array0 = new ${SystemCollectionsGeneric.List}<${System.BinaryData}>();`}
-        {"\n            foreach (var item in jsonProperty.Value.EnumerateArray())"}
+        {
+          "\n            foreach (var item in jsonProperty.Value.EnumerateArray())"
+        }
         {"\n            {"}
         {code`\n                array0.Add(${System.BinaryData}.FromString(item.GetRawText()));`}
         {"\n            }"}

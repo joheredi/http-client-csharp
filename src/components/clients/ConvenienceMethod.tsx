@@ -626,9 +626,7 @@ function buildSpreadProtocolCallExpr(
  * @param params - The user-defined convenience method parameters.
  * @returns The collision-free CancellationToken parameter name.
  */
-function resolveCancellationTokenParamName(
-  params: ConvenienceParam[],
-): string {
+function resolveCancellationTokenParamName(params: ConvenienceParam[]): string {
   const userNames = new Set(params.map((p) => p.name));
   let name = "cancellationToken";
   if (userNames.has(name)) {
@@ -805,8 +803,7 @@ function getConvenienceTypeInfo(type: SdkType): {
       const valueInfo = getConvenienceTypeInfo(valueType);
       // Check for nullable wrapper on the value type.
       const isNullableValue =
-        valueType.kind === "nullable" &&
-        isConvenienceParamValueType(valueType);
+        valueType.kind === "nullable" && isConvenienceParamValueType(valueType);
       const valueExpr = isNullableValue
         ? typeof valueInfo.expression === "string"
           ? `${valueInfo.expression}?`
@@ -923,7 +920,7 @@ function buildResponseInfo(
     case "model":
       return {
         typeExpr: <TypeExpression type={unwrapped.__raw!} />,
-        deserializeExpr: code`(${<TypeExpression type={unwrapped.__raw!} />})result`,
+        deserializeExpr: code`(${(<TypeExpression type={unwrapped.__raw!} />)})result`,
       };
 
     // Bytes and unknown: return BinaryData from response content
@@ -1152,9 +1149,7 @@ function getResponseElementTypeExpr(
 
   // Append ? for nullable value types (e.g., float? for float32 | null)
   if (isNullable) {
-    return typeof baseExpr === "string"
-      ? `${baseExpr}?`
-      : code`${baseExpr}?`;
+    return typeof baseExpr === "string" ? `${baseExpr}?` : code`${baseExpr}?`;
   }
   return baseExpr;
 }

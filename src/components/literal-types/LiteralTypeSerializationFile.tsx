@@ -107,7 +107,12 @@ export function LiteralTypeSerializationFile(
       {"\n\n"}
       <Namespace name={props.namespace}>
         {`/// <summary></summary>\n`}
-        <StructDeclaration public readonly partial name={partialName as unknown as string}>
+        <StructDeclaration
+          public
+          readonly
+          partial
+          name={partialName as unknown as string}
+        >
           {`internal ${typeInfo.keyword} ToSerial${typeInfo.frameworkName}() => _value;`}
         </StructDeclaration>
       </Namespace>

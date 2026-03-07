@@ -1677,15 +1677,11 @@ describe("ModelConstructors", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const modelFile = Object.keys(outputs).find((k) =>
-      k.includes("Widget.cs"),
-    );
+    const modelFile = Object.keys(outputs).find((k) => k.includes("Widget.cs"));
     const content = outputs[modelFile!];
 
     // Optional array: initialized with ChangeTrackingList<string>
-    expect(content).toContain(
-      "Tags = new ChangeTrackingList<string>();",
-    );
+    expect(content).toContain("Tags = new ChangeTrackingList<string>();");
     // Optional dictionary: initialized with ChangeTrackingDictionary<string, int>
     expect(content).toContain(
       "Metadata = new ChangeTrackingDictionary<string, int>();",

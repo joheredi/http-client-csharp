@@ -667,9 +667,7 @@ describe("ClientFile", () => {
 
     // Primary constructor with token provider + options
     // Parameters may be on separate lines due to line length formatting
-    expect(clientFile).toContain(
-      "AuthenticationTokenProvider tokenProvider,",
-    );
+    expect(clientFile).toContain("AuthenticationTokenProvider tokenProvider,");
     expect(clientFile).toContain("TestServiceClientOptions options");
     expect(clientFile).toContain("options ??= new TestServiceClientOptions();");
 
@@ -876,9 +874,7 @@ describe("ClientFile", () => {
 
     // Full OAuth2 constructor with tokenProvider + options
     // Parameters may be on separate lines due to line length formatting
-    expect(clientFile).toContain(
-      "AuthenticationTokenProvider tokenProvider,",
-    );
+    expect(clientFile).toContain("AuthenticationTokenProvider tokenProvider,");
     expect(clientFile).toContain("TestServiceClientOptions options");
 
     // API key constructor body assigns only _keyCredential

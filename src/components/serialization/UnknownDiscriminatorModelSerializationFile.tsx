@@ -386,9 +386,7 @@ function UnknownDeserializeVariables(props: { type: SdkModelType }) {
 
   // Filter out "patch" items first so the map never returns null
   // (which crashes the Babel JSX plugin)
-  const filteredInfos = variableInfos.filter(
-    (info) => info.kind !== "patch",
-  );
+  const filteredInfos = variableInfos.filter((info) => info.kind !== "patch");
 
   return (
     <>

@@ -15,6 +15,7 @@ import type {
   SdkMethodParameter,
   SdkPathParameter,
 } from "@azure-tools/typespec-client-generator-core";
+import { AzureCorePipeline } from "../../builtins/azure.js";
 import {
   SystemClientModel,
   SystemClientModelPrimitives,
@@ -36,6 +37,7 @@ import { getClientFileName } from "../../utils/clients.js";
 import { formatDocLines } from "../../utils/doc.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { isSystemTypeNameCollision } from "../../utils/package-name.js";
+import { getPipelineTypes } from "../../utils/pipeline-types.js";
 import { OverloadConstructor } from "../models/ModelConstructors.js";
 import { clientNeedsLinq, ConvenienceMethods } from "./ConvenienceMethod.js";
 import { PagingMethods } from "./PagingMethods.js";
@@ -127,6 +129,8 @@ export function ClientFile(props: ClientFileProps) {
   const className = getClientFileName(client, toClassName);
   const fileName = className;
   const isSubClient = client.parent !== undefined;
+  const isAzure = options.flavor === "azure";
+  const pipelineTypes = getPipelineTypes(options.flavor ?? "unbranded");
 
   // Extract auth info for root clients only.
   // Sub-clients inherit authentication through the pipeline created by the parent.
@@ -173,12 +177,13 @@ export function ClientFile(props: ClientFileProps) {
 
   // Add System.Linq when convenience methods use .ToList() for collection params
   // in spread body constructions (e.g., IEnumerable<T> → IList<T> conversion).
-  // Add System.Collections.Generic when OAuth2 auth requires Dictionary<string, object>[] _flows.
+  // Add System.Collections.Generic when OAuth2 auth requires Dictionary<string, object>[] _flows
+  // (unbranded only; Azure uses string[] AuthorizationScopes instead).
   const additionalUsings: string[] = [];
   if (clientNeedsLinq(client)) {
     additionalUsings.push("System.Linq");
   }
-  if (oauth2Auth) {
+  if (oauth2Auth && !isAzure) {
     additionalUsings.push("System.Collections.Generic");
   }
 
@@ -208,11 +213,11 @@ export function ClientFile(props: ClientFileProps) {
                 private
                 readonly
                 name="keyCredential"
-                type={SystemClientModel.ApiKeyCredential}
+                type={pipelineTypes.apiKeyCredential}
               />
               {"\n"}
               {`private const string AuthorizationHeader = "${apiKeyAuth.headerName}";`}
-              {apiKeyAuth.prefix && (
+              {apiKeyAuth.prefix && !isAzure && (
                 <>
                   {"\n"}
                   {`private const string AuthorizationApiKeyPrefix = "${apiKeyAuth.prefix}";`}
@@ -220,7 +225,7 @@ export function ClientFile(props: ClientFileProps) {
               )}
             </>
           )}
-          {oauth2Auth && (
+          {oauth2Auth && !isAzure && (
             <>
               {"\n"}
               {`/// <summary> A credential provider used to authenticate to the service. </summary>`}
@@ -235,6 +240,21 @@ export function ClientFile(props: ClientFileProps) {
               {`/// <summary> The OAuth2 flows supported by the service. </summary>`}
               {"\n"}
               {buildFlowsFieldDeclaration(oauth2Auth)}
+            </>
+          )}
+          {oauth2Auth && isAzure && (
+            <>
+              {"\n"}
+              {`/// <summary> A credential used to authenticate to the service. </summary>`}
+              {"\n"}
+              <Field
+                private
+                readonly
+                name="tokenCredential"
+                type={pipelineTypes.tokenCredential}
+              />
+              {"\n"}
+              {buildAzureScopesDeclaration(oauth2Auth)}
             </>
           )}
           {methodParams.map((param) => (
@@ -258,12 +278,7 @@ export function ClientFile(props: ClientFileProps) {
             return (
               <>
                 {"\n"}
-                <Field
-                  private
-                  readonly
-                  name={param.name}
-                  type={fieldType}
-                />
+                <Field private readonly name={param.name} type={fieldType} />
               </>
             );
           })}
@@ -298,9 +313,11 @@ export function ClientFile(props: ClientFileProps) {
               optionsClassName={optionsClassName}
               serverPathSegments={serverPathSegments}
               serverTemplateParams={serverTemplateParams}
+              isAzure={isAzure}
+              pipelineTypes={pipelineTypes}
             />
           )}
-          {isSubClient && (
+          {isSubClient && !isAzure && (
             <>
               {"\n\n"}
               {`/// <summary> Initializes a new instance of ${className}. </summary>`}
@@ -314,7 +331,7 @@ export function ClientFile(props: ClientFileProps) {
                 parameters={[
                   {
                     name: "pipeline",
-                    type: SystemClientModelPrimitives.ClientPipeline,
+                    type: pipelineTypes.pipeline,
                   },
                   { name: "endpoint", type: System.Uri },
                 ]}
@@ -323,20 +340,63 @@ export function ClientFile(props: ClientFileProps) {
               </OverloadConstructor>
             </>
           )}
+          {isSubClient && isAzure && (
+            <>
+              {"\n\n"}
+              {`/// <summary> Initializes a new instance of ${className}. </summary>`}
+              {"\n"}
+              {`/// <param name="clientDiagnostics"> The ClientDiagnostics is used to provide tracing support for the client library. </param>`}
+              {"\n"}
+              {`/// <param name="pipeline"> The HTTP pipeline for sending and receiving REST requests and responses. </param>`}
+              {"\n"}
+              {`/// <param name="endpoint"> Service endpoint. </param>`}
+              {"\n"}
+              <OverloadConstructor
+                internal
+                parameters={[
+                  {
+                    name: "clientDiagnostics",
+                    type: AzureCorePipeline.ClientDiagnostics,
+                  },
+                  {
+                    name: "pipeline",
+                    type: pipelineTypes.pipeline,
+                  },
+                  { name: "endpoint", type: System.Uri },
+                ]}
+              >
+                {`ClientDiagnostics = clientDiagnostics;\n_endpoint = endpoint;\nPipeline = pipeline;`}
+              </OverloadConstructor>
+            </>
+          )}
           {"\n\n"}
           {`/// <summary> The HTTP pipeline for sending and receiving REST requests and responses. </summary>`}
           {"\n"}
           <Property
             public
+            virtual={pipelineTypes.pipelineIsVirtual || undefined}
             name="Pipeline"
-            type={SystemClientModelPrimitives.ClientPipeline}
+            type={pipelineTypes.pipeline}
             get
           />
+          {isAzure && (
+            <>
+              {"\n\n"}
+              {`/// <summary> The ClientDiagnostics is used to provide tracing support for the client library. </summary>`}
+              {"\n"}
+              <Property
+                internal
+                name="ClientDiagnostics"
+                type={AzureCorePipeline.ClientDiagnostics}
+                get
+              />
+            </>
+          )}
           {props.children}
           <ConvenienceMethods client={client} />
           <ProtocolMethods client={client} />
           <PagingMethods client={client} />
-          <SubClientFactoryMethods children={children} />
+          <SubClientFactoryMethods children={children} isAzure={isAzure} />
         </ClassDeclaration>
       </Namespace>
     </SourceFile>
@@ -365,6 +425,10 @@ interface RootClientConstructorsProps {
   serverPathSegments: ServerPathSegment[];
   /** Server URL template parameters that become constructor params (e.g., ClientType enum). */
   serverTemplateParams: SdkPathParameter[];
+  /** Whether the Azure flavor is being used. */
+  isAzure: boolean;
+  /** Flavor-resolved pipeline type references. */
+  pipelineTypes: import("../../utils/pipeline-types.js").PipelineTypes;
 }
 
 /**
@@ -394,6 +458,8 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
     optionsClassName,
     serverPathSegments,
     serverTemplateParams,
+    isAzure,
+    pipelineTypes,
   } = props;
 
   // Non-API-version method params become constructor parameters
@@ -446,34 +512,73 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
   const authSchemes: AuthSchemeDescriptor[] = [];
 
   if (apiKeyAuth) {
-    authSchemes.push({
-      authParam: {
-        name: "credential",
-        type: SystemClientModel.ApiKeyCredential,
-      },
-      authDoc: `/// <param name="credential"> A credential used to authenticate to the service. </param>`,
-      fieldAssignment: `_keyCredential = credential;`,
-      pipelineLine: buildPipelineCreateLine(client, apiKeyAuth, undefined),
-    });
+    if (isAzure) {
+      authSchemes.push({
+        authParam: {
+          name: "credential",
+          type: pipelineTypes.apiKeyCredential,
+        },
+        authDoc: `/// <param name="credential"> A credential used to authenticate to the service. </param>`,
+        fieldAssignment: `_keyCredential = credential;`,
+        pipelineLine: buildAzurePipelineCreateLine(
+          AzureCorePipeline,
+          code`new ${AzureCorePipeline.AzureKeyCredentialPolicy}(_keyCredential, AuthorizationHeader)`,
+        ),
+      });
+    } else {
+      authSchemes.push({
+        authParam: {
+          name: "credential",
+          type: pipelineTypes.apiKeyCredential,
+        },
+        authDoc: `/// <param name="credential"> A credential used to authenticate to the service. </param>`,
+        fieldAssignment: `_keyCredential = credential;`,
+        pipelineLine: buildPipelineCreateLine(client, apiKeyAuth, undefined),
+      });
+    }
   }
 
   if (oauth2Auth) {
-    authSchemes.push({
-      authParam: {
-        name: "tokenProvider",
-        type: SystemClientModel.AuthenticationTokenProvider,
-      },
-      authDoc: `/// <param name="tokenProvider"> A token provider used to authenticate to the service. </param>`,
-      fieldAssignment: `_tokenProvider = tokenProvider;`,
-      pipelineLine: buildPipelineCreateLine(client, undefined, oauth2Auth),
-    });
+    if (isAzure) {
+      authSchemes.push({
+        authParam: {
+          name: "credential",
+          type: pipelineTypes.tokenCredential,
+        },
+        authDoc: `/// <param name="credential"> A credential used to authenticate to the service. </param>`,
+        fieldAssignment: `_tokenCredential = credential;`,
+        pipelineLine: buildAzurePipelineCreateLine(
+          AzureCorePipeline,
+          code`new ${AzureCorePipeline.BearerTokenAuthenticationPolicy}(_tokenCredential, AuthorizationScopes)`,
+        ),
+      });
+    } else {
+      authSchemes.push({
+        authParam: {
+          name: "tokenProvider",
+          type: SystemClientModel.AuthenticationTokenProvider,
+        },
+        authDoc: `/// <param name="tokenProvider"> A token provider used to authenticate to the service. </param>`,
+        fieldAssignment: `_tokenProvider = tokenProvider;`,
+        pipelineLine: buildPipelineCreateLine(client, undefined, oauth2Auth),
+      });
+    }
   }
 
   // If no auth schemes, generate a single pair with no auth parameters
   if (authSchemes.length === 0) {
-    authSchemes.push({
-      pipelineLine: buildPipelineCreateLine(client, undefined, undefined),
-    });
+    if (isAzure) {
+      authSchemes.push({
+        pipelineLine: buildAzurePipelineCreateLine(
+          AzureCorePipeline,
+          undefined,
+        ),
+      });
+    } else {
+      authSchemes.push({
+        pipelineLine: buildPipelineCreateLine(client, undefined, undefined),
+      });
+    }
   }
 
   /**
@@ -495,15 +600,18 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
         {serverTemplateParams.map((p) => `_${p.name} = ${p.name};\n`)}
         {serverPathSegments.length === 0
           ? `_endpoint = endpoint;`
-          : buildEndpointFromTemplate(serverPathSegments, [
-              ...nonApiVersionParams,
-              ...apiVersionParams,
-            ], serverTemplateParams)}
+          : buildEndpointFromTemplate(
+              serverPathSegments,
+              [...nonApiVersionParams, ...apiVersionParams],
+              serverTemplateParams,
+            )}
         {scheme.fieldAssignment && `\n${scheme.fieldAssignment}`}
         {nonApiVersionParams.map((p) => `\n_${p.name} = ${p.name};`)}
         {"\n"}
         {scheme.pipelineLine}
         {apiVersionParams.map((p) => `\n_${p.name} = options.Version;`)}
+        {isAzure &&
+          code`\nClientDiagnostics = new ${AzureCorePipeline.ClientDiagnostics}(options, true);`}
       </>
     );
   }
@@ -648,14 +756,16 @@ function buildEndpointFromTemplate(
 
   for (const segment of segments) {
     if (segment.kind === "literal") {
-      lines.push(
-        `\nendpointBuilder.AppendPath("${segment.value}", false);`,
-      );
+      lines.push(`\nendpointBuilder.AppendPath("${segment.value}", false);`);
     } else if (segment.param?.isApiVersionParam) {
       lines.push(`\nendpointBuilder.AppendPath(options.Version, true);`);
     } else if (segment.param) {
       // Resolve the value for non-api-version template arguments.
-      const valueExpr = resolveTemplateArgValue(segment.param, methodParams, serverTemplateParams);
+      const valueExpr = resolveTemplateArgValue(
+        segment.param,
+        methodParams,
+        serverTemplateParams,
+      );
       lines.push(`\nendpointBuilder.AppendPath(${valueExpr}, true);`);
     }
   }
@@ -685,7 +795,10 @@ function resolveTemplateArgValue(
   }
 
   // Check if there's a clientDefaultValue
-  if (param.clientDefaultValue !== undefined && param.clientDefaultValue !== null) {
+  if (
+    param.clientDefaultValue !== undefined &&
+    param.clientDefaultValue !== null
+  ) {
     return `"${param.clientDefaultValue}"`;
   }
 
@@ -754,9 +867,7 @@ function buildPipelineCreateLine(
   const userAgent = code`new ${SCP.UserAgentPolicy}(typeof(${clientRef}).Assembly)`;
 
   if (apiKeyAuth) {
-    const prefixArg = apiKeyAuth.prefix
-      ? `, AuthorizationApiKeyPrefix`
-      : "";
+    const prefixArg = apiKeyAuth.prefix ? `, AuthorizationApiKeyPrefix` : "";
     return code`Pipeline = ${SCP.ClientPipeline}.Create(options, Array.Empty<${SCP.PipelinePolicy}>(), new ${SCP.PipelinePolicy}[] { ${userAgent}, ${SCP.ApiKeyAuthenticationPolicy}.CreateHeaderApiKeyPolicy(_keyCredential, AuthorizationHeader${prefixArg}) }, Array.Empty<${SCP.PipelinePolicy}>());`;
   }
 
@@ -830,9 +941,51 @@ function buildFlowsFieldDeclaration(oauth2Auth: OAuth2AuthInfo): Children {
 
   return <>{parts}</>;
 }
+
+/**
+ * Builds the `AuthorizationScopes` static field for Azure OAuth2 authentication.
+ *
+ * Azure clients use a simple `string[]` for OAuth2 scopes instead of the
+ * unbranded emitter's `Dictionary<string, object>[]` flows pattern. Only
+ * the first flow's scopes are used (matching the Azure SDK convention).
+ *
+ * @param oauth2Auth - The extracted OAuth2 auth info with flow metadata.
+ * @returns JSX children rendering the `AuthorizationScopes` declaration.
+ */
+function buildAzureScopesDeclaration(oauth2Auth: OAuth2AuthInfo): Children {
+  // Azure uses scopes from the first flow only
+  const scopes = oauth2Auth.flows[0]?.scopes ?? [];
+  const scopesList = scopes.map((s) => `"${s}"`).join(", ");
+  return `private static readonly string[] AuthorizationScopes = new string[] { ${scopesList} };`;
+}
+
+/**
+ * Builds the `HttpPipelineBuilder.Build(options, policies)` expression for Azure
+ * pipeline creation in the primary constructor body.
+ *
+ * Azure pipelines are built with `HttpPipelineBuilder.Build()` which takes the
+ * client options and an array of per-retry policies (typically just the auth policy).
+ * Unlike the unbranded `ClientPipeline.Create()`, Azure does not require explicit
+ * `UserAgentPolicy` — it's handled internally by the pipeline builder.
+ *
+ * @param ACP - The AzureCorePipeline library for type references.
+ * @param authPolicy - A code expression for the auth policy, or undefined for no auth.
+ * @returns A code template rendering the complete Pipeline assignment statement.
+ */
+function buildAzurePipelineCreateLine(
+  ACP: typeof AzureCorePipeline,
+  authPolicy: Children | undefined,
+): Children {
+  if (authPolicy) {
+    return code`Pipeline = ${ACP.HttpPipelineBuilder}.Build(options, new ${ACP.HttpPipelinePolicy}[] { ${authPolicy} });`;
+  }
+  return code`Pipeline = ${ACP.HttpPipelineBuilder}.Build(options, Array.Empty<${ACP.HttpPipelinePolicy}>());`;
+}
 interface SubClientFactoryMethodsProps {
   /** The child clients for which to generate factory accessor methods. */
   children: SdkClientType<SdkHttpOperation>[];
+  /** Whether the Azure flavor is being used. */
+  isAzure: boolean;
 }
 
 /**
@@ -863,7 +1016,7 @@ interface SubClientFactoryMethodsProps {
  */
 function SubClientFactoryMethods(props: SubClientFactoryMethodsProps) {
   const namePolicy = useCSharpNamePolicy();
-  const { children } = props;
+  const { children, isAzure } = props;
 
   if (children.length === 0) {
     return null;
@@ -885,13 +1038,19 @@ function SubClientFactoryMethods(props: SubClientFactoryMethodsProps) {
           ? `${child.namespace}.${childName}`
           : refkey(child);
 
+        // Azure sub-clients receive (ClientDiagnostics, Pipeline, _endpoint);
+        // unbranded sub-clients receive (Pipeline, _endpoint).
+        const ctorArgs = isAzure
+          ? `ClientDiagnostics, Pipeline, _endpoint`
+          : `Pipeline, _endpoint`;
+
         return (
           <>
             {"\n\n"}
             {`/// <summary> Initializes a new instance of ${childName}. </summary>`}
             {"\n"}
             <Method public virtual name={methodName} returns={childRef}>
-              {code`return ${SystemThreading.Volatile}.Read(ref ${cachedFieldName}) ?? ${SystemThreading.Interlocked}.CompareExchange(ref ${cachedFieldName}, new ${childRef}(Pipeline, _endpoint), null) ?? ${cachedFieldName};`}
+              {code`return ${SystemThreading.Volatile}.Read(ref ${cachedFieldName}) ?? ${SystemThreading.Interlocked}.CompareExchange(ref ${cachedFieldName}, new ${childRef}(${ctorArgs}), null) ?? ${cachedFieldName};`}
             </Method>
           </>
         );

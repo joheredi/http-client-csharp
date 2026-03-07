@@ -159,8 +159,7 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
         // RequestOptions would cause CS0121.
         const hasOnlyBodyParams =
           params.length > 0 && params.every((p) => p.isBody);
-        const optionsDefault =
-          !hasConvenienceMethod || hasOnlyBodyParams;
+        const optionsDefault = !hasConvenienceMethod || hasOnlyBodyParams;
         const argList = [
           ...params.map((p) => escapeCSharpKeyword(p.name)),
           "options",

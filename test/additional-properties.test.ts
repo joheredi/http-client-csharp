@@ -88,7 +88,8 @@ describe("AdditionalProperties", () => {
     expect(diagnostics).toHaveLength(0);
 
     const modelKey = Object.keys(outputs).find(
-      (k) => k.includes("SpreadStringRecord.cs") && !k.includes("Serialization"),
+      (k) =>
+        k.includes("SpreadStringRecord.cs") && !k.includes("Serialization"),
     );
     expect(modelKey).toBeDefined();
     const modelContent = outputs[modelKey!];
@@ -122,7 +123,8 @@ describe("AdditionalProperties", () => {
     expect(diagnostics).toHaveLength(0);
 
     const modelKey = Object.keys(outputs).find(
-      (k) => k.includes("ExtendsUnknownRecord.cs") && !k.includes("Serialization"),
+      (k) =>
+        k.includes("ExtendsUnknownRecord.cs") && !k.includes("Serialization"),
     );
     expect(modelKey).toBeDefined();
     const modelContent = outputs[modelKey!];
@@ -224,8 +226,8 @@ describe("AdditionalProperties", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const serKey = Object.keys(outputs).find(
-      (k) => k.includes("SpreadFloatRecord.Serialization.cs"),
+    const serKey = Object.keys(outputs).find((k) =>
+      k.includes("SpreadFloatRecord.Serialization.cs"),
     );
     expect(serKey).toBeDefined();
     const serContent = outputs[serKey!];
@@ -258,8 +260,8 @@ describe("AdditionalProperties", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const serKey = Object.keys(outputs).find(
-      (k) => k.includes("SpreadFloatRecord.Serialization.cs"),
+    const serKey = Object.keys(outputs).find((k) =>
+      k.includes("SpreadFloatRecord.Serialization.cs"),
     );
     expect(serKey).toBeDefined();
     const serContent = outputs[serKey!];
@@ -328,8 +330,8 @@ describe("AdditionalProperties", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const serKey = Object.keys(outputs).find(
-      (k) => k.includes("SpreadStringRecord.Serialization.cs"),
+    const serKey = Object.keys(outputs).find((k) =>
+      k.includes("SpreadStringRecord.Serialization.cs"),
     );
     expect(serKey).toBeDefined();
     const serContent = outputs[serKey!];
@@ -359,8 +361,8 @@ describe("AdditionalProperties", () => {
 
     expect(diagnostics).toHaveLength(0);
 
-    const serKey = Object.keys(outputs).find(
-      (k) => k.includes("ExtendsUnknownRecord.Serialization.cs"),
+    const serKey = Object.keys(outputs).find((k) =>
+      k.includes("ExtendsUnknownRecord.Serialization.cs"),
     );
     expect(serKey).toBeDefined();
     const serContent = outputs[serKey!];
@@ -370,6 +372,8 @@ describe("AdditionalProperties", () => {
     expect(serContent).toContain("#if NET6_0_OR_GREATER");
 
     // Deserialization should use BinaryData.FromString
-    expect(serContent).toContain("BinaryData.FromString(jsonProperty.Value.GetRawText())");
+    expect(serContent).toContain(
+      "BinaryData.FromString(jsonProperty.Value.GetRawText())",
+    );
   });
 });

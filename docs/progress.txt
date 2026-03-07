@@ -5611,3 +5611,40 @@ Task 17.3 ("Replace ClientPipeline with HttpPipeline for Azure flavor") was anal
 - Azure auth policies: `AzureKeyCredentialPolicy` (direct ctor), `BearerTokenAuthenticationPolicy` vs unbranded `ApiKeyAuthenticationPolicy.CreateHeaderApiKeyPolicy()` (static factory), `BearerTokenPolicy`
 
 **Next task**: 17.3 (the narrowed version — implement Azure pipeline infrastructure)
+
+## Task 17.3 — Azure pipeline type infrastructure and client class generation (2026-03-07)
+
+**Status**: Done
+
+### What was done:
+1. **Added Azure.Core.Pipeline builtins** (`src/builtins/azure.ts`): Added 3 library declarations:
+   - `Azure` namespace: AzureKeyCredential, Response, RequestContext, RequestFailedException, ErrorOptions
+   - `Azure.Core` namespace: TokenCredential, ClientOptions, Argument
+   - `Azure.Core.Pipeline` namespace: HttpPipeline, HttpMessage, HttpPipelineBuilder, HttpPipelinePolicy, AzureKeyCredentialPolicy, BearerTokenAuthenticationPolicy, ClientDiagnostics, DiagnosticScope
+
+2. **Created `src/utils/pipeline-types.ts`**: Utility function `getPipelineTypes(flavor)` that returns correct Alloy library member references per flavor. Components use this to get the right type references for Pipeline, Message, Policy, credentials, etc.
+
+3. **Updated `ClientFile.tsx`**: Flavor-aware client class generation:
+   - Pipeline property: `public virtual HttpPipeline Pipeline { get; }` for Azure (no virtual for unbranded)
+   - ClientDiagnostics: `internal ClientDiagnostics ClientDiagnostics { get; }` (Azure only)
+   - Auth credentials: AzureKeyCredential/TokenCredential (Azure) vs ApiKeyCredential/AuthenticationTokenProvider (unbranded)
+   - OAuth2 storage: `string[] AuthorizationScopes` (Azure) vs `Dictionary<string, object>[] _flows` (unbranded)
+   - Pipeline creation: `HttpPipelineBuilder.Build(options, policies)` (Azure) vs `ClientPipeline.Create(options, pre, auth, post)` (unbranded)
+   - Azure constructor body includes `ClientDiagnostics = new ClientDiagnostics(options, true)`
+   - Sub-client constructor: `(ClientDiagnostics, HttpPipeline, Uri)` for Azure vs `(ClientPipeline, Uri)` for unbranded
+   - Sub-client factory methods pass `ClientDiagnostics` for Azure
+
+4. **Updated `ClientPipelineExtensionsFile.tsx`**: Azure version with HttpPipeline, HttpMessage, RequestContext, Response, RequestFailedException, ErrorOptions types. Uses `context.Parse()` for cancellation tokens and returns `Response` directly.
+
+5. **Added `AzureHttpTester`** to `test/test-host.ts` for Azure-flavored tests.
+
+6. **Created 14 new tests** in `test/azure-pipeline-types.test.ts` covering all Azure client and pipeline extension patterns.
+
+### Key patterns:
+- `getPipelineTypes(flavor)` centralizes type resolution per flavor — used instead of inline conditionals
+- Azure pipeline creation omits UserAgentPolicy (built into HttpPipelineBuilder)
+- Azure OAuth2 uses simple `string[]` scopes, not complex flow dictionaries
+- `@useAuth` decorator MUST be placed before `@service namespace` (not on operations) for TCGC to detect it
+
+### What's next (17.3b):
+Cascade Azure pipeline types to RestClientFile, ProtocolMethod, ConvenienceMethod, PagingMethods, CollectionResultFile, ErrorResultFile, CastOperators, CancellationTokenExtensions. These components still reference System.ClientModel types even in Azure mode.

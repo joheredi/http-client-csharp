@@ -140,7 +140,9 @@ function renderValueWrite(type: SdkType) {
  * @param props - The component props containing the model type.
  * @returns JSX fragment rendering the additional properties write block.
  */
-export function AdditionalPropertiesWrite(props: AdditionalPropertiesWriteProps) {
+export function AdditionalPropertiesWrite(
+  props: AdditionalPropertiesWriteProps,
+) {
   const propName = ADDITIONAL_PROPERTIES_PROP_NAME;
 
   return (

@@ -53,9 +53,7 @@ export function isModelStruct(model: SdkModelType): boolean {
  * @returns `true` if the model is multipart-only and should not be generated.
  */
 export function isMultipartOnlyModel(model: SdkModelType): boolean {
-  const hasMultipart =
-    (model.usage & UsageFlags.MultipartFormData) !== 0;
-  const hasJsonOrXml =
-    (model.usage & (UsageFlags.Json | UsageFlags.Xml)) !== 0;
+  const hasMultipart = (model.usage & UsageFlags.MultipartFormData) !== 0;
+  const hasJsonOrXml = (model.usage & (UsageFlags.Json | UsageFlags.Xml)) !== 0;
   return hasMultipart && !hasJsonOrXml;
 }

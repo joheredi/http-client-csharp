@@ -171,24 +171,22 @@ export function RestClientFile(props: RestClientFileProps) {
               />
             </>
           ))}
-          {methods
-            .filter(isPagingWithNextLink)
-            .map((method) => (
-              <>
-                {"\n\n"}
-                <CreateNextRequestMethod
-                  method={
-                    method as SdkServiceMethod<SdkHttpOperation> &
-                      (
-                        | SdkPagingServiceMethod<SdkHttpOperation>
-                        | SdkLroPagingServiceMethod<SdkHttpOperation>
-                      )
-                  }
-                  classifiers={classifiers}
-                  siblingNames={siblingNames}
-                />
-              </>
-            ))}
+          {methods.filter(isPagingWithNextLink).map((method) => (
+            <>
+              {"\n\n"}
+              <CreateNextRequestMethod
+                method={
+                  method as SdkServiceMethod<SdkHttpOperation> &
+                    (
+                      | SdkPagingServiceMethod<SdkHttpOperation>
+                      | SdkLroPagingServiceMethod<SdkHttpOperation>
+                    )
+                }
+                classifiers={classifiers}
+                siblingNames={siblingNames}
+              />
+            </>
+          ))}
         </ClassDeclaration>
       </Namespace>
     </SourceFile>
@@ -1117,7 +1115,10 @@ function getCollectionElementFormat(type: SdkType): string | null {
   if (elementType.kind === "duration") {
     return getDurationSerializationFormat(elementType as SdkDurationType);
   }
-  if (elementType.kind === "utcDateTime" || elementType.kind === "offsetDateTime") {
+  if (
+    elementType.kind === "utcDateTime" ||
+    elementType.kind === "offsetDateTime"
+  ) {
     return getDateTimeSerializationFormat(elementType as SdkDateTimeType);
   }
   return null;
@@ -1416,7 +1417,9 @@ function buildRequestBody(
         : getParamName(segment.param.name);
       parts.push(`\nif (${paramName} != null)\n{`);
       parts.push(`\n    uri.AppendPath("/", false);`);
-      parts.push(`\n    ${buildPathParamStatement(segment.param, getParamName)}`);
+      parts.push(
+        `\n    ${buildPathParamStatement(segment.param, getParamName)}`,
+      );
       parts.push(`\n}`);
     } else {
       parts.push(`\n${buildPathParamStatement(segment.param, getParamName)}`);

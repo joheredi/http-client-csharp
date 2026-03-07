@@ -167,7 +167,7 @@ export function ModelProperty(props: ModelPropertyProps) {
   const readOnly = isPropertyReadOnly(property);
   const isLiteralWrapper = needsLiteralWrapperStruct(type, nullable);
   const typeExpr = isOptionalStringEncodedNumeric ? (
-    "object" as Children
+    ("object" as Children)
   ) : isCollection ? (
     renderCollectionPropertyType(type, readOnly)
   ) : isLiteralWrapper ? (

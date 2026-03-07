@@ -2969,10 +2969,13 @@ using directive won't match the actual namespace.
 ## Task 15.1: Constructor collection assignment
 
 ### Gotcha: Required collection properties need `.ToList()` in public constructors
+
 The `buildAssignments` function in `ModelConstructors.tsx` generates public constructor body assignments. Required array properties return `"to-list"` from `getPropertyInitializerKind` and need `PropName = paramName.ToList();` (not direct assignment) because the parameter is `IEnumerable<T>` while the property is `IList<T>`. Don't forget `using System.Linq;` in the model file.
 
 ### Design Decision: `.ToList()` vs `new List<T>(param)`
+
 Chose `.ToList()` over `new List<T>(param)` because:
+
 - Already used extensively in the codebase (ConvenienceMethod.tsx, ModelFactoryMethod.tsx)
 - Doesn't require rendering type parameters as JSX — works as a plain string
 - The `System.Linq` import is handled via SourceFile `using` prop
@@ -2980,18 +2983,22 @@ Chose `.ToList()` over `new List<T>(param)` because:
 Rejected: `new List<T>(param)` — requires knowing element type, which means `buildAssignments` would need to return `Children[]` instead of `string[]`, cascading changes to `renderPublicCtorBody`.
 
 ### Gotcha: Encode/Array tests have TWO bugs
+
 The 12 Encode/Array tests had two stacked bugs:
+
 1. NRE from empty constructor body (fixed by task 15.1)
 2. 400 Bad Request from incorrect delimiter encoding (separate issue, still failing)
-Fixing the NRE unmasks the delimiter encoding bug. These are now expected failures with a different root cause.
+   Fixing the NRE unmasks the delimiter encoding bug. These are now expected failures with a different root cause.
 
 ### Pattern: Adding `using` directives to model files
+
 Use the `SourceFile` component's `using` prop: `<SourceFile using={["System.Linq"]}>`
 Same pattern as `ClientFile.tsx` and `ModelFactoryFile.tsx`.
 
 ## TCGC Endpoint Type Union Pattern (Task 15.6)
 
 When TypeSpec specs have `@versioned` + `@server` decorators, TCGC provides the endpoint parameter's type as `SdkUnionType<SdkEndpointType>` (kind: "union"), NOT a simple `SdkEndpointType`. The union has two variants:
+
 1. The versioned URL template (e.g., `{endpoint}/path/api-version:{version}`) with 2+ templateArguments
 2. A fallback simple template (`{endpoint}`) with 1 templateArgument
 
@@ -3000,6 +3007,7 @@ To get the server URL template with version path, resolve the union by selecting
 ## Server URL Template Argument Resolution (Task 15.6)
 
 Template arguments in `SdkEndpointType.templateArguments` (SdkPathParameter[]) fall into categories:
+
 1. **Endpoint placeholder** — `type.kind === "url"` or `name === "endpoint"` → handled by `uri.Reset(endpoint)`
 2. **Api-version** — `isApiVersionParam === true` → use `options.Version`
 3. **Constant-type** — `type.kind === "constant"` → use `type.value` as a string literal (e.g., `"default"`, `"v1"`)
@@ -3010,6 +3018,7 @@ The `client/structure` specs use constant-type args (e.g., `client: "default"`).
 ## ChangeTracking Collection Initialization (Task 15.3)
 
 **Gotcha**: Optional collection properties MUST be initialized with `new ChangeTrackingList<T>()` or `new ChangeTrackingDictionary<string, V>()` in two places:
+
 1. The **public model constructor** body (`buildAssignments()` in `ModelConstructors.tsx`)
 2. The **deserialization variable declarations** (`DeserializeVariableDeclarations.tsx`)
 
@@ -3030,6 +3039,7 @@ The `dotnetBuild()` function in `spector.test.ts` uses Node.js `execSync` with `
 ## Design Decisions
 
 ### Task 15.16: CancellationToken collision fix
+
 **Approach chosen:** Manual collision detection with `resolveCancellationTokenParamName()` that checks user param names and appends numeric suffix (matching legacy emitter's `cancellationToken0` convention).
 **Rejected:** Using Alloy namekey/refkey for the CancellationToken parameter — the method body is constructed as strings, not JSX elements, so refkeys wouldn't track the rename. Would require restructuring the body generation.
 
@@ -3069,7 +3079,7 @@ categorized under Duration in `.expected-failures` — they are actually DateTim
 
 ## Design Decisions — Task 15.18
 
-**Approach chosen**: Conditional argument passing based on `isDynamicModel()` check. 
+**Approach chosen**: Conditional argument passing based on `isDynamicModel()` check.
 **Why**: The Deserialize method signature is already conditional (set in JsonDeserialize.tsx). Following the same pattern ensures consistency. Alternative approach of making `data` optional with a default `null` was rejected because it would change the method signature for all models, potentially breaking existing callers.
 
 ## Design Decisions
@@ -3087,12 +3097,15 @@ categorized under Duration in `.expected-failures` — they are actually DateTim
 ## Gotchas
 
 ### Substring matching in test file lookups
+
 When searching output keys with `k.includes("Options.cs")`, the ClientOptions file (`TestServiceClientOptions.cs`) will also match. Always exclude `ClientOptions` from model file lookups: `k.includes("Options.cs") && !k.includes("ClientOptions")`.
 
 ### Multi-line constructor formatting triggered by longer type names
+
 Changing `ClientPipelineOptions` (21 chars) to `TestServiceClientOptions` (24 chars) can push OAuth2 constructor lines past the Alloy formatter's line-length threshold, switching to multi-line parameter format. Test assertions should match individual parameter fragments rather than full parameter lists.
 
 ### OAuth2/Union auth tests need single-arg convenience constructors
+
 Legacy tests call `new OAuth2Client(tokenProvider)` with just 1 arg. The new emitter generates `(endpoint, tokenProvider)` as minimum. These tests remain excluded until the emitter supports endpoint-defaulting convenience constructors.
 
 ## Optional Path Parameters (RFC 6570 {/name} expansion)
@@ -3100,13 +3113,14 @@ Legacy tests call `new OAuth2Client(tokenProvider)` with just 1 arg. The new emi
 **Key Insight:** TCGC normalizes RFC 6570 `{/name}` syntax by stripping the `/` prefix — the path becomes `/optional{name}` instead of `/optional{/name}`. The parameter's `optional` flag indicates this was originally `{/name}` expansion.
 
 **Pattern for optional path params in generated C#:**
+
 - Convenience method: `string name = default` (with `= default`, no assertion)
 - Protocol method: `string name` (NO `= default` to avoid CS0121 ambiguity, but still no assertion)
 - RestClient CreateRequest: wrap in `if (name != null) { uri.AppendPath("/", false); uri.AppendPath(name, true); }`
 
 **Gotcha — CS0121 overload ambiguity:** If both convenience and protocol overloads have `name = default`, calling `client.OptionalAsync(name)` is ambiguous between `Optional(string, CancellationToken)` and `Optional(string, RequestOptions)`. Solution: only the convenience method gets `= default`.
 
-**Implementation detail:** The `ProtocolParam.needsValidation` flag decouples "has default value" (`optional`) from "needs Argument.Assert*" (`needsValidation`). Optional path params need `optional: false, needsValidation: false`.
+**Implementation detail:** The `ProtocolParam.needsValidation` flag decouples "has default value" (`optional`) from "needs Argument.Assert\*" (`needsValidation`). Optional path params need `optional: false, needsValidation: false`.
 
 ## Multipart Model Filtering (Task 15.22)
 
@@ -3131,6 +3145,7 @@ Legacy tests call `new OAuth2Client(tokenProvider)` with just 1 arg. The new emi
 ## Design Decisions
 
 ### Merge-patch convenience method suppression (Task 15.23)
+
 - **Chosen**: Check `bodyParam.contentTypes` for `application/merge-patch+json` (content-type based filtering)
 - **Rejected**: Check model `UsageFlags.JsonMergePatch` on the body param type — this would require additional type traversal and doesn't align with the existing pattern (multipart uses content-type check)
 - **Reason**: Consistent with `isMultipartOperation()` pattern already in ConvenienceMethod.tsx
@@ -3138,22 +3153,26 @@ Legacy tests call `new OAuth2Client(tokenProvider)` with just 1 arg. The new emi
 ## Design Decisions
 
 ### Task 15.17: Literal type serialization fix approach
+
 **Chosen**: Fix all 5 code paths (serialization file, constructor, deserialization vars, serializer write, factory) to consistently use wrapper struct types.
 **Rejected**: Adding implicit/explicit conversion operators to the wrapper struct to accept the primitive type directly in constructors — this would diverge from the legacy API surface.
 
 ## Gotchas
 
 ### Partial type declarations in Alloy
+
 When creating a second `StructDeclaration` or `ClassDeclaration` for a C# partial type (e.g., a `.Serialization.cs` file for an existing model), do NOT use the same `refkey` as the primary declaration. Instead, use `namekey(name, { ignoreNameConflict: true })` to tell Alloy this is intentionally the same type. Using the same refkey causes Alloy to treat both as competing declarations and append `_2` to the second one. See `ModelSerializationFile.tsx` line 156 for the canonical example.
 
 ### Literal wrapper struct type must be used consistently in 5 locations
+
 When a model property uses a literal wrapper struct (checked via `needsLiteralWrapperStruct()`), these 5 locations must all use `literalTypeRefkey()` instead of `TypeExpression`:
+
 1. `ModelProperty.tsx` — property type declaration
 2. `ModelConstructors.tsx` — serialization constructor parameter type
 3. `DeserializeVariableDeclarations.tsx` — deserialization local variable type
 4. `ModelFactoryMethod.tsx` — factory method parameter type
 5. `PropertySerializer.tsx` — serialization write (needs `.ToSerialXxx()` / `.ToString()` value transform)
-Missing any of these causes CS0266/CS1503 type conversion errors.
+   Missing any of these causes CS0266/CS1503 type conversion errors.
 
 ### Literal Property Initialization (Task 15.8)
 
@@ -3162,12 +3181,14 @@ Missing any of these causes CS0266/CS1503 type conversion errors.
 **Input-only guard**: Only add property initializers for models with `UsageFlags.Input`. Output-only models are only created via the serialization constructor (which sets all properties), so initializers are redundant and break scenario tests.
 
 **`enumvalue` type handling**: TCGC `SdkEnumValueType` (kind: `"enumvalue"`) represents a specific enum member literal (like `ExtendedEnum.EnumValue2`). It must be handled in:
+
 - `isConstructorParameter()` → exclude (same as `"constant"`)
 - `getWriteMethodInfo()` → delegate to parent `enumType` via `getEnumWriteInfo()`
 - `getReadExpression()` → delegate to parent `enumType` via `getEnumReadExpression()`
 - Property initializers → use refkey for `EnumType.MemberName` expression
 
 **`unknown` type handling**: TCGC `unknown` kind maps to `BinaryData` in C#.
+
 - Serialization: `writer.WriteRawValue(Property)` — writes BinaryData as raw JSON
 - Deserialization: `BinaryData.FromString(jsonProperty.Value.GetRawText())` — reads raw JSON text
 
@@ -3177,6 +3198,7 @@ Missing any of these causes CS0266/CS1503 type conversion errors.
 
 **Gotcha: Legacy emitter uses BinaryData for complex additional property types.**
 For additional properties from `extends Record<T>` or `...Record<T>`, the C# type mapping is:
+
 - Simple scalars (float, string, int, bool) → typed dictionary (e.g., `IDictionary<string, float>`)
 - Model types → `IDictionary<string, BinaryData>` (tests use ModelReaderWriter.Read/Write for conversion)
 - Array types → `IDictionary<string, BinaryData[]>` (each array element is BinaryData)
@@ -3196,15 +3218,19 @@ Models with multiple spread Record<T> types (e.g., `model M { ...Record<string>;
 ## Paging: CreateNextRequest methods (task 15.20)
 
 ### Gotcha: Missing CreateNextXxxRequest in RestClient
+
 The CollectionResultFile generates calls to `_client.CreateNext{Op}Request(nextPageUri, _options)` for next-link paging, but RestClientFile did not generate these methods. Added `CreateNextRequestMethod` component that generates the next-page request factory method (handles absolute/relative URI, Accept header, same classifier as original operation).
 
 ### Gotcha: String vs Uri next-link property types
+
 Some TypeSpec specs define next-link properties as `string` instead of `url`. The TCGC `nextLinkSegments` last segment's type has `kind === "string"` for string properties. CollectionResultFile now detects this via `isStringType()` and generates explicit `new Uri(nextLink)` conversion code for both GetRawPages and GetContinuationToken methods.
 
 ### Gotcha: ContinuationToken namespace collision
+
 When a sub-client is named "ContinuationToken", it collides with `System.ClientModel.ContinuationToken`. The `isSystemTypeNameCollision` check in package-name.ts now includes "ContinuationToken" so sub-client field and return types use FQN, preventing Alloy from adding a conflicting `using` directive.
 
 ### Design Decision: Approach for CreateNextRequest
+
 **Chosen**: Generate as a separate component (`CreateNextRequestMethod`) rendered after all regular `CreateRequestMethod` components. Uses raw string body pattern (matching existing `buildRequestBody`) with hardcoded next-page URI handling.
 **Rejected**: Modifying `CreateRequestMethod` to conditionally render a next-link variant — too complex, hard to understand, and the next-page request has completely different URI construction logic (no path/query building, just URI forwarding).
 
@@ -3213,18 +3239,22 @@ When a sub-client is named "ContinuationToken", it collides with `System.ClientM
 When `@encode(string)` is applied to a numeric TypeSpec type, the wire format is a JSON string instead of a JSON number. TCGC preserves the original `kind` (e.g., `"uint32"`) but sets `encode: "string"` on the `SdkBuiltInType`.
 
 ### C# type mapping rules
+
 - **Required numeric + @encode(string)**: Keep native C# type (e.g., `long`, `byte`). Serialize with `WriteStringValue(Value.ToString())`, deserialize with `NativeType.Parse(GetString())`.
 - **Optional numeric + @encode(string)**: Use `object` C# type (not `uint?`). Serialize with `WriteStringValue(Value.ToString())`, deserialize with `GetString()` (stores raw string).
 
 ### TCGC optionality representation
+
 TCGC does NOT always wrap optional types in `SdkNullableType`. Instead, `property.optional === true` indicates optionality. Don't rely solely on `type.kind === "nullable"` to detect optional properties — always check `property.optional` when available.
 
 ### Pre-existing issue: raw bytes request body
+
 The `BinaryContentHelper.FromObject()` helper attempts JSON parsing on all input, which fails for raw binary data (e.g., PNG images sent as octet-stream). Operations with non-JSON byte body parameters need `BinaryContent.Create()` instead. Tracked in `.expected-failures`.
 
 ## Design Decisions
 
 ### Bytes response convenience methods return ClientResult<BinaryData>
+
 **Chosen**: Generate `ClientResult<BinaryData>` for bytes responses, extracting content via `result.GetRawResponse().Content`.
 **Rejected**: Keep untyped `ClientResult` — this doesn't match the legacy emitter and forces callers to manually extract binary content.
 **Reason**: The legacy emitter generates typed convenience methods for bytes responses. The content extraction pattern (`GetRawResponse().Content`) is different from model responses (explicit operator cast) because `BinaryData` doesn't define a `ClientResult` conversion operator.
@@ -3242,6 +3272,7 @@ The `BinaryContentHelper.FromObject()` helper attempts JSON parsing on all input
 **Pattern:** Convenience methods return `ClientResult<T>` for ALL response types, not just models.
 
 **Deserialization by type:**
+
 - **Model**: `(ModelType)result` — explicit operator
 - **Bytes/Unknown**: `result.GetRawResponse().Content` — BinaryData directly
 - **Scalar** (string, int, bool, float, decimal): `result.GetRawResponse().Content.ToObjectFromJson<T>()`
@@ -3265,6 +3296,7 @@ The `decimal128` TCGC kind must be handled alongside `decimal` in ALL type-mappi
 ## Design Decisions
 
 ### Task 15.11: Typed convenience returns for non-model types
+
 **Chosen**: Use `ToObjectFromJson<T>()` for deserialization of scalars, simple arrays, simple dicts. Use enum-specific patterns (extension method for fixed, constructor for extensible).
 **Rejected**: JsonDocument/JsonElement manual parsing for all types — too complex for the common scalar/array/dict cases where `ToObjectFromJson` works correctly.
 **Rejected**: Generate explicit operators on scalar/collection types (like models have) — would require generating infrastructure code for every possible return type combination.
@@ -3272,12 +3304,15 @@ The `decimal128` TCGC kind must be handled alongside `decimal` in ALL type-mappi
 ## Server Template Constructor Parameters
 
 ### Problem
+
 Server URL template parameters (defined via `@server` decorator) that are not the primary endpoint, not API version, and don't have constant values need to become constructor parameters. Examples: `ClientType` enum in client/structure specs, `serviceDeploymentVersion` string in resiliency/srv-driven specs.
 
 ### How TCGC represents them
+
 These are `SdkPathParameter` objects in `SdkEndpointType.templateArguments` (accessed via `getEndpointParameter().type.templateArguments`). They are NOT in `client.clientInitialization.parameters` as separate entries — they're nested inside the endpoint parameter's type.
 
 ### How to handle them
+
 1. Use `getServerTemplateConstructorParams()` from `client-params.ts` to extract them
 2. For field/param types: use `refkey(param.type)` for enum/model types, `"string"` for primitives
 3. For URL construction: use `_fieldName.ToSerialString()` for fixed enums, `_fieldName` for strings
@@ -3285,24 +3320,29 @@ These are `SdkPathParameter` objects in `SdkEndpointType.templateArguments` (acc
 5. Ensure `collectRootTypes()` collects types from endpoint template arguments to prevent unreferenced type removal
 
 ### Design Decision
+
 Approach: Extract template params as constructor params at the ClientFile level, matching the legacy emitter's behavior. Rejected approach: modifying `getClientMethodParameters()` to return endpoint template params as method params (would conflate two different parameter kinds and require changes in many places).
 
 ## Versioning Spec Model Namespaces
 
 ### Finding
+
 For versioned specs (e.g., versioning/removed, versioning/added), the legacy emitter puts models in the ROOT namespace (`Versioning.Removed`), NOT in versioned sub-namespaces (`Versioning.Removed.V1`). Only the Context class goes in the versioned sub-namespace. The new emitter already matches this behavior for models.
 
 ## Protocol Method Parameter Defaults (Task 15.14)
+
 **Problem**: CS0121 ambiguous overload errors when both protocol and convenience methods have all-optional parameters.
 **Rule**: Protocol method parameters NEVER get `= default` when a convenience method exists. `RequestOptions options = null` only when all non-options params are body-only (BinaryContent type always differs from convenience's typed model, so the compiler can disambiguate). This matches the legacy emitter behavior.
 **Location**: `src/components/clients/ProtocolMethod.tsx` — `hasOnlyBodyParams` and `optionsDefault` logic.
 
 ## Custom HTTP Auth Schemes (Task 15.14)
+
 **Problem**: `extractAuthFromScheme()` only handled bearer HTTP auth, returning `undefined` for custom schemes like "SharedAccessKey".
 **Fix**: Custom HTTP schemes map to `ApiKeyCredential` with headerName="Authorization" and prefix=scheme.scheme. The pipeline creation now passes the prefix as a 3rd argument to `CreateHeaderApiKeyPolicy`.
 **Location**: `src/utils/client-params.ts` `extractAuthFromScheme()` case "http".
 
 ## Pre-existing Runtime Failures Uncovered by Task 15.14
+
 1. **MediaType text/plain**: `BinaryContentHelper.FromObject()` JSON-serializes text/plain strings. Needs raw text handling.
 2. **Resiliency V1**: Generated from main.tsp (v2 spec) instead of old.tsp (v1 spec), producing "client:v2" in URL when "client:v1" is expected.
 
@@ -3348,18 +3388,22 @@ Each TypeScript emitter wraps the parent's `$onEmit` function and injects additi
 ### Azure Data Plane — Key Components
 
 #### Emitter (TypeScript side)
+
 **Location:** `submodules/azure-sdk-for-net/eng/packages/http-client-csharp/emitter/src/emitter.ts`
 
 The Azure emitter wraps the base emitter and adds:
+
 - Default options: `generator-name`, `emitter-extension-path`, `license`, `package-name`
 - Additional decorator: `@useSystemTextJsonConverter` (injected into all compilations)
 - `model-namespace` validation (models in `.Models` sub-namespace)
 - `generateMetadataFile()` — writes `metadata.json` with API version mapping from `@versioned` decorator
 
 #### Generator (C# side)
+
 **Location:** `submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/`
 
 **AzureClientGenerator** registers 11 visitors in this order:
+
 1. `ModelFactoryRenamerVisitor` — Renames model factory classes
 2. `NamespaceVisitor` — Moves models to `.Models` sub-namespace
 3. `DistributedTracingVisitor` — Adds `ClientDiagnostics` + diagnostic scopes to all methods
@@ -3373,6 +3417,7 @@ The Azure emitter wraps the base emitter and adds:
 11. `XmlSerializableVisitor` — Azure XML serialization patterns
 
 **AzureTypeFactory** maps provider instances (replacing System.ClientModel equivalents):
+
 ```
 System.ClientModel type         → Azure.Core equivalent
 ─────────────────────────────────────────────────────────
@@ -3388,6 +3433,7 @@ PipelineMessageClassifier       → ResponseClassifier
 ```
 
 **AzureTypeFactory** also maps Azure.Core scalar types:
+
 ```
 TypeSpec type                   → C# type
 ─────────────────────────────────────────
@@ -3401,6 +3447,7 @@ Azure.Core.uuid                 → string
 ```
 
 **Providers** (5 files in `Providers/`):
+
 - `AzureCollectionResultDefinition` — Azure-specific collection/list result
 - `ClientBuilderExtensionsDefinition` — Client builder extensions
 - `RawRequestUriBuilderExtensionsDefinition` — URI builder extensions
@@ -3410,6 +3457,7 @@ Azure.Core.uuid                 → string
 #### Test Structure
 
 The Azure Spector.Tests project has 27 Azure-specific test `.cs` files under `Http/Azure/`:
+
 - `Azure/Core/Basic` — Basic Azure client operations
 - `Azure/Core/Lro/Standard` and `Azure/Core/Lro/Rpc` — LRO patterns
 - `Azure/Core/Model` — Azure model handling
@@ -3424,6 +3472,7 @@ The Azure Spector.Tests project has 27 Azure-specific test `.cs` files under `Ht
 - `Azure/Versioning/PreviewVersion/V1` and `V2` — Preview version handling
 
 The Azure .csproj also references `Azure.Core` NuGet and links 10 shared source files from `sdk/core/Azure.Core/src/Shared/`:
+
 - `AzureKeyCredentialPolicy.cs`, `RawRequestUriBuilder.cs`, `AppContextSwitchHelper.cs`
 - `ClientDiagnostics.cs`, `DiagnosticScopeFactory.cs`, `DiagnosticScope.cs`
 - `HttpMessageSanitizer.cs`, `TypeFormatters.cs`, `RequestHeaderExtensions.cs`
@@ -3432,9 +3481,11 @@ The Azure .csproj also references `Azure.Core` NuGet and links 10 shared source 
 ### Azure Management (ARM) — Key Components
 
 #### Emitter (TypeScript side)
+
 **Location:** `submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/emitter/src/`
 
 The mgmt emitter wraps the Azure emitter and adds three transformations via `updateCodeModel()`:
+
 1. `transformSubscriptionIdParameters()` — Moves subscriptionId from client constructor to method parameters
 2. `updateClients()` — Applies ARM resource detection and schema
 3. `setFlattenProperty()` — Propagates `@flatten` decorator metadata
@@ -3443,42 +3494,61 @@ The mgmt emitter wraps the Azure emitter and adds three transformations via `upd
 This is the core ARM feature. It analyzes operation URL paths to identify ARM resources:
 
 Path pattern: `/subscriptions/{id}/resourceGroups/{rg}/providers/Microsoft.Foo/bars/{barName}`
+
 - Extracts: resource type = `Microsoft.Foo/bars`
 - Determines: scope = `ResourceGroup`
 - Classifies operations: Create, Read, Update, Delete, List, Action
 
 Two detection modes:
+
 - **Legacy** (`use-legacy-resource-detection=true`): Custom `buildArmProviderSchema()` function
 - **New** (`use-legacy-resource-detection=false`): Uses `resolveArmResources()` from `@azure-tools/typespec-azure-resource-manager`
 
 **Resource Metadata** (`resource-metadata.ts`, 585 lines):
 Key data structures:
+
 ```typescript
 interface ResourceMetadata {
-  resourceIdPattern: string;       // /subscriptions/{id}/resourceGroups/{rg}/...
-  resourceType: string;            // Microsoft.Foo/bars
-  methods: ResourceMethod[];       // CRUD operations
-  resourceScope: ResourceScope;    // Tenant|Subscription|ResourceGroup|ManagementGroup|Extension
-  parentResourceId?: string;       // For child resources
-  singletonResourceName?: string;  // For singletons
+  resourceIdPattern: string; // /subscriptions/{id}/resourceGroups/{rg}/...
+  resourceType: string; // Microsoft.Foo/bars
+  methods: ResourceMethod[]; // CRUD operations
+  resourceScope: ResourceScope; // Tenant|Subscription|ResourceGroup|ManagementGroup|Extension
+  parentResourceId?: string; // For child resources
+  singletonResourceName?: string; // For singletons
 }
 
-enum ResourceScope { Tenant, Subscription, ResourceGroup, ManagementGroup, Extension }
-enum ResourceOperationKind { Action, Create, Delete, Read, List, Update }
+enum ResourceScope {
+  Tenant,
+  Subscription,
+  ResourceGroup,
+  ManagementGroup,
+  Extension,
+}
+enum ResourceOperationKind {
+  Action,
+  Create,
+  Delete,
+  Read,
+  List,
+  Update,
+}
 ```
 
 **Options** (`options.ts`):
+
 ```typescript
 interface AzureMgmtEmitterOptions extends AzureEmitterOptions {
-  "enable-wire-path-attribute"?: boolean;       // default: false
-  "use-legacy-resource-detection"?: boolean;    // default: true
+  "enable-wire-path-attribute"?: boolean; // default: false
+  "use-legacy-resource-detection"?: boolean; // default: true
 }
 ```
 
 #### Generator (C# side)
+
 **Location:** `submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/Azure.Generator.Management/src/`
 
 **ManagementClientGenerator** registers 10 visitors (order matters):
+
 1. `NameVisitor` — ARM naming conventions
 2. `SerializationVisitor` — ARM serialization patterns
 3. `RestClientVisitor` — REST client generation
@@ -3491,6 +3561,7 @@ interface AzureMgmtEmitterOptions extends AzureEmitterOptions {
 10. `WirePathVisitor` — (optional, gated by `enable-wire-path-attribute`)
 
 **Provider System** (17 files generating specific code):
+
 - `ResourceClientProvider` — Client class per resource (CRUD methods)
 - `ResourceCollectionClientProvider` — Collection-level operations (List, CreateOrUpdate)
 - `MockableResourceProvider` — Mockable wrapper for testing
@@ -3503,6 +3574,7 @@ interface AzureMgmtEmitterOptions extends AzureEmitterOptions {
 - `TagMethodProviders/*` (5 files) — Tag resource operations (SetTags, RemoveTags, ReplaceTags)
 
 **FlattenPropertyVisitor** (46KB) — The most complex visitor:
+
 - Detects `@flatten` decorator on model properties
 - Promotes nested property members up to the parent model
 - Adjusts serialization to preserve wire-format compatibility
@@ -3512,6 +3584,7 @@ interface AzureMgmtEmitterOptions extends AzureEmitterOptions {
 #### Test Structure
 
 The mgmt package uses Local test projects (not Spector) with 31 TypeSpec test files:
+
 - Resource type tests: `foo.tsp`, `bar.tsp`, `baz.tsp`, `zoo.tsp`, `joo.tsp`
 - Feature-specific: `flatten-with-customized-property.tsp`, `extensionresources.tsp`, `singleton.tsp`
 - Real-world examples: `redisenterprise.tsp`, `hcivm.tsp`, `chaos.tsp`, `networkaction.tsp`
@@ -3536,6 +3609,7 @@ The new Alloy emitter must replicate these patterns using JSX components rather 
 ## Azure.Core Type Mappings — Design Decision (task 17.1)
 
 **Approach**: Flavor-parameterized override configs
+
 - Added `flavor` prop to `CSharpScalarOverrides` (default: "unbranded")
 - Two separate `Experimental_ComponentOverridesConfig` objects: unbranded and azure
 - Shared override handlers for Union, UnionVariant, Intrinsic (avoid duplication)
@@ -3553,6 +3627,7 @@ The new Alloy emitter must replicate these patterns using JSX components rather 
 ### Azure Pipeline Type Cascade (Task 17.3 analysis)
 
 The 4 listed type swaps (ClientPipeline→HttpPipeline, PipelineMessage→HttpMessage, PipelineRequest→Request, PipelineResponse→Response) require additional implicit swaps to produce compilable Azure C#:
+
 - `RequestOptions` → `RequestContext` (Azure) — extension method params
 - `ClientResult`/`ClientResult<T>` → `Response`/`Response<T>` (Azure) — return types
 - `ClientResultException` → `RequestFailedException` (Azure) — error handling
@@ -3563,6 +3638,7 @@ The 4 listed type swaps (ClientPipeline→HttpPipeline, PipelineMessage→HttpMe
 - `BearerTokenPolicy` → `BearerTokenAuthenticationPolicy` — OAuth
 
 Azure.Core namespace layout:
+
 - `Azure` namespace: Response, Response<T>, RequestFailedException, RequestContext, ErrorOptions, AzureKeyCredential
 - `Azure.Core` namespace: ClientOptions, ResourceIdentifier, AzureKeyCredentialPolicy, TokenCredential
 - `Azure.Core.Pipeline` namespace: HttpPipeline, HttpMessage, HttpPipelineBuilder, HttpPipelinePolicy, BearerTokenAuthenticationPolicy
@@ -3570,3 +3646,39 @@ Azure.Core namespace layout:
 Azure `HttpPipelineBuilder.Build()` takes only 2 args: `(ClientOptions, HttpPipelinePolicy[])` — no per-call/per-retry/before-transport separation like unbranded `ClientPipeline.Create()`.
 
 Azure extension methods file uses `context.Parse()` to extract `(CancellationToken userCancellationToken, ErrorOptions errorOptions)` tuple from `RequestContext`.
+
+## Design Decisions
+
+### Task 17.3: Pipeline types utility approach
+**Chosen**: Single `getPipelineTypes(flavor)` utility + inline flavor branching in components.
+**Rejected**: Separate Azure-specific component files (e.g., `AzureClientFile.tsx`).
+**Reason**: Less code duplication; the differences are localized to type references and a few structural patterns. Follows the existing flavor pattern in `CSharpTypeExpression.tsx`. A pipeline-types utility centralizes the type mapping so all components use the same consistent references.
+
+### Task 17.3: Azure pipeline creation pattern
+Azure uses `HttpPipelineBuilder.Build(options, policies[])` which differs from unbranded `ClientPipeline.Create(options, pre[], auth[], post[])`. Azure omits `UserAgentPolicy` because HttpPipelineBuilder adds it internally. Created separate `buildAzurePipelineCreateLine()` function rather than parameterizing the existing `buildPipelineCreateLine()` because the API shapes are fundamentally different.
+
+## Gotchas
+
+### @useAuth decorator placement for TCGC
+The `@useAuth` decorator MUST be placed BEFORE `@service namespace` declaration in TypeSpec, not on individual operations. When placed on operations, TCGC does not populate `client.clientInitialization.parameters` with credential parameters. This applies to both Azure and unbranded flavors.
+
+Example (correct):
+```typespec
+@useAuth(ApiKeyAuth<ApiKeyLocation.header, "x-api-key">)
+@service
+namespace TestService;
+```
+
+### Alloy Property `virtual` prop with `false || undefined`
+When using `virtual={booleanValue || undefined}` on an Alloy `<Property>` component, `false || undefined` correctly evaluates to `undefined` (prop not passed), so the property renders without `virtual`. The pattern works correctly — the initial test failure was due to overly broad assertion checking for "virtual" anywhere in the file (which matched virtual methods, not the property).
+
+### Azure OAuth2 scopes syntax in TypeSpec tests
+OAuth2 flows in TypeSpec tests should NOT include inline `scopes` objects. Use the simple flow format:
+```typespec
+@useAuth(OAuth2Auth<[{
+  type: OAuth2FlowType.implicit,
+  authorizationUrl: "https://login.example.com/authorize",
+  tokenUrl: "https://login.example.com/token"
+}]>)
+```
+Including `scopes: [{ value: "..." }]` causes compilation failures in TCGC.

@@ -1607,17 +1607,11 @@ describe("RestClientFile", () => {
       outputs["src/Generated/TestServiceClient.RestClient.cs"] ?? "";
 
     // RFC7231 encoding → DateTime_RFC7231
-    expect(restClient).toContain(
-      "SerializationFormat.DateTime_RFC7231",
-    );
+    expect(restClient).toContain("SerializationFormat.DateTime_RFC7231");
     // Unix timestamp encoding → DateTime_Unix
-    expect(restClient).toContain(
-      "SerializationFormat.DateTime_Unix",
-    );
+    expect(restClient).toContain("SerializationFormat.DateTime_Unix");
     // RFC3339 encoding → DateTime_RFC3339
-    expect(restClient).toContain(
-      "SerializationFormat.DateTime_RFC3339",
-    );
+    expect(restClient).toContain("SerializationFormat.DateTime_RFC3339");
   });
 
   /**
@@ -1658,13 +1652,9 @@ describe("RestClientFile", () => {
       outputs["src/Generated/TestServiceClient.RestClient.cs"] ?? "";
 
     // RFC7231 query → DateTime_RFC7231
-    expect(restClient).toContain(
-      "SerializationFormat.DateTime_RFC7231",
-    );
+    expect(restClient).toContain("SerializationFormat.DateTime_RFC7231");
     // Unix timestamp query → DateTime_Unix
-    expect(restClient).toContain(
-      "SerializationFormat.DateTime_Unix",
-    );
+    expect(restClient).toContain("SerializationFormat.DateTime_Unix");
   });
 
   /**

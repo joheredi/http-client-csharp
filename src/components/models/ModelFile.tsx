@@ -183,7 +183,10 @@ export function ModelFile(props: ModelFileProps) {
   );
 
   return (
-    <SourceFile path={`src/Generated/Models/${modelName}.cs`} using={additionalUsings}>
+    <SourceFile
+      path={`src/Generated/Models/${modelName}.cs`}
+      using={additionalUsings}
+    >
       {header}
       {"\n\n"}
       <Namespace name={effectiveNamespace}>

@@ -1351,7 +1351,7 @@
           "title": "Azure pipeline type infrastructure and client class generation",
           "description": "Add Azure.Core.Pipeline builtin library types (HttpPipeline, HttpMessage, HttpPipelineBuilder, HttpPipelinePolicy) and Azure namespace types (Request, Response, RequestContext, RequestFailedException, ClientOptions, AzureKeyCredentialPolicy, BearerTokenAuthenticationPolicy). Create src/utils/pipeline-types.ts utility that returns correct type references per flavor. Update ClientFile.tsx to use HttpPipeline for Azure flavor (Pipeline property type + virtual modifier, constructor parameters, pipeline creation via HttpPipelineBuilder.Build(), sub-client factory methods). Update ClientPipelineExtensionsFile.tsx with complete Azure version (HttpPipeline extensions, RequestContext params, Response returns, RequestFailedException). Unit tests for Azure-flavored client class generation.",
           "phase": "phase-17",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "17.1"
           ],

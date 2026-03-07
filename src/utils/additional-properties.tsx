@@ -11,7 +11,10 @@
  */
 
 import type { Children } from "@alloy-js/core";
-import type { SdkModelType, SdkType } from "@azure-tools/typespec-client-generator-core";
+import type {
+  SdkModelType,
+  SdkType,
+} from "@azure-tools/typespec-client-generator-core";
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import { System } from "../builtins/system.js";
 import { unwrapNullableType } from "./nullable.js";
@@ -73,7 +76,8 @@ export function getAdditionalPropertiesDefiningModel(
   model: SdkModelType,
 ): SdkModelType | undefined {
   if (model.additionalProperties !== undefined) return model;
-  if (model.baseModel) return getAdditionalPropertiesDefiningModel(model.baseModel);
+  if (model.baseModel)
+    return getAdditionalPropertiesDefiningModel(model.baseModel);
   return undefined;
 }
 
@@ -87,10 +91,24 @@ export function getAdditionalPropertiesDefiningModel(
  * they require ModelReaderWriter for round-trip serialization.
  */
 const SIMPLE_SCALAR_KINDS = new Set([
-  "string", "boolean",
-  "int8", "uint8", "int16", "uint16", "int32", "uint32", "int64", "uint64",
-  "float32", "float64", "decimal", "decimal128",
-  "integer", "safeint", "numeric", "float",
+  "string",
+  "boolean",
+  "int8",
+  "uint8",
+  "int16",
+  "uint16",
+  "int32",
+  "uint32",
+  "int64",
+  "uint64",
+  "float32",
+  "float64",
+  "decimal",
+  "decimal128",
+  "integer",
+  "safeint",
+  "numeric",
+  "float",
 ]);
 
 /**

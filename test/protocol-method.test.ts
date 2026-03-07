@@ -662,16 +662,17 @@ describe("ProtocolMethod", () => {
     const clientFile = outputs["src/Generated/TestServiceClient.cs"] ?? "";
 
     // Protocol method must NOT have = default for path param (avoids overload ambiguity)
-    expect(clientFile).toContain(
-      "string name, RequestOptions options",
-    );
+    expect(clientFile).toContain("string name, RequestOptions options");
 
     // No assertion in protocol method for optional path params
     // Find protocol method bodies (after "RequestOptions options")
     const protocolSections = clientFile.split("RequestOptions options)");
     // Check each protocol method body
     for (let i = 1; i < protocolSections.length; i++) {
-      const body = protocolSections[i].slice(0, protocolSections[i].indexOf("}"));
+      const body = protocolSections[i].slice(
+        0,
+        protocolSections[i].indexOf("}"),
+      );
       expect(body).not.toContain("Argument.AssertNotNullOrEmpty");
       expect(body).not.toContain("Argument.AssertNotNull");
     }
