@@ -2,53 +2,45 @@
 # One path per line (relative to specs root). Lines starting with # are comments.
 
 # ============================================================
-# AZURE DATA PLANE SPECS — Baseline (task 16.4, 2026-03-06)
+# AZURE DATA PLANE SPECS — Triage (task 20.6, 2026-03-07)
 # ============================================================
-# All Azure data plane specs emit and compile with flavor=azure.
-# Generated code uses System.ClientModel (not Azure.Core) until
-# tasks 17.1–17.10 add Azure-specific type mappings.
-# Test files are excluded in Spector.Tests.csproj (task 16.3)
-# until the generated API surface matches Azure.Core expectations.
+# All 32 Azure data plane specs emit successfully with flavor=azure.
+# However, ALL 32 specs fail to build under net8.0 TFM (1904 CS errors).
+# They build fine under netstandard2.0. Test files are linked from the
+# legacy submodule (task 20.5) but Azure tests don't run because
+# SpectorTestAttribute silently skips them.
 #
-# Status: ✅ = emits + compiles, ❌ = ignored (generation/build fails)
+# Root cause: Generated infrastructure files (ClientPipelineExtensions.cs,
+# ErrorResult.cs, RestClient.cs) use wrong API surface under net8.0:
+#   - CS0246: HttpMessage type not found (should be PipelineMessage)
+#   - CS1501: CreateMessage(Uri, string, Classifier) — wrong overload
+#   - CS1061: RequestHeaders.Set, HttpMessage.Apply — methods don't exist
+#   - CS1729: Response<T> 2-arg constructor doesn't exist
+#   - CS1061: RequestContext.Parse() doesn't exist
+#   - CS1503: RequestContext → CancellationToken, BinaryContent → RequestContent
 #
-# --- azure/client-generator-core (15 specs) — ✅ all pass ---
+# These are NOT in .testignore — specs are still generated to preserve
+# visibility into emitter changes. The net8.0 build errors are pre-existing
+# (also affect 10 non-Azure specs with identical error patterns).
+#
+# --- azure/client-generator-core (15 specs) — emits ✅, net8.0 build ❌ ---
 # access, alternate-type, api-version/{header,path,query},
 # client-default-value, client-initialization/{default,individually,individuallyParent},
 # client-location/{move-method-parameter-to-client,move-to-existing-sub-client,
 #   move-to-new-sub-client,move-to-root-client},
 # deserialize-empty-string-as-null, flatten-property, hierarchy-building,
 # next-link-verb, override, usage
-# Tests blocked on: Azure.Response, Azure.RequestContext (tasks 17.1, 17.3)
 #
-# --- azure/core (7 specs) — 4 pass, 3 blocked on Azure.Core NuGet ---
+# --- azure/core (7 specs) — emits ✅, net8.0 build ❌ ---
 # basic, lro/rpc, lro/standard, model, page, scalar, traits
-# Tests blocked on: Azure.Response, Azure.AsyncPageable<T>, Azure.Operation<T>,
-#   Azure.WaitUntil (tasks 17.1, 17.3, 17.5)
-# Build unblocked (3 specs): Task 17.2 added Azure.Core PackageReference.
 #
-# --- azure/encode (1 spec) — ✅ passes ---
-# duration
-# Tests blocked on: Azure.Response (task 17.1)
+# --- azure/encode (1), azure/example (1), azure/payload (1) — emits ✅, net8.0 build ❌ ---
+# --- azure/special-headers (1), azure/versioning/previewVersion (v1/v2) — emits ✅, net8.0 build ❌ ---
 #
-# --- azure/example (1 spec) — ✅ passes ---
-# basic
-# Tests blocked on: Azure.Response (task 17.1)
-#
-# --- azure/payload (1 spec) — ✅ passes ---
-# pageable
-# Tests blocked on: Azure.AsyncPageable<T> (tasks 17.1, 17.3)
-#
-# --- azure/special-headers (1 spec) — ✅ passes ---
-# client-request-id
-# Tests blocked on: Azure.Core.Pipeline.HttpPipeline (tasks 17.3, 17.7)
-#
-# --- azure/versioning (1 spec + v1/v2 versions) — ✅ passes ---
-# previewVersion (v1, v2)
-# Tests blocked on: Azure.Response (task 17.1)
-#
-# Total: 32 Azure data plane specs emit + compile (0 failures)
-# Total: 27 Azure test files excluded (awaiting phase 17)
+# Total: 32 Azure data plane specs emit (0 emit failures)
+# Total: 32 Azure data plane specs fail net8.0 build (1904 CS errors)
+# Total: 27 Azure test files linked (none run — SpectorTestAttribute skips)
+# Total non-Azure net8.0 build failures: 10 specs (584 CS errors, same patterns)
 
 # ============================================================
 # AZURE ARM RESOURCE-MANAGER SPECS — ❌ ignored

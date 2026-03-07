@@ -6470,3 +6470,27 @@ Fixed CS0305, CS0508, CS0534, CS0115 compilation errors in Azure-flavored paging
 - Build passes, all unit tests pass
 - ⚠️ Pre-existing E2E failures remain (CS0246 HttpMessage, CS1501 CreateMessage in renamed-operation — unrelated to Azure tests)
 - 27 Azure test `.cs` files now included in the Spector.Tests build
+
+## Task 20.6 — Run and triage Azure data plane e2e tests
+**Date**: 2026-03-07
+**What**: Ran `pnpm emit:e2e` (109 specs emitted, 0 failures) then `pnpm test:e2e` to triage Azure data plane tests after task 20.5 enabled 27 Azure test files.
+
+### Triage Results
+- **emit:e2e**: All 109 specs (including 32 Azure data plane) emit successfully ✅
+- **dotnet build**: 2488 CS errors across 42 projects (32 Azure + 10 non-Azure), ALL under net8.0 TFM only
+- **dotnet test**: 622 tests total — 569 passed, 39 failed, 14 skipped
+- **Test analysis**: 0 unexpected failures, 0 unexpected skips, 0 stale entries ✅
+- **Azure tests**: None actually ran — SpectorTestAttribute silently skips all 27 Azure test classes
+- **Build test**: FAILS (pre-existing — was failing before task 20.5 due to non-Azure net8.0 errors)
+
+### Key Findings
+1. ALL 32 Azure data plane specs have identical net8.0 build errors (HttpMessage, CreateMessage, RequestContext.Parse etc.)
+2. 10 non-Azure specs have the same errors — pre-existing before this task
+3. All projects build fine under netstandard2.0
+4. No changes needed to .expected-failures or .expected-skips
+5. Updated .testignore Azure data plane comments to accurately reflect current state
+
+### Files Changed
+- `test/e2e/.testignore` — updated Azure data plane comments section with accurate triage state
+- `docs/knowledge.md` — documented net8.0 build error patterns and triage findings
+- `docs/progress.txt` — this entry

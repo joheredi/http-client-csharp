@@ -4276,3 +4276,26 @@ Base class `CollectionResult` abstract methods use `ClientResult` for parameters
 
 ### Azure model explicit operators accept Response, not ClientResult
 Azure model types define `explicit operator ModelType(Response result)`, while unbranded use `explicit operator ModelType(ClientResult result)`. When casting a `ClientResult page` parameter to a model type in Azure-flavored code, an intermediate downcast is needed: `((ModelType)(Response)page)`. This works because `page` is `ClientResult` at compile-time but `Response` at runtime.
+
+## E2E Triage: net8.0 Build Errors Across ALL Generated Projects (task 20.6)
+
+### All 42 generated e2e projects with net8.0 errors share the same root cause
+Generated projects multi-target `netstandard2.0;net8.0`. Under net8.0, 42 projects (32 Azure + 10 non-Azure) have identical build errors in their infrastructure files. The errors are all in generated code that uses wrong API surface for the net8.0 build:
+- `HttpMessage` type (should be `PipelineMessage` from System.ClientModel.Primitives)
+- `CreateMessage(Uri, string, Classifier)` — wrong overload signature
+- `RequestHeaders.Set()` / `HttpMessage.Apply()` — methods don't exist
+- `Response<T>(T, Response)` — 2-arg constructor doesn't exist
+- `RequestContext.Parse()` → `(CancellationToken, ErrorOptions)` — method doesn't exist
+- `Azure.RequestContext` → `CancellationToken` conversion fails
+- `BinaryContent` → `RequestContent` conversion fails
+
+These all build fine under `netstandard2.0`. The Spector.Tests project (net10.0) references netstandard2.0 assemblies.
+
+### Azure data plane tests don't actually run
+Even though task 20.5 enabled 27 Azure test files, SpectorTestAttribute silently skips all Azure tests at runtime. They don't appear in passed/failed/skipped counts at all. The 622 total tests are all from non-Azure specs.
+
+### The "should build" test failure is pre-existing
+The `pnpm test:e2e` build test was failing before task 20.5 due to 10 non-Azure specs (client/namespace, client/naming, client/naming/enum-conflict, client/overload, client/structure/default, client/structure/multi-client, client/structure/renamed-operation, client/structure/two-operation-group, resiliency/srv-driven/v1, resiliency/srv-driven/v2) having the same net8.0 build errors. Adding Azure specs didn't change the pass/fail outcome — it was already failing.
+
+### Non-Azure specs generating Azure-flavored code
+10 non-Azure specs generate code using Azure.Core types (HttpMessage, RequestContext, RequestContent) under net8.0. This suggests the net8.0 conditional compilation in generated infrastructure files applies Azure-flavor APIs incorrectly. Root cause investigation needed.
