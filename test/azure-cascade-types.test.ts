@@ -169,8 +169,12 @@ describe("Azure pipeline types - ConvenienceMethod", () => {
     expect(clientFile).toBeDefined();
 
     // Azure convenience methods return Response<T> (Models. prefix from model-namespace)
-    expect(clientFile).toContain("public virtual Response<Models.Widget> GetWidget(");
-    expect(clientFile).toContain("Task<Response<Models.Widget>> GetWidgetAsync(");
+    expect(clientFile).toContain(
+      "public virtual Response<Models.Widget> GetWidget(",
+    );
+    expect(clientFile).toContain(
+      "Task<Response<Models.Widget>> GetWidgetAsync(",
+    );
 
     // Azure convenience methods use Response.FromValue with result directly
     expect(clientFile).toContain("Response.FromValue(");

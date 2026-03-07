@@ -5899,3 +5899,26 @@ Created task 17.8.1 to track the fix. The generated code is correct — only tes
 - CS0534: ErrorResult<T> missing GetRawResponse() override
 - CS0246: Missing ModelReaderWriterContext/BuildableAttribute types
 These existed before task 17.8.1 and are tracked separately.
+
+## Task 17.9 — Generate metadata.json for Azure packages
+**Date:** 2026-03-07
+**Status:** Done
+
+**What was done:**
+- Added `generateMetadataFile()` function to `src/emitter.tsx` that generates a `metadata.json` file when `flavor === "azure"`.
+- The function reads `sdkContext.sdkPackage.metadata.apiVersions` (a `Map<string, string>`) from TCGC and outputs JSON with the structure `{ "apiVersions": { "ServiceName": "version" } }`.
+- If no API versions are specified, outputs `{ "apiVersions": {} }`.
+- The file is written via `emitFile()` to the emitter output directory root (alongside `src/`), matching the legacy emitter's behavior.
+- Not generated when `flavor === "unbranded"`.
+
+**Design decision:**
+- Chose direct `emitFile()` call after JSX tree rendering over a JSX component approach. metadata.json is plain JSON, not C# code — it doesn't benefit from Alloy's rendering pipeline. This matches the legacy emitter's pattern exactly.
+
+**Tests added (test/azure-metadata.test.ts):**
+1. Versioned Azure service → metadata.json with correct apiVersions mapping
+2. Unversioned Azure service → metadata.json with empty apiVersions `{}`
+3. Unbranded flavor → no metadata.json generated
+4. Formatting → valid JSON with 2-space indentation
+
+**Gotcha discovered:**
+- Azure flavor tests (`AzureHttpTester`) produce 4 warnings from `@azure-tools/typespec-azure-core/union-enums-invalid-kind` about unions not being resolvable as enums. These are benign warnings from Azure Core's linting rules. Use `diagnostics.filter(d => d.severity === "error")` for error-only assertions instead of `expect(diagnostics).toHaveLength(0)` when testing Azure-flavored TypeSpec with simple return types.

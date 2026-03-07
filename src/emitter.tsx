@@ -439,6 +439,17 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
   reorderAllFileHeaders(tree);
   fixAllNamespaceBraceStyles(tree);
   await writeOutputDirectory(context.program, tree, context.emitterOutputDir);
+
+  // Generate metadata.json for Azure packages. This file contains API version
+  // mappings used by Azure SDK automation (e.g., mapping package versions to
+  // supported API versions). Only generated when flavor is "azure".
+  if (options.flavor === "azure") {
+    await generateMetadataFile(
+      context.program,
+      sdkContext,
+      context.emitterOutputDir,
+    );
+  }
 }
 
 /**
@@ -469,6 +480,51 @@ async function writeOutputDirectory(
       }
     }
   }
+}
+
+/**
+ * Generates a metadata.json file containing API version information.
+ *
+ * Azure SDK automation uses this file to map package versions to supported
+ * API versions. The file is written to the emitter output directory root
+ * (alongside `src/`).
+ *
+ * The output structure is:
+ * ```json
+ * {
+ *   "apiVersions": {
+ *     "Azure.Service": "2024-05-01"
+ *   }
+ * }
+ * ```
+ *
+ * If no API versions are specified in the TypeSpec definition, the
+ * `apiVersions` object will be empty `{}`.
+ *
+ * @param program - The TypeSpec program for file writing.
+ * @param sdkContext - The TCGC SDK context containing package metadata.
+ * @param emitterOutputDir - The root output directory for emitted files.
+ */
+async function generateMetadataFile(
+  program: Program,
+  sdkContext: {
+    sdkPackage: { metadata: { apiVersions?: Map<string, string> } };
+  },
+  emitterOutputDir: string,
+): Promise<void> {
+  const apiVersionsMap = sdkContext.sdkPackage.metadata.apiVersions;
+
+  const metadata = {
+    apiVersions:
+      apiVersionsMap && apiVersionsMap.size > 0
+        ? Object.fromEntries(apiVersionsMap)
+        : {},
+  };
+
+  await emitFile(program, {
+    content: JSON.stringify(metadata, null, 2),
+    path: resolvePath(emitterOutputDir, "metadata.json"),
+  });
 }
 
 /**

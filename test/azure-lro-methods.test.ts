@@ -116,7 +116,9 @@ describe("Azure LRO Methods", () => {
     expect(clientFile).toBeDefined();
 
     // Sync convenience method: Operation<Job> (Models. prefix from model-namespace)
-    expect(clientFile).toContain("public virtual Operation<Models.Job> CreateJob(");
+    expect(clientFile).toContain(
+      "public virtual Operation<Models.Job> CreateJob(",
+    );
     expect(clientFile).toContain("WaitUntil waitUntil,");
     expect(clientFile).toContain("Models.Job body,");
     expect(clientFile).toContain(

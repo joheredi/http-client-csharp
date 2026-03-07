@@ -3805,11 +3805,14 @@ The `ModelReaderWriterContextFile` generates to `src/Generated/Models/` (file pa
 ## Alloy Qualified Name Line Wrapping (Task 17.8.1)
 
 **Gotcha:** When Alloy renders a qualified name like `Models.Job` in a `code` template (e.g., `code\`(${typeRef})response\``), the renderer may split the namespace and type across lines:
+
 ```csharp
 response => (Models
     .Job)response
 ```
+
 instead of keeping it on one line:
+
 ```csharp
 response => (Models.Job)response
 ```
@@ -3817,3 +3820,22 @@ response => (Models.Job)response
 **Impact:** Test assertions using `toContain("Models.Job")` will fail because the dot is on the next line. Use regex with `\s*` to handle this: `toMatch(/Models\s*\.Job/)`.
 
 **When this happens:** Only for qualified names inside expressions in `code` templates where the line exceeds the formatter's line width. Simple type references in generic parameters (e.g., `Operation<Models.Job>`) stay on one line.
+
+## Azure flavor diagnostic warnings (2026-03-07)
+
+When using `AzureHttpTester.compileAndDiagnose()`, the azure-core library may produce 4 warnings with code `@azure-tools/typespec-azure-core/union-enums-invalid-kind`. These are benign warnings about union types not being resolvable as enums, triggered by Azure Core's lint rules. Tests should filter to error-level diagnostics only:
+
+```typescript
+const errors = diagnostics.filter((d) => d.severity === "error");
+expect(errors).toHaveLength(0);
+```
+
+The existing Azure tests (azure-diagnostics, azure-cascade-types, etc.) don't hit this because they use model return types, not primitives. When your TypeSpec has operations returning primitives like `string`, these warnings appear.
+
+## Design Decisions
+
+### metadata.json generation (Task 17.9)
+- **Approach chosen:** Direct `emitFile()` call after JSX tree rendering in `$onEmit`.
+- **Why:** metadata.json is plain JSON, not C# code. Using the Alloy JSX pipeline would be overkill. The direct write matches the legacy emitter's pattern exactly and keeps the implementation simple.
+- **Rejected:** JSX component approach (`<SourceFile filetype="json">`) — unnecessary complexity for a static JSON file.
+- **Key API:** `sdkContext.sdkPackage.metadata.apiVersions` is a `Map<string, string>` from TCGC. Convert to plain object via `Object.fromEntries()`.

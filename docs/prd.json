@@ -1532,7 +1532,7 @@
           "title": "Generate metadata.json for Azure packages",
           "description": "The Azure emitter generates a metadata.json file alongside the C# output. This file contains API version mappings from TypeSpec service namespace to API version string.\n\nThe generateMetadataFile() function in the Azure emitter:\n1. Creates an SDK context\n2. Reads the @versioned decorator from the TypeSpec service definition\n3. Builds an apiVersions map (serviceNamespace \u2192 apiVersion)\n4. Writes metadata.json to the Generated/ directory\n\nWhen flavor='azure', generate this metadata.json file.\n\nReference files:\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/emitter/src/emitter.ts (generateMetadataFile function, lines 45-101)",
           "phase": "phase-17",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "16.4"
           ],
