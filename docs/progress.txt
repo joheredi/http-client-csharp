@@ -6461,3 +6461,12 @@ Fixed CS0305, CS0508, CS0534, CS0115 compilation errors in Azure-flavored paging
 ### Results
 - azure/core/basic and azure/core/page compile successfully (previously had 28+ errors)
 - Build passes, 1670 tests pass, pre-existing E2E failures unchanged
+
+## Task 20.5 — Enable Azure data plane test files in Spector.Tests.csproj
+**Date**: 2026-03-07
+**What**: Removed all 12 `<Compile Remove>` blocks (lines 169-214) from `Spector.Tests/Spector.Tests.csproj` that excluded 27 Azure test files. These were added in task 16.3 because Azure type generation wasn't complete. Now that tasks 20.1-20.4 fixed the compilation issues, all Azure data plane test files are re-enabled.
+**Files changed**: `test/e2e/Spector.Tests/Spector.Tests.csproj` (47 lines removed)
+### Results
+- Build passes, all unit tests pass
+- ⚠️ Pre-existing E2E failures remain (CS0246 HttpMessage, CS1501 CreateMessage in renamed-operation — unrelated to Azure tests)
+- 27 Azure test `.cs` files now included in the Spector.Tests build
