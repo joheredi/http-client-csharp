@@ -49,6 +49,9 @@ describe("CSharpEmitterOptions", () => {
       "save-inputs": true,
       "disable-xml-docs": true,
       "package-name": "MyClient",
+      management: true,
+      "enable-wire-path-attribute": true,
+      "use-legacy-resource-detection": false,
       license: {
         name: "MIT",
         company: "Contoso",
@@ -66,6 +69,9 @@ describe("CSharpEmitterOptions", () => {
     expect(opts["save-inputs"]).toBe(true);
     expect(opts["disable-xml-docs"]).toBe(true);
     expect(opts["package-name"]).toBe("MyClient");
+    expect(opts.management).toBe(true);
+    expect(opts["enable-wire-path-attribute"]).toBe(true);
+    expect(opts["use-legacy-resource-detection"]).toBe(false);
     expect(opts.license?.name).toBe("MIT");
     expect(opts.license?.company).toBe("Contoso");
   });
@@ -141,6 +147,9 @@ describe("CSharpEmitterOptionsSchema", () => {
       "package-name",
       "model-namespace",
       "license",
+      "management",
+      "enable-wire-path-attribute",
+      "use-legacy-resource-detection",
     ];
     const schemaKeys = Object.keys(CSharpEmitterOptionsSchema.properties);
     expect(schemaKeys.sort()).toEqual(expectedKeys.sort());
@@ -190,6 +199,29 @@ describe("CSharpEmitterOptionsSchema", () => {
       "keepAll",
     ]);
   });
+
+  /**
+   * Verifies the management-plane schema properties are boolean-typed and
+   * nullable. These options are consumed by phase-19 ARM features (resource
+   * detection, property flattening, subscription-ID transformation).
+   * Missing or incorrect schema types would cause TypeSpec to reject valid
+   * mgmt tspconfig.yaml entries.
+   */
+  it("defines management-plane schema properties as nullable booleans", () => {
+    const mgmt = CSharpEmitterOptionsSchema.properties["management"];
+    expect(mgmt.type).toBe("boolean");
+    expect(mgmt.nullable).toBe(true);
+
+    const wirePath =
+      CSharpEmitterOptionsSchema.properties["enable-wire-path-attribute"];
+    expect(wirePath.type).toBe("boolean");
+    expect(wirePath.nullable).toBe(true);
+
+    const legacyDetection =
+      CSharpEmitterOptionsSchema.properties["use-legacy-resource-detection"];
+    expect(legacyDetection.type).toBe("boolean");
+    expect(legacyDetection.nullable).toBe(true);
+  });
 });
 
 describe("defaultOptions", () => {
@@ -205,6 +237,19 @@ describe("defaultOptions", () => {
     expect(defaultOptions["generate-convenience-methods"]).toBe(true);
     expect(defaultOptions["new-project"]).toBe(false);
     expect(defaultOptions["save-inputs"]).toBe(false);
+  });
+
+  /**
+   * Verifies management-plane option defaults match the legacy mgmt emitter.
+   * - management: false (off by default — data-plane is the common case)
+   * - enable-wire-path-attribute: false (opt-in, same as legacy mgmt emitter)
+   * - use-legacy-resource-detection: true (matches legacy default behavior)
+   * Incorrect defaults would silently change mgmt codegen behavior.
+   */
+  it("has correct default values for management-plane options", () => {
+    expect(defaultOptions.management).toBe(false);
+    expect(defaultOptions["enable-wire-path-attribute"]).toBe(false);
+    expect(defaultOptions["use-legacy-resource-detection"]).toBe(true);
   });
 });
 
@@ -230,6 +275,10 @@ describe("resolveOptions", () => {
     expect(resolved["save-inputs"]).toBe(false);
     // model-namespace defaults to false for unbranded flavor
     expect(resolved["model-namespace"]).toBe(false);
+    // management-plane defaults
+    expect(resolved.management).toBe(false);
+    expect(resolved["enable-wire-path-attribute"]).toBe(false);
+    expect(resolved["use-legacy-resource-detection"]).toBe(true);
   });
 
   /**
@@ -331,5 +380,92 @@ describe("resolveOptions", () => {
     const resolved = resolveOptions(mockContext);
 
     expect(resolved.license).toEqual({ name: "MIT", company: "TestCo" });
+  });
+
+  /**
+   * Verifies that management=true defaults model-namespace to true.
+   * Management-plane libraries always use the .Models sub-namespace —
+   * this default mirrors the legacy mgmt emitter which sets
+   * `context.options["model-namespace"] ??= true`.
+   */
+  it("defaults model-namespace to true when management is true", () => {
+    const mockContext = {
+      options: {
+        management: true,
+      } as CSharpEmitterOptions,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
+
+    const resolved = resolveOptions(mockContext);
+
+    expect(resolved.management).toBe(true);
+    expect(resolved["model-namespace"]).toBe(true);
+  });
+
+  /**
+   * Verifies that user can explicitly disable model-namespace even when
+   * management is true. This supports edge cases where mgmt libraries
+   * need a custom namespace layout.
+   */
+  it("user can explicitly disable model-namespace for management mode", () => {
+    const mockContext = {
+      options: {
+        management: true,
+        "model-namespace": false,
+      } as CSharpEmitterOptions,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
+
+    const resolved = resolveOptions(mockContext);
+
+    expect(resolved.management).toBe(true);
+    expect(resolved["model-namespace"]).toBe(false);
+  });
+
+  /**
+   * Verifies that management-plane sub-options (enable-wire-path-attribute,
+   * use-legacy-resource-detection) pass through resolveOptions and override
+   * their defaults. These options control ARM-specific code generation
+   * behaviors in phase 19 tasks.
+   */
+  it("passes through management-plane sub-options", () => {
+    const mockContext = {
+      options: {
+        flavor: "azure",
+        management: true,
+        "enable-wire-path-attribute": true,
+        "use-legacy-resource-detection": false,
+      } as CSharpEmitterOptions,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
+
+    const resolved = resolveOptions(mockContext);
+
+    expect(resolved.management).toBe(true);
+    expect(resolved["enable-wire-path-attribute"]).toBe(true);
+    expect(resolved["use-legacy-resource-detection"]).toBe(false);
+    // azure flavor + management both default model-namespace to true
+    expect(resolved["model-namespace"]).toBe(true);
+  });
+
+  /**
+   * Verifies that management-plane options retain their defaults when only
+   * management=true is set. This is the typical mgmt tspconfig.yaml where
+   * users enable mgmt mode but don't customise sub-options.
+   */
+  it("retains management sub-option defaults when only management is set", () => {
+    const mockContext = {
+      options: {
+        flavor: "azure",
+        management: true,
+      } as CSharpEmitterOptions,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
+
+    const resolved = resolveOptions(mockContext);
+
+    expect(resolved.management).toBe(true);
+    expect(resolved["enable-wire-path-attribute"]).toBe(false);
+    expect(resolved["use-legacy-resource-detection"]).toBe(true);
   });
 });

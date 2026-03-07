@@ -3891,3 +3891,12 @@ These are used by PagingMethods.tsx and CollectionResultFile.tsx. When adding pa
 ### Gotcha: `buildConditionalHeaderValidation` placement in protocol method
 
 The conditional header validation (ArgumentException for unsupported properties) is injected alongside regular `Argument.AssertNotNull` validation. The combined validation Children array must handle the case where one or both validations are null — use an array with empty-string separator when only one exists.
+
+## Design Decisions
+
+### Management plane options — flat interface with `management` boolean (Task 18.2)
+- **Chosen**: Add `management` boolean + `enable-wire-path-attribute` + `use-legacy-resource-detection` as flat options on `CSharpEmitterOptions`
+- **Rejected**: Adding `"azure-mgmt"` flavor variant — would require changing 40+ files that check `flavor === "azure"` to also handle `"azure-mgmt"`. Too invasive.
+- **Rejected**: Adding only sub-options without `management` master switch — checking `enable-wire-path-attribute !== undefined` is fragile. The `management` boolean is an explicit signal for downstream ARM features.
+- `management: true` implies `model-namespace: true` (matches legacy mgmt emitter behavior)
+- Resolved options guarantee `management`, `enable-wire-path-attribute`, and `use-legacy-resource-detection` are always present via `defaultOptions`

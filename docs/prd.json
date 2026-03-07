@@ -1661,7 +1661,7 @@
           "title": "Add mgmt-specific emitter options",
           "description": "Extend the emitter options to support management-specific configuration:\n\n1. enable-wire-path-attribute (boolean, default false): When true, generate WirePathAttribute on model properties for HTTP wire format tracking\n2. use-legacy-resource-detection (boolean, default true): Choose between legacy custom resource detection logic vs standardized resolveArmResources API\n3. Consider adding a flavor sub-variant: flavor='azure-mgmt' or a separate mgmt-specific option\n\nThe mgmt emitter wraps the Azure emitter and adds these options. Study the options hierarchy:\n- CSharpEmitterOptions (base)\n  \u2192 AzureEmitterOptions (adds namespace, model-namespace)\n    \u2192 AzureMgmtEmitterOptions (adds enable-wire-path-attribute, use-legacy-resource-detection)\n\nReference files:\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/emitter/src/options.ts (AzureMgmtEmitterOptions interface and schema)\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/emitter/src/options.ts (AzureEmitterOptions)\n- src/options.ts (current options)",
           "phase": "phase-18",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "16.1"
           ],

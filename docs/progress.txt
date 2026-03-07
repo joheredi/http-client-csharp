@@ -6014,3 +6014,31 @@ Approach A: Utility-based transformation (chosen over descriptor-based pre-proce
 
 ### E2E note
 E2E build failures (CS0122 ClientDiagnostics, CS0246 ModelReaderWriterBuildable) are pre-existing — same as documented in Task 17.7a.
+
+## Task 18.2 — Add mgmt-specific emitter options (2026-03-07)
+
+### What was done
+- Added 3 new options to `CSharpEmitterOptions` interface in `src/options.ts`:
+  - `management?: boolean` (default false) — master switch for management plane (ARM) features
+  - `enable-wire-path-attribute?: boolean` (default false) — enables WirePathAttribute on model properties
+  - `use-legacy-resource-detection?: boolean` (default true) — controls legacy vs resolveArmResources API
+- Added corresponding JSON Schema entries to `CSharpEmitterOptionsSchema`
+- Added defaults to `defaultOptions` object
+- Updated `resolveOptions()` to default `model-namespace` to `true` when `management: true`
+- Updated `ResolvedCSharpEmitterOptions` type to guarantee new fields are present after resolve
+- Added 6 new tests in `test/options.test.ts` covering schema, defaults, and resolve behavior
+
+### Design Decision
+Approach: Flat options with `management` master switch (chosen over `"azure-mgmt"` flavor variant):
+- Adding `"azure-mgmt"` to the flavor enum would require updating 40+ files that check `flavor === "azure"`
+- A separate `management` boolean is additive, non-breaking, and provides a clean signal for phase 19 ARM tasks
+- Sub-options (`enable-wire-path-attribute`, `use-legacy-resource-detection`) match legacy mgmt emitter's interface exactly
+
+### Key Patterns
+- Options follow the existing flat interface pattern (no inheritance hierarchy like legacy)
+- `management: true` implies `model-namespace: true` (same as legacy mgmt emitter's `context.options["model-namespace"] ??= true`)
+- Defaults match legacy: management=false, wire-path=false, legacy-detection=true
+
+### Next task considerations
+- Task 18.1 (mgmt test infrastructure) can now reference these options
+- Task 19.x ARM features should check `options.management === true` to activate ARM-specific behaviors

@@ -110,6 +110,37 @@ export interface CSharpEmitterOptions {
    * the emitter includes license headers and metadata in the output.
    */
   license?: LicenseOptions;
+
+  /**
+   * Whether to enable management plane (ARM) features.
+   *
+   * When `true`, the emitter activates Azure Resource Manager–specific
+   * behaviors such as ARM resource detection, property flattening
+   * (`@flatten`), and subscription-ID parameter transformation.
+   *
+   * Only meaningful when `flavor` is `"azure"`. Defaults to `false`.
+   */
+  management?: boolean;
+
+  /**
+   * Whether to generate the `WirePathAttribute` on model properties for
+   * HTTP wire-format path tracking.
+   *
+   * Only meaningful when `management` is `true`. Defaults to `false`.
+   */
+  "enable-wire-path-attribute"?: boolean;
+
+  /**
+   * Whether to use the legacy custom resource-detection logic instead of the
+   * standardised `resolveArmResources` API from
+   * `@azure-tools/typespec-azure-resource-manager`.
+   *
+   * When `true`, the emitter uses the legacy heuristic-based detection.
+   * When `false`, it uses the `resolveArmResources` API.
+   *
+   * Only meaningful when `management` is `true`. Defaults to `true`.
+   */
+  "use-legacy-resource-detection"?: boolean;
 }
 
 /**
@@ -205,6 +236,30 @@ export const CSharpEmitterOptionsSchema: JSONSchemaType<CSharpEmitterOptions> =
         },
         description: "License information for the generated client code.",
       },
+      management: {
+        type: "boolean",
+        nullable: true,
+        description:
+          "Whether to enable management plane (ARM) features such as ARM resource detection, " +
+          "property flattening, and subscription-ID parameter transformation. " +
+          "Only meaningful when flavor is `azure`. The default value is `false`.",
+      },
+      "enable-wire-path-attribute": {
+        type: "boolean",
+        nullable: true,
+        description:
+          "Whether to generate WirePathAttribute on model properties for HTTP wire-format " +
+          "path tracking. Only meaningful when `management` is `true`. " +
+          "The default value is `false`.",
+      },
+      "use-legacy-resource-detection": {
+        type: "boolean",
+        nullable: true,
+        description:
+          "Whether to use the legacy custom resource-detection logic instead of the " +
+          "standardised resolveArmResources API. Only meaningful when `management` is `true`. " +
+          "The default value is `true`.",
+      },
     },
     required: [],
   };
@@ -225,6 +280,9 @@ export const defaultOptions: Required<
     | "unreferenced-types-handling"
     | "new-project"
     | "save-inputs"
+    | "management"
+    | "enable-wire-path-attribute"
+    | "use-legacy-resource-detection"
   >
 > = {
   flavor: "unbranded",
@@ -234,6 +292,9 @@ export const defaultOptions: Required<
   "unreferenced-types-handling": "removeOrInternalize",
   "new-project": false,
   "save-inputs": false,
+  management: false,
+  "enable-wire-path-attribute": false,
+  "use-legacy-resource-detection": true,
 };
 
 /**
@@ -241,8 +302,9 @@ export const defaultOptions: Required<
  *
  * Fields covered by {@link defaultOptions} (`flavor`, `api-version`,
  * `generate-protocol-methods`, `generate-convenience-methods`,
- * `unreferenced-types-handling`, `new-project`, `save-inputs`) are
- * guaranteed to be present. All other fields remain optional.
+ * `unreferenced-types-handling`, `new-project`, `save-inputs`,
+ * `management`, `enable-wire-path-attribute`, `use-legacy-resource-detection`)
+ * are guaranteed to be present. All other fields remain optional.
  */
 export type ResolvedCSharpEmitterOptions = typeof defaultOptions &
   CSharpEmitterOptions;
@@ -264,9 +326,10 @@ export function resolveOptions(
   const emitterOptions = context.options;
   const merged = { ...defaultOptions, ...emitterOptions };
 
-  // Default model-namespace based on flavor when not explicitly set
+  // Default model-namespace based on flavor/management when not explicitly set
   if (merged["model-namespace"] === undefined) {
-    merged["model-namespace"] = merged.flavor === "azure";
+    merged["model-namespace"] =
+      merged.flavor === "azure" || merged.management === true;
   }
 
   return merged;
