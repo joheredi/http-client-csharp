@@ -4,6 +4,7 @@ import type {
   Enum,
   EnumMember,
   IntrinsicType,
+  Namespace,
   Scalar,
   Type,
   Union,
@@ -17,6 +18,8 @@ import {
   TypeExpression,
   intrinsicNameToCSharpType,
 } from "@typespec/emitter-framework/csharp";
+import { Azure, AzureCore } from "../builtins/azure.js";
+import { SystemNet } from "../builtins/system-net.js";
 import { System } from "../builtins/system.js";
 import { efCsharpRefkey } from "../utils/refkey.js";
 
@@ -109,6 +112,98 @@ function getScalarOverride(scalar: Scalar): Children | undefined {
     // Stop walking once we hit a built-in scalar without an override
     if (intrinsicNameToCSharpType.has(current.name)) return undefined;
     current = current.baseScalar;
+  }
+  return undefined;
+}
+
+/**
+ * Map of Azure.Core TypeSpec scalar names to their Azure SDK C# type overrides.
+ *
+ * These mappings are only active when the emitter `flavor` is `"azure"`. They
+ * map TypeSpec scalars defined in the `@azure-tools/typespec-azure-core` library
+ * to their corresponding C# types from the Azure.Core NuGet package.
+ *
+ * All Azure.Core scalars extend `string` in TypeSpec, so without these overrides
+ * they would fall through to `string` in C#. The Azure SDK uses richer types
+ * to provide type safety and helper methods.
+ *
+ * Values are Alloy library symbol references that auto-generate the correct
+ * `using` directives (e.g., `using Azure;`, `using Azure.Core;`, `using System.Net;`).
+ *
+ * Reference: KnownAzureTypes.cs in Azure.Generator
+ */
+const azureScalarOverrideMap = new Map<string, Children>([
+  // Azure.Core.azureLocation → Azure.AzureLocation
+  // Represents an Azure geography region (e.g., "WestUS")
+  ["azureLocation", Azure.AzureLocation],
+
+  // Azure.Core.eTag → Azure.ETag
+  // HTTP ETag for conditional requests
+  ["eTag", Azure.ETag],
+
+  // Azure.Core.armResourceIdentifier → Azure.Core.ResourceIdentifier
+  // Fully qualified ARM resource identifier
+  ["armResourceIdentifier", AzureCore.ResourceIdentifier],
+
+  // Azure.Core.ipV4Address → System.Net.IPAddress
+  // IPv4 address (e.g., "129.144.50.56")
+  ["ipV4Address", SystemNet.IPAddress],
+
+  // Azure.Core.ipV6Address → System.Net.IPAddress
+  // IPv6 address (e.g., "2001:db8::1")
+  ["ipV6Address", SystemNet.IPAddress],
+
+  // Azure.Core.uuid → System.Guid
+  // UUID scalar — Azure SDK maps to Guid (same as built-in uuid)
+  ["uuid", System.Guid],
+]);
+
+/**
+ * Checks whether a TypeSpec Scalar belongs to the `Azure.Core` namespace.
+ *
+ * Used to distinguish Azure.Core scalars (e.g., `azureLocation`, `eTag`) from
+ * user-defined or built-in scalars that happen to share the same name. Only
+ * scalars defined in the `Azure.Core` TypeSpec namespace should receive Azure
+ * type mappings.
+ *
+ * @param scalar - A TypeSpec Scalar type.
+ * @returns `true` if the scalar's namespace is `Azure.Core`.
+ */
+function isAzureCoreScalar(scalar: Scalar): boolean {
+  const ns = scalar.namespace;
+  if (!ns) return false;
+  return isAzureCoreNamespace(ns);
+}
+
+/**
+ * Checks whether a TypeSpec Namespace is `Azure.Core` or a child of it
+ * (e.g., `Azure.Core.Foundations`).
+ *
+ * @param ns - A TypeSpec Namespace.
+ * @returns `true` if the namespace is Azure.Core or nested under it.
+ */
+function isAzureCoreNamespace(ns: Namespace): boolean {
+  // Direct match: Azure.Core
+  if (ns.name === "Core" && ns.namespace?.name === "Azure") return true;
+  // Nested match: Azure.Core.Foundations, etc.
+  if (ns.namespace) return isAzureCoreNamespace(ns.namespace);
+  return false;
+}
+
+/**
+ * Resolves the Azure-specific override for a TypeSpec scalar from the
+ * `Azure.Core` namespace.
+ *
+ * Only checks scalars that belong to the `Azure.Core` namespace (verified via
+ * {@link isAzureCoreScalar}). For non-Azure scalars, returns `undefined` to
+ * let the standard scalar override logic handle them.
+ *
+ * @param scalar - A TypeSpec Scalar type.
+ * @returns The Azure C# type override, or `undefined` if not an Azure scalar.
+ */
+function getAzureScalarOverride(scalar: Scalar): Children | undefined {
+  if (isAzureCoreScalar(scalar)) {
+    return azureScalarOverrideMap.get(scalar.name);
   }
   return undefined;
 }
@@ -242,109 +337,139 @@ function isMultiTypeUnion(union: Union): boolean {
 }
 
 /**
- * Experimental_ComponentOverrides configuration for the HTTP client C# emitter.
+ * Shared override handler for Union type kinds.
  *
- * Overrides TypeExpression's type rendering for:
+ * Handles nullable unions, multi-type unions, named unions (extensible enums),
+ * and unnamed inline literal unions consistently across both unbranded and
+ * Azure flavors.
+ */
+const unionOverrideHandler = {
+  reference: (props: { type: Union; default: Children }) => {
+    if (hasNullVariant(props.type)) {
+      return props.default;
+    }
+    if (isMultiTypeUnion(props.type)) {
+      return System.BinaryData;
+    }
+    if (props.type.name) {
+      return props.default;
+    }
+    return <Reference refkey={efCsharpRefkey(props.type)} />;
+  },
+};
+
+/**
+ * Shared override handler for UnionVariant type kinds.
  *
- * **Unions**:
- * - Nullable unions (e.g., `T | null`) delegate to the default TypeExpression.
- * - Multi-type unions (variants with different base kinds) map to BinaryData
- *   since C# has no equivalent union type. This covers both named unions
- *   (e.g., `union Foo { string, int32 }`) and unnamed unions from aliases
- *   or inline expressions (e.g., `Cat | "a" | int32`, `string | string[]`,
- *   `"a" | 2 | 3.3 | true`).
- * - Named single-type unions (extensible enums) delegate to the default
- *   TypeExpression.
- * - Unnamed single-type non-nullable unions (e.g., `"red" | "blue"`) are
- *   inline string literal unions that TCGC converts to `SdkEnumType`. These
- *   are referenced via `efCsharpRefkey` to resolve to the generated enum
- *   declaration.
+ * Maps named union variants to the parent union type and falls back to
+ * rendering the variant's inner type for unnamed union variants.
+ */
+const unionVariantOverrideHandler = {
+  reference: (props: { type: UnionVariant; default: Children }) => {
+    const variant = props.type as UnionVariant;
+    if (variant.union.name) {
+      return <Reference refkey={efCsharpRefkey(variant.union)} />;
+    }
+    return <TypeExpression type={variant.type} />;
+  },
+};
+
+/**
+ * Shared override handler for Intrinsic type kinds.
  *
- * **UnionVariants**:
- * - A UnionVariant used as a property type (e.g., `ExtendedEnum.EnumValue2`)
- *   resolves to the parent union/extensible enum type. The emitter-framework's
- *   TypeExpression does not handle UnionVariant natively, so this override
- *   prevents a crash.
+ * Maps the `unknown` intrinsic to BinaryData instead of `object`.
+ */
+const intrinsicOverrideHandler = {
+  reference: (props: { type: IntrinsicType; default: Children }) => {
+    const intrinsic = props.type as IntrinsicType;
+    if (intrinsic.name === "unknown") {
+      return System.BinaryData;
+    }
+    return props.default;
+  },
+};
+
+/**
+ * Override handler for Scalar type kinds in unbranded (System.ClientModel) mode.
  *
- * **Scalars** (7 overrides):
- * - bytes → BinaryData, integer/safeint → long, numeric/float → double,
- *   plainDate → DateTimeOffset, plainTime → TimeSpan
+ * Applies the standard scalar override map (bytes → BinaryData, integer → long, etc.)
+ * without any Azure-specific mappings.
+ */
+const unbrandedScalarOverrideHandler = {
+  reference: (props: { type: Scalar; default: Children }) => {
+    const override = getScalarOverride(props.type as Scalar);
+    return override !== undefined ? override : props.default;
+  },
+};
+
+/**
+ * Override handler for Scalar type kinds in Azure mode.
  *
- * **Intrinsics** (1 override):
- * - unknown → BinaryData (instead of object)
+ * First checks for Azure.Core scalar overrides (azureLocation → AzureLocation,
+ * eTag → ETag, etc.), then falls back to the standard scalar override map.
+ * This layered approach ensures Azure types take precedence while preserving
+ * all unbranded scalar mappings.
+ */
+const azureScalarOverrideHandler = {
+  reference: (props: { type: Scalar; default: Children }) => {
+    // Try Azure-specific override first (only matches Azure.Core scalars)
+    const azureOverride = getAzureScalarOverride(props.type as Scalar);
+    if (azureOverride !== undefined) return azureOverride;
+
+    // Fall back to standard scalar overrides
+    const override = getScalarOverride(props.type as Scalar);
+    return override !== undefined ? override : props.default;
+  },
+};
+
+/**
+ * Type override configuration for unbranded (System.ClientModel) flavor.
  *
- * Non-overridden types fall through to the emitter-framework's default
- * TypeExpression rendering via `props.default`.
+ * Overrides TypeExpression's type rendering for unions, union variants,
+ * scalars, and intrinsics to match the legacy HTTP client C# emitter's
+ * behavior with System.ClientModel types.
  */
 const csharpTypeOverrides = Experimental_ComponentOverridesConfig()
-  .forTypeKind("Union", {
-    reference: (props) => {
-      // Nullable unions (e.g., `T | null`) are handled correctly by the
-      // default TypeExpression — delegate to it.
-      if (hasNullVariant(props.type)) {
-        return props.default;
-      }
+  .forTypeKind("Union", unionOverrideHandler)
+  .forTypeKind("UnionVariant", unionVariantOverrideHandler)
+  .forTypeKind("Scalar", unbrandedScalarOverrideHandler)
+  .forTypeKind("Intrinsic", intrinsicOverrideHandler);
 
-      // Multi-type unions (variants with different base kinds) have no single
-      // C# type equivalent — map to BinaryData. This covers named unions,
-      // unnamed aliases (e.g., `alias Foo = Cat | "a" | int32`), mixed
-      // literals (e.g., `"a" | 2 | 3.3 | true`), and inline unions
-      // (e.g., `string | string[]`).
-      if (isMultiTypeUnion(props.type)) {
-        return System.BinaryData;
-      }
-
-      // Named single-type unions (extensible enums) are handled correctly
-      // by the default TypeExpression — delegate to it.
-      if (props.type.name) {
-        return props.default;
-      }
-
-      // Unnamed single-type non-nullable unions are inline string literal
-      // unions (e.g., `"red" | "blue"`) that TCGC converts to SdkEnumType.
-      // The enum declarations register efCsharpRefkey(rawType), so we
-      // reference the same key to resolve to the generated enum type.
-      return <Reference refkey={efCsharpRefkey(props.type)} />;
-    },
-  })
-  .forTypeKind("UnionVariant", {
-    reference: (props) => {
-      const variant = props.type as UnionVariant;
-      // A UnionVariant used as a property type means referencing a specific
-      // member of a named union (e.g., ExtendedEnum.EnumValue2). In C#, the
-      // property type resolves to the parent union/extensible enum type.
-      if (variant.union.name) {
-        return <Reference refkey={efCsharpRefkey(variant.union)} />;
-      }
-      // Fallback for unnamed union variants: render the variant's inner type.
-      return <TypeExpression type={variant.type} />;
-    },
-  })
-  .forTypeKind("Scalar", {
-    reference: (props) => {
-      const override = getScalarOverride(props.type as Scalar);
-      return override !== undefined ? override : props.default;
-    },
-  })
-  .forTypeKind("Intrinsic", {
-    reference: (props) => {
-      const intrinsic = props.type as IntrinsicType;
-      if (intrinsic.name === "unknown") {
-        return System.BinaryData;
-      }
-      return props.default;
-    },
-  });
+/**
+ * Type override configuration for Azure (Azure.Core) flavor.
+ *
+ * Extends the unbranded overrides with Azure-specific scalar mappings.
+ * Azure.Core TypeSpec scalars (azureLocation, eTag, armResourceIdentifier,
+ * ipV4Address, ipV6Address, uuid) are mapped to their Azure SDK C# equivalents
+ * (AzureLocation, ETag, ResourceIdentifier, IPAddress, Guid).
+ *
+ * All non-Azure type overrides (unions, union variants, intrinsics, and
+ * standard scalar overrides) are shared with the unbranded configuration.
+ */
+const azureCsharpTypeOverrides = Experimental_ComponentOverridesConfig()
+  .forTypeKind("Union", unionOverrideHandler)
+  .forTypeKind("UnionVariant", unionVariantOverrideHandler)
+  .forTypeKind("Scalar", azureScalarOverrideHandler)
+  .forTypeKind("Intrinsic", intrinsicOverrideHandler);
 
 /**
  * Props for the {@link CSharpScalarOverrides} provider component.
  */
 export interface CSharpScalarOverridesProps {
   children?: Children;
+
+  /**
+   * Controls which type override configuration to apply.
+   *
+   * - `"unbranded"` (default): Uses System.ClientModel type mappings.
+   * - `"azure"`: Adds Azure.Core type mappings on top of unbranded mappings.
+   *   Azure.Core TypeSpec scalars are mapped to Azure SDK C# types.
+   */
+  flavor?: "azure" | "unbranded";
 }
 
 /**
- * Provider component that overrides TypeExpression's scalar type mappings
+ * Provider component that overrides TypeExpression's type mappings
  * for the HTTP client C# emitter.
  *
  * Wrap the emitter's component tree with this provider to ensure all
@@ -352,18 +477,25 @@ export interface CSharpScalarOverridesProps {
  * to the entire subtree, including TypeExpression calls inside
  * emitter-framework components.
  *
+ * When `flavor` is `"azure"`, Azure.Core TypeSpec scalars are mapped to their
+ * Azure SDK C# equivalents (e.g., `azureLocation` → `AzureLocation`).
+ * When `flavor` is `"unbranded"` (default), only standard System.ClientModel
+ * type mappings are applied.
+ *
  * @example
  * ```tsx
- * <CSharpScalarOverrides>
+ * <CSharpScalarOverrides flavor="azure">
  *   <SourceFile path="Model.cs">
- *     <TypeExpression type={bytesScalar} />  // renders "BinaryData" not "byte[]"
+ *     <TypeExpression type={azureLocationScalar} />  // renders "AzureLocation"
  *   </SourceFile>
  * </CSharpScalarOverrides>
  * ```
  */
 export function CSharpScalarOverrides(props: CSharpScalarOverridesProps) {
+  const overrides =
+    props.flavor === "azure" ? azureCsharpTypeOverrides : csharpTypeOverrides;
   return (
-    <Experimental_ComponentOverrides overrides={csharpTypeOverrides}>
+    <Experimental_ComponentOverrides overrides={overrides}>
       {props.children}
     </Experimental_ComponentOverrides>
   );

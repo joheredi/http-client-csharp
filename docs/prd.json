@@ -1301,7 +1301,7 @@
           "title": "Add Azure.Core built-in type mappings",
           "description": "Create Azure.Core type mappings that are activated when flavor='azure'. When the emitter encounters TypeSpec types from Azure.Core, map them to their C# Azure SDK equivalents.\n\nType mappings to implement:\n- Azure.Core.azureLocation \u2192 Azure.AzureLocation\n- Azure.Core.armResourceIdentifier \u2192 Azure.Core.ResourceIdentifier\n- Azure.Core.eTag \u2192 Azure.ETag\n- Azure.ResponseError \u2192 Azure.ResponseError\n- Azure.Core.ipV4Address / ipV6Address \u2192 System.Net.IPAddress\n- Azure.Core.uuid \u2192 string\n\nImplementation approach:\n- Create a new file (e.g., src/builtins/azure-core.ts or extend existing builtins) with Azure type mappings\n- In the type expression component (src/components/CSharpTypeExpression.tsx), check the flavor and apply Azure mappings when appropriate\n- Ensure proper `using` directives are generated for Azure namespaces\n\nReference files:\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/AzureTypeFactory.cs (lines 80-156: CreateCSharpTypeCore and framework type mappings)\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/Primitives/KnownAzureTypes.cs (central type registry)\n- src/builtins/ (existing built-in type definitions)\n- src/components/CSharpTypeExpression.tsx (type rendering component)",
           "phase": "phase-17",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "16.4"
           ],

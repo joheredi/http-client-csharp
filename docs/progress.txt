@@ -5560,3 +5560,34 @@ doesn't yet differentiate behavior based on flavor. Generated code still uses Sy
 types. Phase 17 tasks (17.1-17.10) will progressively replace these with Azure.Core types.
 
 **Next**: Task 17.1 (Add Azure.Core built-in type mappings) is the next unblocked task.
+
+## Task 17.1 — Add Azure.Core built-in type mappings (2026-03-06)
+
+**Status**: Done
+
+**What was done**:
+- Created `src/builtins/azure.ts` with Alloy library declarations for Azure (AzureLocation, ETag, ResponseError) and Azure.Core (ResourceIdentifier) types
+- Created `src/builtins/system-net.ts` with Alloy library declaration for System.Net.IPAddress
+- Updated `src/builtins/index.ts` to export the new libraries
+- Refactored `src/components/CSharpTypeExpression.tsx`:
+  - Added `azureScalarOverrideMap` mapping Azure.Core TypeSpec scalars to C# types
+  - Added `isAzureCoreScalar()` / `isAzureCoreNamespace()` namespace-checking helpers
+  - Extracted shared override handlers (union, unionVariant, intrinsic) to avoid duplication
+  - Created separate `azureCsharpTypeOverrides` config for Azure flavor
+  - Added `flavor` prop to `CSharpScalarOverrides` component (defaults to "unbranded")
+- Updated `src/emitter.tsx` to pass `flavor={options.flavor}` to CSharpScalarOverrides
+- Added 13 new tests in `test/type-expression.test.tsx` for Azure flavor
+
+**Azure.Core scalar → C# mappings (when flavor=azure)**:
+- azureLocation → Azure.AzureLocation (using Azure;)
+- eTag → Azure.ETag (using Azure;)
+- armResourceIdentifier → Azure.Core.ResourceIdentifier (using Azure.Core;)
+- ipV4Address → System.Net.IPAddress (using System.Net;)
+- ipV6Address → System.Net.IPAddress (using System.Net;)
+- uuid → System.Guid (using System;)
+
+**E2E impact**: 3 Azure specs (azure/core/basic, azure/core/page, azure/core/scalar) now correctly generate Azure types but fail to build without Azure.Core NuGet reference. Added to .testignore with note to remove after task 17.2.
+
+**Design decision**: Flavor-parameterized override configs (two separate configs selected via `flavor` prop) rather than calling `useEmitterContext()` inside override callbacks. This avoids context access uncertainty in non-component callbacks and maintains backward compat with tests that render CSharpScalarOverrides without EmitterContext.
+
+**Patterns used**: `createLibrary()` for Azure type declarations, `Experimental_ComponentOverridesConfig` for type override configs, namespace-based scalar identification.

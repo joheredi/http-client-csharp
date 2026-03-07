@@ -6,7 +6,7 @@ import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import { beforeEach, describe, expect, it } from "vitest";
 import { CSharpScalarOverrides } from "../src/components/CSharpTypeExpression.js";
 import { System } from "../src/builtins/system.js";
-import { ApiTester, HttpTester } from "./test-host.js";
+import { ApiTester, HttpTester, IntegrationApiTester } from "./test-host.js";
 
 /**
  * Tests for the CSharpScalarOverrides provider component.
@@ -448,6 +448,162 @@ describe("CSharpScalarOverrides", () => {
       expect(modelFile).toContain("ExtendedEnum");
       expect(modelFile).not.toContain("UnionVariant");
       expect(modelFile).not.toContain("Unresolved");
+    });
+  });
+
+  describe("Azure.Core scalar overrides (flavor=azure)", () => {
+    /**
+     * Tests for Azure.Core TypeSpec scalar type mappings when flavor="azure".
+     *
+     * These tests verify that Azure.Core TypeSpec scalars (azureLocation, eTag,
+     * armResourceIdentifier, ipV4Address, ipV6Address, uuid) are mapped to their
+     * correct Azure SDK C# equivalents when the emitter flavor is "azure".
+     *
+     * This is critical for Azure SDK generation: without these overrides, all
+     * Azure.Core scalars would fall through to `string` (their TypeSpec base
+     * type), producing incorrect C# types that don't match the Azure SDK
+     * conventions.
+     *
+     * The mappings match the legacy Azure.Generator's KnownAzureTypes.cs:
+     * - azureLocation → AzureLocation (Azure.AzureLocation)
+     * - eTag → ETag (Azure.ETag)
+     * - armResourceIdentifier → ResourceIdentifier (Azure.Core.ResourceIdentifier)
+     * - ipV4Address → IPAddress (System.Net.IPAddress)
+     * - ipV6Address → IPAddress (System.Net.IPAddress)
+     * - uuid → Guid (System.Guid)
+     */
+    let azureRunner: Awaited<ReturnType<typeof IntegrationApiTester.createInstance>>;
+
+    beforeEach(async () => {
+      azureRunner = await IntegrationApiTester.createInstance();
+    });
+
+    /**
+     * Compiles TypeSpec with a model property using an Azure.Core scalar type.
+     * Imports the Azure.Core library explicitly and uses `using Azure.Core;`
+     * to bring the scalars into scope.
+     */
+    async function getAzureType(typeRef: string) {
+      const { test } = await azureRunner.compile(`
+        import "@azure-tools/typespec-azure-core";
+        using Azure.Core;
+        model Test {
+          @test test: ${typeRef};
+        }
+      `);
+      return (test as ModelProperty).type;
+    }
+
+    /**
+     * Renders a TypeExpression for the given type within a CSharpScalarOverrides
+     * provider configured with the specified flavor, and returns the generated
+     * C# source text.
+     */
+    function renderTypeWithFlavor(
+      type: Parameters<typeof TypeExpression>[0]["type"],
+      flavor: "azure" | "unbranded",
+    ) {
+      const result = render(
+        <Output program={azureRunner.program}>
+          <CSharpScalarOverrides flavor={flavor}>
+            <SourceFile path="Test.cs">
+              <TypeExpression type={type} />
+            </SourceFile>
+          </CSharpScalarOverrides>
+        </Output>,
+      );
+      return (result.contents[0] as { contents: string }).contents;
+    }
+
+    /**
+     * Verifies each Azure.Core scalar maps to its correct C# type when
+     * flavor="azure". These mappings produce Azure SDK types with proper
+     * `using` directives.
+     */
+    it.each([
+      ["azureLocation", "AzureLocation", "using Azure;"],
+      ["eTag", "ETag", "using Azure;"],
+      ["armResourceIdentifier", "ResourceIdentifier", "using Azure.Core;"],
+      ["ipV4Address", "IPAddress", "using System.Net;"],
+      ["ipV6Address", "IPAddress", "using System.Net;"],
+      ["uuid", "Guid", "using System;"],
+    ])(
+      "maps Azure.Core.%s to %s with flavor=azure",
+      async (tspScalar, csType, usingDirective) => {
+        const type = await getAzureType(tspScalar);
+        const content = renderTypeWithFlavor(type, "azure");
+        expect(content).toContain(csType);
+        expect(content).toContain(usingDirective);
+      },
+    );
+
+    /**
+     * Verifies that Azure.Core scalars fall through to their base type
+     * (string) when flavor="unbranded". This ensures the unbranded flavor
+     * continues to work unchanged — Azure-specific type overrides should
+     * NOT activate for unbranded clients.
+     *
+     * uuid is excluded because it matches the built-in TypeSpec uuid scalar
+     * name, so TypeExpression maps it to Guid regardless of flavor.
+     */
+    it.each([
+      ["azureLocation", "string"],
+      ["eTag", "string"],
+      ["armResourceIdentifier", "string"],
+      ["ipV4Address", "string"],
+      ["ipV6Address", "string"],
+    ])(
+      "Azure.Core.%s falls through to %s with flavor=unbranded",
+      async (tspScalar, csType) => {
+        const type = await getAzureType(tspScalar);
+        const content = renderTypeWithFlavor(type, "unbranded");
+        expect(content).toContain(csType);
+        // Should NOT contain Azure-specific types
+        expect(content).not.toContain("AzureLocation");
+        expect(content).not.toContain("ETag");
+        expect(content).not.toContain("ResourceIdentifier");
+        expect(content).not.toContain("IPAddress");
+      },
+    );
+
+    /**
+     * Verifies that standard scalar overrides still work when flavor="azure".
+     * Azure flavor should preserve all unbranded mappings (bytes → BinaryData,
+     * integer → long, etc.) in addition to the Azure-specific ones.
+     */
+    it("preserves standard scalar overrides when flavor=azure", async () => {
+      const { test } = await azureRunner.compile(`
+        model Test {
+          @test test: bytes;
+        }
+      `);
+      const type = (test as ModelProperty).type;
+      const content = renderTypeWithFlavor(type, "azure");
+      expect(content).toContain("BinaryData");
+      expect(content).not.toContain("byte[]");
+    });
+
+    /**
+     * Verifies that the default flavor (when not specified) uses unbranded
+     * behavior. This ensures backward compatibility with existing code that
+     * doesn't pass a flavor prop to CSharpScalarOverrides.
+     */
+    it("defaults to unbranded when flavor is not specified", async () => {
+      const type = await getAzureType("azureLocation");
+      // Render without flavor prop (uses default)
+      const result = render(
+        <Output program={azureRunner.program}>
+          <CSharpScalarOverrides>
+            <SourceFile path="Test.cs">
+              <TypeExpression type={type} />
+            </SourceFile>
+          </CSharpScalarOverrides>
+        </Output>,
+      );
+      const content = (result.contents[0] as { contents: string }).contents;
+      // Should fall through to string (unbranded behavior)
+      expect(content).toContain("string");
+      expect(content).not.toContain("AzureLocation");
     });
   });
 });

@@ -274,7 +274,7 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
       />
       <BinaryContentHelperFile packageName={rootNamespace} options={options} />
       <CodeGenAttributeFiles options={options} />
-      <CSharpScalarOverrides>
+      <CSharpScalarOverrides flavor={options.flavor}>
         {clients.map((c) => (
           <ClientOptionsFile client={c} options={options} />
         ))}

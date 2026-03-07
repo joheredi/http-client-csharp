@@ -3532,3 +3532,20 @@ The new Alloy emitter must replicate these patterns using JSX components rather 
 4. **Resource detection is emitter-side logic**: Unlike the C# visitors that run in the generator, resource detection runs in the TypeScript emitter before code generation. This logic can be ported directly to the new emitter as a utility function.
 
 5. **Shared source files in tests**: The Azure test projects link source files from `azure-sdk-for-net/sdk/core/Azure.Core/src/Shared/`. The new emitter's test project needs these same files linked to compile Azure test infrastructure.
+
+## Azure.Core Type Mappings — Design Decision (task 17.1)
+
+**Approach**: Flavor-parameterized override configs
+- Added `flavor` prop to `CSharpScalarOverrides` (default: "unbranded")
+- Two separate `Experimental_ComponentOverridesConfig` objects: unbranded and azure
+- Shared override handlers for Union, UnionVariant, Intrinsic (avoid duplication)
+- Azure config layers Azure-specific Scalar handler on top
+- `isAzureCoreScalar()` checks namespace chain (Azure.Core) to avoid false positives
+
+**Why not `useEmitterContext()` in override callbacks**: Override callbacks in `Experimental_ComponentOverridesConfig` are plain functions, not component render methods. Uncertain if Alloy's `useContext()` works inside them. Also, existing tests render `CSharpScalarOverrides` directly in `<Output>` (without `HttpClientCSharpOutput`/`EmitterContext`), so adding context dependency would break them.
+
+**Azure.Core scalars are identified by namespace**, not just name: `scalar.namespace?.name === "Core" && scalar.namespace?.namespace?.name === "Azure"`. This prevents false positives from user-defined scalars with the same names.
+
+**uuid special case**: Azure.Core's `uuid` scalar has the same name as TypeSpec's built-in `uuid`. The `intrinsicNameToCSharpType` map matches by name string, so Azure.Core's uuid already gets mapped to `Guid` by the default TypeExpression. The Azure override map includes it explicitly for correctness (the Azure handler fires first).
+
+**E2E regression**: 3 Azure specs (basic, page, scalar) now generate Azure types but fail `dotnet build` because the .csproj lacks Azure.Core NuGet reference. Added to `.testignore` — remove after task 17.2.
