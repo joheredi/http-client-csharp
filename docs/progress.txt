@@ -5922,3 +5922,34 @@ These existed before task 17.8.1 and are tracked separately.
 
 **Gotcha discovered:**
 - Azure flavor tests (`AzureHttpTester`) produce 4 warnings from `@azure-tools/typespec-azure-core/union-enums-invalid-kind` about unions not being resolvable as enums. These are benign warnings from Azure Core's linting rules. Use `diagnostics.filter(d => d.severity === "error")` for error-only assertions instead of `expect(diagnostics).toHaveLength(0)` when testing Azure-flavored TypeSpec with simple return types.
+
+## Task 17.7 — Split into 17.7a and 17.7b
+**Date:** 2026-03-07
+**Status:** Split (not implemented)
+
+**What was done:**
+- Task 17.7 "Add Azure special header support (x-ms-client-request-id, ETag)" was split into two tasks:
+  - **17.7a**: "Strip x-ms-client-request-id parameter for Azure flavor" — Simple: add header name to specialHeaderNames for Azure, strip from params, no injection (pipeline handles it)
+  - **17.7b**: "Group conditional headers into RequestConditions for Azure flavor" — Complex: detect If-Match/If-None-Match/If-Modified-Since/If-Unmodified-Since, group into ETag?/MatchConditions/RequestConditions types, update REST client
+
+**Why split:**
+- x-ms-client-request-id is a simple header exclusion (30 min), matching existing specialHeaderNames pattern
+- RequestConditions grouping is a substantial feature requiring new Azure type definitions, parameter transformation logic, and REST client CreateRequest changes (3-4 hours)
+- These are independent features: x-ms-client-request-id exclusion vs conditional header grouping
+
+**Key research findings for next loop (17.7a):**
+- specialHeaderNames is defined independently in 3 files: RestClientFile.tsx (line 787), ProtocolMethod.tsx (line 657), ConvenienceMethod.tsx (line 1369)
+- Currently contains only ["repeatability-request-id", "repeatability-first-sent"]
+- The mechanism already handles: (1) exclude from method params, (2) skip from REST client params, (3) auto-inject in CreateRequest
+- For x-ms-client-request-id: need behavior (1) and (2) but NOT (3) — Azure pipeline adds it via policy
+- The auto-injection loop in RestClientFile.tsx (line 1478) only handles repeatability headers specifically, so adding x-ms-client-request-id to the set won't cause unwanted injection
+- Need to make specialHeaderNames flavor-aware since this header is Azure-only
+- Ground truth: stubs show Get(RequestContext) with NO clientRequestId param
+- TypeSpec spec says: "SDK should not generate clientRequestId parameter but use policy to auto-set the header"
+- Current e2e output INCORRECTLY has clientRequestId as a method parameter
+
+**Key research findings for next loop (17.7b):**
+- MatchConditionsHeadersVisitor groups headers into: ETag? (single If-Match or If-None-Match), MatchConditions (both), RequestConditions (any + modification time headers)
+- Need to define RequestConditions and MatchConditions in src/builtins/azure.ts (ETag already exists)
+- Azure traits test project shows RequestConditions grouping in action
+- Unbranded spec uses individual params (correct as-is)

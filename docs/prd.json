@@ -1477,9 +1477,9 @@
           ]
         },
         {
-          "id": "17.7",
-          "title": "Add Azure special header support (x-ms-client-request-id, ETag)",
-          "description": "Azure SDKs automatically handle two special header patterns:\n\n1. x-ms-client-request-id: Automatically added to every outgoing request for request correlation. The ClientRequestIdHeaderVisitor adds this to all REST client request-building methods.\n\n2. ETag / If-Match / If-None-Match: Conditional request headers for optimistic concurrency. The MatchConditionsHeadersVisitor adds parameters for MatchConditions (ETag, If-Match, If-None-Match) to operations that use conditional request patterns.\n\nWhen flavor='azure', generate these header patterns in the REST client methods.\n\nReference files:\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/Visitors/ClientRequestIdHeaderVisitor.cs\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/Visitors/MatchConditionsHeadersVisitor.cs\n- src/components/clients/RestClientFile.tsx (REST client generation)",
+          "id": "17.7a",
+          "title": "Strip x-ms-client-request-id parameter for Azure flavor",
+          "description": "When flavor='azure', the x-ms-client-request-id header should NOT be exposed as a method parameter. Azure's HttpPipeline policy automatically adds this header to every outgoing request for request correlation.\n\nImplementation:\n- Add 'x-ms-client-request-id' to the special headers set (conditionally, for Azure flavor only)\n- This strips the parameter from protocol method, convenience method, and REST client CreateRequest signatures\n- Do NOT auto-inject the header in CreateRequest \u2014 the Azure pipeline policy handles it\n- The specialHeaderNames mechanism in RestClientFile.tsx, ProtocolMethod.tsx, and ConvenienceMethod.tsx already handles exclusion; just needs flavor-conditional header names\n\nGround truth: submodules/azure-sdk-for-net/.../TestProjects/Spector/http/azure/special-headers/client-request-id/src/Generated/XmsClientRequestIdClient.cs shows Get() with NO clientRequestId parameter.\n\nTypeSpec spec says: 'SDK should not generate clientRequestId parameter but use policy to auto-set the header'.",
           "phase": "phase-17",
           "status": "pending",
           "dependencies": [
@@ -1487,18 +1487,52 @@
             "17.3b"
           ],
           "files": {
-            "modify": [],
+            "modify": [
+              "src/components/clients/RestClientFile.tsx",
+              "src/components/clients/ProtocolMethod.tsx",
+              "src/components/clients/ConvenienceMethod.tsx"
+            ],
             "reference": [
-              "submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/Visitors/ClientRequestIdHeaderVisitor.cs",
-              "submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/Visitors/MatchConditionsHeadersVisitor.cs",
-              "src/components/clients/RestClientFile.tsx"
+              "submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/Visitors/ClientRequestIdHeaderVisitor.cs"
             ]
           },
           "acceptance_criteria": [
-            "x-ms-client-request-id header is added to Azure client requests",
-            "ETag/If-Match/If-None-Match headers supported for conditional operations",
-            "azure/special-headers/client-request-id spec tests pass",
-            "special-headers/conditional-request spec tests pass with Azure flavor"
+            "x-ms-client-request-id parameter is stripped from Azure client method signatures",
+            "Azure HttpPipeline policy handles the header automatically (no injection in CreateRequest)",
+            "azure/special-headers/client-request-id e2e generation matches ground truth stubs",
+            "Unit test validates x-ms-client-request-id exclusion for Azure flavor",
+            "Unbranded flavor is unaffected"
+          ]
+        },
+        {
+          "id": "17.7b",
+          "title": "Group conditional headers into RequestConditions for Azure flavor",
+          "description": "When flavor='azure', operations with conditional request headers (If-Match, If-None-Match, If-Modified-Since, If-Unmodified-Since) should group these individual parameters into composite Azure SDK types:\n\n- Single If-Match or If-None-Match -> ETag? parameter\n- Both If-Match + If-None-Match -> MatchConditions parameter\n- Any + If-Modified-Since/If-Unmodified-Since -> RequestConditions parameter\n\nThis is the Alloy equivalent of the legacy MatchConditionsHeadersVisitor.\n\nRequires:\n1. Define RequestConditions, MatchConditions types in src/builtins/azure.ts (ETag already exists)\n2. Detect conditional header parameters by serializedName pattern\n3. Determine grouping based on header combination flags\n4. Replace individual header params with grouped param in protocol/convenience/REST client methods\n5. Update CreateRequest to unpack grouped param into individual headers\n6. Handle protocol method body to validate unsupported headers",
+          "phase": "phase-17",
+          "status": "pending",
+          "dependencies": [
+            "17.3",
+            "17.3b"
+          ],
+          "files": {
+            "modify": [
+              "src/builtins/azure.ts",
+              "src/components/clients/RestClientFile.tsx",
+              "src/components/clients/ProtocolMethod.tsx",
+              "src/components/clients/ConvenienceMethod.tsx"
+            ],
+            "reference": [
+              "submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/Visitors/MatchConditionsHeadersVisitor.cs"
+            ]
+          },
+          "acceptance_criteria": [
+            "Operations with If-Match only -> ETag? parameter",
+            "Operations with If-Match + If-None-Match -> MatchConditions parameter",
+            "Operations with any + modification time headers -> RequestConditions parameter",
+            "REST client CreateRequest unpacks grouped parameter into individual headers",
+            "azure/core/traits spec e2e tests pass with RequestConditions grouping",
+            "Unbranded flavor retains individual conditional header parameters",
+            "Unit tests for all header combination scenarios"
           ]
         },
         {

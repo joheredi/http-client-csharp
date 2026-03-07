@@ -3839,3 +3839,24 @@ The existing Azure tests (azure-diagnostics, azure-cascade-types, etc.) don't hi
 - **Why:** metadata.json is plain JSON, not C# code. Using the Alloy JSX pipeline would be overkill. The direct write matches the legacy emitter's pattern exactly and keeps the implementation simple.
 - **Rejected:** JSX component approach (`<SourceFile filetype="json">`) — unnecessary complexity for a static JSON file.
 - **Key API:** `sdkContext.sdkPackage.metadata.apiVersions` is a `Map<string, string>` from TCGC. Convert to plain object via `Object.fromEntries()`.
+
+## Design Decisions
+
+### Task 17.7 Split — x-ms-client-request-id vs RequestConditions grouping (2026-03-07)
+
+**Decision**: Split task 17.7 into two independent tasks because x-ms-client-request-id exclusion and RequestConditions grouping are fundamentally different features with vastly different complexity.
+
+**17.7a approach (chosen)**: Add `"x-ms-client-request-id"` to `specialHeaderNames` conditionally when flavor='azure'. The existing mechanism handles param exclusion. The auto-injection loop in RestClientFile.tsx only has cases for repeatability headers, so no unwanted code will be generated. Azure's HttpPipeline policy adds the header automatically.
+
+**Alternative considered**: Inject `request.ClientRequestId` in CreateRequest (as the legacy ClientRequestIdHeaderVisitor does). Rejected because the TypeSpec spec explicitly says "SDK should not generate clientRequestId parameter but use policy to auto-set the header" and the ground truth stubs show no param at all.
+
+**17.7b approach**: Requires new type definitions (RequestConditions, MatchConditions), parameter combination detection, and REST client unpack logic. This is the Alloy equivalent of MatchConditionsHeadersVisitor with ~550 lines of transformation logic.
+
+### specialHeaderNames pattern — flavor-aware headers (2026-03-07)
+
+The `specialHeaderNames` set is duplicated in 3 files (RestClientFile.tsx, ProtocolMethod.tsx, ConvenienceMethod.tsx). To add Azure-only headers, each file needs flavor context. Options:
+1. **Pass flavor as function parameter** — cleanest, each isSpecialHeaderParam call gets flavor
+2. **Use Alloy context** — could use useTsp() or a custom context, but adds coupling
+3. **Centralize to utils** — extract to shared util, but still need flavor at call sites
+
+Recommend option 1 for 17.7a since the flavor is already available (or passed as prop) in all three component files.
