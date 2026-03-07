@@ -6434,3 +6434,30 @@ Implemented tag manipulation methods for ARM resources that support tags. Each t
 - Verifies unbranded csproj does NOT include shared source files
 
 **Results**: ✅ Build passes | ✅ All unit tests pass | ✅ CS0122 errors eliminated | ⚠️ Pre-existing E2E failures remain (CS0246 HttpMessage, CS1501 CreateMessage — separate tasks)
+
+## Task 20.1 — Fix CollectionResult/AsyncCollectionResult for Azure flavor (2026-03-07)
+
+### What was done
+Fixed CS0305, CS0508, CS0534, CS0115 compilation errors in Azure-flavored paging classes by addressing three root causes:
+
+1. **Non-generic type namespace**: `CollectionResult` and `AsyncCollectionResult` (non-generic) live in `System.ClientModel.Primitives`, not `System.ClientModel`. Added them to `SystemClientModelPrimitives` builtin, which generates the correct `using System.ClientModel.Primitives;` directive. Generic versions (`CollectionResult<T>`, `AsyncCollectionResult<T>`) stay in `SystemClientModel`.
+
+2. **Override method signatures**: Base class abstract methods use `ClientResult` for parameters and generic return types (`IEnumerable<ClientResult>`). Changed ALL override method signatures to use `SystemClientModel.ClientResult` regardless of flavor — previously used `pipelineTypes.clientResult` which resolves to `Azure.Response` for Azure.
+
+3. **Azure model cast**: Azure model types have `explicit operator Model(Response result)` (not `ClientResult`). Added intermediate `(Response)page` downcast in `GetContinuationToken`, `GetValuesFromPage`, and `GetValuesFromPageAsync` bodies when `isAzure=true`. Local variables in `GetRawPages` body still use `Response` (which is `ClientResult` via inheritance, so `yield return result` works).
+
+### Files modified
+- `src/builtins/system-client-model.ts` — added CollectionResult/AsyncCollectionResult to SystemClientModelPrimitives
+- `src/components/collection-results/CollectionResultFile.tsx` — fixed base types, override signatures, body casts
+- `src/components/clients/PagingMethods.tsx` — fixed protocol method return types to use Primitives
+
+### Key patterns
+- Non-generic paging types: `SystemClientModelPrimitives.CollectionResult` / `.AsyncCollectionResult`
+- Generic paging types: `SystemClientModel.CollectionResult` / `.AsyncCollectionResult`
+- Override signatures always use `SystemClientModel.ClientResult` regardless of flavor
+- Azure body casts: `((ModelType)(Response)page)` — needed because model operators accept `Response`
+- Unbranded body casts: `((ModelType)page)` — model operators accept `ClientResult` directly
+
+### Results
+- azure/core/basic and azure/core/page compile successfully (previously had 28+ errors)
+- Build passes, 1670 tests pass, pre-existing E2E failures unchanged

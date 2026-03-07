@@ -4267,3 +4267,12 @@ The fix: `buildIdAccessorExpressions()` now accepts an optional `ResourceScope` 
 **Key pattern**: The `@alloy-js/msbuild` `Compile` component doesn't type `LinkBase` in its props, but `makeTag` renders ALL props as XML attributes at runtime. A `CompileWithLinkBase` type-safe cast wrapper was created to handle this cleanly.
 
 **MSBuild variable**: `$(AzureCoreSharedSources)` is the standard Azure SDK variable (defined in `Directory.Build.Common.props` in real Azure SDK builds). For e2e tests, it's defined in a generated `Directory.Build.props` in `temp/e2e/Spector/http/`.
+
+### Non-generic CollectionResult lives in System.ClientModel.Primitives
+The non-generic `CollectionResult` and `AsyncCollectionResult` types are in `System.ClientModel.Primitives`, NOT `System.ClientModel`. The generic `CollectionResult<T>` and `AsyncCollectionResult<T>` are in `System.ClientModel`. Use `SystemClientModelPrimitives.CollectionResult` for protocol-level (non-generic) base types and `SystemClientModel.CollectionResult` for convenience-level (generic) base types with `code` template: `code\`${SystemClientModel.CollectionResult}<${itemType}>\``.
+
+### Override methods must use ClientResult regardless of flavor
+Base class `CollectionResult` abstract methods use `ClientResult` for parameters (`GetContinuationToken(ClientResult page)`, `GetValuesFromPage(ClientResult page)`) and return generic types (`IEnumerable<ClientResult>`). Override methods MUST use the exact same types — using `Response` (Azure) causes CS0508/CS0115/CS0534. Method BODIES can use flavor-specific types for local variables (e.g., `Response result = Pipeline.ProcessMessage(...)`) since `Response : ClientResult`.
+
+### Azure model explicit operators accept Response, not ClientResult
+Azure model types define `explicit operator ModelType(Response result)`, while unbranded use `explicit operator ModelType(ClientResult result)`. When casting a `ClientResult page` parameter to a model type in Azure-flavored code, an intermediate downcast is needed: `((ModelType)(Response)page)`. This works because `page` is `ClientResult` at compile-time but `Response` at runtime.

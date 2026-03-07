@@ -38,6 +38,7 @@ import {
   SystemClientModel,
   SystemClientModelPrimitives,
 } from "../../builtins/system-client-model.js";
+import { Azure } from "../../builtins/azure.js";
 import { SystemThreadingTasks } from "../../builtins/system-threading.js";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
@@ -185,10 +186,16 @@ function CollectionResultFile(props: CollectionResultFileProps) {
       ? "global::System.ClientModel.ContinuationToken"
       : SystemClientModel.ContinuationToken;
 
-  // Determine base type reference (sync or async)
+  // Determine base type reference (sync or async).
+  // Non-generic types (for protocol variants) are in System.ClientModel.Primitives.
+  // Generic types (for convenience variants) are in System.ClientModel.
   const baseTypeRef = isAsync
-    ? SystemClientModel.AsyncCollectionResult
-    : SystemClientModel.CollectionResult;
+    ? isConvenience
+      ? SystemClientModel.AsyncCollectionResult
+      : SystemClientModelPrimitives.AsyncCollectionResult
+    : isConvenience
+      ? SystemClientModel.CollectionResult
+      : SystemClientModelPrimitives.CollectionResult;
 
   // Extract paging metadata for convenience variants
   const metadata = method.pagingMetadata;
@@ -309,11 +316,13 @@ function CollectionResultFile(props: CollectionResultFileProps) {
       ? code`${baseTypeRef}<${itemTypeExpr}>`
       : baseTypeRef;
 
-  // Method name and return type for GetRawPages/GetRawPagesAsync
+  // Method name and return type for GetRawPages/GetRawPagesAsync.
+  // The base class abstract methods return IEnumerable<ClientResult> / IAsyncEnumerable<ClientResult>,
+  // so the override must use ClientResult regardless of flavor (not Response for Azure).
   const getRawPagesName = isAsync ? "GetRawPagesAsync" : "GetRawPages";
   const returnType = isAsync
-    ? code`${SystemCollectionsGeneric.IAsyncEnumerable}<${pipelineTypes.clientResult}>`
-    : code`${SystemCollectionsGeneric.IEnumerable}<${pipelineTypes.clientResult}>`;
+    ? code`${SystemCollectionsGeneric.IAsyncEnumerable}<${SystemClientModel.ClientResult}>`
+    : code`${SystemCollectionsGeneric.IEnumerable}<${SystemClientModel.ClientResult}>`;
 
   // Request factory method name (matches RestClientFile's Create{Op}Request pattern)
   const requestMethodName = `Create${operationName}Request`;
@@ -372,6 +381,8 @@ function CollectionResultFile(props: CollectionResultFileProps) {
         nextLinkPropertyPath!,
         scmContinuationToken,
         isNextLinkString,
+        isAzure,
+        pipelineTypes,
       )
     : hasContinuationToken
       ? isContinuationTokenHeader
@@ -383,6 +394,8 @@ function CollectionResultFile(props: CollectionResultFileProps) {
             responseTypeExpr!,
             continuationTokenPropertyPath!,
             scmContinuationToken,
+            isAzure,
+            pipelineTypes,
           )
       : ["return null;"];
 
@@ -455,7 +468,7 @@ function CollectionResultFile(props: CollectionResultFileProps) {
             parameters={[
               {
                 name: "page",
-                type: pipelineTypes.clientResult as Children,
+                type: SystemClientModel.ClientResult as Children,
               },
             ]}
           >
@@ -479,7 +492,7 @@ function CollectionResultFile(props: CollectionResultFileProps) {
                 parameters={[
                   {
                     name: "page",
-                    type: pipelineTypes.clientResult as Children,
+                    type: SystemClientModel.ClientResult as Children,
                   },
                 ]}
               >
@@ -488,10 +501,14 @@ function CollectionResultFile(props: CollectionResultFileProps) {
                       responseTypeExpr!,
                       itemTypeExpr!,
                       itemPropertyPath!,
+                      isAzure,
+                      pipelineTypes,
                     )
                   : buildSyncGetValuesBody(
                       responseTypeExpr!,
                       itemPropertyPath!,
+                      isAzure,
+                      pipelineTypes,
                     )}
               </Method>
             </>
@@ -504,26 +521,43 @@ function CollectionResultFile(props: CollectionResultFileProps) {
 
 /**
  * Builds the sync GetValuesFromPage method body.
- * Generates: return ((ResponseType)page).PropertyPath;
+ *
+ * For unbranded: `return ((ResponseType)page).PropertyPath;`
+ * For Azure: `return ((ResponseType)(Response)page).PropertyPath;`
+ *
+ * Azure needs the intermediate (Response) downcast because Azure model types
+ * define their explicit conversion operator from `Response`, not `ClientResult`.
  */
 function buildSyncGetValuesBody(
   responseTypeExpr: Children,
   itemPropertyPath: string,
+  isAzure?: boolean,
+  pipelineTypes?: PipelineTypes,
 ): Children[] {
-  return [code`return ((${responseTypeExpr})page).${itemPropertyPath};`];
+  const pageCast = isAzure
+    ? code`(${pipelineTypes!.clientResult})page`
+    : "page";
+  return [code`return ((${responseTypeExpr})${pageCast}).${itemPropertyPath};`];
 }
 
 /**
  * Builds the async GetValuesFromPageAsync method body.
+ *
  * Generates a foreach loop with yield return and await Task.Yield().
+ * For Azure, adds intermediate (Response) downcast on the page parameter.
  */
 function buildAsyncGetValuesBody(
   responseTypeExpr: Children,
   itemTypeExpr: Children,
   itemPropertyPath: string,
+  isAzure?: boolean,
+  pipelineTypes?: PipelineTypes,
 ): Children[] {
+  const pageCast = isAzure
+    ? code`(${pipelineTypes!.clientResult})page`
+    : "page";
   return [
-    code`foreach (${itemTypeExpr} item in ((${responseTypeExpr})page).${itemPropertyPath})`,
+    code`foreach (${itemTypeExpr} item in ((${responseTypeExpr})${pageCast}).${itemPropertyPath})`,
     "\n",
     "{",
     "\n",
@@ -683,11 +717,18 @@ function buildNextLinkGetContinuationTokenBody(
   nextLinkPropertyPath: string,
   scmContinuationToken: Children,
   isStringNextLink: boolean,
+  isAzure?: boolean,
+  pipelineTypes?: PipelineTypes,
 ): Children[] {
+  // For Azure, page parameter is ClientResult but model operator expects Response.
+  // Need intermediate downcast: (Response)page.
+  const pageCast = isAzure
+    ? code`(${pipelineTypes!.clientResult})page`
+    : "page";
   if (isStringNextLink) {
     // String next-link: extract string directly, check null/empty, and wrap in ContinuationToken
     return [
-      code`string nextPage = ((${responseTypeExpr})page).${nextLinkPropertyPath};`,
+      code`string nextPage = ((${responseTypeExpr})${pageCast}).${nextLinkPropertyPath};`,
       "\n",
       "if (!string.IsNullOrEmpty(nextPage))",
       "\n",
@@ -703,7 +744,7 @@ function buildNextLinkGetContinuationTokenBody(
 
   // Uri next-link: extract Uri, check null, serialize via IsAbsoluteUri
   return [
-    code`${System.Uri} nextPage = ((${responseTypeExpr})page).${nextLinkPropertyPath};`,
+    code`${System.Uri} nextPage = ((${responseTypeExpr})${pageCast}).${nextLinkPropertyPath};`,
     "\n",
     "if (nextPage != null)",
     "\n",
@@ -930,9 +971,14 @@ function buildContinuationTokenBodyGetContinuationTokenBody(
   responseTypeExpr: Children,
   tokenPropertyPath: string,
   scmContinuationToken: Children,
+  isAzure?: boolean,
+  pipelineTypes?: PipelineTypes,
 ): Children[] {
+  const pageCast = isAzure
+    ? code`(${pipelineTypes!.clientResult})page`
+    : "page";
   return [
-    code`string nextPage = ((${responseTypeExpr})page).${tokenPropertyPath};`,
+    code`string nextPage = ((${responseTypeExpr})${pageCast}).${tokenPropertyPath};`,
     "\n",
     "if (!string.IsNullOrEmpty(nextPage))",
     "\n",

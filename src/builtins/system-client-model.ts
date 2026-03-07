@@ -374,6 +374,42 @@ export const SystemClientModelPrimitives = createLibrary(
     },
 
     /**
+     * Non-generic abstract base class for synchronous paginated collection results.
+     * Lives in System.ClientModel.Primitives (NOT System.ClientModel) — the
+     * generic `CollectionResult<T>` lives in the System.ClientModel namespace.
+     *
+     * Protocol-level collection result classes extend this type to implement
+     * iteration over raw `ClientResult` pages without typed deserialization.
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.primitives.collectionresult
+     */
+    CollectionResult: {
+      kind: "class" as const,
+      members: {
+        /** Returns the continuation token for the given page, or null if no more pages. */
+        GetContinuationToken: { kind: "method" as const, methodKind: "ordinary" as const },
+      },
+    },
+
+    /**
+     * Non-generic abstract base class for asynchronous paginated collection results.
+     * Lives in System.ClientModel.Primitives (NOT System.ClientModel) — the
+     * generic `AsyncCollectionResult<T>` lives in the System.ClientModel namespace.
+     *
+     * Protocol-level collection result classes extend this type to implement
+     * async iteration over raw `ClientResult` pages without typed deserialization.
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.clientmodel.primitives.asynccollectionresult
+     */
+    AsyncCollectionResult: {
+      kind: "class" as const,
+      members: {
+        /** Returns the continuation token for the given page, or null if no more pages. */
+        GetContinuationToken: { kind: "method" as const, methodKind: "ordinary" as const },
+      },
+    },
+
+    /**
      * Options that control the format used by model serialization and deserialization.
      * Passed to IJsonModel and IPersistableModel methods to select wire format ("J" for JSON, "X" for XML).
      * Used as a parameter type in Write, Create, and GetFormatFromOptions methods on generated

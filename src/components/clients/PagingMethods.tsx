@@ -264,7 +264,7 @@ function renderProtocolPagingMethods(
       {...accessProps}
       virtual
       name={namekey(methodName, { ignoreNameConflict: true })}
-      returns={SystemClientModel.CollectionResult}
+      returns={SystemClientModelPrimitives.CollectionResult}
       parameters={methodParams}
     >
       {syncBody}
@@ -276,7 +276,7 @@ function renderProtocolPagingMethods(
       {...accessProps}
       virtual
       name={namekey(`${methodName}Async`, { ignoreNameConflict: true })}
-      returns={SystemClientModel.AsyncCollectionResult}
+      returns={SystemClientModelPrimitives.AsyncCollectionResult}
       parameters={methodParams}
     >
       {asyncBody}
