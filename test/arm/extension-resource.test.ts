@@ -170,14 +170,17 @@ describe("ARM Extension Resource - MockableArmClient", () => {
    * ALL resources (extension or not) get this method in MockableArmClient.
    */
   it("generates GetXxxResource method with ResourceIdentifier id", async () => {
-    const [{ outputs }] =
-      await MgmtTester.compileAndDiagnose(extensionResourceSpec);
+    const [{ outputs }] = await MgmtTester.compileAndDiagnose(
+      extensionResourceSpec,
+    );
     const content = findFileContaining(outputs, "Mockable", "ArmClient");
 
     expect(content).toContain(
       "GetConfigAssignmentResource(ResourceIdentifier id)",
     );
-    expect(content).toContain("ConfigAssignmentResource.ValidateResourceId(id)");
+    expect(content).toContain(
+      "ConfigAssignmentResource.ValidateResourceId(id)",
+    );
     expect(content).toContain("new ConfigAssignmentResource(Client, id)");
   });
 
@@ -187,16 +190,13 @@ describe("ARM Extension Resource - MockableArmClient", () => {
    * instead of using GetCachedClient (which is for fixed-scope resources).
    */
   it("generates collection factory with ResourceIdentifier scope parameter", async () => {
-    const [{ outputs }] =
-      await MgmtTester.compileAndDiagnose(extensionResourceSpec);
+    const [{ outputs }] = await MgmtTester.compileAndDiagnose(
+      extensionResourceSpec,
+    );
     const content = findFileContaining(outputs, "Mockable", "ArmClient");
 
-    expect(content).toContain(
-      "GetConfigAssignments(ResourceIdentifier scope)",
-    );
-    expect(content).toContain(
-      "new ConfigAssignmentCollection(Client, scope)",
-    );
+    expect(content).toContain("GetConfigAssignments(ResourceIdentifier scope)");
+    expect(content).toContain("new ConfigAssignmentCollection(Client, scope)");
   });
 
   /**
@@ -205,8 +205,9 @@ describe("ARM Extension Resource - MockableArmClient", () => {
    * instead of just (string name) like regular scoped resources.
    */
   it("generates sync singular getter with scope and name parameters", async () => {
-    const [{ outputs }] =
-      await MgmtTester.compileAndDiagnose(extensionResourceSpec);
+    const [{ outputs }] = await MgmtTester.compileAndDiagnose(
+      extensionResourceSpec,
+    );
     const content = findFileContaining(outputs, "Mockable", "ArmClient");
 
     expect(content).toMatch(
@@ -222,8 +223,9 @@ describe("ARM Extension Resource - MockableArmClient", () => {
    * Mirrors the sync getter but returns Task<Response<T>> and uses GetAsync.
    */
   it("generates async singular getter with scope and name parameters", async () => {
-    const [{ outputs }] =
-      await MgmtTester.compileAndDiagnose(extensionResourceSpec);
+    const [{ outputs }] = await MgmtTester.compileAndDiagnose(
+      extensionResourceSpec,
+    );
     const content = findFileContaining(outputs, "Mockable", "ArmClient");
 
     expect(content).toMatch(
@@ -239,8 +241,9 @@ describe("ARM Extension Resource - MockableArmClient", () => {
    * This attribute is required by the ARM SDK for methods that delegate to collections.
    */
   it("marks singular getters with [ForwardsClientCalls]", async () => {
-    const [{ outputs }] =
-      await MgmtTester.compileAndDiagnose(extensionResourceSpec);
+    const [{ outputs }] = await MgmtTester.compileAndDiagnose(
+      extensionResourceSpec,
+    );
     const content = findFileContaining(outputs, "Mockable", "ArmClient");
 
     // The ForwardsClientCalls attribute should appear before GetConfigAssignment methods
@@ -257,8 +260,9 @@ describe("ARM Extension Resource - MockableArmClient", () => {
    * The resource name parameter must be validated as not null or empty.
    */
   it("validates resource name argument in singular getters", async () => {
-    const [{ outputs }] =
-      await MgmtTester.compileAndDiagnose(extensionResourceSpec);
+    const [{ outputs }] = await MgmtTester.compileAndDiagnose(
+      extensionResourceSpec,
+    );
     const content = findFileContaining(outputs, "Mockable", "ArmClient");
 
     expect(content).toContain(
@@ -275,8 +279,9 @@ describe("ARM Extension Resource - ExtensionsFile", () => {
    * All resources get this extension method on ArmClient.
    */
   it("generates GetXxxResource extension on ArmClient", async () => {
-    const [{ outputs }] =
-      await MgmtTester.compileAndDiagnose(extensionResourceSpec);
+    const [{ outputs }] = await MgmtTester.compileAndDiagnose(
+      extensionResourceSpec,
+    );
     const content = findExtensionsFile(outputs);
 
     expect(content).toMatch(
@@ -289,8 +294,9 @@ describe("ARM Extension Resource - ExtensionsFile", () => {
    * Extension resources expose the collection factory as an ArmClient extension method.
    */
   it("generates collection factory extension with scope parameter", async () => {
-    const [{ outputs }] =
-      await MgmtTester.compileAndDiagnose(extensionResourceSpec);
+    const [{ outputs }] = await MgmtTester.compileAndDiagnose(
+      extensionResourceSpec,
+    );
     const content = findExtensionsFile(outputs);
 
     expect(content).toMatch(
@@ -302,8 +308,9 @@ describe("ARM Extension Resource - ExtensionsFile", () => {
    * Validates sync singular getter extension with scope + name parameters.
    */
   it("generates sync singular getter extension with scope parameter", async () => {
-    const [{ outputs }] =
-      await MgmtTester.compileAndDiagnose(extensionResourceSpec);
+    const [{ outputs }] = await MgmtTester.compileAndDiagnose(
+      extensionResourceSpec,
+    );
     const content = findExtensionsFile(outputs);
 
     expect(content).toMatch(
@@ -315,8 +322,9 @@ describe("ARM Extension Resource - ExtensionsFile", () => {
    * Validates async singular getter extension with scope + name parameters.
    */
   it("generates async singular getter extension with scope parameter", async () => {
-    const [{ outputs }] =
-      await MgmtTester.compileAndDiagnose(extensionResourceSpec);
+    const [{ outputs }] = await MgmtTester.compileAndDiagnose(
+      extensionResourceSpec,
+    );
     const content = findExtensionsFile(outputs);
 
     expect(content).toMatch(
@@ -329,8 +337,9 @@ describe("ARM Extension Resource - ExtensionsFile", () => {
    * All extension methods must go through the mockable class for testability.
    */
   it("delegates to mockable provider for all extension methods", async () => {
-    const [{ outputs }] =
-      await MgmtTester.compileAndDiagnose(extensionResourceSpec);
+    const [{ outputs }] = await MgmtTester.compileAndDiagnose(
+      extensionResourceSpec,
+    );
     const content = findExtensionsFile(outputs);
 
     // Collection factory delegates
@@ -352,8 +361,9 @@ describe("ARM Extension Resource - ExtensionsFile", () => {
    * Unresolved refkeys indicate broken cross-file references.
    */
   it("has no unresolved symbol references", async () => {
-    const [{ outputs }] =
-      await MgmtTester.compileAndDiagnose(extensionResourceSpec);
+    const [{ outputs }] = await MgmtTester.compileAndDiagnose(
+      extensionResourceSpec,
+    );
 
     for (const [file, content] of Object.entries(outputs)) {
       expect(content, `Unresolved symbol in ${file}`).not.toMatch(
@@ -372,8 +382,9 @@ describe("ARM Extension Resource - ResourceFile", () => {
    * not specific named segments like subscriptionId or resourceGroupName.
    */
   it("generates CreateResourceIdentifier with scope parameter", async () => {
-    const [{ outputs }] =
-      await MgmtTester.compileAndDiagnose(extensionResourceSpec);
+    const [{ outputs }] = await MgmtTester.compileAndDiagnose(
+      extensionResourceSpec,
+    );
     const content = findFile(outputs, "ConfigAssignmentResource.cs");
 
     expect(content).toMatch(
@@ -388,8 +399,9 @@ describe("ARM Extension Resource - ResourceFile", () => {
    * preserving the full path like /subscriptions/.../providers/.../myvm.
    */
   it("uses Id.Parent for scope in REST operations", async () => {
-    const [{ outputs }] =
-      await MgmtTester.compileAndDiagnose(extensionResourceSpec);
+    const [{ outputs }] = await MgmtTester.compileAndDiagnose(
+      extensionResourceSpec,
+    );
     const content = findFile(outputs, "ConfigAssignmentResource.cs");
 
     // REST call should use Id.Parent (not Id.Parent.Name) for the scope parameter
@@ -402,8 +414,9 @@ describe("ARM Extension Resource - ResourceFile", () => {
    * specific scope types like ResourceGroupResource.
    */
   it("extends ArmResource", async () => {
-    const [{ outputs }] =
-      await MgmtTester.compileAndDiagnose(extensionResourceSpec);
+    const [{ outputs }] = await MgmtTester.compileAndDiagnose(
+      extensionResourceSpec,
+    );
     const content = findFile(outputs, "ConfigAssignmentResource.cs");
 
     expect(content).toContain(": ArmResource");
@@ -419,8 +432,9 @@ describe("ARM Extension Resource - CollectionFile", () => {
    * so REST operations should pass Id directly for the scope parameter.
    */
   it("uses Id for scope in collection REST operations", async () => {
-    const [{ outputs }] =
-      await MgmtTester.compileAndDiagnose(extensionResourceSpec);
+    const [{ outputs }] = await MgmtTester.compileAndDiagnose(
+      extensionResourceSpec,
+    );
     const content = findFile(outputs, "ConfigAssignmentCollection.cs");
 
     // Collection Get should use Id as scope: CreateGetRequest(Id, configAssignmentName, context)
@@ -432,8 +446,9 @@ describe("ARM Extension Resource - CollectionFile", () => {
    * All ARM collections extend ArmCollection regardless of scope.
    */
   it("extends ArmCollection", async () => {
-    const [{ outputs }] =
-      await MgmtTester.compileAndDiagnose(extensionResourceSpec);
+    const [{ outputs }] = await MgmtTester.compileAndDiagnose(
+      extensionResourceSpec,
+    );
     const content = findFile(outputs, "ConfigAssignmentCollection.cs");
 
     expect(content).toContain(": ArmCollection");
@@ -445,8 +460,9 @@ describe("ARM Extension Resource - CollectionFile", () => {
    * for the parent scope should be generated.
    */
   it("does not validate parent scope type", async () => {
-    const [{ outputs }] =
-      await MgmtTester.compileAndDiagnose(extensionResourceSpec);
+    const [{ outputs }] = await MgmtTester.compileAndDiagnose(
+      extensionResourceSpec,
+    );
     const content = findFile(outputs, "ConfigAssignmentCollection.cs");
 
     // Extension resources should NOT have parent scope validation
@@ -454,9 +470,7 @@ describe("ARM Extension Resource - CollectionFile", () => {
     expect(content).not.toMatch(
       /id\.ResourceType\s*!=\s*ResourceGroupResource/,
     );
-    expect(content).not.toMatch(
-      /id\.ResourceType\s*!=\s*SubscriptionResource/,
-    );
+    expect(content).not.toMatch(/id\.ResourceType\s*!=\s*SubscriptionResource/);
   });
 });
 
@@ -468,8 +482,9 @@ describe("ARM Singleton Extension Resource - MockableArmClient", () => {
    * All resources get this basic ID-based getter.
    */
   it("generates GetXxxResource method", async () => {
-    const [{ outputs }] =
-      await MgmtTester.compileAndDiagnose(singletonExtensionResourceSpec);
+    const [{ outputs }] = await MgmtTester.compileAndDiagnose(
+      singletonExtensionResourceSpec,
+    );
     const content = findFileContaining(outputs, "Mockable", "ArmClient");
 
     expect(content).toContain(
@@ -490,24 +505,22 @@ describe("ARM Singleton Extension Resource - MockableArmClient", () => {
    * pattern instead.
    */
   it("generates collection factory with scope parameter", async () => {
-    const [{ outputs }] =
-      await MgmtTester.compileAndDiagnose(singletonExtensionResourceSpec);
+    const [{ outputs }] = await MgmtTester.compileAndDiagnose(
+      singletonExtensionResourceSpec,
+    );
     const content = findFileContaining(outputs, "Mockable", "ArmClient");
 
-    expect(content).toContain(
-      "GetHciVmInstances(ResourceIdentifier scope)",
-    );
-    expect(content).toContain(
-      "new HciVmInstanceCollection(Client, scope)",
-    );
+    expect(content).toContain("GetHciVmInstances(ResourceIdentifier scope)");
+    expect(content).toContain("new HciVmInstanceCollection(Client, scope)");
   });
 
   /**
    * Validates singular getters exist with scope parameter.
    */
   it("generates singular getters with scope parameter", async () => {
-    const [{ outputs }] =
-      await MgmtTester.compileAndDiagnose(singletonExtensionResourceSpec);
+    const [{ outputs }] = await MgmtTester.compileAndDiagnose(
+      singletonExtensionResourceSpec,
+    );
     const content = findFileContaining(outputs, "Mockable", "ArmClient");
 
     // Sync getter with scope + name
@@ -526,8 +539,9 @@ describe("ARM Singleton Extension Resource - ExtensionsFile", () => {
    * Validates GetHciVmInstanceResource extension on ArmClient.
    */
   it("generates GetXxxResource extension method", async () => {
-    const [{ outputs }] =
-      await MgmtTester.compileAndDiagnose(singletonExtensionResourceSpec);
+    const [{ outputs }] = await MgmtTester.compileAndDiagnose(
+      singletonExtensionResourceSpec,
+    );
     const content = findExtensionsFile(outputs);
 
     expect(content).toMatch(
@@ -539,8 +553,9 @@ describe("ARM Singleton Extension Resource - ExtensionsFile", () => {
    * Validates collection factory extension on ArmClient with scope parameter.
    */
   it("generates collection factory extension method", async () => {
-    const [{ outputs }] =
-      await MgmtTester.compileAndDiagnose(singletonExtensionResourceSpec);
+    const [{ outputs }] = await MgmtTester.compileAndDiagnose(
+      singletonExtensionResourceSpec,
+    );
     const content = findExtensionsFile(outputs);
 
     expect(content).toMatch(
@@ -556,8 +571,9 @@ describe("ARM Singleton Extension Resource - ExtensionsFile", () => {
    * Validates no unresolved symbol references.
    */
   it("has no unresolved symbol references", async () => {
-    const [{ outputs }] =
-      await MgmtTester.compileAndDiagnose(singletonExtensionResourceSpec);
+    const [{ outputs }] = await MgmtTester.compileAndDiagnose(
+      singletonExtensionResourceSpec,
+    );
 
     for (const [file, content] of Object.entries(outputs)) {
       expect(content, `Unresolved symbol in ${file}`).not.toMatch(

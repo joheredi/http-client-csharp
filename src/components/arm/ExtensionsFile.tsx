@@ -245,8 +245,7 @@ public static ${resourceRef} Get${resourceName}(this ${AzureResourceManager.ArmC
         const variableSegments = extractVariableSegments(
           metadata.resourceIdPattern,
         );
-        const resourceNameParam =
-          variableSegments[variableSegments.length - 1];
+        const resourceNameParam = variableSegments[variableSegments.length - 1];
 
         const getMethod = metadata.methods.find(
           (m) => m.kind === ResourceOperationKind.Read,

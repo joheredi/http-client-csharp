@@ -44,6 +44,12 @@ import { getLicenseHeader } from "../../utils/header.js";
 import { efCsharpRefkey } from "../../utils/refkey.js";
 import { getAllClients, getSimpleClientName } from "../../utils/clients.js";
 import { isVariableSegment } from "../../utils/arm-path-utils.js";
+import {
+  buildTagOperations,
+  getUpdateMethodInfo,
+  hasReadMethod,
+  resourceSupportsTags,
+} from "./tag-methods.js";
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 
@@ -222,6 +228,25 @@ export function ResourceFile(props: ResourceFileProps) {
     );
   });
 
+  // ── Tag operations (AddTag, SetTags, RemoveTag) ───────────────────────────
+  // Generated only for resources that: have a tags property, have Read, have Update
+
+  let tagOperationsBlock: Children = null;
+
+  if (resourceSupportsTags(model) && hasReadMethod(metadata)) {
+    const updateInfo = getUpdateMethodInfo(metadata, methodLookup, model);
+    if (updateInfo) {
+      tagOperationsBlock = buildTagOperations({
+        className,
+        modelRef,
+        diagnosticsFieldName,
+        restClientFieldName,
+        requestArgs: idAccessors.join(", "),
+        updateInfo,
+      });
+    }
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -248,6 +273,7 @@ export function ResourceFile(props: ResourceFileProps) {
           {createResourceIdentifier}
           {validateResourceId}
           {operationsBlock}
+          {tagOperationsBlock}
         </ClassDeclaration>
       </Namespace>
     </SourceFile>

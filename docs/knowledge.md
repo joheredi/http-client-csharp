@@ -4216,6 +4216,7 @@ The `<Property>` component from `@alloy-js/csharp` has an `attributes` prop that
 For standard resources (e.g., ResourceGroup-scoped), `buildIdAccessorExpressions()` uses named property accessors like `Id.SubscriptionId` and `Id.ResourceGroupName`. These work identically in both Resource and Collection contexts because they access well-known properties of the ResourceIdentifier.
 
 For extension resources, there are no well-known properties — the scope is an arbitrary ResourceIdentifier. This creates a context-dependent split:
+
 - **Resource context**: scope = `Id.Parent` (strip the last type/name suffix from the full resource ID)
 - **Collection context**: scope = `Id` (the collection was initialized with the scope as its Id)
 
@@ -4232,3 +4233,16 @@ The fix: `buildIdAccessorExpressions()` now accepts an optional `ResourceScope` 
 ## Design Decisions
 
 **Extension resource approach:** Modified existing functions with scope-awareness (conditional checks for `ResourceScope.Extension`) rather than creating separate functions. This keeps the code path consistent and avoids duplicating logic from the non-extension path.
+
+73. **Empty code template crashes Alloy** — `code\`\``throws "Cannot read properties of undefined (reading 'match')". Use`null`instead. This applies to any conditional code fragment (e.g.,`isLro ? code\`WaitUntil.Completed, \` : null`). Previously documented as #71 but still easy to hit in new code.
+
+74. **Flat code templates avoid indentation issues** — Nested code template interpolation (helper functions returning code fragments embedded in outer templates) causes unpredictable indentation. Use one complete code template per method with `if (isAsync)` branching instead.
+
+## Design Decisions
+
+### Tag Operations (19.5e)
+
+- **Approach**: Flat code templates per method variant (6 separate methods: AddTag × async/sync, SetTags × async/sync, RemoveTag × async/sync). Each is a complete code template with proper indentation.
+- **Why**: Nested code template interpolation caused indentation corruption. The existing `buildStandardOperation()` and `buildLroOperation()` also use flat templates — this is the proven pattern.
+- **Rejected**: Parameterized template with async/sync string substitution — caused `GetAsyncAsync` double-suffix bug and indentation inconsistencies.
+- **Detection**: `resourceSupportsTags()` walks model inheritance for `tags` property of type `dict<string, string>`. PUT vs PATCH determined by comparing Update body param type with resource model crossLanguageDefinitionId.

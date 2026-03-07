@@ -111,5 +111,18 @@ export const SystemCollectionsGeneric = createLibrary(
       kind: "class",
       members: {},
     },
+
+    /**
+     * Value type representing a key/value pair.
+     * Used in ARM tag operations to iterate over existing tags when
+     * constructing PATCH request bodies
+     * (e.g., `foreach (KeyValuePair<string, string> tag in current.Tags)`).
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.keyvaluepair-2
+     */
+    KeyValuePair: {
+      kind: "struct",
+      members: {},
+    },
   },
 );

@@ -6352,3 +6352,28 @@ Implemented code generation for non-resource methods (provider-level operations 
 **Known issue:** Singleton detection (`singletonResourceName`) doesn't propagate for extension resources through the `resolveArmResources` API. Singleton extensions are currently treated as non-singleton extensions (generating collection + singular getters with scope). This is a pre-existing issue; the code for singleton handling is in place and will work when singleton detection is fixed.
 
 **Results:** ✅ Build pass | ✅ 1653 unit tests passed (24 new) | ⚠️ E2E failures pre-existing (CS0122 ClientDiagnostics, CS0534 ErrorResult)
+
+## Task 19.5e — Implement tag operations (AddTag, RemoveTag, SetTags) — 2026-03-07
+
+### What was done:
+Implemented tag manipulation methods for ARM resources that support tags. Each tagged resource gets 6 methods (3 async + 3 sync): AddTag, SetTags, RemoveTag.
+
+### Files changed:
+- `src/builtins/system-collections-generic.ts` — Added `KeyValuePair` struct for PATCH foreach
+- `src/components/arm/tag-methods.ts` — NEW: Tag detection + all 6 method generation
+- `src/components/arm/ResourceFile.tsx` — Integrated tag methods into resource class output
+- `test/arm/tag-methods.test.ts` — NEW: 15 unit tests for tag operations
+
+### Key patterns used:
+- **Flat code templates** (one per method variant) — avoids indentation issues from nested interpolation
+- **Dual-path pattern**: Primary (TagResource API) + Secondary (resource Update fallback)
+- **PUT vs PATCH detection**: Compare Update body param type with resource model crossLanguageDefinitionId
+- **`unwrapNullableType()`** for proper type unwrapping (not `as any`)
+- **`null` instead of empty code templates** (`code\`\``) to avoid Alloy crash
+
+### What the next person should know:
+- ✅ Build passes, 1668 unit tests pass (15 new), lint clean on changed files
+- ⚠️ Pre-existing E2E Spector failures (CS0122 ClientDiagnostics, CS0534 ErrorResult) unrelated
+- The PRD has no more pending tasks — only 1 blocked task (13.26) remains
+- Tag methods use `modelRef` which resolves to the TCGC model name (e.g., `Models.Foo`) not `FooData` — this matches the existing operation generation pattern
+- For PATCH resources, the secondary path creates a new patch object and copies existing tags before modifying
