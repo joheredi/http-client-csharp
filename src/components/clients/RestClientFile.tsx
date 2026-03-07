@@ -759,7 +759,9 @@ function buildMethodParams(
   const result = params.map(({ name, type }) => ({ name, type }));
   result.push({
     name: "options",
-    type: pipelineTypes?.requestOptions ?? SystemClientModelPrimitives.RequestOptions,
+    type:
+      pipelineTypes?.requestOptions ??
+      SystemClientModelPrimitives.RequestOptions,
   });
 
   return result;
@@ -1412,8 +1414,10 @@ function buildRequestBody(
   getParamName: (name: string) => string,
   pipelineTypes?: PipelineTypes,
 ): Children {
-  const msgType = pipelineTypes?.message ?? SystemClientModelPrimitives.PipelineMessage;
-  const reqType = pipelineTypes?.request ?? SystemClientModelPrimitives.PipelineRequest;
+  const msgType =
+    pipelineTypes?.message ?? SystemClientModelPrimitives.PipelineMessage;
+  const reqType =
+    pipelineTypes?.request ?? SystemClientModelPrimitives.PipelineRequest;
   const parts: Children[] = [];
 
   // 1. URI builder initialization

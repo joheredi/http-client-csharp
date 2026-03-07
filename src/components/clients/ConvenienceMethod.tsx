@@ -9,6 +9,7 @@ import {
   type SdkEnumType,
   type SdkHeaderParameter,
   type SdkHttpOperation,
+  type SdkLroServiceMethod,
   type SdkModelType,
   type SdkPathParameter,
   type SdkQueryParameter,
@@ -17,7 +18,6 @@ import {
   UsageFlags,
 } from "@azure-tools/typespec-client-generator-core";
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
-import { SystemClientModel } from "../../builtins/system-client-model.js";
 import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
 import { formatDocLines } from "../../utils/doc.js";
 import {
@@ -25,13 +25,17 @@ import {
   SystemThreadingTasks,
 } from "../../builtins/system-threading.js";
 import { System } from "../../builtins/system.js";
+import { SystemTextJson } from "../../builtins/system-text-json.js";
 import { isConvenienceParamValueType } from "../../utils/nullable.js";
 import { escapeCSharpKeyword } from "../../utils/csharp-keywords.js";
 import {
   buildSiblingNameSet,
   cleanOperationName,
 } from "../../utils/operation-naming.js";
-import { getPipelineTypes } from "../../utils/pipeline-types.js";
+import {
+  getPipelineTypes,
+  type PipelineTypes,
+} from "../../utils/pipeline-types.js";
 
 /**
  * Metadata for a convenience method parameter, including the type expression,
@@ -120,6 +124,7 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
   );
   const pipelineTypes = getPipelineTypes(flavor ?? "unbranded");
   const isAzure = flavor === "azure";
+  const clientName = namePolicy.getName(client.name, "class");
 
   const methods = client.methods.filter(
     (m): m is SdkServiceMethod<SdkHttpOperation> =>
@@ -160,6 +165,12 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
         const requiredParams = params.params.filter((p) => !p.optional);
         const assertableParams = requiredParams.filter((p) => p.needsAssertion);
 
+        // Detect Azure LRO methods — these get Operation<T> return types and
+        // WaitUntil parameter instead of standard ClientResult<T> returns.
+        const isLro = isAzure && method.kind === "lro";
+        const isVoidLro =
+          isLro && (responseType === undefined || responseType === null);
+
         // Resolve CancellationToken parameter name, avoiding collision with
         // user-defined parameters. When a user parameter is named
         // "cancellationToken" (e.g., SpecialWords spec), append a numeric
@@ -169,7 +180,8 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
         // Build protocol method call argument list.
         // When the body is spread, replace individual body params with
         // a model constructor call: new BodyType(param1, param2, ...).
-        const protocolCallExpr: Children = params.spreadBodyType
+        // For Azure LRO, we prepend "waitUntil" to the protocol call args.
+        const baseProtocolCallExpr: Children = params.spreadBodyType
           ? buildSpreadProtocolCallExpr(
               params.params,
               params.spreadBodyType,
@@ -181,8 +193,14 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
               `${ctParamName}.ToRequestOptions()`,
             ].join(", ");
 
+        // For LRO, prepend "waitUntil, " to the protocol call expression.
+        // The convenience method forwards the WaitUntil value to the protocol method.
+        const protocolCallExpr: Children = isLro
+          ? code`waitUntil, ${baseProtocolCallExpr}`
+          : baseProtocolCallExpr;
+
         // Build <Method> parameter props
-        const methodParams = [
+        const baseMethodParams = [
           ...params.params.map((p) => ({
             name: p.name,
             type: p.type,
@@ -195,6 +213,14 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
           },
         ];
 
+        // Azure LRO methods prepend WaitUntil as the first parameter.
+        const methodParams = isLro
+          ? [
+              { name: "waitUntil", type: pipelineTypes.waitUntil as Children },
+              ...baseMethodParams,
+            ]
+          : baseMethodParams;
+
         const accessProps =
           access === "internal"
             ? ({ internal: true } as const)
@@ -206,14 +232,6 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
         // dicts, and enums use ToObjectFromJson<T>() for typed deserialization.
         const responseInfo = buildResponseInfo(responseType, namePolicy);
 
-        // Build return types
-        const syncReturn = responseInfo
-          ? code`${pipelineTypes.clientResult}<${responseInfo.typeExpr}>`
-          : pipelineTypes.clientResult;
-        const asyncReturn = responseInfo
-          ? code`${SystemThreadingTasks.Task}<${pipelineTypes.clientResult}<${responseInfo.typeExpr}>>`
-          : code`${SystemThreadingTasks.Task}<${pipelineTypes.clientResult}>`;
-
         const xmlDoc = buildConvenienceXmlDoc(
           description,
           params.params,
@@ -222,39 +240,29 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
         );
         const validation = buildConvenienceValidation(assertableParams);
 
-        // Sync method body — typed responses deserialize the result and wrap
-        // in ClientResult.FromValue() / Response.FromValue(). Void responses delegate directly.
-        // Azure: Response.FromValue(value, result) — result IS the Response
-        // Unbranded: ClientResult.FromValue(value, result.GetRawResponse())
-        const rawResponseExpr = isAzure ? "result" : "result.GetRawResponse()";
-        const syncBody = responseInfo
-          ? [
+        // Determine return types and method bodies based on LRO vs standard.
+        const { syncReturn, asyncReturn, syncBody, asyncBody } = isLro
+          ? buildLroConvenienceMethodParts(
+              pipelineTypes,
+              clientName,
+              methodName,
+              protocolCallExpr,
               validation,
-              assertableParams.length > 0 ? "\n\n" : "",
-              code`${pipelineTypes.clientResult} result = ${methodName}(${protocolCallExpr});`,
-              "\n",
-              code`return ${pipelineTypes.clientResult}.FromValue(${responseInfo.deserializeExpr}, ${rawResponseExpr});`,
-            ]
-          : [
+              assertableParams,
+              responseInfo ?? undefined,
+              isVoidLro,
+              method as SdkLroServiceMethod<SdkHttpOperation>,
+              namePolicy,
+            )
+          : buildStandardConvenienceMethodParts(
+              pipelineTypes,
+              isAzure,
+              methodName,
+              protocolCallExpr,
               validation,
-              assertableParams.length > 0 ? "\n\n" : "",
-              code`return ${methodName}(${protocolCallExpr});`,
-            ];
-
-        // Async method body
-        const asyncBody = responseInfo
-          ? [
-              validation,
-              assertableParams.length > 0 ? "\n\n" : "",
-              code`${pipelineTypes.clientResult} result = await ${methodName}Async(${protocolCallExpr}).ConfigureAwait(false);`,
-              "\n",
-              code`return ${pipelineTypes.clientResult}.FromValue(${responseInfo.deserializeExpr}, ${rawResponseExpr});`,
-            ]
-          : [
-              validation,
-              assertableParams.length > 0 ? "\n\n" : "",
-              code`return await ${methodName}Async(${protocolCallExpr}).ConfigureAwait(false);`,
-            ];
+              assertableParams,
+              responseInfo ?? undefined,
+            );
 
         return (
           <>
@@ -1467,4 +1475,206 @@ function isJsonMergePatchOperation(
       "application/merge-patch+json",
     ) ?? false
   );
+}
+
+/**
+ * Builds return types and method bodies for standard (non-LRO) convenience methods.
+ *
+ * Typed responses call the protocol method, deserialize the result, and wrap
+ * in `ClientResult.FromValue()` (unbranded) or `Response.FromValue()` (Azure).
+ * Void responses simply delegate to the protocol method.
+ */
+function buildStandardConvenienceMethodParts(
+  pipelineTypes: PipelineTypes,
+  isAzure: boolean,
+  methodName: string,
+  protocolCallExpr: Children,
+  validation: Children,
+  assertableParams: ConvenienceParam[],
+  responseInfo: ResponseInfo | undefined,
+): {
+  syncReturn: Children;
+  asyncReturn: Children;
+  syncBody: Children[];
+  asyncBody: Children[];
+} {
+  const syncReturn = responseInfo
+    ? code`${pipelineTypes.clientResult}<${responseInfo.typeExpr}>`
+    : pipelineTypes.clientResult;
+  const asyncReturn = responseInfo
+    ? code`${SystemThreadingTasks.Task}<${pipelineTypes.clientResult}<${responseInfo.typeExpr}>>`
+    : code`${SystemThreadingTasks.Task}<${pipelineTypes.clientResult}>`;
+
+  const rawResponseExpr = isAzure ? "result" : "result.GetRawResponse()";
+
+  const syncBody = responseInfo
+    ? [
+        validation,
+        assertableParams.length > 0 ? "\n\n" : "",
+        code`${pipelineTypes.clientResult} result = ${methodName}(${protocolCallExpr});`,
+        "\n",
+        code`return ${pipelineTypes.clientResult}.FromValue(${responseInfo.deserializeExpr}, ${rawResponseExpr});`,
+      ]
+    : [
+        validation,
+        assertableParams.length > 0 ? "\n\n" : "",
+        code`return ${methodName}(${protocolCallExpr});`,
+      ];
+
+  const asyncBody = responseInfo
+    ? [
+        validation,
+        assertableParams.length > 0 ? "\n\n" : "",
+        code`${pipelineTypes.clientResult} result = await ${methodName}Async(${protocolCallExpr}).ConfigureAwait(false);`,
+        "\n",
+        code`return ${pipelineTypes.clientResult}.FromValue(${responseInfo.deserializeExpr}, ${rawResponseExpr});`,
+      ]
+    : [
+        validation,
+        assertableParams.length > 0 ? "\n\n" : "",
+        code`return await ${methodName}Async(${protocolCallExpr}).ConfigureAwait(false);`,
+      ];
+
+  return { syncReturn, asyncReturn, syncBody, asyncBody };
+}
+
+/**
+ * Builds return types and method bodies for Azure LRO convenience methods.
+ *
+ * Non-void LRO convenience methods:
+ * 1. Call the protocol method (which returns `Operation<BinaryData>`)
+ * 2. Use `ProtocolOperationHelpers.Convert()` to transform it to `Operation<T>`
+ *    with a deserialization lambda that extracts the typed result from the response.
+ *
+ * Void-returning LRO convenience methods simply delegate to the protocol method
+ * (which returns `Operation`).
+ *
+ * The conversion lambda handles two cases:
+ * - **No resultPath** (standard resource LRO): uses the explicit operator cast
+ *   `(ModelType)response` — the Azure explicit operator takes `Response`.
+ * - **With resultPath** (RPC envelope LRO): navigates the JSON document to the
+ *   result property and deserializes from there.
+ *
+ * @param pipelineTypes - Pipeline type references for the Azure flavor.
+ * @param clientName - The PascalCase client class name for tracing scope.
+ * @param methodName - The PascalCase method name for tracing scope.
+ * @param protocolCallExpr - The protocol method invocation expression (includes waitUntil).
+ * @param validation - Validation statements for required parameters.
+ * @param assertableParams - Parameters requiring assertions (for spacing).
+ * @param responseInfo - Response type/deserialization info, or undefined for void.
+ * @param isVoid - Whether the LRO operation has no response body.
+ * @param method - The TCGC LRO service method with lroMetadata.
+ * @param namePolicy - C# naming policy for model name resolution.
+ */
+function buildLroConvenienceMethodParts(
+  pipelineTypes: PipelineTypes,
+  clientName: string,
+  methodName: string,
+  protocolCallExpr: Children,
+  validation: Children,
+  assertableParams: ConvenienceParam[],
+  responseInfo: ResponseInfo | undefined,
+  isVoid: boolean,
+  method: SdkLroServiceMethod<SdkHttpOperation>,
+  namePolicy: ReturnType<typeof useCSharpNamePolicy>,
+): {
+  syncReturn: Children;
+  asyncReturn: Children;
+  syncBody: Children[];
+  asyncBody: Children[];
+} {
+  const scopeName = `${clientName}.${methodName}`;
+
+  if (isVoid || !responseInfo) {
+    // Void-returning LRO: delegate directly to the protocol method
+    // which returns Operation (non-generic).
+    const syncReturn = pipelineTypes.operation as Children;
+    const asyncReturn = code`${SystemThreadingTasks.Task}<${pipelineTypes.operation}>`;
+
+    const syncBody = [
+      validation,
+      assertableParams.length > 0 ? "\n\n" : "",
+      code`return ${methodName}(${protocolCallExpr});`,
+    ];
+
+    const asyncBody = [
+      validation,
+      assertableParams.length > 0 ? "\n\n" : "",
+      code`return await ${methodName}Async(${protocolCallExpr}).ConfigureAwait(false);`,
+    ];
+
+    return { syncReturn, asyncReturn, syncBody, asyncBody };
+  }
+
+  // Non-void LRO: call protocol method then convert Operation<BinaryData>
+  // to Operation<T> using ProtocolOperationHelpers.Convert().
+  const syncReturn = code`${pipelineTypes.operation}<${responseInfo.typeExpr}>`;
+  const asyncReturn = code`${SystemThreadingTasks.Task}<${pipelineTypes.operation}<${responseInfo.typeExpr}>>`;
+
+  // Build the conversion lambda body based on whether the LRO result
+  // needs to be extracted from a nested path in the response envelope.
+  const convertExpr = buildLroConvertExpr(responseInfo, method, namePolicy);
+
+  const syncBody = [
+    validation,
+    assertableParams.length > 0 ? "\n\n" : "",
+    code`${pipelineTypes.operation}<${System.BinaryData}> operation = ${methodName}(${protocolCallExpr});`,
+    "\n",
+    code`return ${pipelineTypes.protocolOperationHelpers}.Convert(operation, ${convertExpr}, ClientDiagnostics, "${scopeName}");`,
+  ];
+
+  const asyncBody = [
+    validation,
+    assertableParams.length > 0 ? "\n\n" : "",
+    code`${pipelineTypes.operation}<${System.BinaryData}> operation = await ${methodName}Async(${protocolCallExpr}).ConfigureAwait(false);`,
+    "\n",
+    code`return ${pipelineTypes.protocolOperationHelpers}.Convert(operation, ${convertExpr}, ClientDiagnostics, "${scopeName}");`,
+  ];
+
+  return { syncReturn, asyncReturn, syncBody, asyncBody };
+}
+
+/**
+ * Builds the conversion lambda expression for `ProtocolOperationHelpers.Convert()`.
+ *
+ * The lambda receives an `Azure.Response` and must return the typed result `T`.
+ * Two patterns are used based on the LRO metadata:
+ *
+ * - **No resultPath** (standard resource LRO): `response => (ModelType)response`
+ *   Uses the model's explicit operator that takes `Response` and deserializes
+ *   from the root of the JSON document.
+ *
+ * - **With resultPath** (RPC envelope LRO): `response => ModelType.DeserializeModelType(...)`
+ *   Parses the JSON response, navigates to the result property via
+ *   `GetProperty("path")`, and deserializes from that sub-element.
+ *
+ * @param responseInfo - The type expression and deserialize info for the response model.
+ * @param method - The TCGC LRO service method with lroMetadata (for resultPath).
+ * @param namePolicy - C# naming policy for generating deserialization method names.
+ * @returns An Alloy `code` expression for the conversion lambda.
+ */
+function buildLroConvertExpr(
+  responseInfo: ResponseInfo,
+  method: SdkLroServiceMethod<SdkHttpOperation>,
+  namePolicy: ReturnType<typeof useCSharpNamePolicy>,
+): Children {
+  const resultPath = method.lroMetadata.finalResultPath;
+
+  if (!resultPath) {
+    // Standard resource LRO: the final response body IS the result.
+    // Use the model's explicit operator cast: (ModelType)response
+    return code`response => (${responseInfo.typeExpr})response`;
+  }
+
+  // RPC envelope LRO: the result is nested inside the response at resultPath.
+  // Generate inline deserialization that navigates to the nested property.
+  // The response type in LRO is always a model type when resultPath is set.
+  const responseType = method.response.type;
+  if (responseType && responseType.kind === "model") {
+    const modelName = namePolicy.getName(responseType.name, "class");
+    return code`response => ${responseInfo.typeExpr}.Deserialize${modelName}(${SystemTextJson.JsonDocument}.Parse(response.Content, ModelSerializationExtensions.JsonDocumentOptions).RootElement.GetProperty("${resultPath}"), ModelSerializationExtensions.WireOptions)`;
+  }
+
+  // Fallback: use explicit operator cast (best effort for non-model types)
+  return code`response => (${responseInfo.typeExpr})response`;
 }

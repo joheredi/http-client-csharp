@@ -55,6 +55,14 @@ export interface PipelineTypes {
   binaryContent: Children;
   /** The HTTP request type: `Request` (Azure) or `PipelineRequest` (unbranded). Used in REST client request building. */
   request: Children;
+  /** The non-generic Operation base class for void-returning LRO methods (Azure only). Undefined for unbranded. */
+  operation?: Children;
+  /** The WaitUntil enum type for controlling LRO wait behavior (Azure only). Undefined for unbranded. */
+  waitUntil?: Children;
+  /** The OperationFinalStateVia enum for polling strategy (Azure only). Undefined for unbranded. */
+  operationFinalStateVia?: Children;
+  /** The ProtocolOperationHelpers static class for LRO processing (Azure only). Undefined for unbranded. */
+  protocolOperationHelpers?: Children;
 }
 
 /**
@@ -92,6 +100,10 @@ export function getPipelineTypes(
       clientResult: Azure.Response,
       binaryContent: AzureCore.RequestContent,
       request: AzureCore.Request,
+      operation: Azure.Operation,
+      waitUntil: Azure.WaitUntil,
+      operationFinalStateVia: AzureCore.OperationFinalStateVia,
+      protocolOperationHelpers: AzureCore.ProtocolOperationHelpers,
     };
   }
 

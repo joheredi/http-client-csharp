@@ -8,14 +8,15 @@ import type {
   SdkDictionaryType,
   SdkHeaderParameter,
   SdkHttpOperation,
+  SdkLroServiceMethod,
   SdkPathParameter,
   SdkQueryParameter,
   SdkServiceMethod,
   SdkType,
 } from "@azure-tools/typespec-client-generator-core";
+import type { FinalStateValue } from "@azure-tools/typespec-azure-core";
 import {
   SystemClientModel,
-  SystemClientModelPrimitives,
 } from "../../builtins/system-client-model.js";
 import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
 import { System } from "../../builtins/system.js";
@@ -27,7 +28,10 @@ import {
   buildSiblingNameSet,
   cleanOperationName,
 } from "../../utils/operation-naming.js";
-import { getPipelineTypes } from "../../utils/pipeline-types.js";
+import {
+  getPipelineTypes,
+  type PipelineTypes,
+} from "../../utils/pipeline-types.js";
 
 /**
  * Metadata for a protocol method parameter, including optionality and type
@@ -116,6 +120,7 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
   );
   const pipelineTypes = getPipelineTypes(flavor ?? "unbranded");
   const isAzure = flavor === "azure";
+  const clientName = namePolicy.getName(client.name, "class");
 
   const methods = client.methods.filter(
     (m): m is SdkServiceMethod<SdkHttpOperation> =>
@@ -143,6 +148,13 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
         const params = buildProtocolParams(operation, getParamName);
         const validatedParams = params.filter((p) => p.needsValidation);
 
+        // Detect Azure LRO methods — these get Operation<T> return types and
+        // WaitUntil parameter instead of standard Response/ClientResult returns.
+        const isLro = isAzure && method.kind === "lro";
+        const isVoidLro =
+          isLro &&
+          (method.response.type === undefined || method.response.type === null);
+
         // Determine whether this operation will have a convenience method
         // counterpart. When no convenience method exists, the protocol method's
         // `options` parameter must default to `null` so callers can omit it.
@@ -165,6 +177,9 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
         const hasOnlyBodyParams =
           params.length > 0 && params.every((p) => p.isBody);
         const optionsDefault = !hasConvenienceMethod || hasOnlyBodyParams;
+
+        // For LRO protocol methods, the CreateRequest call uses the same args
+        // (without WaitUntil). The argList is the CreateRequest invocation args.
         const argList = [
           ...params.map((p) => escapeCSharpKeyword(p.name)),
           "options",
@@ -175,7 +190,7 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
         // protocol method lists it as required. This matches the legacy
         // emitter behaviour and prevents CS0121 ambiguity with the
         // convenience overload which *does* use defaults.
-        const methodParams = [
+        const baseParams = [
           ...params.map((p) => ({
             name: p.name,
             type: p.type,
@@ -190,6 +205,14 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
           },
         ];
 
+        // Azure LRO methods prepend WaitUntil as the first parameter.
+        const methodParams = isLro
+          ? [
+              { name: "waitUntil", type: pipelineTypes.waitUntil as Children },
+              ...baseParams,
+            ]
+          : baseParams;
+
         const accessProps =
           access === "internal"
             ? ({ internal: true } as const)
@@ -198,39 +221,26 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
         const xmlDoc = buildXmlDoc(description, params, validatedParams);
         const validation = buildValidation(validatedParams);
 
-        // Azure protocol methods return Response directly from ProcessMessage.
-        // Unbranded protocol methods wrap in ClientResult.FromResponse().
-        const syncBody = isAzure
-          ? [
+        // Determine return types and method bodies based on LRO vs standard.
+        const { syncReturn, asyncReturn, syncBody, asyncBody } = isLro
+          ? buildLroProtocolMethodParts(
+              pipelineTypes,
+              clientName,
+              methodName,
+              argList,
               validation,
-              validatedParams.length > 0 ? "\n\n" : "",
-              code`using ${pipelineTypes.message} message = Create${methodName}Request(${argList});`,
-              "\n",
-              code`return Pipeline.ProcessMessage(message, options);`,
-            ]
-          : [
+              validatedParams,
+              method as SdkLroServiceMethod<SdkHttpOperation>,
+              isVoidLro,
+            )
+          : buildStandardProtocolMethodParts(
+              pipelineTypes,
+              isAzure,
+              methodName,
+              argList,
               validation,
-              validatedParams.length > 0 ? "\n\n" : "",
-              code`using ${pipelineTypes.message} message = Create${methodName}Request(${argList});`,
-              "\n",
-              code`return ${pipelineTypes.clientResult}.FromResponse(Pipeline.ProcessMessage(message, options));`,
-            ];
-
-        const asyncBody = isAzure
-          ? [
-              validation,
-              validatedParams.length > 0 ? "\n\n" : "",
-              code`using ${pipelineTypes.message} message = Create${methodName}Request(${argList});`,
-              "\n",
-              code`return await Pipeline.ProcessMessageAsync(message, options).ConfigureAwait(false);`,
-            ]
-          : [
-              validation,
-              validatedParams.length > 0 ? "\n\n" : "",
-              code`using ${pipelineTypes.message} message = Create${methodName}Request(${argList});`,
-              "\n",
-              code`return ${pipelineTypes.clientResult}.FromResponse(await Pipeline.ProcessMessageAsync(message, options).ConfigureAwait(false));`,
-            ];
+              validatedParams,
+            );
 
         return (
           <>
@@ -241,7 +251,7 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
               {...accessProps}
               virtual
               name={namekey(methodName, { ignoreNameConflict: true })}
-              returns={pipelineTypes.clientResult}
+              returns={syncReturn}
               parameters={methodParams}
             >
               {syncBody}
@@ -254,7 +264,7 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
               virtual
               async
               name={namekey(`${methodName}Async`, { ignoreNameConflict: true })}
-              returns={code`${SystemThreadingTasks.Task}<${pipelineTypes.clientResult}>`}
+              returns={asyncReturn}
               parameters={methodParams}
             >
               {asyncBody}
@@ -726,4 +736,164 @@ function isMultipartProtocolMethod(
       "multipart/form-data",
     ) ?? false
   );
+}
+
+/**
+ * Maps a TCGC FinalStateValue to the corresponding C# `OperationFinalStateVia`
+ * enum member expression. Used by Azure LRO protocol methods to tell
+ * `ProtocolOperationHelpers` how to poll for the operation's final state.
+ *
+ * @param finalStateVia - The TCGC final state value from LRO metadata.
+ * @param pipelineTypes - Pipeline type references for the Azure flavor.
+ * @returns An Alloy `code` expression resolving to e.g.
+ *   `OperationFinalStateVia.Location`.
+ */
+function mapFinalStateVia(
+  finalStateVia: FinalStateValue,
+  pipelineTypes: PipelineTypes,
+): Children {
+  const mapping: Record<string, string> = {
+    "azure-async-operation": "AzureAsyncOperation",
+    location: "Location",
+    "original-uri": "OriginalUri",
+    "operation-location": "OperationLocation",
+    "custom-link": "OperationLocation",
+    "custom-operation-reference": "OperationLocation",
+  };
+
+  const member = mapping[finalStateVia] ?? "OperationLocation";
+  return code`${pipelineTypes.operationFinalStateVia}.${member}`;
+}
+
+/**
+ * Builds return types and method bodies for standard (non-LRO) protocol methods.
+ *
+ * Azure protocol methods return `Response` directly from `Pipeline.ProcessMessage`.
+ * Unbranded protocol methods wrap the result in `ClientResult.FromResponse()`.
+ */
+function buildStandardProtocolMethodParts(
+  pipelineTypes: PipelineTypes,
+  isAzure: boolean,
+  methodName: string,
+  argList: string,
+  validation: Children,
+  validatedParams: ProtocolParam[],
+): {
+  syncReturn: Children;
+  asyncReturn: Children;
+  syncBody: Children[];
+  asyncBody: Children[];
+} {
+  const syncReturn = pipelineTypes.clientResult;
+  const asyncReturn = code`${SystemThreadingTasks.Task}<${pipelineTypes.clientResult}>`;
+
+  const syncBody = isAzure
+    ? [
+        validation,
+        validatedParams.length > 0 ? "\n\n" : "",
+        code`using ${pipelineTypes.message} message = Create${methodName}Request(${argList});`,
+        "\n",
+        code`return Pipeline.ProcessMessage(message, options);`,
+      ]
+    : [
+        validation,
+        validatedParams.length > 0 ? "\n\n" : "",
+        code`using ${pipelineTypes.message} message = Create${methodName}Request(${argList});`,
+        "\n",
+        code`return ${pipelineTypes.clientResult}.FromResponse(Pipeline.ProcessMessage(message, options));`,
+      ];
+
+  const asyncBody = isAzure
+    ? [
+        validation,
+        validatedParams.length > 0 ? "\n\n" : "",
+        code`using ${pipelineTypes.message} message = Create${methodName}Request(${argList});`,
+        "\n",
+        code`return await Pipeline.ProcessMessageAsync(message, options).ConfigureAwait(false);`,
+      ]
+    : [
+        validation,
+        validatedParams.length > 0 ? "\n\n" : "",
+        code`using ${pipelineTypes.message} message = Create${methodName}Request(${argList});`,
+        "\n",
+        code`return ${pipelineTypes.clientResult}.FromResponse(await Pipeline.ProcessMessageAsync(message, options).ConfigureAwait(false));`,
+      ];
+
+  return { syncReturn, asyncReturn, syncBody, asyncBody };
+}
+
+/**
+ * Builds return types and method bodies for Azure LRO protocol methods.
+ *
+ * LRO protocol methods return `Operation<BinaryData>` (or `Operation` for
+ * void-returning operations) and delegate to
+ * `ProtocolOperationHelpers.ProcessMessage[Async]()` which handles polling,
+ * waiting, and operation state tracking.
+ *
+ * The scope name format `"ClientName.MethodName"` matches the legacy emitter's
+ * distributed tracing convention.
+ *
+ * @param pipelineTypes - Pipeline type references for the Azure flavor.
+ * @param clientName - The PascalCase client class name for tracing scope.
+ * @param methodName - The PascalCase method name for tracing scope.
+ * @param argList - Comma-separated argument list for CreateRequest call.
+ * @param validation - Validation statements for required parameters.
+ * @param validatedParams - Parameters that need validation (for spacing).
+ * @param method - The TCGC LRO service method with lroMetadata.
+ * @param isVoid - Whether the LRO operation has no response body.
+ */
+function buildLroProtocolMethodParts(
+  pipelineTypes: PipelineTypes,
+  clientName: string,
+  methodName: string,
+  argList: string,
+  validation: Children,
+  validatedParams: ProtocolParam[],
+  method: SdkLroServiceMethod<SdkHttpOperation>,
+  isVoid: boolean,
+): {
+  syncReturn: Children;
+  asyncReturn: Children;
+  syncBody: Children[];
+  asyncBody: Children[];
+} {
+  const finalStateViaExpr = mapFinalStateVia(
+    method.lroMetadata.finalStateVia,
+    pipelineTypes,
+  );
+  const scopeName = `${clientName}.${methodName}`;
+
+  // Void-returning LRO: Operation (non-generic) via ProcessMessageWithoutResponseValue
+  // Typed LRO: Operation<BinaryData> via ProcessMessage
+  const syncReturn = isVoid
+    ? (pipelineTypes.operation as Children)
+    : code`${pipelineTypes.operation}<${System.BinaryData}>`;
+  const asyncReturn = isVoid
+    ? code`${SystemThreadingTasks.Task}<${pipelineTypes.operation}>`
+    : code`${SystemThreadingTasks.Task}<${pipelineTypes.operation}<${System.BinaryData}>>`;
+
+  const processMethodSync = isVoid
+    ? "ProcessMessageWithoutResponseValue"
+    : "ProcessMessage";
+  const processMethodAsync = isVoid
+    ? "ProcessMessageWithoutResponseValueAsync"
+    : "ProcessMessageAsync";
+
+  const syncBody = [
+    validation,
+    validatedParams.length > 0 ? "\n\n" : "",
+    code`using ${pipelineTypes.message} message = Create${methodName}Request(${argList});`,
+    "\n",
+    code`return ${pipelineTypes.protocolOperationHelpers}.${processMethodSync}(Pipeline, message, ClientDiagnostics, "${scopeName}", ${finalStateViaExpr}, options, waitUntil);`,
+  ];
+
+  const asyncBody = [
+    validation,
+    validatedParams.length > 0 ? "\n\n" : "",
+    code`using ${pipelineTypes.message} message = Create${methodName}Request(${argList});`,
+    "\n",
+    code`return await ${pipelineTypes.protocolOperationHelpers}.${processMethodAsync}(Pipeline, message, ClientDiagnostics, "${scopeName}", ${finalStateViaExpr}, options, waitUntil).ConfigureAwait(false);`,
+  ];
+
+  return { syncReturn, asyncReturn, syncBody, asyncBody };
 }

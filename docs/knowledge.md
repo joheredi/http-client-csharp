@@ -3650,19 +3650,23 @@ Azure extension methods file uses `context.Parse()` to extract `(CancellationTok
 ## Design Decisions
 
 ### Task 17.3: Pipeline types utility approach
+
 **Chosen**: Single `getPipelineTypes(flavor)` utility + inline flavor branching in components.
 **Rejected**: Separate Azure-specific component files (e.g., `AzureClientFile.tsx`).
 **Reason**: Less code duplication; the differences are localized to type references and a few structural patterns. Follows the existing flavor pattern in `CSharpTypeExpression.tsx`. A pipeline-types utility centralizes the type mapping so all components use the same consistent references.
 
 ### Task 17.3: Azure pipeline creation pattern
+
 Azure uses `HttpPipelineBuilder.Build(options, policies[])` which differs from unbranded `ClientPipeline.Create(options, pre[], auth[], post[])`. Azure omits `UserAgentPolicy` because HttpPipelineBuilder adds it internally. Created separate `buildAzurePipelineCreateLine()` function rather than parameterizing the existing `buildPipelineCreateLine()` because the API shapes are fundamentally different.
 
 ## Gotchas
 
 ### @useAuth decorator placement for TCGC
+
 The `@useAuth` decorator MUST be placed BEFORE `@service namespace` declaration in TypeSpec, not on individual operations. When placed on operations, TCGC does not populate `client.clientInitialization.parameters` with credential parameters. This applies to both Azure and unbranded flavors.
 
 Example (correct):
+
 ```typespec
 @useAuth(ApiKeyAuth<ApiKeyLocation.header, "x-api-key">)
 @service
@@ -3670,10 +3674,13 @@ namespace TestService;
 ```
 
 ### Alloy Property `virtual` prop with `false || undefined`
+
 When using `virtual={booleanValue || undefined}` on an Alloy `<Property>` component, `false || undefined` correctly evaluates to `undefined` (prop not passed), so the property renders without `virtual`. The pattern works correctly — the initial test failure was due to overly broad assertion checking for "virtual" anywhere in the file (which matched virtual methods, not the property).
 
 ### Azure OAuth2 scopes syntax in TypeSpec tests
+
 OAuth2 flows in TypeSpec tests should NOT include inline `scopes` objects. Use the simple flow format:
+
 ```typespec
 @useAuth(OAuth2Auth<[{
   type: OAuth2FlowType.implicit,
@@ -3681,36 +3688,76 @@ OAuth2 flows in TypeSpec tests should NOT include inline `scopes` objects. Use t
   tokenUrl: "https://login.example.com/token"
 }]>)
 ```
+
 Including `scopes: [{ value: "..." }]` causes compilation failures in TCGC.
 
 ## Azure Pipeline Type Cascading (Task 17.3b)
 
 ### Key Insight: Azure `Response` vs Unbranded `ClientResult`
+
 Azure protocol methods return `Response` directly from `Pipeline.ProcessMessage()` — there is NO `ClientResult.FromResponse()` wrapper. This is because Azure's `Response` IS the result type (equivalent to both `PipelineResponse` and `ClientResult` in unbranded). Similarly, Azure convenience methods call `Response.FromValue(value, result)` where `result` is the Response directly (no `.GetRawResponse()` needed), while unbranded uses `ClientResult.FromValue(value, result.GetRawResponse())`.
 
 ### Design Decision: `getPipelineTypes()` Extension Approach
+
 Chose to extend the existing `getPipelineTypes()` utility with `clientResult`, `binaryContent`, and `request` fields rather than using separate per-component conditionals. This keeps flavor-aware type resolution centralized and consistent with the pattern established in task 17.3.
 
 ### `PipelineMessageClassifier` is Shared
+
 `PipelineMessageClassifier` from System.ClientModel.Primitives is used by BOTH Azure and unbranded flavors. Azure's `HttpPipeline.CreateMessage(uri, method, classifier)` accepts the same classifier type. The `ClassifierDeclarations` component in RestClientFile does NOT need flavor-aware changes.
 
 ### Threading Flavor to Components
+
 Components access flavor in two ways:
+
 1. Via `options.flavor` — for components that already receive `ResolvedCSharpEmitterOptions` (RestClientFile, CollectionResultFile, ErrorResultFile, CancellationTokenExtensionsFile)
 2. Via a new `flavor` prop — for components that only receive `client` (ProtocolMethods, ConvenienceMethods, PagingMethods) or `type` (CastOperators). Flavor is threaded from ClientFile.tsx and emitter.tsx respectively.
 
 ### Azure Plugin Test Projects Use SCM Types
+
 The legacy emitter's Azure Plugin test projects (in submodules/typespec/packages/http-client-csharp/generator/TestProjects/Plugin/) actually use System.ClientModel types (ClientPipeline, PipelineMessage, ClientResult), NOT Azure.Core types. This is a specific Plugin configuration, NOT the target for our "azure" flavor. Our emitter intentionally maps "azure" flavor to Azure.Core types (HttpPipeline, HttpMessage, Response) as established in task 17.3.
 
 ## Design Decisions
 
 ### 17.4 — Azure client options base class selection
+
 **Approach chosen:** Simple conditional in `ClientOptionsFile.tsx` component.
 **Rejected:** Extending `getPipelineTypes()` utility — over-engineering for a two-way base class swap.
 **Key insight:** The `AzureCore.ClientOptions` type was already defined in `src/builtins/azure.ts` but unused by the options component. The only change needed was a conditional `baseType` variable. Alloy handles `using Azure.Core;` vs `using System.ClientModel.Primitives;` automatically via refkeys.
 
 ### 17.2 — Azure.Core PackageReference in .csproj
+
 **Approach chosen:** Simple conditional in `ProjectFile.tsx` component — swap `System.ClientModel` for `Azure.Core` when `flavor === "azure"`.
 **Rejected:** Full Azure scaffolding component with shared source files, different TargetFrameworks, etc. — over-engineering; shared sources tracked by task 17.6.
 **Key insight:** The e2e test environment has no central package management (`Directory.Packages.props`), so generated .csproj files MUST include explicit version attributes. Used version 1.44.1 to match `test/e2e/Spector.Tests/Spector.Tests.csproj`. The Azure ground truth omits versions because it uses central management in azure-sdk-for-net repo.
 **E2E regression:** Removing `azure/core/basic`, `azure/core/page`, `azure/core/scalar` from `.testignore` confirmed they now compile. Pre-existing failures (ClientDiagnostics, ModelReaderWriterContext) are unrelated.
+
+## Design Decisions
+
+### LRO Operation<T> Implementation (Task 17.5)
+
+**Approach chosen:** In-place modification of ProtocolMethod.tsx and ConvenienceMethod.tsx with extracted helper functions.
+**Rejected:** Separate LroProtocolMethod/LroConvenienceMethod components — would duplicate 80% of parameter building logic.
+**Pattern:** When `isAzure && method.kind === "lro"`, the method generation branches to use Operation<T>/WaitUntil patterns instead of standard ClientResult/Response returns.
+
+### LRO Conversion Lambda Pattern
+
+For convenience methods, `ProtocolOperationHelpers.Convert()` needs a `Func<Response, T>` lambda:
+
+- **No resultPath** (standard resource LRO): `response => (ModelType)response` — works because Azure models have `explicit operator ModelType(Response result)`.
+- **With resultPath** (RPC envelope LRO): `response => ModelType.DeserializeModelType(JsonDocument.Parse(response.Content).RootElement.GetProperty("path"), WireOptions)` — navigates to nested result inside polling envelope.
+
+### FinalStateValue Mapping
+
+TCGC `FinalStateValue` strings map to C# `OperationFinalStateVia` enum members:
+
+- `"azure-async-operation"` → `AzureAsyncOperation`
+- `"location"` → `Location`
+- `"original-uri"` → `OriginalUri`
+- `"operation-location"` → `OperationLocation`
+- `"custom-link"` / `"custom-operation-reference"` → `OperationLocation` (fallback)
+
+## Gotchas
+
+### @markAsLro Cannot Be Used on Void Operations
+
+TCGC emits warning `invalid-mark-as-lro-target` and ignores `@markAsLro` on operations returning void. The method stays as `kind: "basic"`, not `kind: "lro"`. Void-returning LRO (like Delete) only works through Azure.Core resource operation templates (e.g., `ResourceOperations`). Unit tests for void LRO must use Azure.Core library imports, not `@markAsLro`.

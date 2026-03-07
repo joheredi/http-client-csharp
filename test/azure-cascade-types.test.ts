@@ -53,7 +53,9 @@ describe("Azure pipeline types - RestClientFile", () => {
     expect(restClient).toBeDefined();
 
     // Azure uses HttpMessage for message variable and return type
-    expect(restClient).toContain("HttpMessage message = Pipeline.CreateMessage(");
+    expect(restClient).toContain(
+      "HttpMessage message = Pipeline.CreateMessage(",
+    );
     expect(restClient).toContain("internal HttpMessage Create");
 
     // Azure uses Request for the request variable
@@ -80,7 +82,9 @@ describe("Azure pipeline types - RestClientFile", () => {
     const restClient = outputs["src/Generated/TestServiceClient.RestClient.cs"];
     expect(restClient).toBeDefined();
 
-    expect(restClient).toContain("PipelineMessage message = Pipeline.CreateMessage(");
+    expect(restClient).toContain(
+      "PipelineMessage message = Pipeline.CreateMessage(",
+    );
     expect(restClient).toContain("PipelineRequest request = message.Request;");
     expect(restClient).toContain("RequestOptions options");
     expect(restClient).not.toContain("HttpMessage message");
@@ -106,7 +110,9 @@ describe("Azure pipeline types - ProtocolMethod", () => {
 
     // Azure protocol methods return Response
     expect(clientFile).toContain("public virtual Response GetWidget(");
-    expect(clientFile).toContain("public virtual async Task<Response> GetWidgetAsync(");
+    expect(clientFile).toContain(
+      "public virtual async Task<Response> GetWidgetAsync(",
+    );
 
     // Azure protocol methods accept RequestContext
     expect(clientFile).toContain("RequestContext options");
@@ -115,8 +121,12 @@ describe("Azure pipeline types - ProtocolMethod", () => {
     expect(clientFile).toContain("using HttpMessage message = Create");
 
     // Azure protocol methods return Response directly (no FromResponse)
-    expect(clientFile).toContain("return Pipeline.ProcessMessage(message, options);");
-    expect(clientFile).toContain("return await Pipeline.ProcessMessageAsync(message, options).ConfigureAwait(false);");
+    expect(clientFile).toContain(
+      "return Pipeline.ProcessMessage(message, options);",
+    );
+    expect(clientFile).toContain(
+      "return await Pipeline.ProcessMessageAsync(message, options).ConfigureAwait(false);",
+    );
 
     // Should NOT contain unbranded types in protocol methods
     expect(clientFile).not.toContain("ClientResult GetWidget");
@@ -138,7 +148,9 @@ describe("Azure pipeline types - ProtocolMethod", () => {
     expect(clientFile).toContain("Task<ClientResult> GetWidgetAsync(");
     expect(clientFile).toContain("RequestOptions options");
     expect(clientFile).toContain("using PipelineMessage message = Create");
-    expect(clientFile).toContain("ClientResult.FromResponse(Pipeline.ProcessMessage(");
+    expect(clientFile).toContain(
+      "ClientResult.FromResponse(Pipeline.ProcessMessage(",
+    );
   });
 });
 
@@ -181,7 +193,8 @@ describe("Azure pipeline types - Infrastructure files", () => {
       await AzureHttpTester.compileAndDiagnose(basicServiceSpec);
     expect(diagnostics).toHaveLength(0);
 
-    const ctFile = outputs["src/Generated/Internal/CancellationTokenExtensions.cs"];
+    const ctFile =
+      outputs["src/Generated/Internal/CancellationTokenExtensions.cs"];
     expect(ctFile).toBeDefined();
 
     // Azure uses RequestContext
@@ -219,7 +232,9 @@ describe("Azure pipeline types - Infrastructure files", () => {
     expect(errorFile).toContain("private readonly Response _response;");
 
     // Azure uses RequestFailedException for the _exception field
-    expect(errorFile).toContain("private readonly RequestFailedException _exception;");
+    expect(errorFile).toContain(
+      "private readonly RequestFailedException _exception;",
+    );
 
     // Should NOT contain unbranded types
     expect(errorFile).not.toContain("ClientResult<T>");
@@ -231,8 +246,7 @@ describe("Azure pipeline types - Infrastructure files", () => {
    * Verifies that unbranded infrastructure files remain unchanged.
    */
   it("unbranded ErrorResult continues using ClientResult types", async () => {
-    const [{ outputs }, diagnostics] =
-      await HttpTester.compileAndDiagnose(`
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
       @service
@@ -265,20 +279,25 @@ describe("Azure pipeline types - CastOperators", () => {
     expect(diagnostics).toHaveLength(0);
 
     // Find the Widget serialization file
-    const serializationFile = outputs["src/Generated/Models/Widget.Serialization.cs"];
+    const serializationFile =
+      outputs["src/Generated/Models/Widget.Serialization.cs"];
     expect(serializationFile).toBeDefined();
 
     // Azure uses RequestContent for implicit BinaryContent operator
     expect(serializationFile).toContain("implicit operator RequestContent(");
 
     // Azure uses Response for explicit ClientResult operator
-    expect(serializationFile).toContain("explicit operator Widget(Response result)");
+    expect(serializationFile).toContain(
+      "explicit operator Widget(Response result)",
+    );
     // Azure: response = result (no GetRawResponse)
     expect(serializationFile).toContain("Response response = result;");
 
     // Should NOT contain unbranded types
     expect(serializationFile).not.toContain("implicit operator BinaryContent(");
-    expect(serializationFile).not.toContain("explicit operator Widget(ClientResult result)");
+    expect(serializationFile).not.toContain(
+      "explicit operator Widget(ClientResult result)",
+    );
   });
 
   /**
@@ -289,13 +308,20 @@ describe("Azure pipeline types - CastOperators", () => {
       await HttpTester.compileAndDiagnose(basicServiceSpec);
     expect(diagnostics).toHaveLength(0);
 
-    const serializationFile = outputs["src/Generated/Models/Widget.Serialization.cs"];
+    const serializationFile =
+      outputs["src/Generated/Models/Widget.Serialization.cs"];
     expect(serializationFile).toBeDefined();
 
     expect(serializationFile).toContain("implicit operator BinaryContent(");
-    expect(serializationFile).toContain("explicit operator Widget(ClientResult result)");
-    expect(serializationFile).toContain("PipelineResponse response = result.GetRawResponse();");
-    expect(serializationFile).not.toContain("implicit operator RequestContent(");
+    expect(serializationFile).toContain(
+      "explicit operator Widget(ClientResult result)",
+    );
+    expect(serializationFile).toContain(
+      "PipelineResponse response = result.GetRawResponse();",
+    );
+    expect(serializationFile).not.toContain(
+      "implicit operator RequestContent(",
+    );
     expect(serializationFile).not.toContain("Response response = result;");
   });
 });

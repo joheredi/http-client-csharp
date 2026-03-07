@@ -553,8 +553,10 @@ function buildSinglePageGetRawPagesBody(
   isAzure?: boolean,
 ): Children[] {
   const requestArgs = buildStoredFieldArgs(params);
-  const msgType = pipelineTypes?.message ?? SystemClientModelPrimitives.PipelineMessage;
-  const resultType = pipelineTypes?.clientResult ?? SystemClientModel.ClientResult;
+  const msgType =
+    pipelineTypes?.message ?? SystemClientModelPrimitives.PipelineMessage;
+  const resultType =
+    pipelineTypes?.clientResult ?? SystemClientModel.ClientResult;
 
   if (isAsync) {
     const processExpr = `await _client.Pipeline.ProcessMessageAsync(message, _options).ConfigureAwait(false)`;
@@ -611,8 +613,10 @@ function buildNextLinkGetRawPagesBody(
     : code`_client.Pipeline.ProcessMessage(message, _options)`;
 
   const requestArgs = buildStoredFieldArgs(params);
-  const msgType = pipelineTypes?.message ?? SystemClientModelPrimitives.PipelineMessage;
-  const resultType = pipelineTypes?.clientResult ?? SystemClientModel.ClientResult;
+  const msgType =
+    pipelineTypes?.message ?? SystemClientModelPrimitives.PipelineMessage;
+  const resultType =
+    pipelineTypes?.clientResult ?? SystemClientModel.ClientResult;
 
   // For string next-link properties, extract the string and convert to Uri.
   // For Uri next-link properties, assign directly.
@@ -791,8 +795,10 @@ function buildContinuationTokenBodyGetRawPagesBody(
 
   const initialArgs = buildCreateRequestArgs(params, tokenParamName, false);
   const subsequentArgs = buildCreateRequestArgs(params, tokenParamName, true);
-  const msgType = pipelineTypes?.message ?? SystemClientModelPrimitives.PipelineMessage;
-  const resultType = pipelineTypes?.clientResult ?? SystemClientModel.ClientResult;
+  const msgType =
+    pipelineTypes?.message ?? SystemClientModelPrimitives.PipelineMessage;
+  const resultType =
+    pipelineTypes?.clientResult ?? SystemClientModel.ClientResult;
 
   const resultExpr = isAzure
     ? code`${resultType} result = ${processMessage};`
@@ -858,8 +864,10 @@ function buildContinuationTokenHeaderGetRawPagesBody(
 
   const initialArgs = buildCreateRequestArgs(params, tokenParamName, false);
   const subsequentArgs = buildCreateRequestArgs(params, tokenParamName, true);
-  const msgType = pipelineTypes?.message ?? SystemClientModelPrimitives.PipelineMessage;
-  const resultType = pipelineTypes?.clientResult ?? SystemClientModel.ClientResult;
+  const msgType =
+    pipelineTypes?.message ?? SystemClientModelPrimitives.PipelineMessage;
+  const resultType =
+    pipelineTypes?.clientResult ?? SystemClientModel.ClientResult;
 
   const resultExpr = isAzure
     ? code`${resultType} result = ${processMessage};`

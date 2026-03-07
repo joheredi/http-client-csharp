@@ -120,6 +120,29 @@ export const Azure = createLibrary("Azure", {
       NoThrow: {},
     },
   },
+
+  /**
+   * Controls whether an LRO method waits for completion or returns
+   * immediately after starting the operation.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/azure.waituntil
+   */
+  WaitUntil: {
+    kind: "enum",
+    members: {},
+  },
+
+  /**
+   * Abstract base class for long-running operations without a typed result.
+   * Used as return type for void-returning LRO methods.
+   * Also serves as the base class for `Operation<T>`.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/azure.operation
+   */
+  Operation: {
+    kind: "class",
+    members: {},
+  },
 });
 
 /**
@@ -203,6 +226,51 @@ export const AzureCore = createLibrary("Azure.Core", {
     members: {
       /** Creates RequestContent from a serializable model. */
       Create: { kind: "method", methodKind: "ordinary", isStatic: true },
+    },
+  },
+
+  /**
+   * Enum controlling how the final state of a long-running operation is
+   * determined — via Azure-AsyncOperation header, Location header,
+   * Operation-Location header, or original URI.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/azure.core.operationfinalstatevia
+   */
+  OperationFinalStateVia: {
+    kind: "enum",
+    members: {
+      /** Final state via Azure-AsyncOperation header. */
+      AzureAsyncOperation: {},
+      /** Final state via Location header. */
+      Location: {},
+      /** Final state by re-polling the original request URI. */
+      OriginalUri: {},
+      /** Final state via Operation-Location header. */
+      OperationLocation: {},
+    },
+  },
+
+  /**
+   * Static helper class for creating and managing polling `Operation<T>`
+   * instances from protocol method responses. Provides ProcessMessage
+   * (for typed results), ProcessMessageWithoutResponseValue (for void),
+   * and Convert (for transforming Operation<BinaryData> to Operation<T>).
+   *
+   * @see Azure.Core shared source ProtocolOperationHelpers.cs
+   */
+  ProtocolOperationHelpers: {
+    kind: "class",
+    members: {
+      /** Sends a request and returns Operation<BinaryData> with polling. */
+      ProcessMessage: { kind: "method" },
+      /** Sends a request and returns Task<Operation<BinaryData>> with polling. */
+      ProcessMessageAsync: { kind: "method" },
+      /** Sends a request and returns Operation (void) with polling. */
+      ProcessMessageWithoutResponseValue: { kind: "method" },
+      /** Sends a request and returns Task<Operation> (void) with polling. */
+      ProcessMessageWithoutResponseValueAsync: { kind: "method" },
+      /** Converts Operation<BinaryData> to Operation<T> using a conversion function. */
+      Convert: { kind: "method" },
     },
   },
 });

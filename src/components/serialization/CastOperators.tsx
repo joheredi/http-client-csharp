@@ -269,11 +269,23 @@ export function ExplicitClientResultOperator(
   // Select the appropriate operator body based on the model's serialization formats.
   // The dispatch mirrors the legacy emitter's GetExplicitFromClientResultMethod().
   if (supportsJson && supportsXml) {
-    return renderDualFormatOperator(modelName, typeRef, isDynamic, pipelineTypes, isAzure);
+    return renderDualFormatOperator(
+      modelName,
+      typeRef,
+      isDynamic,
+      pipelineTypes,
+      isAzure,
+    );
   } else if (supportsXml) {
     return renderXmlOnlyOperator(modelName, typeRef, pipelineTypes, isAzure);
   } else {
-    return renderJsonOnlyOperator(modelName, typeRef, isDynamic, pipelineTypes, isAzure);
+    return renderJsonOnlyOperator(
+      modelName,
+      typeRef,
+      isDynamic,
+      pipelineTypes,
+      isAzure,
+    );
   }
 }
 
@@ -295,8 +307,10 @@ function renderJsonOnlyOperator(
   pipelineTypes?: import("../../utils/pipeline-types.js").PipelineTypes,
   isAzure?: boolean,
 ) {
-  const resultType = pipelineTypes?.clientResult ?? SystemClientModel.ClientResult;
-  const responseType = pipelineTypes?.response ?? SystemClientModelPrimitives.PipelineResponse;
+  const resultType =
+    pipelineTypes?.clientResult ?? SystemClientModel.ClientResult;
+  const responseType =
+    pipelineTypes?.response ?? SystemClientModelPrimitives.PipelineResponse;
   // Dynamic models need the BinaryData data parameter for JsonPatch initialization
   const deserializeArgs = isDynamic
     ? `document.RootElement, response.Content, ModelSerializationExtensions.WireOptions`
@@ -338,8 +352,10 @@ function renderXmlOnlyOperator(
   pipelineTypes?: import("../../utils/pipeline-types.js").PipelineTypes,
   isAzure?: boolean,
 ) {
-  const resultType = pipelineTypes?.clientResult ?? SystemClientModel.ClientResult;
-  const responseType = pipelineTypes?.response ?? SystemClientModelPrimitives.PipelineResponse;
+  const resultType =
+    pipelineTypes?.clientResult ?? SystemClientModel.ClientResult;
+  const responseType =
+    pipelineTypes?.response ?? SystemClientModelPrimitives.PipelineResponse;
 
   // Azure: result IS the Response; unbranded: need GetRawResponse()
   // XML operator uses `using` on the response variable
@@ -392,8 +408,10 @@ function renderDualFormatOperator(
   pipelineTypes?: import("../../utils/pipeline-types.js").PipelineTypes,
   isAzure?: boolean,
 ) {
-  const resultType = pipelineTypes?.clientResult ?? SystemClientModel.ClientResult;
-  const responseType = pipelineTypes?.response ?? SystemClientModelPrimitives.PipelineResponse;
+  const resultType =
+    pipelineTypes?.clientResult ?? SystemClientModel.ClientResult;
+  const responseType =
+    pipelineTypes?.response ?? SystemClientModelPrimitives.PipelineResponse;
   // Dynamic models need the BinaryData data parameter for JsonPatch initialization
   const jsonDeserializeArgs = isDynamic
     ? `document.RootElement, response.Content, ModelSerializationExtensions.WireOptions`

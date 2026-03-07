@@ -228,7 +228,8 @@ function renderProtocolPagingMethods(
   ].join(", ");
 
   // Build <Method> parameter props
-  const reqOpts = pipelineTypes?.requestOptions ?? SystemClientModelPrimitives.RequestOptions;
+  const reqOpts =
+    pipelineTypes?.requestOptions ?? SystemClientModelPrimitives.RequestOptions;
   const methodParams = [
     ...params.map((p) => ({
       name: p.name,

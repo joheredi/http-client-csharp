@@ -5780,3 +5780,38 @@ accessibility, ModelReaderWriterContext — tasks 17.6, separate tracking).
 **What's next (17.5 or 17.6):**
 - 17.5: Implement LRO Operation<T> return types — depends on 17.4 (done)
 - 17.6: Add distributed tracing (ClientDiagnostics) support — would fix some pre-existing e2e failures
+
+---
+
+### Task 17.5: Implement LRO Operation<T> return types
+**Date:** 2026-03-07
+**Status:** Done
+
+**What was done:**
+- Added Azure LRO types to `src/builtins/azure.ts`: `WaitUntil`, `Operation` (non-generic), `OperationFinalStateVia`, `ProtocolOperationHelpers` (with ProcessMessage, ProcessMessageAsync, ProcessMessageWithoutResponseValue, ProcessMessageWithoutResponseValueAsync, Convert methods)
+- Updated `src/utils/pipeline-types.ts` to include LRO-specific type references for Azure flavor (operation, waitUntil, operationFinalStateVia, protocolOperationHelpers)
+- Modified `src/components/clients/ProtocolMethod.tsx` to detect `method.kind === "lro"` when `flavor === "azure"` and generate:
+  - `WaitUntil waitUntil` as first parameter
+  - `Operation<BinaryData>` return type (or `Operation` for void)
+  - `ProtocolOperationHelpers.ProcessMessage()` call with pipeline, diagnostics, scope, finalStateVia, and waitUntil
+- Modified `src/components/clients/ConvenienceMethod.tsx` to detect Azure LRO and generate:
+  - `WaitUntil waitUntil` as first parameter
+  - `Operation<T>` return type (or `Operation` for void)
+  - `ProtocolOperationHelpers.Convert()` call with deserialization lambda
+  - For no resultPath: uses `(ModelType)response` explicit operator cast
+  - For resultPath (RPC envelope): uses inline `Deserialize` with JSON path navigation
+- Added 6 unit tests in `test/azure-lro-methods.test.ts` covering protocol/convenience methods, parameter ordering, unbranded regression, scope names, and using directives
+- LRO e2e specs (azure/core/lro/standard and azure/core/lro/rpc) compile successfully
+
+**Design decision:** In-place modification of ProtocolMethod/ConvenienceMethod (not separate components) via extracted helper functions `buildLroProtocolMethodParts` and `buildLroConvenienceMethodParts`. Refactored the non-LRO logic into parallel helpers (`buildStandardProtocolMethodParts`, `buildStandardConvenienceMethodParts`) for clean separation.
+
+**Key pattern:** `FinalStateValue` from TCGC is mapped to `OperationFinalStateVia` enum members via `mapFinalStateVia()` function. The scope name format is `"ClientName.MethodName"` matching the legacy emitter's distributed tracing convention.
+
+**Gotcha:** TCGC ignores `@markAsLro` on void-returning operations (emits a warning). Void-returning LRO (like Delete) only works through Azure.Core resource operation templates, not `@markAsLro`. This is tested via e2e instead of unit tests.
+
+**Build:** ✅ Pass | **Unit tests:** ✅ 1445 passed (6 new) | **E2E:** LRO specs compile ✅, pre-existing failures unchanged
+
+**What's next:**
+- 17.6: Add distributed tracing (ClientDiagnostics) support — would fix pre-existing e2e failures (CS0122 accessibility)
+- 17.7: Add Azure special header support
+- 17.8: Implement Azure namespace conventions
