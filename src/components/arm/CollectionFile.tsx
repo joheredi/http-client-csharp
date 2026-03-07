@@ -17,11 +17,7 @@
  * @module
  */
 
-import {
-  ClassDeclaration,
-  Namespace,
-  SourceFile,
-} from "@alloy-js/csharp";
+import { ClassDeclaration, Namespace, SourceFile } from "@alloy-js/csharp";
 import { code, refkey } from "@alloy-js/core";
 import type { Children } from "@alloy-js/core";
 import type {
@@ -201,7 +197,9 @@ export function CollectionFile(props: CollectionFileProps) {
   // ── Build request args strings ────────────────────────────────────────────
 
   const parentRequestArgs = parentIdAccessors.join(", ");
-  const instanceRequestArgs = [...parentIdAccessors, resourceNameParam].join(", ");
+  const instanceRequestArgs = [...parentIdAccessors, resourceNameParam].join(
+    ", ",
+  );
 
   // ── Build class body blocks ───────────────────────────────────────────────
 

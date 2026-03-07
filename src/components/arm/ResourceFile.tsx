@@ -16,11 +16,7 @@
  * @module
  */
 
-import {
-  ClassDeclaration,
-  Namespace,
-  SourceFile,
-} from "@alloy-js/csharp";
+import { ClassDeclaration, Namespace, SourceFile } from "@alloy-js/csharp";
 import { code, refkey } from "@alloy-js/core";
 import type { Children } from "@alloy-js/core";
 import type {
@@ -30,9 +26,7 @@ import type {
   SdkServiceMethod,
 } from "@azure-tools/typespec-client-generator-core";
 import { Azure, AzureCore, AzureCorePipeline } from "../../builtins/azure.js";
-import {
-  AzureResourceManager,
-} from "../../builtins/azure-arm.js";
+import { AzureResourceManager } from "../../builtins/azure-arm.js";
 import { System } from "../../builtins/system.js";
 import { SystemDiagnostics } from "../../builtins/system-diagnostics.js";
 import { SystemThreading } from "../../builtins/system-threading.js";

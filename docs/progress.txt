@@ -6194,3 +6194,42 @@ E2E tests have pre-existing failures (CS0122 ClientDiagnostics, CS0534 ErrorResu
   - ConditionalAttribute resolves as `ConditionalAttribute("DEBUG")` not `Conditional("DEBUG")` — both valid C#
   - Legacy resource detection (default) does NOT detect LRO create or list operations; tests use new detection mode
   - API version variable name derived from resource name (bazApiVersion), not client name (bazsApiVersion)
+
+## Task 19.2c — ARM Extensions, Mockable Providers, and Emitter Integration (2026-03-07)
+
+### What was done:
+- Implemented `MockableProviderFile.tsx` — generates Mockable{LibName}{Scope}.cs for each ARM scope
+- Implemented `ExtensionsFile.tsx` — generates {LibName}Extensions.cs static class
+- Added ARM builtins: ForwardsClientCalls, ProviderConstants, ManagementGroupResource
+- Wired both components into emitter.tsx under `Extensions/` directory
+- Created 23 unit tests in `test/arm/extensions-file.test.ts`
+
+### Key Files Created/Modified:
+- **Created:** `src/components/arm/MockableProviderFile.tsx`, `src/components/arm/ExtensionsFile.tsx`, `test/arm/extensions-file.test.ts`
+- **Modified:** `src/builtins/azure-arm.ts` (added ForwardsClientCalls, ProviderConstants, ManagementGroupResource), `src/emitter.tsx` (wired new components)
+
+### Generated Output Structure:
+- `Extensions/Mockable{LibName}ArmClient.cs` — GetXxxResource(ResourceIdentifier id) for every resource
+- `Extensions/Mockable{LibName}ResourceGroupResource.cs` — Collection getters + singular getters for RG-scoped resources
+- `Extensions/Mockable{LibName}SubscriptionResource.cs` — For subscription-scoped resources
+- `Extensions/Mockable{LibName}TenantResource.cs` — For tenant-scoped resources
+- `Extensions/Mockable{LibName}ManagementGroupResource.cs` — For management-group-scoped resources
+- `Extensions/{LibName}Extensions.cs` — Static extension class delegating to mockable providers
+
+### Patterns:
+- Mockable classes extend ArmResource with protected/internal constructors
+- Collection getters use GetCachedClient() pattern
+- Singular getters delegate to collection.Get/GetAsync with [ForwardsClientCalls]
+- Extensions class has private static GetMockable{Scope}() methods via GetCachedClient
+- ArmClient scope uses ResourceIdentifier.Root; other scopes use scope.Id
+- categorizeResourcesByScope() utility groups resources into scope buckets
+
+### Gotchas:
+- File search for Extensions must use path-based matching (`k.includes("Extensions/")`) not just name matching, since CancellationTokenExtensions also contains "Extensions"
+- Alloy code templates must use zero-indentation — the <ClassDeclaration>/<Namespace> components handle indentation
+- ForwardsClientCalls and ProviderConstants are in Azure.ResourceManager namespace, ManagementGroupResource is in Azure.ResourceManager.ManagementGroups
+
+### Not Yet Implemented (deferred to future tasks):
+- Non-resource operations in mockable providers (LRO actions, subscription-level list operations with REST client, etc.)
+- Extension resource patterns (scope parameter on ArmClient for extension resources)
+- Singleton resource patterns in Extensions class need testing with actual singleton TypeSpec fixtures

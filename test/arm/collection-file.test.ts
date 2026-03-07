@@ -100,12 +100,15 @@ describe("ARM Collection class generation", () => {
    * This matches the BazCollection.cs ground truth pattern.
    */
   it("generates class extending ArmCollection with enumerable interfaces", async () => {
-    const [{ outputs }] =
-      await NewDetectionTester.compileAndDiagnose(trackedResourceWithListSpec);
+    const [{ outputs }] = await NewDetectionTester.compileAndDiagnose(
+      trackedResourceWithListSpec,
+    );
 
     const content = getCollectionFile(outputs, "BazCollection.cs");
 
-    expect(content).toContain("public partial class BazCollection : ArmCollection");
+    expect(content).toContain(
+      "public partial class BazCollection : ArmCollection",
+    );
     expect(content).toContain("IEnumerable<BazResource>");
     expect(content).toContain("IAsyncEnumerable<BazResource>");
   });
@@ -115,12 +118,15 @@ describe("ARM Collection class generation", () => {
    * These are needed for diagnostic scoping and HTTP operations.
    */
   it("generates private fields for diagnostics and rest client", async () => {
-    const [{ outputs }] =
-      await NewDetectionTester.compileAndDiagnose(trackedResourceWithListSpec);
+    const [{ outputs }] = await NewDetectionTester.compileAndDiagnose(
+      trackedResourceWithListSpec,
+    );
 
     const content = getCollectionFile(outputs, "BazCollection.cs");
 
-    expect(content).toContain("private readonly ClientDiagnostics _bazsClientDiagnostics;");
+    expect(content).toContain(
+      "private readonly ClientDiagnostics _bazsClientDiagnostics;",
+    );
     expect(content).toContain("private readonly Bazs _bazsRestClient;");
   });
 
@@ -128,8 +134,9 @@ describe("ARM Collection class generation", () => {
    * Validates the mock constructor (protected, parameterless) for mocking support.
    */
   it("generates protected mock constructor", async () => {
-    const [{ outputs }] =
-      await NewDetectionTester.compileAndDiagnose(trackedResourceWithListSpec);
+    const [{ outputs }] = await NewDetectionTester.compileAndDiagnose(
+      trackedResourceWithListSpec,
+    );
 
     const content = getCollectionFile(outputs, "BazCollection.cs");
 
@@ -142,8 +149,9 @@ describe("ARM Collection class generation", () => {
    * Uses BazResource.ResourceType (the resource class's static field).
    */
   it("generates internal constructor with diagnostics and REST client init", async () => {
-    const [{ outputs }] =
-      await NewDetectionTester.compileAndDiagnose(trackedResourceWithListSpec);
+    const [{ outputs }] = await NewDetectionTester.compileAndDiagnose(
+      trackedResourceWithListSpec,
+    );
 
     const content = getCollectionFile(outputs, "BazCollection.cs");
 
@@ -152,7 +160,9 @@ describe("ARM Collection class generation", () => {
     );
     expect(content).toContain("TryGetApiVersion(BazResource.ResourceType,");
     expect(content).toContain("new ClientDiagnostics(");
-    expect(content).toContain("BazResource.ResourceType.Namespace, Diagnostics)");
+    expect(content).toContain(
+      "BazResource.ResourceType.Namespace, Diagnostics)",
+    );
     expect(content).toContain("new Bazs(");
     expect(content).toContain("ValidateResourceId(id)");
   });
@@ -162,8 +172,9 @@ describe("ARM Collection class generation", () => {
    * (ResourceGroupResource for RG-scoped resources).
    */
   it("validates resource ID against parent scope type", async () => {
-    const [{ outputs }] =
-      await NewDetectionTester.compileAndDiagnose(trackedResourceWithListSpec);
+    const [{ outputs }] = await NewDetectionTester.compileAndDiagnose(
+      trackedResourceWithListSpec,
+    );
 
     const content = getCollectionFile(outputs, "BazCollection.cs");
 
@@ -179,8 +190,9 @@ describe("ARM Collection class generation", () => {
    * This is the ARM create convention (differs from Update/Delete which use Location).
    */
   it("generates CreateOrUpdate with LRO and AzureAsyncOperation", async () => {
-    const [{ outputs }] =
-      await NewDetectionTester.compileAndDiagnose(trackedResourceWithListSpec);
+    const [{ outputs }] = await NewDetectionTester.compileAndDiagnose(
+      trackedResourceWithListSpec,
+    );
 
     const content = getCollectionFile(outputs, "BazCollection.cs");
 
@@ -195,7 +207,9 @@ describe("ARM Collection class generation", () => {
     // LRO operation final state
     expect(content).toContain("OperationFinalStateVia.AzureAsyncOperation");
     // Argument validation
-    expect(content).toContain("Argument.AssertNotNullOrEmpty(bazName, nameof(bazName))");
+    expect(content).toContain(
+      "Argument.AssertNotNullOrEmpty(bazName, nameof(bazName))",
+    );
     expect(content).toContain("Argument.AssertNotNull(data, nameof(data))");
     // Diagnostic scope
     expect(content).toContain('"BazCollection.CreateOrUpdate"');
@@ -206,8 +220,9 @@ describe("ARM Collection class generation", () => {
    * Get takes a resource name parameter and returns Response<BazResource>.
    */
   it("generates Get methods with diagnostic scope", async () => {
-    const [{ outputs }] =
-      await NewDetectionTester.compileAndDiagnose(trackedResourceWithListSpec);
+    const [{ outputs }] = await NewDetectionTester.compileAndDiagnose(
+      trackedResourceWithListSpec,
+    );
 
     const content = getCollectionFile(outputs, "BazCollection.cs");
 
@@ -228,8 +243,9 @@ describe("ARM Collection class generation", () => {
    * GetAll has NO diagnostic scope (paging is lazy).
    */
   it("generates GetAll with pageable wrappers", async () => {
-    const [{ outputs }] =
-      await NewDetectionTester.compileAndDiagnose(trackedResourceWithListSpec);
+    const [{ outputs }] = await NewDetectionTester.compileAndDiagnose(
+      trackedResourceWithListSpec,
+    );
 
     const content = getCollectionFile(outputs, "BazCollection.cs");
 
@@ -248,8 +264,9 @@ describe("ARM Collection class generation", () => {
    * with manual status code switching (200/404/default).
    */
   it("generates Exists with Pipeline.Send and status switch", async () => {
-    const [{ outputs }] =
-      await NewDetectionTester.compileAndDiagnose(trackedResourceWithListSpec);
+    const [{ outputs }] = await NewDetectionTester.compileAndDiagnose(
+      trackedResourceWithListSpec,
+    );
 
     const content = getCollectionFile(outputs, "BazCollection.cs");
 
@@ -257,13 +274,17 @@ describe("ARM Collection class generation", () => {
     expect(content).toContain("ExistsAsync(string bazName,");
     expect(content).toContain("Exists(string bazName,");
     // Uses Pipeline.SendAsync (not ProcessMessageAsync)
-    expect(content).toContain("Pipeline.SendAsync(message, context.CancellationToken)");
+    expect(content).toContain(
+      "Pipeline.SendAsync(message, context.CancellationToken)",
+    );
     // Status code switch
     expect(content).toContain("switch (result.Status)");
     expect(content).toContain("case 200:");
     expect(content).toContain("case 404:");
     // Returns bool
-    expect(content).toContain("response.Value != null, response.GetRawResponse()");
+    expect(content).toContain(
+      "response.Value != null, response.GetRawResponse()",
+    );
     // Diagnostic scope
     expect(content).toContain('"BazCollection.Exists"');
   });
@@ -273,16 +294,21 @@ describe("ARM Collection class generation", () => {
    * and use NoValueResponse for the 404 case.
    */
   it("generates GetIfExists with NullableResponse and NoValueResponse", async () => {
-    const [{ outputs }] =
-      await NewDetectionTester.compileAndDiagnose(trackedResourceWithListSpec);
+    const [{ outputs }] = await NewDetectionTester.compileAndDiagnose(
+      trackedResourceWithListSpec,
+    );
 
     const content = getCollectionFile(outputs, "BazCollection.cs");
 
     // Method signatures
-    expect(content).toContain("NullableResponse<BazResource>> GetIfExistsAsync(");
+    expect(content).toContain(
+      "NullableResponse<BazResource>> GetIfExistsAsync(",
+    );
     expect(content).toContain("NullableResponse<BazResource> GetIfExists(");
     // NoValueResponse for 404
-    expect(content).toContain("new NoValueResponse<BazResource>(response.GetRawResponse())");
+    expect(content).toContain(
+      "new NoValueResponse<BazResource>(response.GetRawResponse())",
+    );
     // Diagnostic scope
     expect(content).toContain('"BazCollection.GetIfExists"');
   });
@@ -292,8 +318,9 @@ describe("ARM Collection class generation", () => {
    * to GetAll/GetAllAsync respectively.
    */
   it("generates enumerator implementations", async () => {
-    const [{ outputs }] =
-      await NewDetectionTester.compileAndDiagnose(trackedResourceWithListSpec);
+    const [{ outputs }] = await NewDetectionTester.compileAndDiagnose(
+      trackedResourceWithListSpec,
+    );
 
     const content = getCollectionFile(outputs, "BazCollection.cs");
 
@@ -318,8 +345,9 @@ describe("ARM Collection class generation", () => {
    * These should be auto-generated from Alloy builtin references.
    */
   it("includes required using directives", async () => {
-    const [{ outputs }] =
-      await NewDetectionTester.compileAndDiagnose(trackedResourceWithListSpec);
+    const [{ outputs }] = await NewDetectionTester.compileAndDiagnose(
+      trackedResourceWithListSpec,
+    );
 
     const content = getCollectionFile(outputs, "BazCollection.cs");
 
@@ -338,8 +366,9 @@ describe("ARM Collection class generation", () => {
    * or incorrect refkey usage.
    */
   it("has no unresolved symbol references", async () => {
-    const [{ outputs }] =
-      await NewDetectionTester.compileAndDiagnose(trackedResourceWithListSpec);
+    const [{ outputs }] = await NewDetectionTester.compileAndDiagnose(
+      trackedResourceWithListSpec,
+    );
 
     const content = getCollectionFile(outputs, "BazCollection.cs");
 
@@ -351,14 +380,13 @@ describe("ARM Collection class generation", () => {
    * and parent scope.
    */
   it("generates class XML doc with collection description", async () => {
-    const [{ outputs }] =
-      await NewDetectionTester.compileAndDiagnose(trackedResourceWithListSpec);
+    const [{ outputs }] = await NewDetectionTester.compileAndDiagnose(
+      trackedResourceWithListSpec,
+    );
 
     const content = getCollectionFile(outputs, "BazCollection.cs");
 
-    expect(content).toContain(
-      "A class representing a collection of",
-    );
+    expect(content).toContain("A class representing a collection of");
     expect(content).toContain('cref="BazResource"');
     expect(content).toContain('cref="ResourceGroupResource"');
   });
@@ -368,21 +396,28 @@ describe("ARM Collection class generation", () => {
    * when management mode is enabled.
    */
   it("generates PageableWrapper infrastructure files", async () => {
-    const [{ outputs }] =
-      await NewDetectionTester.compileAndDiagnose(trackedResourceWithListSpec);
+    const [{ outputs }] = await NewDetectionTester.compileAndDiagnose(
+      trackedResourceWithListSpec,
+    );
 
     const asyncWrapperKey = Object.keys(outputs).find((k) =>
       k.endsWith("AsyncPageableWrapper.cs"),
     );
-    const syncWrapperKey = Object.keys(outputs).find((k) =>
-      k.endsWith("PageableWrapper.cs") && !k.endsWith("AsyncPageableWrapper.cs"),
+    const syncWrapperKey = Object.keys(outputs).find(
+      (k) =>
+        k.endsWith("PageableWrapper.cs") &&
+        !k.endsWith("AsyncPageableWrapper.cs"),
     );
 
     expect(asyncWrapperKey).toBeDefined();
     expect(syncWrapperKey).toBeDefined();
 
-    expect(outputs[asyncWrapperKey!]).toContain("class AsyncPageableWrapper<T, U> : AsyncPageable<U>");
-    expect(outputs[syncWrapperKey!]).toContain("class PageableWrapper<T, U> : Pageable<U>");
+    expect(outputs[asyncWrapperKey!]).toContain(
+      "class AsyncPageableWrapper<T, U> : AsyncPageable<U>",
+    );
+    expect(outputs[syncWrapperKey!]).toContain(
+      "class PageableWrapper<T, U> : Pageable<U>",
+    );
   });
 });
 

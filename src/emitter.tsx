@@ -110,6 +110,11 @@ import { transformSubscriptionIdParameters } from "./utils/subscription-id-trans
 import { ResourceFile } from "./components/arm/ResourceFile.js";
 import { CollectionFile } from "./components/arm/CollectionFile.js";
 import { PageableWrapperFiles } from "./components/arm/PageableWrapperFiles.js";
+import {
+  MockableProviderFile,
+  categorizeResourcesByScope,
+} from "./components/arm/MockableProviderFile.js";
+import { ExtensionsFile } from "./components/arm/ExtensionsFile.js";
 
 /**
  * TypeSpec emitter entry point for the C# HTTP client generator.
@@ -338,6 +343,16 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
           <CollectionFile resource={r} />
         ))}
         {options.management && <PageableWrapperFiles />}
+        {armProviderSchema &&
+          categorizeResourcesByScope(armProviderSchema).map((scope) => (
+            <MockableProviderFile scope={scope} libraryName={packageName} />
+          ))}
+        {armProviderSchema && (
+          <ExtensionsFile
+            schema={armProviderSchema}
+            libraryName={packageName}
+          />
+        )}
         {fixedEnums.map((e) => (
           <FixedEnumFile type={e} options={options} />
         ))}

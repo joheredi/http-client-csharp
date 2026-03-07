@@ -4060,25 +4060,61 @@ TCGC names ARM models as their TypeSpec name (e.g., `Baz`), placed in `Models` s
 **Refkey for ARM resource classes:** `armResourceRefkey(resourceModelId)` using `Symbol.for("arm-resource")` prefix. Exported from ResourceFile.tsx for Collection and Extension components to reference.
 
 ## ClassDeclaration interfaceTypes prop
+
 The `ClassDeclaration` component from `@alloy-js/csharp` uses `interfaceTypes` (not `interfaces`) for specifying implemented interfaces. Usage: `<ClassDeclaration interfaceTypes={[code\`IEnumerable<T>\`]} />`.
 
 ## Collection class uses new detection mode for LRO/List
+
 Legacy resource detection (`use-legacy-resource-detection=true`, the default) does NOT detect LRO operations (CreateOrUpdate) or List operations. Tests for CollectionFile use `use-legacy-resource-detection: false` via `NewDetectionTester`.
 
 ## ARM Collection OperationFinalStateVia convention
+
 - CreateOrUpdate (in Collection): uses `OperationFinalStateVia.AzureAsyncOperation`
 - Update/Delete (in Resource): uses `OperationFinalStateVia.Location`
-This follows the ARM SDK convention where creates poll via Azure-AsyncOperation header.
+  This follows the ARM SDK convention where creates poll via Azure-AsyncOperation header.
 
 ## Collection GetAll has NO diagnostic scope
+
 GetAll methods in ARM collection classes don't use diagnostic scope wrapping. Paging is lazy — actual HTTP calls happen during iteration, and diagnostics are handled within the collection result's GetRawPages/GetRawPagesAsync methods.
 
 ## PageableWrapper infrastructure files
+
 ARM management projects need `AsyncPageableWrapper<T,U>` and `PageableWrapper<T,U>` infrastructure files in `src/Generated/Internal/`. These wrap `AsyncPageable<T>`/`Pageable<T>` with a converter function to transform data types to resource types. Generated only when `management=true`.
 
 ## Design Decisions
 
 ### CollectionFile architecture (task 19.2b)
+
 **Chosen:** Self-contained CollectionFile.tsx with shared helpers exported from ResourceFile.tsx.
 **Why:** Mirrors ResourceFile patterns exactly, maintains consistency, exports only stable utility functions.
 **Rejected:** (1) Full duplication of helpers — too much code to maintain. (2) Extract shared utils into separate module — unnecessary indirection given only 2 consumers.
+
+## ARM Extensions and Mockable Providers
+
+### File Search Gotcha
+
+When searching for the Extensions file in test outputs, you MUST use path-based matching like `k.includes("Extensions/")` and `k.endsWith("Extensions.cs")`, NOT just `k.includes("Extensions")`. The latter also matches `CancellationTokenExtensions.cs` which is an unrelated infrastructure file.
+
+### Alloy Code Template Indentation
+
+When using `code` template tags inside `<ClassDeclaration>` or other Alloy JSX wrapper components, the template content should start at column 0 (no leading whitespace). The parent JSX components handle indentation automatically. Leading whitespace in templates causes double-indentation.
+
+### ARM Scope Categorization
+
+Resources are categorized into mockable scopes by `categorizeResourcesByScope()`:
+
+- ArmClient: ALL resources
+- ResourceGroup: resources with `ResourceScope.ResourceGroup`
+- Subscription: resources with subscription-scoped List operations
+- Tenant: resources with `ResourceScope.Tenant`
+- ManagementGroup: resources with `ResourceScope.ManagementGroup`
+
+### ARM Type Libraries
+
+- `ForwardsClientCalls` and `ProviderConstants` are in `Azure.ResourceManager` namespace (AzureResourceManager library)
+- `ManagementGroupResource` is in `Azure.ResourceManager.ManagementGroups` namespace (separate library)
+- `ResourceGroupResource`, `SubscriptionResource`, `TenantResource` are in `Azure.ResourceManager.Resources`
+
+### Design Decision: Extensions Architecture
+
+Chose two-component approach (MockableProviderFile + ExtensionsFile) over a single monolithic component. This mirrors the pattern of ResourceFile.tsx + CollectionFile.tsx and keeps each file's concerns isolated. The `categorizeResourcesByScope()` utility is shared between both components.

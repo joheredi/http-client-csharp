@@ -71,6 +71,28 @@ export const AzureResourceManager = createLibrary("Azure.ResourceManager", {
     kind: "class",
     members: {},
   },
+
+  /**
+   * Attribute applied to methods that forward calls to other methods.
+   * Used on extension methods that delegate to mockable provider methods.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/azure.resourcemanager.forwardsclientcallsattribute
+   */
+  ForwardsClientCalls: {
+    kind: "class",
+    members: {},
+  },
+
+  /**
+   * Constants related to an ARM provider namespace (e.g., default provider namespace).
+   * Used in ClientDiagnostics construction for ARM resources.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/azure.resourcemanager.providerconstants
+   */
+  ProviderConstants: {
+    kind: "class",
+    members: {},
+  },
 });
 
 /**
@@ -124,6 +146,27 @@ export const AzureResourceManagerResources = createLibrary(
      * @see https://learn.microsoft.com/en-us/dotnet/api/azure.resourcemanager.resources.tagresource
      */
     TagResource: {
+      kind: "class",
+      members: {},
+    },
+  },
+);
+
+/**
+ * Alloy library declaration for types in the Azure.ResourceManager.ManagementGroups namespace.
+ *
+ * @see https://learn.microsoft.com/en-us/dotnet/api/azure.resourcemanager.managementgroups
+ */
+export const AzureResourceManagerManagementGroups = createLibrary(
+  "Azure.ResourceManager.ManagementGroups",
+  {
+    /**
+     * Represents an Azure management group. Used as parent scope for
+     * ManagementGroup-scoped ARM resources.
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/azure.resourcemanager.managementgroups.managementgroupresource
+     */
+    ManagementGroupResource: {
       kind: "class",
       members: {},
     },

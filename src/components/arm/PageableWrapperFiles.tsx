@@ -57,7 +57,12 @@ function AsyncPageableWrapperFile(props: WrapperFileProps) {
   return (
     <SourceFile
       path="src/Generated/Internal/AsyncPageableWrapper.cs"
-      using={["System", "System.Collections.Generic", "System.Threading.Tasks", "Azure"]}
+      using={[
+        "System",
+        "System.Collections.Generic",
+        "System.Threading.Tasks",
+        "Azure",
+      ]}
     >
       {header}
       <Namespace name={ns}>
