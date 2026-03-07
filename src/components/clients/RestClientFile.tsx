@@ -49,6 +49,10 @@ import {
   type PipelineTypes,
 } from "../../utils/pipeline-types.js";
 import { isSpecialHeaderParam } from "../../utils/special-headers.js";
+import {
+  getConditionalHeaderGrouping,
+  isConditionalHeaderParam,
+} from "../../utils/conditional-headers.js";
 
 /**
  * A unique set of success status codes that needs a PipelineMessageClassifier.
@@ -701,10 +705,40 @@ function buildMethodParams(
   }
 
   // Required header parameters (priority 100), then optional (priority 400)
+  // For Azure flavor, conditional headers (If-Match, If-None-Match,
+  // If-Modified-Since, If-Unmodified-Since) are grouped into a single
+  // parameter (ETag?, MatchConditions, or RequestConditions).
+  const conditionalGrouping = getConditionalHeaderGrouping(
+    headerParams,
+    flavor,
+  );
+  let conditionalParamAdded = false;
+
   for (const p of headerParams) {
     if (isConstantType(p.type) || p.onClient) continue;
     if (isImplicitContentTypeHeader(p)) continue;
     if (isSpecialHeaderParam(p, flavor)) continue;
+
+    // Azure conditional header grouping: skip individual params,
+    // add the grouped param once at the position of the first conditional header.
+    if (conditionalGrouping.type !== "none" && isConditionalHeaderParam(p)) {
+      if (!conditionalParamAdded) {
+        conditionalParamAdded = true;
+        // Grouped conditions are always optional (priority 400)
+        const typeExpr =
+          conditionalGrouping.type === "etag"
+            ? code`${conditionalGrouping.paramType}?`
+            : conditionalGrouping.paramType;
+        params.push({
+          name: conditionalGrouping.paramName,
+          type: typeExpr,
+          priority: 400,
+          index: index++,
+        });
+      }
+      continue;
+    }
+
     const priority = p.optional ? 400 : 100;
     const typeExpr = maybeNullable(
       getProtocolTypeExpression(p.type),
@@ -1453,13 +1487,45 @@ function buildRequestBody(
       p.serializedName.toLowerCase() === "accept" && !isConstantType(p.type),
   );
 
+  // Detect conditional header grouping for Azure flavor
+  const conditionalGrouping = getConditionalHeaderGrouping(
+    headerParams,
+    flavor,
+  );
+
   for (const param of headerParams) {
     if (isImplicitContentTypeHeader(param)) continue;
     if (isSpecialHeaderParam(param, flavor)) continue;
     // Skip constant Accept headers — they are handled by the auto-derived Accept
     // logic below (after Content-Type) to ensure correct header ordering.
     if (isConstantAcceptHeader(param)) continue;
+    // Skip conditional headers when they're grouped — handled below.
+    if (
+      conditionalGrouping.type !== "none" &&
+      isConditionalHeaderParam(param)
+    ) {
+      continue;
+    }
     parts.push(`\n${buildHeaderParamStatement(param, getParamName)}`);
+  }
+
+  // Emit grouped conditional header statement for Azure flavor.
+  // For ETag: if (ifMatch != null) { request.Headers.Set("If-Match", ifMatch.Value.ToString()); }
+  // For MatchConditions/RequestConditions: if (conditions != null) { request.Headers.Add(conditions); }
+  if (conditionalGrouping.type !== "none") {
+    const condParamName = getParamName(conditionalGrouping.paramName);
+    if (conditionalGrouping.type === "etag") {
+      // Single ETag header: extract .Value from nullable ETag and set directly
+      const headerParam = conditionalGrouping.conditionalParams[0];
+      parts.push(
+        `\nif (${condParamName} != null)\n{\n    request.Headers.Set("${headerParam.serializedName}", ${condParamName}.Value.ToString());\n}`,
+      );
+    } else {
+      // MatchConditions or RequestConditions: use request.Headers.Add(conditions)
+      parts.push(
+        `\nif (${condParamName} != null)\n{\n    request.Headers.Add(${condParamName});\n}`,
+      );
+    }
   }
 
   // Auto-populate special headers (repeatability headers) with runtime values.

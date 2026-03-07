@@ -37,6 +37,39 @@ export const Azure = createLibrary("Azure", {
   },
 
   /**
+   * Groups If-Match and If-None-Match conditional request headers into a
+   * single parameter. Used when an Azure operation has both ETag-based
+   * conditional headers but no time-based headers.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/azure.matchconditions
+   */
+  MatchConditions: {
+    kind: "class",
+    members: {
+      IfMatch: { kind: "property" },
+      IfNoneMatch: { kind: "property" },
+    },
+  },
+
+  /**
+   * Groups all conditional request headers (If-Match, If-None-Match,
+   * If-Modified-Since, If-Unmodified-Since) into a single parameter.
+   * Extends MatchConditions with time-based conditional headers.
+   * Used when an Azure operation has any time-based conditional headers.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/azure.requestconditions
+   */
+  RequestConditions: {
+    kind: "class",
+    members: {
+      IfMatch: { kind: "property" },
+      IfNoneMatch: { kind: "property" },
+      IfModifiedSince: { kind: "property" },
+      IfUnmodifiedSince: { kind: "property" },
+    },
+  },
+
+  /**
    * Represents a structured error response from an Azure service.
    * Maps from the TypeSpec model `Azure.Core.Foundations.Error`.
    *

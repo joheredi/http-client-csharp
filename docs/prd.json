@@ -1509,7 +1509,7 @@
           "title": "Group conditional headers into RequestConditions for Azure flavor",
           "description": "When flavor='azure', operations with conditional request headers (If-Match, If-None-Match, If-Modified-Since, If-Unmodified-Since) should group these individual parameters into composite Azure SDK types:\n\n- Single If-Match or If-None-Match -> ETag? parameter\n- Both If-Match + If-None-Match -> MatchConditions parameter\n- Any + If-Modified-Since/If-Unmodified-Since -> RequestConditions parameter\n\nThis is the Alloy equivalent of the legacy MatchConditionsHeadersVisitor.\n\nRequires:\n1. Define RequestConditions, MatchConditions types in src/builtins/azure.ts (ETag already exists)\n2. Detect conditional header parameters by serializedName pattern\n3. Determine grouping based on header combination flags\n4. Replace individual header params with grouped param in protocol/convenience/REST client methods\n5. Update CreateRequest to unpack grouped param into individual headers\n6. Handle protocol method body to validate unsupported headers",
           "phase": "phase-17",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "17.3",
             "17.3b"

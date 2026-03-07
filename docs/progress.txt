@@ -5980,3 +5980,37 @@ For Azure flavor: x-ms-client-request-id is stripped from all method signatures 
 
 ### E2E note
 E2E build failures (CS0122 ClientDiagnostics, CS0246 ModelReaderWriterBuildable, CS0534 ErrorResult) are pre-existing — verified by running e2e with `git stash` (same failures without changes).
+
+## Task 17.7b — Group conditional headers into RequestConditions for Azure flavor (2026-03-07)
+
+### What was done
+- Created `src/utils/conditional-headers.ts` — centralized utility for detecting and grouping conditional request headers (If-Match, If-None-Match, If-Modified-Since, If-Unmodified-Since)
+- Added `MatchConditions` and `RequestConditions` types to `src/builtins/azure.ts` with their member properties
+- Modified `buildMethodParams()` in RestClientFile.tsx to replace individual conditional header params with grouped params (ETag?, MatchConditions, or RequestConditions) for Azure flavor
+- Modified `buildRequestBody()` in RestClientFile.tsx to emit `request.Headers.Add(conditions)` instead of individual header sets for grouped params, and `request.Headers.Set("If-Match", ifMatch.Value.ToString())` for single ETag
+- Modified `buildProtocolParams()` in ProtocolMethod.tsx with same grouping logic
+- Added `buildConditionalHeaderValidation()` in ProtocolMethod.tsx — generates ArgumentException throws for unsupported conditional header properties in RequestConditions
+- Modified `buildConvenienceParams()` in ConvenienceMethod.tsx with same grouping logic
+- Created comprehensive test suite `test/conditional-headers.test.ts` with 7 tests covering all scenarios
+
+### Design Decision
+Approach A: Utility-based transformation (chosen over descriptor-based pre-processing):
+- Follows existing special-headers pattern
+- Less invasive, no new abstraction layer
+- Keeps transformation logic close to where it's used in the parameter builders
+
+### Grouping Rules (matching legacy MatchConditionsHeadersVisitor)
+- Single If-Match or If-None-Match → `ETag?` parameter
+- Both If-Match + If-None-Match (no time) → `MatchConditions` parameter
+- Any time-based header present → `RequestConditions` parameter
+- Unbranded flavor: no grouping, individual parameters retained
+
+### Key Patterns
+- `getConditionalHeaderGrouping(headerParams, flavor)` — analyzes headers and returns grouping info
+- `isConditionalHeaderParam(param)` — checks if a header is one of the 4 conditional headers
+- `getUnsupportedConditionProperties(flags)` — returns properties not supported by the operation
+- ETag unpacking: `ifMatch.Value.ToString()` (nullable struct)
+- Conditions unpacking: `request.Headers.Add(conditions)` (Azure RequestHeaders built-in method)
+
+### E2E note
+E2E build failures (CS0122 ClientDiagnostics, CS0246 ModelReaderWriterBuildable) are pre-existing — same as documented in Task 17.7a.

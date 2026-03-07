@@ -37,6 +37,10 @@ import {
   type PipelineTypes,
 } from "../../utils/pipeline-types.js";
 import { isSpecialHeaderParam } from "../../utils/special-headers.js";
+import {
+  getConditionalHeaderGrouping,
+  isConditionalHeaderParam,
+} from "../../utils/conditional-headers.js";
 
 /**
  * Metadata for a convenience method parameter, including the type expression,
@@ -383,10 +387,44 @@ export function buildConvenienceParams(
   }
 
   // Header parameters: required (priority 100), optional (priority 400)
+  // For Azure flavor, conditional headers are grouped into a single parameter.
+  const conditionalGrouping = getConditionalHeaderGrouping(
+    headerParams,
+    flavor,
+  );
+  let conditionalParamAdded = false;
+
   for (const p of headerParams) {
     if (isConstantType(p.type) || p.onClient) continue;
     if (isImplicitContentTypeHeader(p)) continue;
     if (isSpecialHeaderParam(p, flavor)) continue;
+
+    // Azure conditional header grouping: skip individual params,
+    // add the grouped param once at the position of the first conditional header.
+    if (conditionalGrouping.type !== "none" && isConditionalHeaderParam(p)) {
+      if (!conditionalParamAdded) {
+        conditionalParamAdded = true;
+        const typeExpr =
+          conditionalGrouping.type === "etag"
+            ? code`${conditionalGrouping.paramType}?`
+            : conditionalGrouping.paramType;
+        const csharpName = getParamName(conditionalGrouping.paramName);
+        params.push({
+          name: csharpName,
+          type: typeExpr,
+          optional: true,
+          isBody: false,
+          needsAssertion: false,
+          isStringType: false,
+          doc: undefined,
+          protocolCallArg: csharpName,
+          priority: 400,
+          index: index++,
+        });
+      }
+      continue;
+    }
+
     const convInfo = getConvenienceTypeInfo(p.type);
     const typeExpr = maybeNullable(convInfo.expression, p.type, p.optional);
     const csharpName = getParamName(p.name);

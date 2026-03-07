@@ -32,6 +32,11 @@ import {
   type PipelineTypes,
 } from "../../utils/pipeline-types.js";
 import { isSpecialHeaderParam } from "../../utils/special-headers.js";
+import {
+  getConditionalHeaderGrouping,
+  isConditionalHeaderParam,
+  getUnsupportedConditionProperties,
+} from "../../utils/conditional-headers.js";
 
 /**
  * Metadata for a protocol method parameter, including optionality and type
@@ -219,7 +224,33 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
             : ({ public: true } as const);
 
         const xmlDoc = buildXmlDoc(description, params, validatedParams);
-        const validation = buildValidation(validatedParams);
+        const baseValidation = buildValidation(validatedParams);
+
+        // For Azure flavor with RequestConditions grouping, add validation
+        // that throws ArgumentException for unsupported conditional headers.
+        // This ensures callers don't set unsupported properties on the
+        // RequestConditions parameter (e.g., setting IfNoneMatch when the
+        // operation only supports If-Match + If-Modified-Since).
+        const conditionalGrouping = getConditionalHeaderGrouping(
+          operation.parameters.filter(
+            (p): p is SdkHeaderParameter => p.kind === "header",
+          ),
+          flavor,
+        );
+        const conditionalValidation = buildConditionalHeaderValidation(
+          conditionalGrouping,
+          getParamName,
+        );
+
+        // Combine regular validation with conditional header validation
+        const validation: Children =
+          baseValidation || conditionalValidation
+            ? [
+                baseValidation,
+                baseValidation && conditionalValidation ? "\n" : "",
+                conditionalValidation,
+              ]
+            : null;
 
         // Determine return types and method bodies based on LRO vs standard.
         const { syncReturn, asyncReturn, syncBody, asyncBody } = isLro
@@ -330,10 +361,42 @@ export function buildProtocolParams(
   }
 
   // Header parameters: required (priority 100), optional (priority 400)
+  // For Azure flavor, conditional headers are grouped into a single parameter.
+  const conditionalGrouping = getConditionalHeaderGrouping(
+    headerParams,
+    flavor,
+  );
+  let conditionalParamAdded = false;
+
   for (const p of headerParams) {
     if (isConstantType(p.type) || p.onClient) continue;
     if (isImplicitContentTypeHeader(p)) continue;
     if (isSpecialHeaderParam(p, flavor)) continue;
+
+    // Azure conditional header grouping: skip individual params,
+    // add the grouped param once at the position of the first conditional header.
+    if (conditionalGrouping.type !== "none" && isConditionalHeaderParam(p)) {
+      if (!conditionalParamAdded) {
+        conditionalParamAdded = true;
+        const typeExpr =
+          conditionalGrouping.type === "etag"
+            ? code`${conditionalGrouping.paramType}?`
+            : conditionalGrouping.paramType;
+        params.push({
+          name: getParamName(conditionalGrouping.paramName),
+          type: typeExpr,
+          optional: true,
+          isStringType: false,
+          isBody: false,
+          needsValidation: false,
+          doc: undefined,
+          priority: 400,
+          index: index++,
+        });
+      }
+      continue;
+    }
+
     const typeInfo = getTypeInfo(p.type);
     const typeExpr = maybeNullable(typeInfo.expression, p.type, p.optional);
     params.push({
@@ -505,6 +568,39 @@ export function buildValidation(requiredParams: ProtocolParam[]): Children {
     const assertFn = p.isStringType ? "AssertNotNullOrEmpty" : "AssertNotNull";
     const escapedName = escapeCSharpKeyword(p.name);
     const line = `Argument.${assertFn}(${escapedName}, nameof(${escapedName}));`;
+    return i === 0 ? line : `\n${line}`;
+  });
+}
+
+/**
+ * Builds ArgumentException validation statements for unsupported conditional
+ * header properties in RequestConditions parameters.
+ *
+ * When an Azure operation uses RequestConditions (because time-based headers
+ * are present), the parameter type exposes all 4 conditional properties. But
+ * the operation may only support a subset. This generates if-throw statements
+ * to reject unsupported properties at runtime.
+ *
+ * Only applies to RequestConditions grouping (not ETag or MatchConditions).
+ */
+function buildConditionalHeaderValidation(
+  grouping: import("../../utils/conditional-headers.js").ConditionalHeaderGrouping,
+  getParamName: (name: string) => string,
+): Children {
+  if (grouping.type !== "requestConditions") return null;
+
+  const unsupported = getUnsupportedConditionProperties(grouping.flags);
+  if (unsupported.length === 0) return null;
+
+  const paramName = getParamName(grouping.paramName);
+  return unsupported.map((prop, i) => {
+    // ArgumentException is in the System namespace. Azure methods always have
+    // `using System;` because of other pipeline type references.
+    const line =
+      `if (${paramName}?.${prop.propertyName} != null)\n` +
+      `{\n` +
+      `    throw new ArgumentException("Service does not support the ${prop.headerName} conditional request header for this operation.", nameof(${paramName}));\n` +
+      `}`;
     return i === 0 ? line : `\n${line}`;
   });
 }

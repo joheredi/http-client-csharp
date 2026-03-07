@@ -3871,3 +3871,23 @@ Recommend option 1 for 17.7a since the flavor is already available (or passed as
 
 ### Gotcha: `buildProtocolParams` and `buildConvenienceParams` are exported standalone functions
 These are used by PagingMethods.tsx and CollectionResultFile.tsx. When adding parameters to these functions, all external call sites must be updated. Check with `grep -rn buildProtocolParams src/` before changing the signature.
+
+### Task 17.7b — Conditional header grouping for Azure flavor (2026-03-07)
+
+**Approach chosen:** Utility-based transformation in `src/utils/conditional-headers.ts` that detects conditional headers and returns grouping info. Each parameter builder function (`buildMethodParams`, `buildProtocolParams`, `buildConvenienceParams`) checks the grouping and replaces individual params with the grouped param.
+
+**Why:** Follows the existing `special-headers.ts` pattern — utility function called at each filter point. No descriptor/visitor abstraction needed since the transformation is straightforward: detect, group, replace.
+
+**Rejected:** Descriptor-based pre-processing that would transform operations before they reach components. More invasive, adds an abstraction layer that the simple grouping logic doesn't warrant.
+
+**Key implementation details:**
+- `ConditionalHeaderFlags` enum uses bit flags matching the legacy `RequestConditionHeaders`
+- Grouping is always optional (priority 400) — conditions params get `= default` in convenience methods
+- ETag case uses `request.Headers.Set()` with `.Value.ToString()` for nullable struct unpacking
+- MatchConditions/RequestConditions cases use `request.Headers.Add(conditions)` — Azure.Core's `RequestHeaders` has built-in overloads for these types
+- Protocol method validation uses `ArgumentException` (not `Argument.Assert*`) for unsupported headers
+- Validation only applies to `RequestConditions` grouping, not ETag or MatchConditions (those are only created when all their properties are supported)
+
+### Gotcha: `buildConditionalHeaderValidation` placement in protocol method
+
+The conditional header validation (ArgumentException for unsupported properties) is injected alongside regular `Argument.AssertNotNull` validation. The combined validation Children array must handle the case where one or both validations are null — use an array with empty-string separator when only one exists.
