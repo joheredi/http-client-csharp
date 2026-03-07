@@ -1,5 +1,5 @@
 import { Method, useCSharpNamePolicy } from "@alloy-js/csharp";
-import { code, namekey } from "@alloy-js/core";
+import { Block, code, namekey } from "@alloy-js/core";
 import type { Children } from "@alloy-js/core";
 import type {
   SdkArrayType,
@@ -15,6 +15,7 @@ import type {
   SdkType,
 } from "@azure-tools/typespec-client-generator-core";
 import type { FinalStateValue } from "@azure-tools/typespec-azure-core";
+import { AzureCorePipeline } from "../../builtins/azure.js";
 import {
   SystemClientModel,
 } from "../../builtins/system-client-model.js";
@@ -236,6 +237,7 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
           : buildStandardProtocolMethodParts(
               pipelineTypes,
               isAzure,
+              clientName,
               methodName,
               argList,
               validation,
@@ -768,12 +770,30 @@ function mapFinalStateVia(
 /**
  * Builds return types and method bodies for standard (non-LRO) protocol methods.
  *
- * Azure protocol methods return `Response` directly from `Pipeline.ProcessMessage`.
- * Unbranded protocol methods wrap the result in `ClientResult.FromResponse()`.
+ * Azure protocol methods return `Response` directly from `Pipeline.ProcessMessage`
+ * and wrap the body in a diagnostic scope for distributed tracing:
+ * ```csharp
+ * using DiagnosticScope scope = ClientDiagnostics.CreateScope("ClientName.MethodName");
+ * scope.Start();
+ * try { ... }
+ * catch (Exception e) { scope.Failed(e); throw; }
+ * ```
+ *
+ * Unbranded protocol methods wrap the result in `ClientResult.FromResponse()` with
+ * no tracing support.
+ *
+ * @param pipelineTypes - Pipeline type references for the target flavor.
+ * @param isAzure - Whether the emitter flavor is "azure".
+ * @param clientName - The PascalCase client class name for tracing scope.
+ * @param methodName - The PascalCase method name for tracing scope.
+ * @param argList - Comma-separated argument list for CreateRequest call.
+ * @param validation - Validation statements for required parameters.
+ * @param validatedParams - Parameters that need validation (for spacing).
  */
 function buildStandardProtocolMethodParts(
   pipelineTypes: PipelineTypes,
   isAzure: boolean,
+  clientName: string,
   methodName: string,
   argList: string,
   validation: Children,
@@ -787,37 +807,80 @@ function buildStandardProtocolMethodParts(
   const syncReturn = pipelineTypes.clientResult;
   const asyncReturn = code`${SystemThreadingTasks.Task}<${pipelineTypes.clientResult}>`;
 
-  const syncBody = isAzure
-    ? [
-        validation,
-        validatedParams.length > 0 ? "\n\n" : "",
-        code`using ${pipelineTypes.message} message = Create${methodName}Request(${argList});`,
-        "\n",
-        code`return Pipeline.ProcessMessage(message, options);`,
-      ]
-    : [
-        validation,
-        validatedParams.length > 0 ? "\n\n" : "",
-        code`using ${pipelineTypes.message} message = Create${methodName}Request(${argList});`,
-        "\n",
-        code`return ${pipelineTypes.clientResult}.FromResponse(Pipeline.ProcessMessage(message, options));`,
-      ];
+  // Inner body lines: validation + request creation + pipeline send.
+  // These are the same for Azure and unbranded, except for the return expression.
+  const innerSyncLines = [
+    validation,
+    validatedParams.length > 0 ? "\n\n" : "",
+    code`using ${pipelineTypes.message} message = Create${methodName}Request(${argList});`,
+    "\n",
+    isAzure
+      ? code`return Pipeline.ProcessMessage(message, options);`
+      : code`return ${pipelineTypes.clientResult}.FromResponse(Pipeline.ProcessMessage(message, options));`,
+  ];
 
-  const asyncBody = isAzure
-    ? [
-        validation,
-        validatedParams.length > 0 ? "\n\n" : "",
-        code`using ${pipelineTypes.message} message = Create${methodName}Request(${argList});`,
-        "\n",
-        code`return await Pipeline.ProcessMessageAsync(message, options).ConfigureAwait(false);`,
-      ]
-    : [
-        validation,
-        validatedParams.length > 0 ? "\n\n" : "",
-        code`using ${pipelineTypes.message} message = Create${methodName}Request(${argList});`,
-        "\n",
-        code`return ${pipelineTypes.clientResult}.FromResponse(await Pipeline.ProcessMessageAsync(message, options).ConfigureAwait(false));`,
-      ];
+  const innerAsyncLines = [
+    validation,
+    validatedParams.length > 0 ? "\n\n" : "",
+    code`using ${pipelineTypes.message} message = Create${methodName}Request(${argList});`,
+    "\n",
+    isAzure
+      ? code`return await Pipeline.ProcessMessageAsync(message, options).ConfigureAwait(false);`
+      : code`return ${pipelineTypes.clientResult}.FromResponse(await Pipeline.ProcessMessageAsync(message, options).ConfigureAwait(false));`,
+  ];
+
+  if (!isAzure) {
+    return {
+      syncReturn,
+      asyncReturn,
+      syncBody: innerSyncLines,
+      asyncBody: innerAsyncLines,
+    };
+  }
+
+  // Azure: wrap with diagnostic scope try-catch for distributed tracing.
+  // The scope name follows the "ClientName.MethodName" convention (without "Async").
+  const scopeName = `${clientName}.${methodName}`;
+
+  const catchBody = (
+    <>
+      {"scope.Failed(e);"}
+      {"\n"}
+      {"throw;"}
+    </>
+  );
+
+  const syncBody: Children[] = [
+    code`using ${AzureCorePipeline.DiagnosticScope} scope = ClientDiagnostics.CreateScope("${scopeName}");`,
+    "\n",
+    "scope.Start();",
+    "\n",
+    <>
+      {"try"}
+      <Block newline>{innerSyncLines}</Block>
+    </>,
+    "\n",
+    <>
+      {code`catch (${System.Exception} e)`}
+      <Block newline>{catchBody}</Block>
+    </>,
+  ];
+
+  const asyncBody: Children[] = [
+    code`using ${AzureCorePipeline.DiagnosticScope} scope = ClientDiagnostics.CreateScope("${scopeName}");`,
+    "\n",
+    "scope.Start();",
+    "\n",
+    <>
+      {"try"}
+      <Block newline>{innerAsyncLines}</Block>
+    </>,
+    "\n",
+    <>
+      {code`catch (${System.Exception} e)`}
+      <Block newline>{catchBody}</Block>
+    </>,
+  ];
 
   return { syncReturn, asyncReturn, syncBody, asyncBody };
 }

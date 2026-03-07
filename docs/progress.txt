@@ -5815,3 +5815,31 @@ accessibility, ModelReaderWriterContext — tasks 17.6, separate tracking).
 - 17.6: Add distributed tracing (ClientDiagnostics) support — would fix pre-existing e2e failures (CS0122 accessibility)
 - 17.7: Add Azure special header support
 - 17.8: Implement Azure namespace conventions
+
+## 2026-03-07 — Task 17.6: Add distributed tracing (ClientDiagnostics) support
+**Status:** Done
+
+**Summary:** Added diagnostic scope wrapping for Azure standard protocol methods. When `flavor="azure"`, non-LRO/non-paging protocol method bodies are wrapped with:
+```csharp
+using DiagnosticScope scope = ClientDiagnostics.CreateScope("ClientName.MethodName");
+scope.Start();
+try { ... }
+catch (Exception e) { scope.Failed(e); throw; }
+```
+
+**Changes:**
+- `src/builtins/system.ts` — Added `Exception` to System library for catch block type reference
+- `src/components/clients/ProtocolMethod.tsx` — Modified `buildStandardProtocolMethodParts()` to wrap Azure method bodies with diagnostic scope. Uses Alloy's `Block` component for proper try/catch indentation.
+- `test/azure-diagnostics.test.ts` — 7 unit tests: scope wrapping, same scope name sync/async, using directives, validation inside try block, sub-client scope name, unbranded regression guard, convenience method exclusion.
+
+**Patterns used:**
+- Alloy `Block` component with `newline` prop for Allman-style try/catch braces
+- `AzureCorePipeline.DiagnosticScope` type reference for auto `using Azure.Core.Pipeline;`
+- `System.Exception` type reference for auto `using System;`
+- Scope name convention: `"ClientName.MethodName"` (no Async suffix)
+
+**Key design decisions:**
+- Only standard protocol methods get scope wrapping; LRO already passes diagnostics to ProtocolOperationHelpers, convenience methods delegate to protocol (avoiding double-counting), paging methods are excluded
+- `clientName` parameter added to `buildStandardProtocolMethodParts` (matching LRO counterpart)
+
+**Results:** ✅ Build pass | ✅ 1452 unit tests passed | ⚠️ E2e failures pre-existing (CS0122 ClientDiagnostics type inaccessibility in Azure test projects — exists before this change)

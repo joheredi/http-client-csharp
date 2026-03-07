@@ -11,6 +11,18 @@ import { createLibrary } from "@alloy-js/csharp";
  */
 export const System = createLibrary("System", {
   /**
+   * The base class for all exceptions in .NET.
+   * Used in diagnostic scope catch blocks for distributed tracing:
+   * `catch (Exception e) { scope.Failed(e); throw; }`.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/system.exception
+   */
+  Exception: {
+    kind: "class",
+    members: {},
+  },
+
+  /**
    * Exception thrown when the format of an argument is invalid.
    * Used in serialization methods to reject unsupported wire formats
    * (e.g., when a JSON-only model receives a non-JSON format request).

@@ -3761,3 +3761,14 @@ TCGC `FinalStateValue` strings map to C# `OperationFinalStateVia` enum members:
 ### @markAsLro Cannot Be Used on Void Operations
 
 TCGC emits warning `invalid-mark-as-lro-target` and ignores `@markAsLro` on operations returning void. The method stays as `kind: "basic"`, not `kind: "lro"`. Void-returning LRO (like Delete) only works through Azure.Core resource operation templates (e.g., `ResourceOperations`). Unit tests for void LRO must use Azure.Core library imports, not `@markAsLro`.
+
+### Distributed Tracing / Diagnostic Scope (Task 17.6)
+- Azure standard protocol methods need `using DiagnosticScope scope = ClientDiagnostics.CreateScope("ClientName.MethodName"); scope.Start(); try { body } catch (Exception e) { scope.Failed(e); throw; }` wrapping
+- Convenience methods are NOT wrapped (they delegate to protocol methods, avoiding double-counting in telemetry)
+- LRO methods already pass `ClientDiagnostics` and scope name to `ProtocolOperationHelpers.ProcessMessage()` — no try-catch wrapper needed
+- Paging public methods are NOT wrapped (they return collection result instances)
+- Scope name convention: `"ClientName.MethodName"` (no "Async" suffix) — both sync/async share the same scope name
+- Use Alloy's `Block` component with `newline` prop for Allman-style try/catch indentation inside method bodies
+- `System.Exception` was added to builtins (`src/builtins/system.ts`) for the catch block type reference
+- `AzureCorePipeline.DiagnosticScope` auto-generates `using Azure.Core.Pipeline;` via Alloy type references
+- E2e tests have pre-existing CS0122 errors about `ClientDiagnostics` type accessibility — this is NOT caused by the diagnostic scope wrapping, it's a pre-existing issue with Azure.Core package references in e2e test infrastructure
