@@ -6506,3 +6506,15 @@ Fixed CS0305, CS0508, CS0534, CS0115 compilation errors in Azure-flavored paging
 - ARM specs are still in `.testignore` so this change alone won't affect e2e test results
 - Build passes, all 89 unit test files pass (1670 tests), no regressions
 - Next: Task 20.8 will remove ARM specs from .testignore to activate ARM e2e generation
+
+## Task 20.8 — Remove ARM specs from .testignore (2026-03-07)
+
+- Removed all 9 ARM resource-manager entries from `test/e2e/.testignore`:
+  common-properties, large-header, multi-service, multi-service-older-versions,
+  multi-service-shared-models, non-resource, method-subscription-id,
+  operation-templates, resources
+- Removed the ARM comment block explaining the exclusion reasons
+- **Verification**: emit:e2e now processes 118 specs (up from 109), confirming all 9 ARM specs are included
+- Build passes, 1670 unit tests pass, no regressions
+- E2E "should build" test failure is pre-existing (net8.0 build errors, documented in knowledge.md)
+- Next: Tasks 20.9-20.12 will fix the ARM-specific compilation errors (CS0103, CS0191, CS1983, CS0118)

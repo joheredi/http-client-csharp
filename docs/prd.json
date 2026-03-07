@@ -2184,7 +2184,7 @@
           "title": "Remove ARM specs from .testignore",
           "description": "Remove the 9 ARM resource-manager entries from test/e2e/.testignore so they're included in e2e generation and compilation.\n\nEntries to remove (lines 62-79):\n- azure/resource-manager/common-properties\n- azure/resource-manager/large-header\n- azure/resource-manager/multi-service\n- azure/resource-manager/multi-service-older-versions\n- azure/resource-manager/multi-service-shared-models\n- azure/resource-manager/non-resource\n- azure/resource-manager/method-subscription-id\n- azure/resource-manager/operation-templates\n- azure/resource-manager/resources\n\nAlso remove the comment block (lines 53-60) explaining ARM exclusion.\n\nNote: Do NOT remove these until task 20.7 is done and ARM specs generate with management=true, otherwise they'll generate without ARM support.\n\nReference files:\n- test/e2e/.testignore (lines 53-79 \u2014 ARM section)",
           "phase": "phase-20",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "20.7"
           ],

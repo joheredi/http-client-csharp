@@ -43,34 +43,6 @@
 # Total non-Azure net8.0 build failures: 10 specs (584 CS errors, same patterns)
 
 # ============================================================
-# AZURE ARM RESOURCE-MANAGER SPECS — ❌ ignored
-# ============================================================
-# All ARM specs have model-level compilation errors (CS0103: 'Argument' not
-# found in extensible enum structs, CS0191: readonly field assignment in
-# model deserialization). These are unrelated to authentication and will be
-# resolved by future ARM generation tasks (phase 18–19).
-
-# CS0103 (Argument in extensible enums) + CS0191 (readonly field assignment)
-azure/resource-manager/common-properties
-azure/resource-manager/large-header
-azure/resource-manager/multi-service
-azure/resource-manager/multi-service-older-versions
-azure/resource-manager/multi-service-shared-models
-azure/resource-manager/non-resource
-
-# CS0103/CS0191 (model errors) + CS0118 (namespace/type name collision
-# for MixedSubscriptionPlacement, TwoSubscriptionResourcesMethodLevel) +
-# CS1983 (async paging methods with non-Task return types)
-azure/resource-manager/method-subscription-id
-
-# CS0103/CS0191 (model errors) + CS1983 (async paging methods with
-# non-Task return types in Operations.cs, LroPaging.cs)
-azure/resource-manager/operation-templates
-
-# CS0103/CS0191 (model errors) + CS1983 (async paging methods)
-azure/resource-manager/resources
-
-# ============================================================
 # NON-AZURE SPECS — ignored
 # ============================================================
 
