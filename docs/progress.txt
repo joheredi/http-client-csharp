@@ -6330,3 +6330,25 @@ Implemented code generation for non-resource methods (provider-level operations 
 - Empty `code` template (`` code`` ``) crashes `processLiteralString` — return `null` instead
 
 ### Next priorities: 19.5c (extension resources) and 19.5e (tag operations)
+
+## 2026-03-07 — Task 19.5c: Implement extension resource support (scope parameter, generic parent)
+
+**Changes made:**
+- **ResourceFile.tsx**: Modified `buildIdAccessorExpressions()` to accept optional `ResourceScope` parameter. For extension resources, the scope variable now produces `Id.Parent` (full ResourceIdentifier path) instead of `Id.Parent.Name` (which would lose the full path).
+- **CollectionFile.tsx**: For extension resources, parent ID accessors use `["Id"]` directly instead of computed parent accessors. The collection's `Id` IS the scope (set during construction), so REST operations pass `Id` for scope parameter.
+- **MockableProviderFile.tsx**: Extended `buildArmClientMethods()` to generate collection factory + singular getters for extension resources:
+  - Non-singleton: `GetXxxs(ResourceIdentifier scope)` → collection, plus `GetXxx/GetXxxAsync(ResourceIdentifier scope, string name, CancellationToken)` → delegates to collection
+  - Singleton: `GetXxx(ResourceIdentifier scope)` → `scope.AppendProviderResource(...)` (code present but singleton detection for extension resources is a pre-existing issue)
+- **ExtensionsFile.tsx**: Extended `buildArmClientExtensions()` with matching static extension methods on ArmClient for all the above patterns
+- **test/arm/extension-resource.test.ts**: 24 new tests covering non-singleton extension resources (MockableArmClient, ExtensionsFile, ResourceFile, CollectionFile) and singleton extension resources
+
+**Key patterns:**
+- Extension resources detected via `ResourceScope.Extension` in metadata
+- MockableArmClient gets `GetXxxResource(id)` + `GetXxxs(scope)` + `GetXxx(scope, name)` + `GetXxxAsync(scope, name)`
+- ExtensionsFile mirrors the MockableArmClient methods as static extensions on ArmClient
+- Collection REST calls use `Id` (the scope itself) for extension resources
+- Resource REST calls use `Id.Parent` (scope from full resource ID) for extension resources
+
+**Known issue:** Singleton detection (`singletonResourceName`) doesn't propagate for extension resources through the `resolveArmResources` API. Singleton extensions are currently treated as non-singleton extensions (generating collection + singular getters with scope). This is a pre-existing issue; the code for singleton handling is in place and will work when singleton detection is fixed.
+
+**Results:** ✅ Build pass | ✅ 1653 unit tests passed (24 new) | ⚠️ E2E failures pre-existing (CS0122 ClientDiagnostics, CS0534 ErrorResult)

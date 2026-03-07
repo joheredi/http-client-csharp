@@ -130,7 +130,10 @@ export function ResourceFile(props: ResourceFileProps) {
 
   const resourceType = metadata.resourceType;
   const variableSegments = extractVariableSegments(metadata.resourceIdPattern);
-  const idAccessors = buildIdAccessorExpressions(metadata.resourceIdPattern);
+  const idAccessors = buildIdAccessorExpressions(
+    metadata.resourceIdPattern,
+    metadata.resourceScope,
+  );
 
   // ── Namespace from rest client ────────────────────────────────────────────
 
@@ -363,12 +366,27 @@ export function extractVariableSegments(pattern: string): string[] {
  *
  * Returns an array of C# expressions in the same order as the variable segments.
  */
-export function buildIdAccessorExpressions(pattern: string): string[] {
+export function buildIdAccessorExpressions(
+  pattern: string,
+  resourceScope?: ResourceScope,
+): string[] {
   const segments = pattern.split("/").filter(Boolean);
   const variables = segments.filter(isVariableSegment);
 
   return variables.map((seg, index) => {
     const name = seg.replace(/[{}]/g, "");
+
+    // Extension resources: first variable is the scope — use full ResourceIdentifier
+    // path (Id.Parent) instead of just the name. ResourceIdentifier has implicit
+    // string conversion so passing it where string is expected preserves the full path.
+    if (resourceScope === ResourceScope.Extension && index === 0) {
+      const depth = variables.length - 1 - index;
+      let accessor = "Id";
+      for (let i = 0; i < depth; i++) {
+        accessor += ".Parent";
+      }
+      return accessor;
+    }
 
     if (name === "subscriptionId" || name.toLowerCase() === "subscriptionid") {
       return "Guid.Parse(Id.SubscriptionId)";

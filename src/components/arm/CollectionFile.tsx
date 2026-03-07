@@ -142,10 +142,18 @@ export function CollectionFile(props: CollectionFileProps) {
   // ── Resource identity ─────────────────────────────────────────────────────
 
   const variableSegments = extractVariableSegments(metadata.resourceIdPattern);
-  const allIdAccessors = buildIdAccessorExpressions(metadata.resourceIdPattern);
+  const allIdAccessors = buildIdAccessorExpressions(
+    metadata.resourceIdPattern,
+    metadata.resourceScope,
+  );
 
-  // Parent scope accessors (all except last, which is the resource name param)
-  const parentIdAccessors = allIdAccessors.slice(0, -1);
+  // Parent scope accessors (all except last, which is the resource name param).
+  // For extension resources, the collection's Id IS the scope — use "Id" directly
+  // instead of the computed parent accessors which would incorrectly extract .Name.
+  const parentIdAccessors =
+    metadata.resourceScope === ResourceScope.Extension
+      ? ["Id"]
+      : allIdAccessors.slice(0, -1);
   const resourceNameParam = variableSegments[variableSegments.length - 1];
 
   // ── Namespace from rest client ────────────────────────────────────────────

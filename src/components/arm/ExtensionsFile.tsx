@@ -167,7 +167,17 @@ private static ${mockableClassName} Get${mockableClassName}(${scopeTypeRef} ${pa
 
 /**
  * Generates public static extension methods on ArmClient.
- * Each resource gets a GetXxxResource(this ArmClient, ResourceIdentifier id) method.
+ *
+ * For ALL resources:
+ *   - GetXxxResource(this ArmClient, ResourceIdentifier id)
+ *
+ * For non-singleton extension resources:
+ *   - GetXxxs(this ArmClient, ResourceIdentifier scope) — collection factory
+ *   - GetXxx(this ArmClient, ResourceIdentifier scope, string name, CancellationToken) — sync
+ *   - GetXxxAsync(this ArmClient, ResourceIdentifier scope, string name, CancellationToken) — async
+ *
+ * For singleton extension resources:
+ *   - GetXxx(this ArmClient, ResourceIdentifier scope) — direct resource via scope
  */
 function buildArmClientExtensions(
   scopes: ScopeResources[],
@@ -180,10 +190,12 @@ function buildArmClientExtensions(
   const methods: Children[] = [];
 
   for (const resource of armClientScope.resources) {
-    const resourceName = resource.metadata.resourceName;
+    const { metadata } = resource;
+    const resourceName = metadata.resourceName;
     const resourceClassName = `${resourceName}Resource`;
     const resourceRef = armResourceRefkey(resource.resourceModelId);
 
+    // GetXxxResource(this ArmClient, ResourceIdentifier id) — all resources
     methods.push(code`
 /// <summary>
 /// Gets an object representing a <see cref="${resourceClassName}"/> along with the instance operations that can be performed on it but with no data.
@@ -203,6 +215,114 @@ public static ${resourceRef} Get${resourceClassName}(this ${AzureResourceManager
     return Get${mockableClassName}(client).Get${resourceClassName}(id);
 }
 `);
+
+    // Extension-scoped resources get additional scope-based extension methods
+    if (metadata.resourceScope === ResourceScope.Extension) {
+      if (metadata.singletonResourceName) {
+        // Singleton extension: GetXxx(this ArmClient, ResourceIdentifier scope)
+        methods.push(code`
+/// <summary>
+/// Gets an object representing a <see cref="${resourceClassName}"/> along with the instance operations that can be performed on it in the ArmClient
+/// <item>
+/// <term> Mocking. </term>
+/// <description> To mock this method, please mock <see cref="${mockableClassName}.Get${resourceName}(${AzureCore.ResourceIdentifier})"/> instead. </description>
+/// </item>
+/// </summary>
+/// <param name="client"> The <see cref="ArmClient"/> the method will execute against. </param>
+/// <param name="scope"> The scope that the resource will apply against. </param>
+/// <exception cref="ArgumentNullException"> <paramref name="client"/> is null. </exception>
+/// <returns> Returns a <see cref="${resourceClassName}"/> object. </returns>
+public static ${resourceRef} Get${resourceName}(this ${AzureResourceManager.ArmClient} client, ${AzureCore.ResourceIdentifier} scope)
+{
+    ${AzureCore.Argument}.AssertNotNull(client, nameof(client));
+
+    return Get${mockableClassName}(client).Get${resourceName}(scope);
+}
+`);
+      } else {
+        // Non-singleton extension: collection factory + singular getters
+        const collectionRef = armCollectionRefkey(resource.resourceModelId);
+        const variableSegments = extractVariableSegments(
+          metadata.resourceIdPattern,
+        );
+        const resourceNameParam =
+          variableSegments[variableSegments.length - 1];
+
+        const getMethod = metadata.methods.find(
+          (m) => m.kind === ResourceOperationKind.Read,
+        );
+
+        // Collection factory extension
+        methods.push(code`
+/// <summary>
+/// Gets a collection of <see cref="${collectionRef}"/> objects within the specified scope.
+/// <item>
+/// <term> Mocking. </term>
+/// <description> To mock this method, please mock <see cref="${mockableClassName}.Get${pluralize(resourceName)}(${AzureCore.ResourceIdentifier})"/> instead. </description>
+/// </item>
+/// </summary>
+/// <param name="client"> The <see cref="ArmClient"/> the method will execute against. </param>
+/// <param name="scope"> The scope of the resource collection to get. </param>
+/// <exception cref="ArgumentNullException"> <paramref name="client"/> is null. </exception>
+/// <returns> Returns a collection of <see cref="${resourceClassName}"/> objects. </returns>
+public static ${collectionRef} Get${pluralize(resourceName)}(this ${AzureResourceManager.ArmClient} client, ${AzureCore.ResourceIdentifier} scope)
+{
+    ${AzureCore.Argument}.AssertNotNull(client, nameof(client));
+
+    return Get${mockableClassName}(client).Get${pluralize(resourceName)}(scope);
+}
+`);
+
+        // Singular getter extensions with scope parameter
+        if (getMethod) {
+          // Sync
+          methods.push(code`
+/// <summary>
+/// Get a ${resourceName}
+/// <item>
+/// <term> Mocking. </term>
+/// <description> To mock this method, please mock <see cref="${mockableClassName}.Get${resourceName}(${AzureCore.ResourceIdentifier}, string, CancellationToken)"/> instead. </description>
+/// </item>
+/// </summary>
+/// <param name="client"> The <see cref="ArmClient"/> the method will execute against. </param>
+/// <param name="scope"> The scope of the resource collection to get. </param>
+/// <param name="${resourceNameParam}"> The name of the ${resourceClassName}. </param>
+/// <param name="cancellationToken"> The cancellation token to use. </param>
+/// <exception cref="ArgumentNullException"> <paramref name="client"/> is null. </exception>
+[${AzureResourceManager.ForwardsClientCalls}]
+public static ${code`Response<${resourceRef}>`} Get${resourceName}(this ${AzureResourceManager.ArmClient} client, ${AzureCore.ResourceIdentifier} scope, string ${resourceNameParam}, CancellationToken cancellationToken = default)
+{
+    ${AzureCore.Argument}.AssertNotNull(client, nameof(client));
+
+    return Get${mockableClassName}(client).Get${resourceName}(scope, ${resourceNameParam}, cancellationToken);
+}
+`);
+
+          // Async
+          methods.push(code`
+/// <summary>
+/// Get a ${resourceName}
+/// <item>
+/// <term> Mocking. </term>
+/// <description> To mock this method, please mock <see cref="${mockableClassName}.Get${resourceName}Async(${AzureCore.ResourceIdentifier}, string, CancellationToken)"/> instead. </description>
+/// </item>
+/// </summary>
+/// <param name="client"> The <see cref="ArmClient"/> the method will execute against. </param>
+/// <param name="scope"> The scope of the resource collection to get. </param>
+/// <param name="${resourceNameParam}"> The name of the ${resourceClassName}. </param>
+/// <param name="cancellationToken"> The cancellation token to use. </param>
+/// <exception cref="ArgumentNullException"> <paramref name="client"/> is null. </exception>
+[${AzureResourceManager.ForwardsClientCalls}]
+public static async Task<${code`Response<${resourceRef}>`}> Get${resourceName}Async(this ${AzureResourceManager.ArmClient} client, ${AzureCore.ResourceIdentifier} scope, string ${resourceNameParam}, CancellationToken cancellationToken = default)
+{
+    ${AzureCore.Argument}.AssertNotNull(client, nameof(client));
+
+    return await Get${mockableClassName}(client).Get${resourceName}Async(scope, ${resourceNameParam}, cancellationToken).ConfigureAwait(false);
+}
+`);
+        }
+      }
+    }
   }
 
   return methods;

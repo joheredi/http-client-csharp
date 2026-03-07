@@ -319,17 +319,29 @@ internal ${className}(${AzureResourceManager.ArmClient} client, ${AzureCore.Reso
 // ─── ArmClient Methods ──────────────────────────────────────────────────────
 
 /**
- * Generates GetXxxResource(ResourceIdentifier id) methods for the ArmClient mockable class.
- * Each resource gets a method that validates the resource ID and constructs the resource instance.
+ * Generates methods for the ArmClient mockable class.
+ *
+ * For ALL resources:
+ *   - GetXxxResource(ResourceIdentifier id) — validates + constructs resource
+ *
+ * For non-singleton extension resources (scope = Extension):
+ *   - GetXxxs(ResourceIdentifier scope) — returns collection
+ *   - GetXxxAsync(ResourceIdentifier scope, string name, CancellationToken) — delegates to collection
+ *   - GetXxx(ResourceIdentifier scope, string name, CancellationToken) — delegates to collection
+ *
+ * For singleton extension resources:
+ *   - GetXxx(ResourceIdentifier scope) — returns resource via scope.AppendProviderResource
  */
 function buildArmClientMethods(resources: ArmResourceSchema[]): Children {
   const methods: Children[] = [];
 
   for (const resource of resources) {
-    const resourceName = resource.metadata.resourceName;
+    const { metadata } = resource;
+    const resourceName = metadata.resourceName;
     const resourceClassName = `${resourceName}Resource`;
     const resourceRef = armResourceRefkey(resource.resourceModelId);
 
+    // GetXxxResource(ResourceIdentifier id) — all resources get this
     methods.push(code`
 /// <summary> Gets an object representing a <see cref="${resourceClassName}"/> along with the instance operations that can be performed on it but with no data. </summary>
 /// <param name="id"> The resource ID of the resource to get. </param>
@@ -340,6 +352,88 @@ public virtual ${resourceRef} Get${resourceClassName}(${AzureCore.ResourceIdenti
     return new ${resourceRef}(Client, id);
 }
 `);
+
+    // Extension-scoped resources additionally get scope-based factory methods
+    if (metadata.resourceScope === ResourceScope.Extension) {
+      if (metadata.singletonResourceName) {
+        // Singleton extension: GetXxx(ResourceIdentifier scope) → direct resource
+        const typeParts = metadata.resourceType.split("/");
+        const providerName = typeParts[0];
+        const resourceTypeName = typeParts.slice(1).join("/");
+
+        methods.push(code`
+/// <summary> Gets an object representing a <see cref="${resourceClassName}"/> along with the instance operations that can be performed on it in the ArmClient. </summary>
+/// <param name="scope"> The scope that the resource will apply against. </param>
+/// <returns> Returns a <see cref="${resourceClassName}"/> object. </returns>
+public virtual ${resourceRef} Get${resourceName}(${AzureCore.ResourceIdentifier} scope)
+{
+    return new ${resourceRef}(Client, scope.AppendProviderResource("${providerName}", "${resourceTypeName}", "${metadata.singletonResourceName}"));
+}
+`);
+      } else {
+        // Non-singleton extension: collection factory + singular getters with scope
+        const collectionRef = armCollectionRefkey(resource.resourceModelId);
+        const variableSegments = extractVariableSegments(
+          metadata.resourceIdPattern,
+        );
+        const resourceNameParam =
+          variableSegments[variableSegments.length - 1];
+
+        const getMethod = metadata.methods.find(
+          (m) => m.kind === ResourceOperationKind.Read,
+        );
+
+        // Collection factory: GetXxxs(ResourceIdentifier scope) → new XxxCollection(Client, scope)
+        methods.push(code`
+/// <summary> Gets a collection of <see cref="${collectionRef}"/> objects within the specified scope. </summary>
+/// <param name="scope"> The scope of the resource collection to get. </param>
+/// <returns> Returns a collection of <see cref="${resourceClassName}"/> objects. </returns>
+public virtual ${collectionRef} Get${pluralize(resourceName)}(${AzureCore.ResourceIdentifier} scope)
+{
+    return new ${collectionRef}(Client, scope);
+}
+`);
+
+        // Singular getters with scope parameter (if resource has Read operation)
+        if (getMethod) {
+          const summary = `Get a ${resourceName}`;
+
+          // Sync
+          methods.push(code`
+/// <summary> ${summary}. </summary>
+/// <param name="scope"> The scope of the resource collection to get. </param>
+/// <param name="${resourceNameParam}"> The name of the ${resourceClassName}. </param>
+/// <param name="cancellationToken"> The cancellation token to use. </param>
+/// <exception cref="ArgumentNullException"> <paramref name="${resourceNameParam}"/> is null. </exception>
+/// <exception cref="ArgumentException"> <paramref name="${resourceNameParam}"/> is an empty string, and was expected to be non-empty. </exception>
+[${AzureResourceManager.ForwardsClientCalls}]
+public virtual ${code`Response<${resourceRef}>`} Get${resourceName}(${AzureCore.ResourceIdentifier} scope, string ${resourceNameParam}, CancellationToken cancellationToken = default)
+{
+    ${AzureCore.Argument}.AssertNotNullOrEmpty(${resourceNameParam}, nameof(${resourceNameParam}));
+
+    return Get${pluralize(resourceName)}(scope).Get(${resourceNameParam}, cancellationToken);
+}
+`);
+
+          // Async
+          methods.push(code`
+/// <summary> ${summary}. </summary>
+/// <param name="scope"> The scope of the resource collection to get. </param>
+/// <param name="${resourceNameParam}"> The name of the ${resourceClassName}. </param>
+/// <param name="cancellationToken"> The cancellation token to use. </param>
+/// <exception cref="ArgumentNullException"> <paramref name="${resourceNameParam}"/> is null. </exception>
+/// <exception cref="ArgumentException"> <paramref name="${resourceNameParam}"/> is an empty string, and was expected to be non-empty. </exception>
+[${AzureResourceManager.ForwardsClientCalls}]
+public virtual async Task<${code`Response<${resourceRef}>`}> Get${resourceName}Async(${AzureCore.ResourceIdentifier} scope, string ${resourceNameParam}, CancellationToken cancellationToken = default)
+{
+    ${AzureCore.Argument}.AssertNotNullOrEmpty(${resourceNameParam}, nameof(${resourceNameParam}));
+
+    return await Get${pluralize(resourceName)}(scope).GetAsync(${resourceNameParam}, cancellationToken).ConfigureAwait(false);
+}
+`);
+        }
+      }
+    }
   }
 
   return methods;

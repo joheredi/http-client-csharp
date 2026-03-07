@@ -4208,3 +4208,27 @@ The `<Property>` component from `@alloy-js/csharp` has an `attributes` prop that
 - `categorizeResourcesByScope()` groups non-resource methods by their `operationScope`
 - This keeps the single-file-per-scope pattern and avoids creating a separate component
 - Rejected alternative: separate `NonResourceMethods.tsx` component — would add indirection without benefit
+
+## Extension Resource Scope Handling (Task 19.5c)
+
+**Key insight — Extension resource ID accessor expressions differ from standard resources:**
+
+For standard resources (e.g., ResourceGroup-scoped), `buildIdAccessorExpressions()` uses named property accessors like `Id.SubscriptionId` and `Id.ResourceGroupName`. These work identically in both Resource and Collection contexts because they access well-known properties of the ResourceIdentifier.
+
+For extension resources, there are no well-known properties — the scope is an arbitrary ResourceIdentifier. This creates a context-dependent split:
+- **Resource context**: scope = `Id.Parent` (strip the last type/name suffix from the full resource ID)
+- **Collection context**: scope = `Id` (the collection was initialized with the scope as its Id)
+
+The fix: `buildIdAccessorExpressions()` now accepts an optional `ResourceScope` parameter. For `Extension` scope, the first variable produces `Id.Parent` (traversing up). CollectionFile.tsx then overrides parent accessors to `["Id"]` for extension resources.
+
+**Gotcha — singleton detection doesn't work for extension resources:**
+
+`extractSingletonName()` checks if the last path segment of `resourceInstancePath` is a fixed string (not a variable). For extension resources like `@singleton("default") model X is ExtensionResource<P>`, the `resolveArmResources` API returns a path where the singleton value isn't at the end, so `singletonResourceName` is `undefined`. The singleton code path in `buildArmClientMethods()` is implemented but untriggered. When singleton detection is fixed, extension singletons will use `scope.AppendProviderResource(provider, type, singletonName)` instead of collection factory.
+
+**Gotcha — findFileContaining helper in tests can match wrong files:**
+
+`findFileContaining(outputs, "Extensions.cs")` matches `CancellationTokenExtensions.cs` before the main Extensions file. Use `findExtensionsFile()` which filters by `Extensions/` directory prefix.
+
+## Design Decisions
+
+**Extension resource approach:** Modified existing functions with scope-awareness (conditional checks for `ResourceScope.Extension`) rather than creating separate functions. This keeps the code path consistent and avoids duplicating logic from the non-extension path.
