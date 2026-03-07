@@ -6262,3 +6262,21 @@ E2E tests have pre-existing failures (CS0122 ClientDiagnostics, CS0534 ErrorResu
 - Use `using Azure.ClientGenerator.Core.Legacy;` in TypeSpec tests
 - TCGC does NOT auto-set flatten on ARM `TrackedResource.properties` — it requires explicit `@@flattenProperty` in the ARM library definition
 - For nullable value types (bool?, int?), the setter uses `value.Value` to unwrap
+
+## Task 19.5 — Split into subtasks (2026-03-07)
+
+**What was done:**
+- Analyzed task 19.5 ("Implement additional ARM features") and found it bundles 5 distinct features
+- Studied both the current codebase and legacy implementation for each feature
+- Split into 5 subtasks with detailed descriptions and acceptance criteria:
+  - 19.5a: Singleton resources — ALREADY DONE (marked complete immediately)
+  - 19.5b: Wire Path attributes — option exists, needs emission code
+  - 19.5c: Extension resources — framework exists, needs scope parameter handling
+  - 19.5d: Non-resource methods — metadata collected, needs code generation
+  - 19.5e: Tag operations — not started, most complex (dual-path logic, 6 methods)
+
+**Priority order for next loops:**
+1. 19.5b (Wire Path) — simplest, self-contained attribute emission
+2. 19.5c (Extension Resources) — needs MockableProvider and Collection changes
+3. 19.5d (Non-Resource Methods) — needs rendering pipeline for collected metadata
+4. 19.5e (Tag Operations) — most complex, ~570 lines of legacy reference code
