@@ -105,6 +105,7 @@ import {
 import { fixAllNamespaceBraceStyles } from "./utils/namespace-brace-style.js";
 import { reorderAllFileHeaders } from "./utils/reorder-header.js";
 import { SYSTEM_TEXT_JSON_CONVERTER_DECORATOR_PATTERN } from "./utils/system-text-json-converter.js";
+import { detectArmResources } from "./utils/resource-detection.js";
 
 /**
  * TypeSpec emitter entry point for the C# HTTP client generator.
@@ -240,6 +241,17 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
   // compute the C# class name from type.name automatically get the custom name.
   applyCustomCodeRenames(models, customCode);
 
+  // Detect ARM resources when management mode is enabled.
+  // The schema is passed through EmitterContext so downstream components
+  // can generate ARM resource classes, collections, and CRUD operations.
+  const armProviderSchema = options.management
+    ? detectArmResources(
+        context.program,
+        sdkContext,
+        options["use-legacy-resource-detection"],
+      )
+    : undefined;
+
   const output = (
     <HttpClientCSharpOutput
       program={context.program}
@@ -247,6 +259,7 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
       sdkContext={sdkContext}
       packageName={packageName}
       customCode={customCode}
+      armProviderSchema={armProviderSchema}
     >
       {shouldGenerateProject && (
         <ProjectFile packageName={packageName} options={options} />

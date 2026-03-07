@@ -18,6 +18,7 @@ import type {
   CSharpEmitterOptions,
   ResolvedCSharpEmitterOptions,
 } from "../options.js";
+import type { ArmProviderSchema } from "../utils/resource-metadata.js";
 
 /**
  * Props for the root HttpClientCSharpOutput component.
@@ -37,6 +38,12 @@ export interface HttpClientCSharpOutputProps {
    * rename generated members that conflict with custom code.
    */
   customCode?: CustomCodeModel;
+  /**
+   * ARM provider schema from resource detection. Only provided when
+   * `management` is `true`. Downstream components use this to generate
+   * ARM resource classes, collections, and CRUD operations.
+   */
+  armProviderSchema?: ArmProviderSchema;
   /** Optional children to render inside the output. */
   children?: Children;
 }
@@ -64,6 +71,7 @@ export function HttpClientCSharpOutput(props: HttpClientCSharpOutputProps) {
     hasDynamicModels: false, // Future: detect @dynamicModel decorator usage
     hasMultipartOperations: detectMultipartOperations(props.sdkContext),
     sdkPackage: props.sdkContext.sdkPackage,
+    armProviderSchema: props.armProviderSchema,
   };
 
   return (

@@ -3942,3 +3942,17 @@ E2E tests fail with errors unrelated to management:
 - CS0534: `ErrorResult<T>` doesn't implement `GetRawResponse()`
 - CS0246: `ModelReaderWriterContext` and `ModelReaderWriterBuildable` not found
 These affect `azure/client-generator-core/client-location` and `azure/client-generator-core/client-initialization` specs.
+
+## ARM Resource Detection (Task 19.1)
+
+### Design Decisions
+- **Both detection modes implemented**: The `use-legacy-resource-detection` option (default: true) supports both the new `resolveArmResources` API and the legacy heuristic-based detection. The legacy mode was adapted from CodeModel types to SdkPackage types.
+- **Three-file organization**: `arm-path-utils.ts` (pure path utilities), `resource-metadata.ts` (types + shared post-processing), `resource-detection.ts` (entry point + both modes). Mirrors the reference implementation's separation.
+- **EmitterContext integration**: `armProviderSchema` field added to EmitterContextType. Populated in `$onEmit` when management=true. Downstream components use `useEmitterContext().armProviderSchema`.
+
+### Gotchas
+- **resolveArmResources only works during $onEmit**: The ARM library's state map (from `@armProviderNamespace` decorator processing) is only available during the emitter's execution phase. Calling `resolveArmResources(program)` after `compileAndDiagnose()` returns `{}` because the state has been cleaned up.
+- **Scope detection order matters**: `getOperationScopeFromPath` must check ManagementGroup BEFORE multi-provider extension, because ManagementGroup paths like `/providers/Microsoft.Management/managementGroups/{id}/providers/Microsoft.Foo/bars` have multiple `/providers/` segments.
+- **DecoratorApplication type**: The TypeSpec compiler's `DecoratorApplication.decorator.namespace` is a plain `string | undefined`, while `DecoratorApplication.definition.namespace` is a `Namespace` object. Use `getNamespaceFullName()` from `@typespec/compiler` to build fully qualified decorator names.
+- **ARM TypeSpec test fixtures need `using` directives**: Even with `.importLibraries()`, inline TypeSpec code needs `using Azure.ResourceManager;`, `using TypeSpec.Rest;`, etc. for ARM types like `TrackedResource<T>` to resolve.
+- **Legacy detection two-pass strategy**: CRUD operations must be processed first (pass 1) to establish resource paths before non-CRUD operations (List, Action) can match against them (pass 2).

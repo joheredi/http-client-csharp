@@ -6078,3 +6078,30 @@ Approach: Flat options with `management` master switch (chosen over `"azure-mgmt
 
 **Pre-existing issues:**
 - E2E tests (`pnpm test:e2e`) fail with CS0122 (ClientDiagnostics protection level), CS0534 (ErrorResult<T> missing GetRawResponse), CS0246 (ModelReaderWriterContext not found) — unrelated to this task
+
+## Task 19.1 — Implement ARM resource detection from URL path patterns (2026-03-07)
+
+### What was done
+- Created `src/utils/arm-path-utils.ts` — Pure utility functions for ARM URL path manipulation (isVariableSegment, isPrefix, getSharedSegmentCount, findLongestPrefixMatch, calculateResourceTypeFromPath, getOperationScopeFromPath)
+- Created `src/utils/resource-metadata.ts` — Types (ResourceScope, ResourceOperationKind, ResourceMethod, NonResourceMethod, ResourceMetadata, ArmResourceSchema, ArmProviderSchema) and shared post-processing logic (postProcessArmResources, assignNonResourceMethodsToResources, sortResourceMethods)
+- Created `src/utils/resource-detection.ts` — Main entry point with both detection modes:
+  - New mode: uses `resolveArmResources` API from @azure-tools/typespec-azure-resource-manager
+  - Legacy mode: heuristic-based detection scanning SDK method decorators and URL path patterns
+- Integrated into emitter: `$onEmit` calls `detectArmResources` when management=true, passes ArmProviderSchema through EmitterContext
+- Added `armProviderSchema` field to EmitterContextType and HttpClientCSharpOutputProps
+
+### Tests added
+- `test/utils/arm-path-utils.test.ts` — 29 unit tests for path utilities (segment detection, prefix matching, resource type extraction, scope classification)
+- `test/utils/resource-metadata.test.ts` — 10 unit tests for post-processing (method sorting, incomplete resource merging, singleton preservation, non-resource method assignment via 3 strategies)
+- `test/utils/resource-detection.test.ts` — 3 integration tests verifying ARM TypeSpec compiles correctly with management mode (tracked resources, singletons, parent-child)
+
+### Patterns & decisions
+- Used both detection modes (new resolveArmResources + legacy heuristic) for compatibility with the `use-legacy-resource-detection` option
+- Legacy mode adapted from CodeModel to SdkPackage types since our emitter doesn't have a CodeModel
+- getOperationScopeFromPath priority: variable-scope → ManagementGroup → multi-provider extension → ResourceGroup → Subscription → Tenant
+- resolveArmResources API only works during $onEmit phase (ARM library state not available post-compilation)
+- Integration tests validate through emitter compilation rather than direct API calls
+
+### Known limitations
+- Integration tests can't directly assert ArmProviderSchema contents because resolveArmResources requires the emitter execution context. The pure algorithm tests cover correctness.
+- E2e test failures are pre-existing (ModelReaderWriterContext, ClientDiagnostics issues) — not related to this task.

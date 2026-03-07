@@ -11,6 +11,7 @@ import type {
   LicenseOptions,
   ResolvedCSharpEmitterOptions,
 } from "../options.js";
+import type { ArmProviderSchema } from "../utils/resource-metadata.js";
 
 /**
  * Carries resolved emitter options and derived state through the component tree.
@@ -44,6 +45,14 @@ export interface EmitterContextType {
 
   /** The TCGC SDK package containing all clients, models, and enums. */
   sdkPackage: SdkPackage<SdkHttpOperation>;
+
+  /**
+   * ARM provider schema containing detected resources and non-resource methods.
+   * Only populated when `management` is `true`. Downstream management plane
+   * components use this to generate ARM resource classes, collections, and
+   * CRUD operations.
+   */
+  armProviderSchema?: ArmProviderSchema;
 }
 
 /**
