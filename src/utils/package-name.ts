@@ -1,9 +1,10 @@
-import type {
-  SdkClientType,
-  SdkContext,
-  SdkEnumType,
-  SdkHttpOperation,
-  SdkModelType,
+import {
+  type SdkClientType,
+  type SdkContext,
+  type SdkEnumType,
+  type SdkHttpOperation,
+  type SdkModelType,
+  UsageFlags,
 } from "@azure-tools/typespec-client-generator-core";
 
 /**
@@ -328,4 +329,64 @@ export function cleanAllNamespaces(
       enumType.namespace = cleanNamespace(enumType.namespace, invalidSegments);
     }
   }
+}
+
+/**
+ * The namespace segment appended to model/enum namespaces when `model-namespace` is enabled.
+ */
+const MODELS_NAMESPACE_SEGMENT = "Models";
+
+/**
+ * Appends a `.Models` sub-namespace to all model and enum namespaces.
+ *
+ * When the `model-namespace` emitter option is enabled (default for Azure flavor),
+ * model types, enums, and their serialization companions are placed in a
+ * `{RootNamespace}.Models` sub-namespace while client types remain in the
+ * root namespace. This mirrors the legacy Azure emitter's `NamespaceVisitor`.
+ *
+ * API version enums (identified by `UsageFlags.ApiVersionEnum`) are excluded
+ * and remain in their original namespace, matching the legacy emitter behavior
+ * where API version enums stay in the root namespace for client options access.
+ *
+ * The operation is idempotent — namespaces that already end with `.Models`
+ * are not modified.
+ *
+ * Must be called after {@link cleanAllNamespaces} so that the base namespaces
+ * are already cleaned before appending.
+ *
+ * @param models - All model types from the SDK package (mutated in place).
+ * @param enums - All enum types from the SDK package (mutated in place).
+ */
+export function applyModelSubNamespace(
+  models: SdkModelType[],
+  enums: SdkEnumType[],
+): void {
+  for (const model of models) {
+    if (model.namespace) {
+      model.namespace = appendModelsSegment(model.namespace);
+    }
+  }
+
+  for (const enumType of enums) {
+    // API version enums stay in the root namespace — they are referenced
+    // from client options and should not be in the .Models sub-namespace.
+    const isApiVersionEnum = (enumType.usage & UsageFlags.ApiVersionEnum) !== 0;
+    if (enumType.namespace && !isApiVersionEnum) {
+      enumType.namespace = appendModelsSegment(enumType.namespace);
+    }
+  }
+}
+
+/**
+ * Appends `.Models` to a namespace string if the last segment is not already `Models`.
+ *
+ * @param ns - A dot-separated C# namespace string.
+ * @returns The namespace with `.Models` appended, or unchanged if already present.
+ */
+function appendModelsSegment(ns: string): string {
+  const segments = ns.split(".");
+  if (segments[segments.length - 1] === MODELS_NAMESPACE_SEGMENT) {
+    return ns;
+  }
+  return `${ns}.${MODELS_NAMESPACE_SEGMENT}`;
 }

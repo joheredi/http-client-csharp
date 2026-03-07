@@ -139,6 +139,7 @@ describe("CSharpEmitterOptionsSchema", () => {
       "save-inputs",
       "disable-xml-docs",
       "package-name",
+      "model-namespace",
       "license",
     ];
     const schemaKeys = Object.keys(CSharpEmitterOptionsSchema.properties);
@@ -227,6 +228,8 @@ describe("resolveOptions", () => {
     expect(resolved["generate-convenience-methods"]).toBe(true);
     expect(resolved["new-project"]).toBe(false);
     expect(resolved["save-inputs"]).toBe(false);
+    // model-namespace defaults to false for unbranded flavor
+    expect(resolved["model-namespace"]).toBe(false);
   });
 
   /**
@@ -267,9 +270,50 @@ describe("resolveOptions", () => {
     const resolved = resolveOptions(mockContext);
 
     expect(resolved.flavor).toBe("azure");
+    // model-namespace defaults to true for azure flavor
+    expect(resolved["model-namespace"]).toBe(true);
     // Non-overridden defaults should still apply
     expect(resolved["api-version"]).toBe("latest");
     expect(resolved["generate-protocol-methods"]).toBe(true);
+  });
+
+  /**
+   * Verifies that model-namespace can be explicitly set to false even
+   * when flavor is azure. This allows users to opt out of the Models
+   * sub-namespace if their service has a custom namespace convention.
+   */
+  it("user can explicitly disable model-namespace for azure flavor", () => {
+    const mockContext = {
+      options: {
+        flavor: "azure",
+        "model-namespace": false,
+      } as CSharpEmitterOptions,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
+
+    const resolved = resolveOptions(mockContext);
+
+    expect(resolved.flavor).toBe("azure");
+    expect(resolved["model-namespace"]).toBe(false);
+  });
+
+  /**
+   * Verifies that model-namespace can be explicitly enabled for unbranded
+   * flavor. While unusual, users may want Models sub-namespace for
+   * non-Azure packages too.
+   */
+  it("user can explicitly enable model-namespace for unbranded flavor", () => {
+    const mockContext = {
+      options: {
+        "model-namespace": true,
+      } as CSharpEmitterOptions,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
+
+    const resolved = resolveOptions(mockContext);
+
+    expect(resolved.flavor).toBe("unbranded");
+    expect(resolved["model-namespace"]).toBe(true);
   });
 
   /**

@@ -156,10 +156,7 @@ describe("Azure Distributed Tracing", () => {
       "Argument.AssertNotNullOrEmpty(id",
       tryIdx,
     );
-    const returnIdx = clientFile.indexOf(
-      "Pipeline.ProcessMessage(",
-      tryIdx,
-    );
+    const returnIdx = clientFile.indexOf("Pipeline.ProcessMessage(", tryIdx);
 
     expect(scopeStartIdx).toBeGreaterThan(-1);
     expect(tryIdx).toBeGreaterThan(scopeStartIdx);
@@ -208,8 +205,7 @@ describe("Azure Distributed Tracing", () => {
    * do NOT have diagnostic scope wrapping. Tracing is an Azure-only feature.
    */
   it("does NOT add diagnostic scope for unbranded flavor", async () => {
-    const [{ outputs }, diagnostics] =
-      await HttpTester.compileAndDiagnose(`
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
       @service

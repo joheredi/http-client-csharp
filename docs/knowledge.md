@@ -3763,6 +3763,7 @@ TCGC `FinalStateValue` strings map to C# `OperationFinalStateVia` enum members:
 TCGC emits warning `invalid-mark-as-lro-target` and ignores `@markAsLro` on operations returning void. The method stays as `kind: "basic"`, not `kind: "lro"`. Void-returning LRO (like Delete) only works through Azure.Core resource operation templates (e.g., `ResourceOperations`). Unit tests for void LRO must use Azure.Core library imports, not `@markAsLro`.
 
 ### Distributed Tracing / Diagnostic Scope (Task 17.6)
+
 - Azure standard protocol methods need `using DiagnosticScope scope = ClientDiagnostics.CreateScope("ClientName.MethodName"); scope.Start(); try { body } catch (Exception e) { scope.Failed(e); throw; }` wrapping
 - Convenience methods are NOT wrapped (they delegate to protocol methods, avoiding double-counting in telemetry)
 - LRO methods already pass `ClientDiagnostics` and scope name to `ProtocolOperationHelpers.ProcessMessage()` — no try-catch wrapper needed
@@ -3772,3 +3773,31 @@ TCGC emits warning `invalid-mark-as-lro-target` and ignores `@markAsLro` on oper
 - `System.Exception` was added to builtins (`src/builtins/system.ts`) for the catch block type reference
 - `AzureCorePipeline.DiagnosticScope` auto-generates `using Azure.Core.Pipeline;` via Alloy type references
 - E2e tests have pre-existing CS0122 errors about `ClientDiagnostics` type accessibility — this is NOT caused by the diagnostic scope wrapping, it's a pre-existing issue with Azure.Core package references in e2e test infrastructure
+
+## Design Decisions
+
+### Model Sub-Namespace Implementation (Task 17.8)
+
+**Chosen:** Mutate model/enum namespaces at emitter level via `applyModelSubNamespace()` in `src/utils/package-name.ts`.
+
+**Why:** The emitter already mutates `model.namespace` in two places (`ensureModelNamespaces`, `cleanAllNamespaces`). Adding a third mutation step follows the established pattern. Downstream components (ModelFile, ModelSerializationFile, FixedEnumFile, ExtensibleEnumFile, LiteralTypeFile) all read from `props.type.namespace` and don't need modification.
+
+**Rejected:** Threading `model-namespace` option through all components via props/context. Would require modifying 6+ component files for no benefit over the mutation approach.
+
+**Key details:**
+
+- `model-namespace` defaults to `true` for `flavor='azure'`, `false` for unbranded
+- API version enums are excluded from `.Models` via `UsageFlags.ApiVersionEnum` bitwise check
+- `ModelFactoryFile.tsx` explicitly checks the option to determine its namespace
+- `ModelReaderWriterContextFile.tsx` stays in root namespace (infrastructure file)
+- `applyModelSubNamespace()` must be called AFTER `cleanAllNamespaces()` but BEFORE `collectLiteralTypes()`
+
+## Gotchas
+
+### model-namespace and ModelReaderWriterContextFile
+
+The `ModelReaderWriterContextFile` generates to `src/Generated/Models/` (file path) but uses the ROOT namespace (not `.Models`). This is correct — the context class is infrastructure, not a model. Don't confuse the file path with the C# namespace.
+
+### model-namespace call ordering
+
+`applyModelSubNamespace()` must be called after `cleanAllNamespaces()` so base namespaces are clean, and before `collectLiteralTypes()` so literal type wrappers inherit the `.Models` namespace from their declaring model.

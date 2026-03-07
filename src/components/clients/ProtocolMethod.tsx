@@ -16,9 +16,7 @@ import type {
 } from "@azure-tools/typespec-client-generator-core";
 import type { FinalStateValue } from "@azure-tools/typespec-azure-core";
 import { AzureCorePipeline } from "../../builtins/azure.js";
-import {
-  SystemClientModel,
-} from "../../builtins/system-client-model.js";
+import { SystemClientModel } from "../../builtins/system-client-model.js";
 import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
 import { System } from "../../builtins/system.js";
 import { formatDocLines } from "../../utils/doc.js";

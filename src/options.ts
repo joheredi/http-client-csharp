@@ -94,6 +94,18 @@ export interface CSharpEmitterOptions {
   "package-name"?: string;
 
   /**
+   * Whether to place model and enum types in a `.Models` sub-namespace
+   * (e.g., `MyService.Models`). When enabled, client types remain in the
+   * root namespace while models, enums, serialization types, and the model
+   * factory are placed in `{RootNamespace}.Models`.
+   *
+   * API version enums are excluded and remain in the root namespace.
+   *
+   * Defaults to `true` when `flavor` is `"azure"`, `false` otherwise.
+   */
+  "model-namespace"?: boolean;
+
+  /**
    * License information for the generated client library. When provided,
    * the emitter includes license headers and metadata in the output.
    */
@@ -172,6 +184,13 @@ export const CSharpEmitterOptionsSchema: JSONSchemaType<CSharpEmitterOptions> =
           "Define the package name. If not specified, the first namespace defined in the " +
           "TypeSpec is used as the package name.",
       },
+      "model-namespace": {
+        type: "boolean",
+        nullable: true,
+        description:
+          "Whether to place model and enum types in a .Models sub-namespace. " +
+          "Defaults to `true` when flavor is `azure`, `false` otherwise.",
+      },
       license: {
         type: "object",
         additionalProperties: false,
@@ -232,6 +251,10 @@ export type ResolvedCSharpEmitterOptions = typeof defaultOptions &
  * Merges user-provided emitter options with {@link defaultOptions} to produce
  * the final resolved configuration used throughout the emitter.
  *
+ * The `model-namespace` option defaults based on the resolved `flavor`:
+ * - `"azure"` → `true` (models in `.Models` sub-namespace)
+ * - `"unbranded"` → `false` (models in root namespace)
+ *
  * @param context - The TypeSpec emit context containing user-specified options.
  * @returns The fully resolved emitter options.
  */
@@ -239,5 +262,12 @@ export function resolveOptions(
   context: EmitContext<CSharpEmitterOptions>,
 ): ResolvedCSharpEmitterOptions {
   const emitterOptions = context.options;
-  return { ...defaultOptions, ...emitterOptions };
+  const merged = { ...defaultOptions, ...emitterOptions };
+
+  // Default model-namespace based on flavor when not explicitly set
+  if (merged["model-namespace"] === undefined) {
+    merged["model-namespace"] = merged.flavor === "azure";
+  }
+
+  return merged;
 }

@@ -7,14 +7,34 @@
  * for testing/mocking by calling the internal serialization constructor
  * with `null` for the `additionalBinaryDataProperties` parameter.
  *
- * The factory class is placed in the root namespace (the package name),
- * matching the legacy emitter's `ModelFactoryProvider.BuildNamespace()`.
+ * When `model-namespace` is enabled (Azure default), the factory class is
+ * placed in the `.Models` sub-namespace (e.g., `MyService.Models`), matching
+ * the legacy Azure emitter's `NamespaceVisitor` which moves the
+ * `ModelFactoryProvider` into the Models namespace.
  *
- * @example Generated output structure:
+ * When `model-namespace` is disabled (unbranded default), the factory class
+ * is placed in the root namespace (the package name), matching the legacy
+ * unbranded emitter's `ModelFactoryProvider.BuildNamespace()`.
+ *
+ * @example Generated output structure (model-namespace: false):
  * ```csharp
  * namespace SampleTypeSpec
  * {
  *     public static partial class SampleTypeSpecModelFactory
+ *     {
+ *         public static Widget Widget(string name = default, int count = default)
+ *         {
+ *             return new Widget(name, count, additionalBinaryDataProperties: null);
+ *         }
+ *     }
+ * }
+ * ```
+ *
+ * @example Generated output structure (model-namespace: true):
+ * ```csharp
+ * namespace MyService.Models
+ * {
+ *     public static partial class MyServiceModelFactory
  *     {
  *         public static Widget Widget(string name = default, int count = default)
  *         {
@@ -57,6 +77,9 @@ export interface ModelFactoryFileProps {
  * and the file is placed at `src/Generated/{PackageName}ModelFactory.cs`,
  * matching the legacy emitter's output structure.
  *
+ * When `model-namespace` is enabled, the factory is placed in the `.Models`
+ * sub-namespace alongside the model types it creates.
+ *
  * @param props - The component props containing models, package name, and options.
  * @returns JSX element rendering the factory file, or `false` if no public models.
  */
@@ -73,6 +96,13 @@ export function ModelFactoryFile(props: ModelFactoryFileProps) {
   // E.g., "Authentication.ApiKey" → "AuthenticationApiKeyModelFactory"
   const factoryClassName = `${props.packageName.replace(/\./g, "")}ModelFactory`;
 
+  // When model-namespace is enabled, place the factory in the .Models
+  // sub-namespace alongside the model types it creates, matching the
+  // legacy Azure emitter's NamespaceVisitor behavior.
+  const factoryNamespace = props.options["model-namespace"]
+    ? `${props.packageName}.Models`
+    : props.packageName;
+
   return (
     <SourceFile
       path={`src/Generated/${factoryClassName}.cs`}
@@ -80,7 +110,7 @@ export function ModelFactoryFile(props: ModelFactoryFileProps) {
     >
       {header}
       {"\n\n"}
-      <Namespace name={props.packageName}>
+      <Namespace name={factoryNamespace}>
         <ClassDeclaration public static partial name={factoryClassName}>
           <For each={publicModels} doubleHardline>
             {(model) => <ModelFactoryMethod type={model} />}

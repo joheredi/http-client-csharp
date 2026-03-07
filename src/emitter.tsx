@@ -93,6 +93,7 @@ import {
   resolveRootNamespace,
   ensureModelNamespaces,
   cleanAllNamespaces,
+  applyModelSubNamespace,
 } from "./utils/package-name.js";
 import { applyUnreferencedTypeHandling } from "./utils/unreferenced-types.js";
 import { isMultipartOnlyModel } from "./utils/model.js";
@@ -173,6 +174,14 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
   // segments to prevent CS0118 errors (e.g., "Parameters.Spread.Model" →
   // "Parameters.Spread._Model" when there is a client class named "Model").
   cleanAllNamespaces(allClients, models, enums);
+
+  // When model-namespace is enabled (default for Azure flavor), move model
+  // and enum types into a `.Models` sub-namespace (e.g., `MyService.Models`).
+  // Client types remain in the root namespace. API version enums are excluded
+  // from the move. This mirrors the legacy Azure emitter's NamespaceVisitor.
+  if (options["model-namespace"]) {
+    applyModelSubNamespace(models, enums);
+  }
 
   // Filter out models used exclusively for multipart form data. The legacy
   // emitter does not generate model classes for these types — multipart

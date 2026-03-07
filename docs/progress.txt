@@ -5843,3 +5843,27 @@ catch (Exception e) { scope.Failed(e); throw; }
 - `clientName` parameter added to `buildStandardProtocolMethodParts` (matching LRO counterpart)
 
 **Results:** ✅ Build pass | ✅ 1452 unit tests passed | ⚠️ E2e failures pre-existing (CS0122 ClientDiagnostics type inaccessibility in Azure test projects — exists before this change)
+
+---
+## Task 17.8: Implement Azure namespace conventions (model sub-namespace)
+**Date:** 2026-03-07
+
+**What was done:**
+- Added `model-namespace` emitter option to `src/options.ts` (boolean, defaults to `true` for Azure, `false` for unbranded)
+- Added `applyModelSubNamespace()` function to `src/utils/package-name.ts` that appends `.Models` to model/enum namespaces
+- API version enums are excluded from `.Models` (detected via `UsageFlags.ApiVersionEnum`)
+- Function is idempotent — won't double-append if namespace already ends with `.Models`
+- Called after `cleanAllNamespaces()` in `src/emitter.tsx` when `model-namespace` is true
+- Updated `ModelFactoryFile.tsx` to use `.Models` namespace when option is enabled
+- Added comprehensive unit tests (8 tests) covering models, enums, API version enum exclusion, idempotency, multi-level namespaces, combined flags, and empty arrays
+- Added tests for `resolveOptions()` verifying `model-namespace` defaults and explicit override
+
+**Patterns used:**
+- Mutation-in-place pattern (same as `ensureModelNamespaces` and `cleanAllNamespaces`)
+- Bitwise flag checking for `UsageFlags.ApiVersionEnum`
+- Flavor-conditional defaulting in `resolveOptions()`
+
+**Results:** ✅ Build pass | ✅ 1354 unit tests passed (3 pre-existing failures in LRO/cascade tests) | ✅ E2E Azure specs correctly generate `.Models` namespace | ✅ Unbranded specs unaffected
+
+**Key design decision:**
+- Approach 1 (mutate model namespaces at emitter level) chosen over Approach 2 (thread option through components) because mutation-in-place is already the established pattern and downstream components just use `props.type.namespace`

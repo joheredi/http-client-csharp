@@ -5,6 +5,7 @@ import type {
   SdkHttpOperation,
   SdkModelType,
 } from "@azure-tools/typespec-client-generator-core";
+import { UsageFlags } from "@azure-tools/typespec-client-generator-core";
 import {
   toNamespace,
   getInvalidNamespaceSegments,
@@ -15,6 +16,7 @@ import {
   cleanNamespace,
   cleanAllNamespaces,
   isSystemTypeNameCollision,
+  applyModelSubNamespace,
 } from "../src/utils/package-name.js";
 
 /**
@@ -705,6 +707,163 @@ function createMockModel(
   } as unknown as SdkModelType;
 }
 
-function createMockEnum(name: string, namespace: string): SdkEnumType {
-  return { name, namespace } as unknown as SdkEnumType;
+function createMockEnum(
+  name: string,
+  namespace: string,
+  usage?: number,
+): SdkEnumType {
+  return { name, namespace, usage: usage ?? 0 } as unknown as SdkEnumType;
 }
+
+/**
+ * Tests for applyModelSubNamespace() (task 17.8).
+ *
+ * When the `model-namespace` emitter option is enabled (default for Azure),
+ * models and enums are placed in a `.Models` sub-namespace. This mirrors the
+ * legacy Azure emitter's `NamespaceVisitor.UpdateModelsNamespace()`.
+ *
+ * These tests verify:
+ * - Models get `.Models` appended to their namespace
+ * - Enums get `.Models` appended to their namespace
+ * - API version enums are excluded (stay in root namespace)
+ * - Already-suffixed namespaces are not double-appended (idempotent)
+ * - Multiple namespace levels work correctly
+ */
+describe("applyModelSubNamespace", () => {
+  /**
+   * Core behavior: models should have `.Models` appended to their namespace.
+   * This is the primary use case for Azure SDK model generation where
+   * models live in a separate sub-namespace from clients.
+   */
+  it("appends .Models to model namespaces", () => {
+    const models = [
+      createMockModel("Widget", "MyService", "MyService.Widget"),
+      createMockModel("Thing", "MyService", "MyService.Thing"),
+    ];
+    const enums: SdkEnumType[] = [];
+
+    applyModelSubNamespace(models, enums);
+
+    expect(models[0].namespace).toBe("MyService.Models");
+    expect(models[1].namespace).toBe("MyService.Models");
+  });
+
+  /**
+   * Enums should also get `.Models` appended, matching the legacy
+   * NamespaceVisitor which moves both models and enums.
+   */
+  it("appends .Models to enum namespaces", () => {
+    const models: SdkModelType[] = [];
+    const enums = [
+      createMockEnum("Color", "MyService"),
+      createMockEnum("Status", "MyService"),
+    ];
+
+    applyModelSubNamespace(models, enums);
+
+    expect(enums[0].namespace).toBe("MyService.Models");
+    expect(enums[1].namespace).toBe("MyService.Models");
+  });
+
+  /**
+   * API version enums must be excluded from the `.Models` sub-namespace.
+   * They stay in the root namespace because client options reference them
+   * directly. The legacy NamespaceVisitor explicitly skips these via
+   * `InputModelTypeUsage.ApiVersionEnum` check.
+   */
+  it("excludes API version enums from .Models namespace", () => {
+    const models: SdkModelType[] = [];
+    const enums = [
+      createMockEnum("Color", "MyService"),
+      createMockEnum("ServiceVersion", "MyService", UsageFlags.ApiVersionEnum),
+    ];
+
+    applyModelSubNamespace(models, enums);
+
+    expect(enums[0].namespace).toBe("MyService.Models");
+    expect(enums[1].namespace).toBe("MyService"); // unchanged
+  });
+
+  /**
+   * Idempotent: if a namespace already ends with `.Models`, it should
+   * not be double-appended. This prevents `MyService.Models.Models`.
+   */
+  it("does not double-append .Models when already present", () => {
+    const models = [
+      createMockModel("Widget", "MyService.Models", "MyService.Models.Widget"),
+    ];
+    const enums: SdkEnumType[] = [];
+
+    applyModelSubNamespace(models, enums);
+
+    expect(models[0].namespace).toBe("MyService.Models");
+  });
+
+  /**
+   * Multi-level namespaces (e.g., sub-groups) should each get `.Models`
+   * appended independently. Each namespace hierarchy gets its own Models
+   * sub-namespace.
+   */
+  it("handles multi-level namespaces correctly", () => {
+    const models = [
+      createMockModel(
+        "Widget",
+        "MyService.SubGroup",
+        "MyService.SubGroup.Widget",
+      ),
+      createMockModel("Thing", "MyService", "MyService.Thing"),
+    ];
+    const enums: SdkEnumType[] = [];
+
+    applyModelSubNamespace(models, enums);
+
+    expect(models[0].namespace).toBe("MyService.SubGroup.Models");
+    expect(models[1].namespace).toBe("MyService.Models");
+  });
+
+  /**
+   * Models and enums in the same call should all be processed. This verifies
+   * the function handles both collections correctly in a single invocation.
+   */
+  it("processes models and enums together", () => {
+    const models = [createMockModel("Widget", "MyService", "MyService.Widget")];
+    const enums = [createMockEnum("Color", "MyService")];
+
+    applyModelSubNamespace(models, enums);
+
+    expect(models[0].namespace).toBe("MyService.Models");
+    expect(enums[0].namespace).toBe("MyService.Models");
+  });
+
+  /**
+   * Enums with combined usage flags that include ApiVersionEnum should
+   * still be excluded from the .Models namespace. The flag check uses
+   * bitwise AND to handle combined flags.
+   */
+  it("handles combined usage flags with ApiVersionEnum", () => {
+    const models: SdkModelType[] = [];
+    const enums = [
+      createMockEnum(
+        "ServiceVersion",
+        "MyService",
+        UsageFlags.ApiVersionEnum | UsageFlags.Input,
+      ),
+    ];
+
+    applyModelSubNamespace(models, enums);
+
+    expect(enums[0].namespace).toBe("MyService"); // unchanged
+  });
+
+  /**
+   * Empty model/enum arrays should not cause errors. Edge case for specs
+   * with no models or enums.
+   */
+  it("handles empty arrays gracefully", () => {
+    const models: SdkModelType[] = [];
+    const enums: SdkEnumType[] = [];
+
+    // Should not throw
+    applyModelSubNamespace(models, enums);
+  });
+});
