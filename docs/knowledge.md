@@ -3549,3 +3549,24 @@ The new Alloy emitter must replicate these patterns using JSX components rather 
 **uuid special case**: Azure.Core's `uuid` scalar has the same name as TypeSpec's built-in `uuid`. The `intrinsicNameToCSharpType` map matches by name string, so Azure.Core's uuid already gets mapped to `Guid` by the default TypeExpression. The Azure override map includes it explicitly for correctness (the Azure handler fires first).
 
 **E2E regression**: 3 Azure specs (basic, page, scalar) now generate Azure types but fail `dotnet build` because the .csproj lacks Azure.Core NuGet reference. Added to `.testignore` — remove after task 17.2.
+
+### Azure Pipeline Type Cascade (Task 17.3 analysis)
+
+The 4 listed type swaps (ClientPipeline→HttpPipeline, PipelineMessage→HttpMessage, PipelineRequest→Request, PipelineResponse→Response) require additional implicit swaps to produce compilable Azure C#:
+- `RequestOptions` → `RequestContext` (Azure) — extension method params
+- `ClientResult`/`ClientResult<T>` → `Response`/`Response<T>` (Azure) — return types
+- `ClientResultException` → `RequestFailedException` (Azure) — error handling
+- `PipelinePolicy` → `HttpPipelinePolicy` — pipeline policy base
+- `ClientPipeline.Create()` → `HttpPipelineBuilder.Build()` — different factory pattern
+- `PipelineMessageClassifier` → `ResponseClassifier` (Azure.Core) — response classification
+- `ApiKeyAuthenticationPolicy.CreateHeaderApiKeyPolicy()` → `new AzureKeyCredentialPolicy()` — auth
+- `BearerTokenPolicy` → `BearerTokenAuthenticationPolicy` — OAuth
+
+Azure.Core namespace layout:
+- `Azure` namespace: Response, Response<T>, RequestFailedException, RequestContext, ErrorOptions, AzureKeyCredential
+- `Azure.Core` namespace: ClientOptions, ResourceIdentifier, AzureKeyCredentialPolicy, TokenCredential
+- `Azure.Core.Pipeline` namespace: HttpPipeline, HttpMessage, HttpPipelineBuilder, HttpPipelinePolicy, BearerTokenAuthenticationPolicy
+
+Azure `HttpPipelineBuilder.Build()` takes only 2 args: `(ClientOptions, HttpPipelinePolicy[])` — no per-call/per-retry/before-transport separation like unbranded `ClientPipeline.Create()`.
+
+Azure extension methods file uses `context.Parse()` to extract `(CancellationToken userCancellationToken, ErrorOptions errorOptions)` tuple from `RequestContext`.

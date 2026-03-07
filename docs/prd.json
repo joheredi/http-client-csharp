@@ -1348,27 +1348,61 @@
         },
         {
           "id": "17.3",
-          "title": "Replace ClientPipeline with HttpPipeline for Azure flavor",
-          "description": "Azure SDKs use Azure.Core.Pipeline.HttpPipeline instead of System.ClientModel.ClientPipeline. When flavor='azure':\n\n1. The Pipeline property type should be HttpPipeline (from Azure.Core.Pipeline)\n2. The Pipeline property should be virtual (for backwards compatibility)\n3. Related types should also switch: PipelineMessage \u2192 HttpMessage, PipelineRequest \u2192 Request, PipelineResponse \u2192 Response\n\nThe Azure generator implements this via PipelinePropertyVisitor (adds virtual modifier) and HttpPipelineProvider (provides the HttpPipeline type). The new emitter should conditionally render the correct pipeline types based on flavor.\n\nReference files:\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/Visitors/PipelinePropertyVisitor.cs (full file, 30 lines \u2014 makes Pipeline property virtual)\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/AzureTypeFactory.cs (lines 30-51: provider instances mapping HttpPipelineProvider, HttpMessageProvider, HttpRequestProvider, etc.)\n- src/components/clients/ (client generation components that reference pipeline types)\n- src/builtins/ (System.ClientModel primitive type definitions)",
+          "title": "Azure pipeline type infrastructure and client class generation",
+          "description": "Add Azure.Core.Pipeline builtin library types (HttpPipeline, HttpMessage, HttpPipelineBuilder, HttpPipelinePolicy) and Azure namespace types (Request, Response, RequestContext, RequestFailedException, ClientOptions, AzureKeyCredentialPolicy, BearerTokenAuthenticationPolicy). Create src/utils/pipeline-types.ts utility that returns correct type references per flavor. Update ClientFile.tsx to use HttpPipeline for Azure flavor (Pipeline property type + virtual modifier, constructor parameters, pipeline creation via HttpPipelineBuilder.Build(), sub-client factory methods). Update ClientPipelineExtensionsFile.tsx with complete Azure version (HttpPipeline extensions, RequestContext params, Response returns, RequestFailedException). Unit tests for Azure-flavored client class generation.",
           "phase": "phase-17",
           "status": "pending",
           "dependencies": [
             "17.1"
           ],
-          "files": {
-            "modify": [],
-            "reference": [
-              "submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/Visitors/PipelinePropertyVisitor.cs",
-              "submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/AzureTypeFactory.cs",
-              "src/components/clients/",
-              "src/builtins/"
-            ]
-          },
+          "files": [
+            "src/builtins/azure.ts",
+            "src/utils/pipeline-types.ts",
+            "src/components/clients/ClientFile.tsx",
+            "src/components/infrastructure/ClientPipelineExtensionsFile.tsx"
+          ],
           "acceptance_criteria": [
-            "Generated Azure clients use HttpPipeline instead of ClientPipeline",
+            "Azure builtins include HttpPipeline, HttpMessage, HttpPipelineBuilder, HttpPipelinePolicy, Request, Response, RequestContext, RequestFailedException",
+            "getPipelineTypes(flavor) utility returns correct type refs for azure and unbranded",
+            "Generated Azure client class uses HttpPipeline type for Pipeline property",
             "Pipeline property has virtual modifier for Azure flavor",
-            "HttpMessage, Request, Response types used instead of PipelineMessage, PipelineRequest, PipelineResponse",
-            "Unbranded flavor continues to use System.ClientModel types"
+            "Azure client constructor uses HttpPipelineBuilder.Build() instead of ClientPipeline.Create()",
+            "Sub-client internal constructor accepts HttpPipeline for Azure flavor",
+            "Sub-client factory methods pass Pipeline correctly for Azure flavor",
+            "ClientPipelineExtensions file generates Azure version with HttpPipeline, RequestContext, Response, RequestFailedException",
+            "Unbranded flavor continues to use System.ClientModel types unchanged",
+            "All existing tests pass"
+          ]
+        },
+        {
+          "id": "17.3b",
+          "title": "Cascade Azure pipeline types to REST operations",
+          "description": "Update all operation-level components to use Azure pipeline types when flavor=azure. RestClientFile.tsx: HttpMessage/Request for CreateMessage, ResponseClassifier for classification. ProtocolMethod.tsx: HttpMessage in method body, Response return type, RequestContext parameter. ConvenienceMethod.tsx: Response return type, RequestFailedException for exceptions. PagingMethods.tsx: RequestContext parameter, Response-based returns. CollectionResultFile.tsx: HttpMessage in iteration logic. ErrorResultFile.tsx: Response type, RequestFailedException. CastOperators.tsx: Response type in extraction operators. CancellationTokenExtensionsFile.tsx: RequestContext return type. End-to-end tests for Azure-flavored protocol and convenience methods.",
+          "phase": "phase-17",
+          "status": "pending",
+          "dependencies": [
+            "17.3"
+          ],
+          "files": [
+            "src/components/clients/RestClientFile.tsx",
+            "src/components/clients/ProtocolMethod.tsx",
+            "src/components/clients/ConvenienceMethod.tsx",
+            "src/components/clients/PagingMethods.tsx",
+            "src/components/collection-results/CollectionResultFile.tsx",
+            "src/components/infrastructure/ErrorResultFile.tsx",
+            "src/components/infrastructure/CastOperators.tsx",
+            "src/components/infrastructure/CancellationTokenExtensionsFile.tsx"
+          ],
+          "acceptance_criteria": [
+            "Azure RestClient uses HttpMessage and Request types",
+            "Azure protocol methods return Response and accept RequestContext",
+            "Azure convenience methods use Response and RequestFailedException",
+            "Azure paging methods use RequestContext",
+            "Azure collection results use HttpMessage",
+            "Azure infrastructure files use Response/RequestContext/RequestFailedException",
+            "Unbranded flavor continues unchanged",
+            "All existing tests pass",
+            "E2E tests validate Azure-flavored operations"
           ]
         },
         {
@@ -1449,7 +1483,8 @@
           "phase": "phase-17",
           "status": "pending",
           "dependencies": [
-            "17.3"
+            "17.3",
+            "17.3b"
           ],
           "files": {
             "modify": [],
@@ -1551,7 +1586,8 @@
           "dependencies": [
             "17.3",
             "17.4",
-            "17.5"
+            "17.5",
+            "17.3b"
           ],
           "files": {
             "modify": [],

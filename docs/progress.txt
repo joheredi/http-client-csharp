@@ -5591,3 +5591,23 @@ types. Phase 17 tasks (17.1-17.10) will progressively replace these with Azure.C
 **Design decision**: Flavor-parameterized override configs (two separate configs selected via `flavor` prop) rather than calling `useEmitterContext()` inside override callbacks. This avoids context access uncertainty in non-component callbacks and maintains backward compat with tests that render CSharpScalarOverrides without EmitterContext.
 
 **Patterns used**: `createLibrary()` for Azure type declarations, `Experimental_ComponentOverridesConfig` for type override configs, namespace-based scalar identification.
+
+### Task 17.3 — Split into 17.3a and 17.3b (2026-03-07)
+
+**Status**: Split (not implemented yet)
+
+**Summary**:
+Task 17.3 ("Replace ClientPipeline with HttpPipeline for Azure flavor") was analyzed and found to require changes across 10+ files with cascading type swaps beyond what the acceptance criteria list. The core 4 type swaps (ClientPipeline→HttpPipeline, PipelineMessage→HttpMessage, PipelineRequest→Request, PipelineResponse→Response) cascade into implicit swaps (RequestOptions→RequestContext, ClientResult→Response, ClientResultException→RequestFailedException) because Azure.Core has fundamentally different API surfaces.
+
+**Split**:
+- **17.3** (narrowed): Core pipeline builtins + ClientFile.tsx + ClientPipelineExtensionsFile.tsx + pipeline-types utility
+- **17.3b** (new): Cascade Azure types to RestClientFile, ProtocolMethod, ConvenienceMethod, PagingMethods, CollectionResultFile, ErrorResultFile, CastOperators, CancellationTokenExtensions
+
+**Key findings from study phase**:
+- Azure `HttpPipeline` uses `HttpPipelineBuilder.Build(options, policies)` (2 args) vs unbranded `ClientPipeline.Create(options, perCall, perRetry, beforeTransport)` (4 args)
+- Azure extension methods use `context.Parse()` pattern for `(CancellationToken, ErrorOptions)` tuple
+- Azure Pipeline property is `public virtual` (not just `public`)
+- Azure sub-client constructors accept `ClientDiagnostics` as first param (relevant for 17.6)
+- Azure auth policies: `AzureKeyCredentialPolicy` (direct ctor), `BearerTokenAuthenticationPolicy` vs unbranded `ApiKeyAuthenticationPolicy.CreateHeaderApiKeyPolicy()` (static factory), `BearerTokenPolicy`
+
+**Next task**: 17.3 (the narrowed version — implement Azure pipeline infrastructure)
