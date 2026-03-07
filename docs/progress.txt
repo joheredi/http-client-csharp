@@ -6546,3 +6546,21 @@ Task 20.12 — SPLIT into 5 sub-tasks (2026-03-07)
 - Error breakdown by spec: common-properties(40), large-header(48), method-subscription-id(56), multi-service(68), multi-service-older(68), multi-service-shared(68), non-resource(28), operation-templates(840), resources(52)
 - Created sub-tasks 20.12a through 20.12e in PRD
 - **Next**: 20.12a (AzureLocation fix) is the simplest — one line in builtins, ~240 error reduction
+
+## Task 20.12a — Fix AzureLocation CS0246: Move to Azure.Core namespace (2026-03-07)
+
+### What was done
+- Moved `AzureLocation` struct definition from `Azure` library to `AzureCore` library in `src/builtins/azure.ts`
+- Updated `azureScalarOverrideMap` in `src/components/CSharpTypeExpression.tsx` to reference `AzureCore.AzureLocation` instead of `Azure.AzureLocation`
+- Updated test expectation in `test/type-expression.test.tsx` from `"using Azure;"` to `"using Azure.Core;"` for azureLocation scalar mapping
+
+### Why
+The .NET SDK defines `AzureLocation` as `Azure.Core.AzureLocation` (struct in `namespace Azure.Core` in Azure.Core NuGet package). Our builtin had it incorrectly in the top-level `Azure` namespace, causing ~240 CS0246 errors in ARM generated code because the `using Azure;` directive doesn't resolve `AzureLocation` — it requires `using Azure.Core;`.
+
+### Verification
+- Build passes
+- All 1670 unit tests pass (89 test files)
+- E2e spector failures are pre-existing (unrelated to AzureLocation — they're HttpMessage/RequestContext.Parse/CreateMessage issues tracked by task 20.12d)
+
+### Pattern
+Simple namespace correction in Alloy library definitions. When a type's `using` directive doesn't match, move it to the correct `createLibrary()` declaration.

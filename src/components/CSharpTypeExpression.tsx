@@ -133,9 +133,9 @@ function getScalarOverride(scalar: Scalar): Children | undefined {
  * Reference: KnownAzureTypes.cs in Azure.Generator
  */
 const azureScalarOverrideMap = new Map<string, Children>([
-  // Azure.Core.azureLocation → Azure.AzureLocation
+  // Azure.Core.azureLocation → Azure.Core.AzureLocation
   // Represents an Azure geography region (e.g., "WestUS")
-  ["azureLocation", Azure.AzureLocation],
+  ["azureLocation", AzureCore.AzureLocation],
 
   // Azure.Core.eTag → Azure.ETag
   // HTTP ETag for conditional requests

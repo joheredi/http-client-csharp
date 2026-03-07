@@ -2331,7 +2331,7 @@
           "title": "Fix AzureLocation CS0246: Move AzureLocation to Azure.Core namespace in builtins",
           "description": "AzureLocation is defined in the `Azure` library (namespace `Azure`) in `src/builtins/azure.ts`, but the actual C# type lives in `Azure.Core` namespace (confirmed via NuGet XML docs: `T:Azure.Core.AzureLocation`). This causes CS0246 errors because `using Azure;` is generated instead of `using Azure.Core;`.\n\nFix: Move AzureLocation from the `Azure` library to the `AzureCore` library in `src/builtins/azure.ts`. This will cause Alloy to generate `using Azure.Core;` instead of `using Azure;`, resolving the type.\n\nAffected specs: common-properties (40 errors), multi-service/multi-service-older/multi-service-shared (~120 errors), operation-templates (~80 errors). Total: ~240 errors fixed.\n\nThis is a one-line change in builtins \u2014 move `AzureLocation: { kind: 'struct', members: {} }` from the `Azure` object to the `AzureCore` object.",
           "phase": "phase-20",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

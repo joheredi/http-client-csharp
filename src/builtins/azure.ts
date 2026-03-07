@@ -14,18 +14,6 @@ import { createLibrary } from "@alloy-js/csharp";
  */
 export const Azure = createLibrary("Azure", {
   /**
-   * Represents an Azure geography region where a resource is deployed
-   * (e.g., "WestUS", "EastUS2"). Maps from the TypeSpec scalar
-   * `Azure.Core.azureLocation`.
-   *
-   * @see https://learn.microsoft.com/en-us/dotnet/api/azure.azurelocation
-   */
-  AzureLocation: {
-    kind: "struct",
-    members: {},
-  },
-
-  /**
    * Represents an HTTP ETag value used for conditional requests.
    * Maps from the TypeSpec scalar `Azure.Core.eTag`.
    *
@@ -234,6 +222,18 @@ export const Azure = createLibrary("Azure", {
  * @see https://learn.microsoft.com/en-us/dotnet/api/azure.core
  */
 export const AzureCore = createLibrary("Azure.Core", {
+  /**
+   * Represents an Azure geography region where a resource is deployed
+   * (e.g., "WestUS", "EastUS2"). Maps from the TypeSpec scalar
+   * `Azure.Core.azureLocation`.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/azure.core.azurelocation
+   */
+  AzureLocation: {
+    kind: "struct",
+    members: {},
+  },
+
   /**
    * Represents a fully qualified Azure Resource Manager resource identifier.
    * Maps from the TypeSpec scalar `Azure.Core.armResourceIdentifier`.

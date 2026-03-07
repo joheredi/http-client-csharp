@@ -523,7 +523,7 @@ describe("CSharpScalarOverrides", () => {
      * `using` directives.
      */
     it.each([
-      ["azureLocation", "AzureLocation", "using Azure;"],
+      ["azureLocation", "AzureLocation", "using Azure.Core;"],
       ["eTag", "ETag", "using Azure;"],
       ["armResourceIdentifier", "ResourceIdentifier", "using Azure.Core;"],
       ["ipV4Address", "IPAddress", "using System.Net;"],
