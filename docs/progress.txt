@@ -5746,3 +5746,37 @@ Implement Azure client options base class — Azure clients use `ClientOptions` 
 ### What's next (17.2 or 17.5):
 - 17.2: Generate Azure.Core PackageReference in scaffolded .csproj — needed to fix e2e compilation of Azure projects
 - 17.5: Implement LRO Operation<T> return types — depends on 17.4 (now done)
+
+### Task 17.2: Generate Azure.Core PackageReference in scaffolded .csproj
+**Date:** 2026-03-07
+**Status:** Done
+
+**What was done:**
+- Modified `src/components/infrastructure/ProjectFile.tsx` to select the NuGet PackageReference based on `options.flavor`:
+  - `flavor === "azure"` → `<PackageReference Include="Azure.Core" Version="1.44.1" />`
+  - `flavor === "unbranded"` → `<PackageReference Include="System.ClientModel" Version="1.9.0" />`
+- Added 2 new tests in `test/project-scaffolding.test.ts`:
+  - Azure flavor → verifies `Azure.Core` 1.44.1 reference, no System.ClientModel
+  - Unbranded flavor → verifies `System.ClientModel` 1.9.0 reference, no Azure.Core
+- Removed 3 Azure specs from `test/e2e/.testignore`: azure/core/basic, azure/core/page, azure/core/scalar
+  - These were blocked on missing Azure.Core NuGet reference — now compile successfully
+
+**Design decision:**
+- Chose simple conditional in ProjectFile (Approach 1) over full Azure scaffolding component (Approach 2).
+  Rationale: The shared source files ($(AzureCoreSharedSources)) are tracked by task 17.6. TargetFrameworks/LangVersion
+  differences are cosmetic and don't affect compilation. Simple conditional swap is minimal and correct.
+- Used version 1.44.1 to match the existing Spector.Tests.csproj reference (no central package management
+  in the e2e test environment, so explicit versions are required).
+
+**Ground truth verified against:**
+- submodules/azure-sdk-for-net/.../TestProjects/Local/Basic-TypeSpec/src/BasicTypeSpec.csproj (uses Azure.Core)
+- submodules/azure-sdk-for-net/.../TestProjects/Spector/http/authentication/api-key/src/Authentication.ApiKey.csproj
+
+**E2E result:** 3 Azure specs (basic, page, scalar) now compile ✅. Pre-existing failures remain (ClientDiagnostics
+accessibility, ModelReaderWriterContext — tasks 17.6, separate tracking).
+
+**Build:** ✅ Pass | **Unit tests:** ✅ 1439 passed | **E2E:** Same pre-existing failures (not caused by this change)
+
+**What's next (17.5 or 17.6):**
+- 17.5: Implement LRO Operation<T> return types — depends on 17.4 (done)
+- 17.6: Add distributed tracing (ClientDiagnostics) support — would fix some pre-existing e2e failures

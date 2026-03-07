@@ -3708,3 +3708,9 @@ The legacy emitter's Azure Plugin test projects (in submodules/typespec/packages
 **Approach chosen:** Simple conditional in `ClientOptionsFile.tsx` component.
 **Rejected:** Extending `getPipelineTypes()` utility — over-engineering for a two-way base class swap.
 **Key insight:** The `AzureCore.ClientOptions` type was already defined in `src/builtins/azure.ts` but unused by the options component. The only change needed was a conditional `baseType` variable. Alloy handles `using Azure.Core;` vs `using System.ClientModel.Primitives;` automatically via refkeys.
+
+### 17.2 — Azure.Core PackageReference in .csproj
+**Approach chosen:** Simple conditional in `ProjectFile.tsx` component — swap `System.ClientModel` for `Azure.Core` when `flavor === "azure"`.
+**Rejected:** Full Azure scaffolding component with shared source files, different TargetFrameworks, etc. — over-engineering; shared sources tracked by task 17.6.
+**Key insight:** The e2e test environment has no central package management (`Directory.Packages.props`), so generated .csproj files MUST include explicit version attributes. Used version 1.44.1 to match `test/e2e/Spector.Tests/Spector.Tests.csproj`. The Azure ground truth omits versions because it uses central management in azure-sdk-for-net repo.
+**E2E regression:** Removing `azure/core/basic`, `azure/core/page`, `azure/core/scalar` from `.testignore` confirmed they now compile. Pre-existing failures (ClientDiagnostics, ModelReaderWriterContext) are unrelated.

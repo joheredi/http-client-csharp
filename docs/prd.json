@@ -1330,7 +1330,7 @@
           "title": "Generate Azure.Core PackageReference in scaffolded .csproj",
           "description": "When flavor='azure', the generated .csproj file should include <PackageReference Include=\"Azure.Core\" /> instead of (or in addition to) <PackageReference Include=\"System.ClientModel\" />.\n\nThe project scaffolding component generates the .csproj content. It needs to be flavor-aware:\n- flavor='unbranded': Reference System.ClientModel (current behavior)\n- flavor='azure': Reference Azure.Core (which transitively includes System.ClientModel)\n\nReference files:\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/Primitives/NewAzureProjectScaffolding.cs (Azure scaffolding)\n- src/components/ (find the project scaffolding component that generates .csproj content)",
           "phase": "phase-17",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "16.4"
           ],

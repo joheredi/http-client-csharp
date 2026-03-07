@@ -26,15 +26,19 @@ export interface ProjectFileProps {
 /**
  * Generates the `{PackageName}.csproj` project file.
  *
- * Matches the legacy `NewProjectScaffolding` output:
+ * Matches the legacy `NewProjectScaffolding` / `NewAzureProjectScaffolding` output:
  * - `Microsoft.NET.Sdk`
  * - `netstandard2.0;net8.0` target frameworks
- * - `System.ClientModel` 1.9.0 dependency
  * - Standard package metadata
+ *
+ * Package reference is flavor-aware:
+ * - `flavor="unbranded"` → `System.ClientModel` 1.9.0
+ * - `flavor="azure"` → `Azure.Core` 1.44.1 (transitively includes System.ClientModel)
  */
 export function ProjectFile(props: ProjectFileProps) {
   const { packageName } = props;
   const disableXmlDocs = props.options["disable-xml-docs"];
+  const isAzure = props.options.flavor === "azure";
 
   return (
     <CsprojFile path={`src/${packageName}.csproj`}>
@@ -53,7 +57,11 @@ export function ProjectFile(props: ProjectFileProps) {
       </PropertyGroup>
       {"\n"}
       <ItemGroup>
-        <PackageReference Include="System.ClientModel" Version="1.9.0" />
+        {isAzure ? (
+          <PackageReference Include="Azure.Core" Version="1.44.1" />
+        ) : (
+          <PackageReference Include="System.ClientModel" Version="1.9.0" />
+        )}
       </ItemGroup>
     </CsprojFile>
   );

@@ -25,12 +25,7 @@
 # basic, lro/rpc, lro/standard, model, page, scalar, traits
 # Tests blocked on: Azure.Response, Azure.AsyncPageable<T>, Azure.Operation<T>,
 #   Azure.WaitUntil (tasks 17.1, 17.3, 17.5)
-# Build blocked (3 specs): Task 17.1 now generates Azure types (ETag,
-#   AzureLocation) but the .csproj lacks Azure.Core PackageReference.
-#   Remove these entries when task 17.2 adds the Azure.Core NuGet ref.
-azure/core/basic
-azure/core/page
-azure/core/scalar
+# Build unblocked (3 specs): Task 17.2 added Azure.Core PackageReference.
 #
 # --- azure/encode (1 spec) — ✅ passes ---
 # duration

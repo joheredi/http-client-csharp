@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ApiTester, HttpTester } from "./test-host.js";
+import { AzureHttpTester, ApiTester, HttpTester } from "./test-host.js";
 
 const HttpTesterDisableXmlDocs = ApiTester.emit("http-client-csharp", {
   "disable-xml-docs": true,
@@ -82,6 +82,49 @@ describe("ProjectFile", () => {
 
     const csproj = outputs[csprojKey!];
     expect(csproj).toContain("This is the MyCustomName client library");
+  });
+
+  /**
+   * Verifies that Azure-flavored projects reference Azure.Core instead of
+   * System.ClientModel. Azure.Core transitively includes System.ClientModel,
+   * so only Azure.Core is needed. This is critical for e2e compilation of
+   * Azure specs that use Azure.Core types (HttpPipeline, Response, etc.).
+   */
+  it("references Azure.Core package when flavor is azure", async () => {
+    const [{ outputs }] = await AzureHttpTester.compileAndDiagnose(`
+      @service
+      namespace AzureService;
+    `);
+
+    const csprojKey = Object.keys(outputs).find((k) => k.endsWith(".csproj"));
+    expect(csprojKey).toBeDefined();
+
+    const csproj = outputs[csprojKey!];
+    expect(csproj).toContain(
+      '<PackageReference Include="Azure.Core" Version="1.44.1" />',
+    );
+    expect(csproj).not.toContain("System.ClientModel");
+  });
+
+  /**
+   * Verifies that unbranded (default) flavor continues to reference
+   * System.ClientModel and does NOT include Azure.Core. This ensures
+   * the Azure flavor change doesn't regress the default behavior.
+   */
+  it("references System.ClientModel package when flavor is unbranded", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace UnbrandedService;
+    `);
+
+    const csprojKey = Object.keys(outputs).find((k) => k.endsWith(".csproj"));
+    expect(csprojKey).toBeDefined();
+
+    const csproj = outputs[csprojKey!];
+    expect(csproj).toContain(
+      '<PackageReference Include="System.ClientModel" Version="1.9.0" />',
+    );
+    expect(csproj).not.toContain("Azure.Core");
   });
 });
 
