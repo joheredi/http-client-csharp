@@ -295,10 +295,16 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
         packageName={rootNamespace}
         options={options}
       />
-      <ErrorResultFile packageName={rootNamespace} options={options} />
+      {/* Azure uses ErrorResponse<T> from shared source HttpPipelineExtensions.cs; unbranded uses generated ErrorResult */}
+      {options.flavor !== "azure" && (
+        <ErrorResultFile packageName={rootNamespace} options={options} />
+      )}
       <SerializationFormatFile packageName={rootNamespace} options={options} />
       <TypeFormattersFile packageName={rootNamespace} options={options} />
-      <ClientUriBuilderFile packageName={rootNamespace} options={options} />
+      {/* Azure uses RawRequestUriBuilder from shared source; unbranded uses generated ClientUriBuilder */}
+      {options.flavor !== "azure" && (
+        <ClientUriBuilderFile packageName={rootNamespace} options={options} />
+      )}
       <ModelSerializationExtensionsFile
         packageName={rootNamespace}
         options={options}
@@ -309,10 +315,13 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
           ),
         )}
       />
-      <ClientPipelineExtensionsFile
-        packageName={rootNamespace}
-        options={options}
-      />
+      {/* Azure uses HttpPipelineExtensions from shared source; unbranded uses generated ClientPipelineExtensions */}
+      {options.flavor !== "azure" && (
+        <ClientPipelineExtensionsFile
+          packageName={rootNamespace}
+          options={options}
+        />
+      )}
       <PipelineRequestHeadersExtensionsFile
         packageName={rootNamespace}
         options={options}

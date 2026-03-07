@@ -50,7 +50,8 @@ describe("conditional header grouping", () => {
 
     // CreateRequest should unpack ETag via .Value.ToString()
     expect(restClient).toContain("ifMatch.Value.ToString()");
-    expect(restClient).toContain('request.Headers.Set("If-Match"');
+    // Azure uses SetValue instead of Set for headers
+    expect(restClient).toContain('request.Headers.SetValue("If-Match"');
   });
 
   /**
@@ -82,7 +83,8 @@ describe("conditional header grouping", () => {
 
     // CreateRequest should unpack ETag
     expect(restClient).toContain("ifNoneMatch.Value.ToString()");
-    expect(restClient).toContain('request.Headers.Set("If-None-Match"');
+    // Azure uses SetValue instead of Set for headers
+    expect(restClient).toContain('request.Headers.SetValue("If-None-Match"');
   });
 
   /**

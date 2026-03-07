@@ -352,6 +352,93 @@ export const AzureCore = createLibrary("Azure.Core", {
       Convert: { kind: "method" },
     },
   },
+
+  /**
+   * Abstract base class for classifying HTTP responses by status code.
+   * Azure equivalent of System.ClientModel.Primitives' `PipelineMessageClassifier`.
+   *
+   * Used as the type for lazy-initialized classifier fields in RestClient files.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/azure.core.responseclassifier
+   */
+  ResponseClassifier: {
+    kind: "class",
+    members: {},
+  },
+
+  /**
+   * Concrete `ResponseClassifier` implementation that classifies responses
+   * by their HTTP status code. Created with a `stackalloc ushort[]` of
+   * success status codes.
+   *
+   * Azure equivalent of `PipelineMessageClassifier.Create(stackalloc ushort[] { ... })`.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/azure.core.statuscodeclassifier
+   */
+  StatusCodeClassifier: {
+    kind: "class",
+    members: {},
+  },
+
+  /**
+   * Struct representing an HTTP request method (GET, POST, PUT, etc.).
+   * Used in Azure.Core to set the HTTP method on a request.
+   * Provides static properties: Get, Post, Put, Patch, Delete, Head, Options, Trace.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/azure.core.requestmethod
+   */
+  RequestMethod: {
+    kind: "struct",
+    members: {
+      Get: { kind: "property" },
+      Post: { kind: "property" },
+      Put: { kind: "property" },
+      Patch: { kind: "property" },
+      Delete: { kind: "property" },
+      Head: { kind: "property" },
+      Options: { kind: "property" },
+      Trace: { kind: "property" },
+    },
+  },
+
+  /**
+   * Internal shared-source URI builder for Azure HTTP requests.
+   * Extends `RequestUriBuilder` with `Reset()` and `AppendPath()`/`AppendQuery()` methods.
+   * Compiled from Azure.Core shared source into each generated project.
+   *
+   * Azure equivalent of the generated `ClientUriBuilder` infrastructure class.
+   *
+   * @see Azure.Core shared source RawRequestUriBuilder.cs
+   */
+  RawRequestUriBuilder: {
+    kind: "class",
+    members: {},
+  },
+
+  /**
+   * Internal shared-source extension methods for HttpPipeline.
+   * Provides ProcessMessage/ProcessMessageAsync as extension methods
+   * that handle error checking and cancellation.
+   * Compiled from Azure.Core shared source into each generated project.
+   *
+   * Referenced in protocol methods to trigger `using Azure.Core;` generation
+   * when using the static method call syntax for ProcessMessage.
+   *
+   * @see Azure.Core shared source HttpPipelineExtensions.cs
+   */
+  HttpPipelineExtensions: {
+    kind: "class",
+    members: {
+      /** Sends a message async, checks for errors, returns Response. */
+      ProcessMessageAsync: { kind: "method" },
+      /** Sends a message sync, checks for errors, returns Response. */
+      ProcessMessage: { kind: "method" },
+      /** HEAD request async, returns Response<bool>. */
+      ProcessHeadAsBoolMessageAsync: { kind: "method" },
+      /** HEAD request sync, returns Response<bool>. */
+      ProcessHeadAsBoolMessage: { kind: "method" },
+    },
+  },
 });
 
 /**

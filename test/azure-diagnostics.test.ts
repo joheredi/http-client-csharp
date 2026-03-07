@@ -156,7 +156,10 @@ describe("Azure Distributed Tracing", () => {
       "Argument.AssertNotNullOrEmpty(id",
       tryIdx,
     );
-    const returnIdx = clientFile.indexOf("Pipeline.ProcessMessage(", tryIdx);
+    const returnIdx = clientFile.indexOf(
+      "HttpPipelineExtensions.ProcessMessage(",
+      tryIdx,
+    );
 
     expect(scopeStartIdx).toBeGreaterThan(-1);
     expect(tryIdx).toBeGreaterThan(scopeStartIdx);

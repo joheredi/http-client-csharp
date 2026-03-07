@@ -63,6 +63,14 @@ export interface PipelineTypes {
   operationFinalStateVia?: Children;
   /** The ProtocolOperationHelpers static class for LRO processing (Azure only). Undefined for unbranded. */
   protocolOperationHelpers?: Children;
+  /** The response classifier base type: `ResponseClassifier` (Azure) or `PipelineMessageClassifier` (unbranded). */
+  classifierBase: Children;
+  /** The URI builder type: `RawRequestUriBuilder` (Azure) or undefined (unbranded uses generated ClientUriBuilder). */
+  uriBuilder?: Children;
+  /** The HTTP request method type: `RequestMethod` (Azure) or undefined (unbranded uses string literals). */
+  requestMethod?: Children;
+  /** The HttpPipelineExtensions static class for ProcessMessage/ProcessMessageAsync (Azure only). */
+  httpPipelineExtensions?: Children;
 }
 
 /**
@@ -104,6 +112,10 @@ export function getPipelineTypes(
       waitUntil: Azure.WaitUntil,
       operationFinalStateVia: AzureCore.OperationFinalStateVia,
       protocolOperationHelpers: AzureCore.ProtocolOperationHelpers,
+      classifierBase: AzureCore.ResponseClassifier,
+      uriBuilder: AzureCore.RawRequestUriBuilder,
+      requestMethod: AzureCore.RequestMethod,
+      httpPipelineExtensions: AzureCore.HttpPipelineExtensions,
     };
   }
 
@@ -122,5 +134,6 @@ export function getPipelineTypes(
     clientResult: SystemClientModel.ClientResult,
     binaryContent: SystemClientModel.BinaryContent,
     request: SystemClientModelPrimitives.PipelineRequest,
+    classifierBase: SystemClientModelPrimitives.PipelineMessageClassifier,
   };
 }

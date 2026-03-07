@@ -26,6 +26,7 @@ import type {
   SdkServiceMethod,
   SdkType,
 } from "@azure-tools/typespec-client-generator-core";
+import { AzureCore } from "../../builtins/azure.js";
 import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
 import {
   SystemClientModel,
@@ -170,7 +171,10 @@ export function RestClientFile(props: RestClientFileProps) {
           partial
           name={partialName as unknown as string}
         >
-          <ClassifierDeclarations classifiers={classifiers} />
+          <ClassifierDeclarations
+            classifiers={classifiers}
+            pipelineTypes={pipelineTypes}
+          />
           {methods.map((method) => (
             <>
               {"\n\n"}
@@ -197,6 +201,7 @@ export function RestClientFile(props: RestClientFileProps) {
                 classifiers={classifiers}
                 siblingNames={siblingNames}
                 pipelineTypes={pipelineTypes}
+                flavor={options.flavor}
               />
             </>
           ))}
@@ -212,28 +217,37 @@ export function RestClientFile(props: RestClientFileProps) {
 
 interface ClassifierDeclarationsProps {
   classifiers: ClassifierInfo[];
+  /** Flavor-resolved pipeline type references for classifier types. */
+  pipelineTypes: PipelineTypes;
 }
 
 /**
- * Generates static PipelineMessageClassifier fields and their lazy-initialized
+ * Generates static response classifier fields and their lazy-initialized
  * property accessors.
  *
- * For each unique set of success status codes across all operations, this
- * produces a backing field and an expression-bodied property:
+ * For unbranded flavor:
  * ```csharp
  * private static PipelineMessageClassifier _pipelineMessageClassifier200;
- *
  * private static PipelineMessageClassifier PipelineMessageClassifier200 =>
  *     _pipelineMessageClassifier200 ??=
  *         PipelineMessageClassifier.Create(stackalloc ushort[] { 200 });
+ * ```
+ *
+ * For Azure flavor:
+ * ```csharp
+ * private static ResponseClassifier _pipelineMessageClassifier200;
+ * private static ResponseClassifier PipelineMessageClassifier200 =>
+ *     _pipelineMessageClassifier200 ??=
+ *         new StatusCodeClassifier(stackalloc ushort[] { 200 });
  * ```
  *
  * The lazy initialization pattern ensures the classifier is only allocated
  * once and then reused for all subsequent requests with the same status codes.
  */
 function ClassifierDeclarations(props: ClassifierDeclarationsProps) {
-  const { classifiers } = props;
-  const PMC = SystemClientModelPrimitives.PipelineMessageClassifier;
+  const { classifiers, pipelineTypes } = props;
+  const classifierBase = pipelineTypes.classifierBase;
+  const isAzure = !!pipelineTypes.uriBuilder; // Azure has uriBuilder set
 
   return (
     <>
@@ -245,9 +259,11 @@ function ClassifierDeclarations(props: ClassifierDeclarationsProps) {
         return (
           <>
             {i > 0 && "\n"}
-            {code`private static ${PMC} ${fieldName};`}
+            {code`private static ${classifierBase} ${fieldName};`}
             {"\n\n"}
-            {code`private static ${PMC} ${propName} => ${fieldName} ??= ${PMC}.Create(stackalloc ushort[] { ${codesList} });`}
+            {isAzure
+              ? code`private static ${classifierBase} ${propName} => ${fieldName} ??= new ${AzureCore.StatusCodeClassifier}(stackalloc ushort[] { ${codesList} });`
+              : code`private static ${classifierBase} ${propName} => ${fieldName} ??= ${classifierBase}.Create(stackalloc ushort[] { ${codesList} });`}
           </>
         );
       })}
@@ -397,6 +413,8 @@ interface CreateNextRequestMethodProps {
   siblingNames: Set<string>;
   /** Flavor-resolved pipeline type references for HttpMessage/Request/RequestOptions. */
   pipelineTypes: PipelineTypes;
+  /** The emitter flavor ("azure" or "unbranded") for flavor-conditional patterns. */
+  flavor?: string;
 }
 
 /**
@@ -406,31 +424,10 @@ interface CreateNextRequestMethodProps {
  * This method creates an HTTP request from a next-page URI extracted from a
  * previous response. It handles both absolute and relative URIs, combining
  * relative URIs with the client's base endpoint.
- *
- * @example Generated output:
- * ```csharp
- * internal PipelineMessage CreateNextGetItemsRequest(Uri nextPage, RequestOptions options)
- * {
- *     ClientUriBuilder uri = new ClientUriBuilder();
- *     if (nextPage.IsAbsoluteUri)
- *     {
- *         uri.Reset(nextPage);
- *     }
- *     else
- *     {
- *         uri.Reset(new Uri(_endpoint, nextPage));
- *     }
- *     PipelineMessage message = Pipeline.CreateMessage(
- *         uri.ToUri(), "GET", PipelineMessageClassifier200);
- *     PipelineRequest request = message.Request;
- *     request.Headers.Set("Accept", "application/json");
- *     message.Apply(options);
- *     return message;
- * }
- * ```
  */
 function CreateNextRequestMethod(props: CreateNextRequestMethodProps) {
-  const { method, siblingNames, pipelineTypes } = props;
+  const { method, siblingNames, pipelineTypes, flavor } = props;
+  const isAzure = flavor === "azure";
   const operation = method.operation;
   const namePolicy = useCSharpNamePolicy();
 
@@ -450,10 +447,20 @@ function CreateNextRequestMethod(props: CreateNextRequestMethodProps) {
 
   // Accept header from operation responses
   const acceptHeader = getAcceptHeaderValue(operation.responses);
+  const headerSetMethod = isAzure ? "SetValue" : "Set";
 
   // Build method body: URI handling + message creation + headers + options
-  const body: Children[] = [
-    "ClientUriBuilder uri = new ClientUriBuilder();",
+  const body: Children[] = [];
+
+  if (isAzure) {
+    body.push(
+      code`${AzureCore.RawRequestUriBuilder} uri = new ${AzureCore.RawRequestUriBuilder}();`,
+    );
+  } else {
+    body.push("ClientUriBuilder uri = new ClientUriBuilder();");
+  }
+
+  body.push(
     "\n",
     "if (nextPage.IsAbsoluteUri)",
     "\n",
@@ -470,18 +477,42 @@ function CreateNextRequestMethod(props: CreateNextRequestMethodProps) {
     code`    uri.Reset(new ${System.Uri}(_endpoint, nextPage));`,
     "\n",
     "}",
-    "\n",
-    code`${pipelineTypes.message} message = Pipeline.CreateMessage(uri.ToUri(), "${httpVerb}", ${classifierRef});`,
-    "\n",
-    code`${pipelineTypes.request} request = message.Request;`,
-  ];
+  );
+
+  if (isAzure) {
+    body.push(
+      "\n",
+      code`${pipelineTypes.message} message = Pipeline.CreateMessage(options, ${classifierRef});`,
+      "\n",
+      code`${pipelineTypes.request} request = message.Request;`,
+      "\nrequest.Uri = uri;",
+    );
+    const requestMethodProp = getAzureRequestMethodProperty(httpVerb);
+    body.push(
+      "\n",
+      code`request.Method = ${AzureCore.RequestMethod}.${requestMethodProp};`,
+    );
+  } else {
+    body.push(
+      "\n",
+      code`${pipelineTypes.message} message = Pipeline.CreateMessage(uri.ToUri(), "${httpVerb}", ${classifierRef});`,
+      "\n",
+      code`${pipelineTypes.request} request = message.Request;`,
+    );
+  }
 
   // Add Accept header if the operation specifies one
   if (acceptHeader) {
-    body.push("\n", `request.Headers.Set("Accept", "${acceptHeader}");`);
+    body.push(
+      "\n",
+      `request.Headers.${headerSetMethod}("Accept", "${acceptHeader}");`,
+    );
   }
 
-  body.push("\n", "message.Apply(options);", "\n", "return message;");
+  if (!isAzure) {
+    body.push("\n", "message.Apply(options);");
+  }
+  body.push("\n", "return message;");
 
   return (
     <Method
@@ -1356,21 +1387,24 @@ function buildPathParamStatement(
  * Handles both scalar and collection header params.
  *
  * For scalar parameters:
- *   `request.Headers.Set("name", value);`
+ *   `request.Headers.Set("name", value);` (unbranded)
+ *   `request.Headers.SetValue("name", value);` (Azure)
  *
  * For collection parameters:
- *   `request.Headers.Set("name", string.Join(",", values));`
+ *   `request.Headers.Set("name", string.Join(",", values));` (unbranded)
+ *   `request.Headers.SetValue("name", string.Join(",", values));` (Azure)
  */
 function buildHeaderParamStatement(
   param: SdkHeaderParameter,
   getParamName: (name: string) => string,
+  headerSetMethod: string = "Set",
 ): string {
   const serializedName = param.serializedName;
   const name = getParamName(param.name);
 
   if (isConstantType(param.type)) {
     const valueExpr = getConstantValueExpression(param.type);
-    return `request.Headers.Set("${serializedName}", ${valueExpr});`;
+    return `request.Headers.${headerSetMethod}("${serializedName}", ${valueExpr});`;
   }
 
   // onClient params are stored as client fields (_name).
@@ -1378,9 +1412,9 @@ function buildHeaderParamStatement(
   if (param.onClient) {
     const fieldName = getOnClientFieldName(param, getParamName);
     if (param.optional) {
-      return `if (${fieldName} != null)\n{\n    request.Headers.Set("${serializedName}", ${fieldName});\n}`;
+      return `if (${fieldName} != null)\n{\n    request.Headers.${headerSetMethod}("${serializedName}", ${fieldName});\n}`;
     }
-    return `request.Headers.Set("${serializedName}", ${fieldName});`;
+    return `request.Headers.${headerSetMethod}("${serializedName}", ${fieldName});`;
   }
 
   if (isCollectionType(param.type)) {
@@ -1393,7 +1427,7 @@ function buildHeaderParamStatement(
     if (elementFormat) {
       stmt = `request.Headers.SetDelimited("${serializedName}", ${name}, "${delimiter}", ${elementFormat});`;
     } else {
-      stmt = `request.Headers.Set("${serializedName}", string.Join("${delimiter}", ${name}));`;
+      stmt = `request.Headers.${headerSetMethod}("${serializedName}", string.Join("${delimiter}", ${name}));`;
     }
     if (param.optional) {
       return `if (${name} != null)\n{\n    ${stmt}\n}`;
@@ -1404,9 +1438,9 @@ function buildHeaderParamStatement(
   // Scalar header
   const valueExpr = getParamValueExpression(param, getParamName);
   if (param.optional) {
-    return `if (${name} != null)\n{\n    request.Headers.Set("${serializedName}", ${valueExpr});\n}`;
+    return `if (${name} != null)\n{\n    request.Headers.${headerSetMethod}("${serializedName}", ${valueExpr});\n}`;
   }
-  return `request.Headers.Set("${serializedName}", ${valueExpr});`;
+  return `request.Headers.${headerSetMethod}("${serializedName}", ${valueExpr});`;
 }
 
 /**
@@ -1433,14 +1467,24 @@ function buildRequestBody(
   pipelineTypes?: PipelineTypes,
   flavor?: string,
 ): Children {
+  const isAzure = flavor === "azure";
   const msgType =
     pipelineTypes?.message ?? SystemClientModelPrimitives.PipelineMessage;
   const reqType =
     pipelineTypes?.request ?? SystemClientModelPrimitives.PipelineRequest;
+  // Azure uses SetValue for headers; unbranded uses Set
+  const headerSetMethod = isAzure ? "SetValue" : "Set";
   const parts: Children[] = [];
 
   // 1. URI builder initialization
-  parts.push("ClientUriBuilder uri = new ClientUriBuilder();");
+  // Azure uses RawRequestUriBuilder (from shared source); unbranded uses generated ClientUriBuilder.
+  if (isAzure) {
+    parts.push(
+      code`${AzureCore.RawRequestUriBuilder} uri = new ${AzureCore.RawRequestUriBuilder}();`,
+    );
+  } else {
+    parts.push("ClientUriBuilder uri = new ClientUriBuilder();");
+  }
   parts.push("\nuri.Reset(_endpoint);");
 
   // 2. Path segments
@@ -1470,13 +1514,30 @@ function buildRequestBody(
     parts.push(`\n${buildQueryParamStatement(param, getParamName)}`);
   }
 
-  // 4. Create PipelineMessage
-  // Note: \n must be a separate plain string — the code`` template tag strips leading \n.
-  parts.push(
-    "\n",
-    code`${msgType} message = Pipeline.CreateMessage(uri.ToUri(), "${httpVerb}", ${classifierRef});`,
-  );
-  parts.push("\n", code`${reqType} request = message.Request;`);
+  // 4. Create message
+  // Azure pattern: Pipeline.CreateMessage(context, classifier) + set Uri/Method separately
+  // Unbranded pattern: Pipeline.CreateMessage(uri.ToUri(), "VERB", classifier)
+  if (isAzure) {
+    parts.push(
+      "\n",
+      code`${msgType} message = Pipeline.CreateMessage(options, ${classifierRef});`,
+    );
+    parts.push("\n", code`${reqType} request = message.Request;`);
+    parts.push("\nrequest.Uri = uri;");
+    // Map HTTP verb string to Azure.Core.RequestMethod static property
+    const requestMethodProp = getAzureRequestMethodProperty(httpVerb);
+    parts.push(
+      "\n",
+      code`request.Method = ${AzureCore.RequestMethod}.${requestMethodProp};`,
+    );
+  } else {
+    // Note: \n must be a separate plain string — the code`` template tag strips leading \n.
+    parts.push(
+      "\n",
+      code`${msgType} message = Pipeline.CreateMessage(uri.ToUri(), "${httpVerb}", ${classifierRef});`,
+    );
+    parts.push("\n", code`${reqType} request = message.Request;`);
+  }
 
   // 5. Headers — custom headers first
   // Check if Accept is a variable header param (content negotiation)
@@ -1504,11 +1565,13 @@ function buildRequestBody(
     ) {
       continue;
     }
-    parts.push(`\n${buildHeaderParamStatement(param, getParamName)}`);
+    parts.push(
+      `\n${buildHeaderParamStatement(param, getParamName, headerSetMethod)}`,
+    );
   }
 
   // Emit grouped conditional header statement for Azure flavor.
-  // For ETag: if (ifMatch != null) { request.Headers.Set("If-Match", ifMatch.Value.ToString()); }
+  // For ETag: if (ifMatch != null) { request.Headers.SetValue("If-Match", ifMatch.Value.ToString()); }
   // For MatchConditions/RequestConditions: if (conditions != null) { request.Headers.Add(conditions); }
   if (conditionalGrouping.type !== "none") {
     const condParamName = getParamName(conditionalGrouping.paramName);
@@ -1516,7 +1579,7 @@ function buildRequestBody(
       // Single ETag header: extract .Value from nullable ETag and set directly
       const headerParam = conditionalGrouping.conditionalParams[0];
       parts.push(
-        `\nif (${condParamName} != null)\n{\n    request.Headers.Set("${headerParam.serializedName}", ${condParamName}.Value.ToString());\n}`,
+        `\nif (${condParamName} != null)\n{\n    request.Headers.${headerSetMethod}("${headerParam.serializedName}", ${condParamName}.Value.ToString());\n}`,
       );
     } else {
       // MatchConditions or RequestConditions: use request.Headers.Add(conditions)
@@ -1536,12 +1599,12 @@ function buildRequestBody(
     if (sn === "repeatability-request-id") {
       parts.push(
         "\n",
-        code`request.Headers.Set("${param.serializedName}", ${System.Guid}.NewGuid().ToString());`,
+        code`request.Headers.${headerSetMethod}("${param.serializedName}", ${System.Guid}.NewGuid().ToString());`,
       );
     } else if (sn === "repeatability-first-sent") {
       parts.push(
         "\n",
-        code`request.Headers.Set("${param.serializedName}", ${System.DateTimeOffset}.Now.ToString("R"));`,
+        code`request.Headers.${headerSetMethod}("${param.serializedName}", ${System.DateTimeOffset}.Now.ToString("R"));`,
       );
     }
   }
@@ -1555,18 +1618,22 @@ function buildRequestBody(
     if (multipart) {
       if (bodyParam.optional) {
         parts.push(
-          `\nif (content != null)\n{\n    request.Headers.Set("Content-Type", contentType);\n}`,
+          `\nif (content != null)\n{\n    request.Headers.${headerSetMethod}("Content-Type", contentType);\n}`,
         );
       } else {
-        parts.push(`\nrequest.Headers.Set("Content-Type", contentType);`);
+        parts.push(
+          `\nrequest.Headers.${headerSetMethod}("Content-Type", contentType);`,
+        );
       }
     } else if (contentType) {
       if (bodyParam.optional) {
         parts.push(
-          `\nif (content != null)\n{\n    request.Headers.Set("Content-Type", "${contentType}");\n}`,
+          `\nif (content != null)\n{\n    request.Headers.${headerSetMethod}("Content-Type", "${contentType}");\n}`,
         );
       } else {
-        parts.push(`\nrequest.Headers.Set("Content-Type", "${contentType}");`);
+        parts.push(
+          `\nrequest.Headers.${headerSetMethod}("Content-Type", "${contentType}");`,
+        );
       }
     }
   }
@@ -1575,7 +1642,9 @@ function buildRequestBody(
   if (!acceptHeaderParam) {
     const acceptValue = getAcceptHeaderValue(operation.responses);
     if (acceptValue) {
-      parts.push(`\nrequest.Headers.Set("Accept", "${acceptValue}");`);
+      parts.push(
+        `\nrequest.Headers.${headerSetMethod}("Accept", "${acceptValue}");`,
+      );
     }
   }
 
@@ -1591,8 +1660,35 @@ function buildRequestBody(
   }
 
   // 7. Apply options and return
-  parts.push("\nmessage.Apply(options);");
+  // Azure: context is already passed to CreateMessage, no Apply needed.
+  // Unbranded: message.Apply(options) applies per-request options.
+  if (!isAzure) {
+    parts.push("\nmessage.Apply(options);");
+  }
   parts.push("\nreturn message;");
 
   return parts;
+}
+
+/**
+ * Maps an HTTP verb string (uppercase) to the corresponding
+ * `Azure.Core.RequestMethod` static property name.
+ *
+ * Azure.Core uses `RequestMethod.Get` (PascalCase) rather than string literals.
+ *
+ * @param httpVerb - The uppercase HTTP verb (e.g., "GET", "POST").
+ * @returns The PascalCase property name (e.g., "Get", "Post").
+ */
+function getAzureRequestMethodProperty(httpVerb: string): string {
+  const map: Record<string, string> = {
+    GET: "Get",
+    POST: "Post",
+    PUT: "Put",
+    PATCH: "Patch",
+    DELETE: "Delete",
+    HEAD: "Head",
+    OPTIONS: "Options",
+    TRACE: "Trace",
+  };
+  return map[httpVerb] ?? httpVerb;
 }

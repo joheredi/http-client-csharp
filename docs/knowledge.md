@@ -4375,3 +4375,35 @@ The `pnpm test:e2e` build test was failing before task 20.5 due to 10 non-Azure 
 **Rejected**: FQN/`global::` approach — would require detecting collisions at every type-reference generation site across many components, much more error-prone and complex.
 
 **Key insight**: The `_` prefix approach works because `cleanAllNamespaces` runs BEFORE `applyModelSubNamespace`. At cleaning time, model namespace is `Azure.ResourceManager.NonResource` (last segment matches model name). After cleaning, it becomes `Azure.ResourceManager._NonResource`. After `applyModelSubNamespace`, models get `Azure.ResourceManager._NonResource.Models`. Within `_NonResource` namespace, `NonResource` resolves unambiguously to the type.
+
+## Azure Infrastructure API Surface (Task 20.12d)
+
+### Design Decision: Azure RestClient Pattern
+
+- **Chosen**: Generate Azure.Core API surface (RawRequestUriBuilder, SetValue, CreateMessage(context, classifier), ResponseClassifier)
+- **Why**: Matches legacy Azure SDK generator output exactly; uses public Azure.Core API instead of internal System.ClientModel patterns
+- **Rejected**: Keeping System.ClientModel patterns with Azure type names (causes CS1061/CS1501 compilation errors)
+
+### Design Decision: Replace ClientPipelineExtensions with shared source for Azure
+
+- **Chosen**: Skip generating ClientPipelineExtensions.cs for Azure; use HttpPipelineExtensions.cs from Azure.Core shared source
+- **Why**: The shared source provides the correct Azure API surface (ProcessMessage with proper signature, ApplyRequestContext instead of Parse(), ErrorResponse instead of ErrorResult)
+- **Rejected**: Modifying generated ClientPipelineExtensions to match Azure API (would duplicate shared source functionality)
+
+### Design Decision: Static ProcessMessage call syntax for Azure
+
+- **Chosen**: `HttpPipelineExtensions.ProcessMessage(Pipeline, message, options)` (static call)
+- **Why**: Forces Alloy to generate `using Azure.Core;` which is needed for the extension method namespace. Without this, methods without Azure.Core type references would miss the using directive.
+- **Rejected**: Extension method syntax `Pipeline.ProcessMessage(message, options)` — doesn't trigger using Azure.Core generation
+
+### Gotcha: ProtocolOperationHelpers shared source dependency chain
+
+ProtocolOperationHelpers.cs depends on VoidValue.cs, OperationFinalStateVia.cs, and ProtocolOperation.cs (which itself depends on OperationInternalOfT, OperationPoller, NextLinkOperationImplementation, etc.). Including just ProtocolOperationHelpers without all dependencies causes CS0122 cascading errors. Need conditional inclusion only for LRO specs, or include the full dependency chain.
+
+### Gotcha: Azure.Core header method is SetValue, not Set
+
+Azure.Core's `RequestHeaders` uses `.SetValue(name, value)` while System.ClientModel's `PipelineRequestHeaders` uses `.Set(name, value)`. The `buildHeaderParamStatement` function accepts a `headerSetMethod` parameter to handle both.
+
+### Gotcha: Azure CreateMessage takes (context, classifier) not (uri, method, classifier)
+
+Azure.Core's `HttpPipeline.CreateMessage()` takes `(RequestContext, ResponseClassifier)` and requires setting `request.Uri` and `request.Method` separately. System.ClientModel's `ClientPipeline.CreateMessage()` takes `(Uri, string, PipelineMessageClassifier)`.

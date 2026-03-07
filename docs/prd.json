@@ -2173,7 +2173,7 @@
           "title": "Fix CS0122 infrastructure API issues: ProtocolOperationHelpers, RequestContext.Parse, CreateMessage",
           "description": "ARM specs that use non-ARM client patterns (large-header) generate code using Azure.Core internal APIs that are inaccessible:\n- CS0122: `ProtocolOperationHelpers` is inaccessible (internal type in Azure.Core shared sources)\n- CS0122: `OperationFinalStateVia` is inaccessible (Azure.Core namespace, not public in some contexts)\n- CS1061: `RequestContext.Parse()` does not exist as a public method\n- CS1501: `CreateMessage` takes wrong number of arguments\n- CS1061: `RequestHeaders.Set` does not exist\n- CS1729: `Response<T>` wrong constructor args\n- CS1061: `HttpMessage.Apply` does not exist\n\nThese are all in the non-ARM-resource client code path (LargeHeaders sub-client). The emitter is generating Azure-flavored non-ARM client code but using internal Azure.Core APIs instead of the public API surface.\n\nThis requires investigating how the legacy emitter generates LRO operations for non-resource ARM clients and aligning the generated code with the public Azure SDK API.\n\nAffected specs: large-header (48 errors), operation-templates (~168 errors with same patterns). Total: ~216 errors.",
           "phase": "phase-20",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [],

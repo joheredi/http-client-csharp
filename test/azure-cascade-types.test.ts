@@ -120,12 +120,13 @@ describe("Azure pipeline types - ProtocolMethod", () => {
     // Azure protocol methods use HttpMessage
     expect(clientFile).toContain("using HttpMessage message = Create");
 
-    // Azure protocol methods return Response directly (no FromResponse)
+    // Azure protocol methods return Response via static ProcessMessage call
+    // (static call ensures `using Azure.Core;` is generated for the extension class)
     expect(clientFile).toContain(
-      "return Pipeline.ProcessMessage(message, options);",
+      "return HttpPipelineExtensions.ProcessMessage(Pipeline, message, options);",
     );
     expect(clientFile).toContain(
-      "return await Pipeline.ProcessMessageAsync(message, options).ConfigureAwait(false);",
+      "return await HttpPipelineExtensions.ProcessMessageAsync(Pipeline, message, options).ConfigureAwait(false);",
     );
 
     // Should NOT contain unbranded types in protocol methods
@@ -227,29 +228,9 @@ describe("Azure pipeline types - Infrastructure files", () => {
     expect(diagnostics).toHaveLength(0);
 
     const errorFile = outputs["src/Generated/Internal/ErrorResult.cs"];
-    expect(errorFile).toBeDefined();
-
-    // Azure uses Response<T> as base type
-    expect(errorFile).toContain("Response<T>");
-
-    // Azure uses Response for the _response field
-    expect(errorFile).toContain("private readonly Response _response;");
-
-    // Azure uses RequestFailedException for the _exception field
-    expect(errorFile).toContain(
-      "private readonly RequestFailedException _exception;",
-    );
-
-    // Azure requires GetRawResponse() override because Response<T> inherits
-    // from NullableResponse<T> which declares it abstract (CS0534 without it)
-    expect(errorFile).toContain(
-      "public override Response GetRawResponse() => _response;",
-    );
-
-    // Should NOT contain unbranded types
-    expect(errorFile).not.toContain("ClientResult<T>");
-    expect(errorFile).not.toContain("PipelineResponse");
-    expect(errorFile).not.toContain("ClientResultException");
+    // Azure does not generate ErrorResult.cs — uses ErrorResponse<T> from
+    // shared source HttpPipelineExtensions.cs instead.
+    expect(errorFile).toBeUndefined();
   });
 
   /**

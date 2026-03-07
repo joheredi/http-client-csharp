@@ -38,6 +38,7 @@ const AZURE_SHARED_SOURCE_FILES = [
   "DiagnosticScope.cs",
   "HttpMessageSanitizer.cs",
   "TrimmingAttribute.cs",
+  "HttpPipelineExtensions.cs",
 ];
 
 /**

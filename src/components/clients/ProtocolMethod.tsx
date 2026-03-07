@@ -886,14 +886,16 @@ function buildStandardProtocolMethodParts(
   const asyncReturn = code`${SystemThreadingTasks.Task}<${pipelineTypes.clientResult}>`;
 
   // Inner body lines: validation + request creation + pipeline send.
-  // These are the same for Azure and unbranded, except for the return expression.
+  // Azure: Use static call syntax for ProcessMessage to trigger `using Azure.Core;`
+  // generation. The extension method is defined in HttpPipelineExtensions (shared source).
+  // Unbranded: Use ClientResult.FromResponse wrapper.
   const innerSyncLines = [
     validation,
     validatedParams.length > 0 ? "\n\n" : "",
     code`using ${pipelineTypes.message} message = Create${methodName}Request(${argList});`,
     "\n",
     isAzure
-      ? code`return Pipeline.ProcessMessage(message, options);`
+      ? code`return ${pipelineTypes.httpPipelineExtensions}.ProcessMessage(Pipeline, message, options);`
       : code`return ${pipelineTypes.clientResult}.FromResponse(Pipeline.ProcessMessage(message, options));`,
   ];
 
@@ -903,7 +905,7 @@ function buildStandardProtocolMethodParts(
     code`using ${pipelineTypes.message} message = Create${methodName}Request(${argList});`,
     "\n",
     isAzure
-      ? code`return await Pipeline.ProcessMessageAsync(message, options).ConfigureAwait(false);`
+      ? code`return await ${pipelineTypes.httpPipelineExtensions}.ProcessMessageAsync(Pipeline, message, options).ConfigureAwait(false);`
       : code`return ${pipelineTypes.clientResult}.FromResponse(await Pipeline.ProcessMessageAsync(message, options).ConfigureAwait(false));`,
   ];
 

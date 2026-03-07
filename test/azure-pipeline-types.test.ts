@@ -282,10 +282,13 @@ describe("Azure pipeline types - ClientFile", () => {
 
 describe("Azure pipeline types - ClientPipelineExtensionsFile", () => {
   /**
-   * Verifies the Azure version of ClientPipelineExtensions uses
-   * HttpPipeline extension methods instead of ClientPipeline.
+   * Verifies that Azure flavor does NOT generate ClientPipelineExtensions.cs.
+   * Azure uses HttpPipelineExtensions.cs from Azure.Core shared source instead.
+   * The shared source file provides ProcessMessage/ProcessHeadAsBoolMessage
+   * extension methods with the correct Azure API surface (no RequestContext.Parse,
+   * uses ApplyRequestContext internal method, includes ErrorResponse<T>).
    */
-  it("generates Azure ProcessMessageAsync with HttpPipeline and Response", async () => {
+  it("Azure does not generate ClientPipelineExtensions (uses shared source)", async () => {
     const [{ outputs }] = await AzureHttpTester.compileAndDiagnose(`
       @service
       namespace TestService;
@@ -293,103 +296,8 @@ describe("Azure pipeline types - ClientPipelineExtensionsFile", () => {
 
     const content =
       outputs["src/Generated/Internal/ClientPipelineExtensions.cs"];
-    expect(content).toBeDefined();
-
-    // Azure uses HttpPipeline, HttpMessage, RequestContext, Response
-    expect(content).toContain(
-      "public static async ValueTask<Response> ProcessMessageAsync(this HttpPipeline pipeline, HttpMessage message, RequestContext context)",
-    );
-    // Azure uses RequestContext.Parse() for cancellation token extraction
-    expect(content).toContain("context.Parse()");
-    // Azure passes cancellation token to SendAsync
-    expect(content).toContain(
-      "await pipeline.SendAsync(message, userCancellationToken)",
-    );
-    // Azure throws RequestFailedException, not ClientResultException
-    expect(content).toContain(
-      "throw new RequestFailedException(message.Response)",
-    );
-    // Azure uses ErrorOptions.NoThrow, not ClientErrorBehaviors.NoThrow
-    expect(content).toContain("ErrorOptions.NoThrow");
-  });
-
-  /**
-   * Verifies the Azure version of synchronous ProcessMessage method.
-   */
-  it("generates Azure ProcessMessage with HttpPipeline", async () => {
-    const [{ outputs }] = await AzureHttpTester.compileAndDiagnose(`
-      @service
-      namespace TestService;
-    `);
-
-    const content =
-      outputs["src/Generated/Internal/ClientPipelineExtensions.cs"];
-
-    expect(content).toContain(
-      "public static Response ProcessMessage(this HttpPipeline pipeline, HttpMessage message, RequestContext context)",
-    );
-    expect(content).toContain("pipeline.Send(message, userCancellationToken)");
-  });
-
-  /**
-   * Verifies the Azure HEAD-as-bool methods use Response<bool> and
-   * Response.FromValue() instead of ClientResult<bool>.
-   */
-  it("generates Azure ProcessHeadAsBoolMessageAsync with Response<bool>", async () => {
-    const [{ outputs }] = await AzureHttpTester.compileAndDiagnose(`
-      @service
-      namespace TestService;
-    `);
-
-    const content =
-      outputs["src/Generated/Internal/ClientPipelineExtensions.cs"];
-
-    expect(content).toContain(
-      "public static async ValueTask<Response<bool>> ProcessHeadAsBoolMessageAsync(this HttpPipeline pipeline, HttpMessage message, RequestContext context)",
-    );
-    expect(content).toContain("Response.FromValue(true, response)");
-    expect(content).toContain("Response.FromValue(false, response)");
-    expect(content).toContain("new RequestFailedException(response)");
-  });
-
-  /**
-   * Verifies the Azure HEAD-as-bool sync method.
-   */
-  it("generates Azure ProcessHeadAsBoolMessage sync variant", async () => {
-    const [{ outputs }] = await AzureHttpTester.compileAndDiagnose(`
-      @service
-      namespace TestService;
-    `);
-
-    const content =
-      outputs["src/Generated/Internal/ClientPipelineExtensions.cs"];
-
-    expect(content).toContain(
-      "public static Response<bool> ProcessHeadAsBoolMessage(this HttpPipeline pipeline, HttpMessage message, RequestContext context)",
-    );
-  });
-
-  /**
-   * Verifies Azure using directives in the pipeline extensions file.
-   */
-  it("includes correct Azure using directives", async () => {
-    const [{ outputs }] = await AzureHttpTester.compileAndDiagnose(`
-      @service
-      namespace TestService;
-    `);
-
-    const content =
-      outputs["src/Generated/Internal/ClientPipelineExtensions.cs"];
-
-    expect(content).toContain("using Azure;");
-    expect(content).toContain("using Azure.Core;");
-    expect(content).toContain("using Azure.Core.Pipeline;");
-    expect(content).toContain("using System.Threading;");
-    expect(content).toContain("using System.Threading.Tasks;");
-
-    // Should NOT contain unbranded using directives
-    expect(content).not.toContain("using System.ClientModel;");
-    expect(content).not.toContain("using System.ClientModel.Primitives;");
+    // Azure flavor should NOT generate this file — uses shared source HttpPipelineExtensions.cs instead
+    expect(content).toBeUndefined();
   });
 
   /**

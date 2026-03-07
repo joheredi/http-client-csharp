@@ -6577,3 +6577,39 @@ Simple namespace correction in Alloy library definitions. When a type's `using` 
 
 **Files changed**: `src/utils/package-name.ts`, `test/package-name.test.ts`
 **Tests**: 3 new unit tests added (model collision, enum collision, non-conflicting names). All 1670+ unit tests pass. E2e: 0 unexpected failures.
+
+## Task 20.12d — Fix Azure infrastructure API surface (2026-03-07)
+
+**What was done**:
+Fixed Azure-flavored generated code to use Azure.Core API patterns instead of System.ClientModel patterns. Reduced e2e compilation errors from 3400 to 1364 (60% reduction).
+
+**Changes**:
+1. **RestClientFile.tsx**: Azure CreateRequest methods now use:
+   - `RawRequestUriBuilder` (shared source) instead of generated `ClientUriBuilder`
+   - `Pipeline.CreateMessage(options, classifier)` instead of `Pipeline.CreateMessage(uri, "VERB", classifier)`
+   - `request.Uri = uri; request.Method = RequestMethod.Verb;` (separate assignment)
+   - `request.Headers.SetValue(...)` instead of `.Set(...)`
+   - No `message.Apply(options)` (context passed via CreateMessage)
+   - `ResponseClassifier`/`StatusCodeClassifier` instead of `PipelineMessageClassifier`
+
+2. **emitter.tsx**: Skip generating `ClientPipelineExtensions.cs`, `ClientUriBuilder.cs`, and `ErrorResult.cs` for Azure flavor — replaced by shared source equivalents.
+
+3. **ProjectFile.tsx**: Added `HttpPipelineExtensions.cs` to Azure shared source list (replaces generated ClientPipelineExtensions).
+
+4. **ProtocolMethod.tsx**: Azure ProcessMessage calls use static method syntax (`HttpPipelineExtensions.ProcessMessage(Pipeline, message, options)`) to trigger `using Azure.Core;` generation.
+
+5. **builtins/azure.ts**: Added `StatusCodeClassifier`, `ResponseClassifier`, `RequestMethod`, `RawRequestUriBuilder`, `HttpPipelineExtensions` types to AzureCore library.
+
+6. **pipeline-types.ts**: Added `classifierBase`, `uriBuilder`, `requestMethod`, `httpPipelineExtensions` fields.
+
+**Tests**: 89 files pass (1670 tests). Updated expectations in azure-pipeline-types, azure-cascade-types, azure-diagnostics, conditional-headers tests.
+
+**Remaining e2e errors** (pre-existing, not introduced by this task):
+- CS1503 (446): BinaryContent→RequestContent, RequestContext→CancellationToken type mismatches in convenience methods
+- CS0122 (92): ProtocolOperationHelpers/OperationFinalStateVia inaccessible in LRO specs (needs deep shared source chain)
+- CS0104 (96): Ambiguous references (task 20.12b)
+- Various ARM errors (tasks 20.12b, 20.12e)
+
+**Notes for next iteration**:
+- ProtocolOperationHelpers.cs cannot be included as shared source without VoidValue.cs, OperationFinalStateVia.cs, ProtocolOperation.cs, and ~10 more files. This is a deep dependency chain that needs careful handling (potentially conditional inclusion only for LRO specs).
+- The `ProcessMessage` static call syntax (`HttpPipelineExtensions.ProcessMessage(Pipeline, ...)`) is functionally equivalent to extension method syntax but differs from legacy style. If alignment with legacy is needed later, a different mechanism for adding `using Azure.Core;` will be required.
