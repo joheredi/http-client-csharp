@@ -176,6 +176,52 @@ export const Azure = createLibrary("Azure", {
     kind: "class",
     members: {},
   },
+
+  /**
+   * Represents an async sequence of pages containing typed results.
+   * Used as the return type for async listing operations on ARM collections.
+   * Consumed as `AsyncPageable<TResource>` in GetAllAsync methods.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/azure.asyncpageable-1
+   */
+  AsyncPageable: {
+    kind: "class",
+    members: {},
+  },
+
+  /**
+   * Represents a synchronous sequence of pages containing typed results.
+   * Used as the return type for sync listing operations on ARM collections.
+   * Consumed as `Pageable<TResource>` in GetAll methods.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/azure.pageable-1
+   */
+  Pageable: {
+    kind: "class",
+    members: {},
+  },
+
+  /**
+   * Represents a response that may or may not contain a value.
+   * Used as the return type for GetIfExists methods on ARM collections.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/azure.nullableresponse-1
+   */
+  NullableResponse: {
+    kind: "class",
+    members: {},
+  },
+
+  /**
+   * Represents a response where the value is null/absent.
+   * Used internally by GetIfExists when the resource does not exist (404).
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/azure.novalueresponse-1
+   */
+  NoValueResponse: {
+    kind: "class",
+    members: {},
+  },
 });
 
 /**

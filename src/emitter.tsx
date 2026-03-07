@@ -108,6 +108,8 @@ import { SYSTEM_TEXT_JSON_CONVERTER_DECORATOR_PATTERN } from "./utils/system-tex
 import { detectArmResources } from "./utils/resource-detection.js";
 import { transformSubscriptionIdParameters } from "./utils/subscription-id-transformer.js";
 import { ResourceFile } from "./components/arm/ResourceFile.js";
+import { CollectionFile } from "./components/arm/CollectionFile.js";
+import { PageableWrapperFiles } from "./components/arm/PageableWrapperFiles.js";
 
 /**
  * TypeSpec emitter entry point for the C# HTTP client generator.
@@ -332,6 +334,10 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
         {armProviderSchema?.resources.map((r) => (
           <ResourceFile resource={r} />
         ))}
+        {armProviderSchema?.resources.map((r) => (
+          <CollectionFile resource={r} />
+        ))}
+        {options.management && <PageableWrapperFiles />}
         {fixedEnums.map((e) => (
           <FixedEnumFile type={e} options={options} />
         ))}

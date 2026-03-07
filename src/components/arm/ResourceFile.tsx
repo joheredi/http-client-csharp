@@ -262,7 +262,7 @@ export function ResourceFile(props: ResourceFileProps) {
 /**
  * Searches the TCGC model list for a model matching the given definition ID.
  */
-function findModelByDefinitionId(
+export function findModelByDefinitionId(
   models: readonly SdkModelType[],
   definitionId: string,
 ): SdkModelType | undefined {
@@ -275,7 +275,7 @@ function findModelByDefinitionId(
  * Builds a map from crossLanguageDefinitionId to SdkServiceMethod,
  * scanning ALL clients and ALL method kinds (basic, lro, paging, lropaging).
  */
-function buildMethodLookup(sdkPackage: {
+export function buildMethodLookup(sdkPackage: {
   clients: readonly SdkClientType<SdkHttpOperation>[];
 }): Map<string, SdkServiceMethod<SdkHttpOperation>> {
   const map = new Map<string, SdkServiceMethod<SdkHttpOperation>>();
@@ -301,7 +301,7 @@ function buildMethodLookup(sdkPackage: {
  * Finds the TCGC client that contains methods matching the ARM resource methods.
  * Returns the client and a map of matched methods.
  */
-function findRestClient(
+export function findRestClient(
   sdkPackage: { clients: readonly SdkClientType<SdkHttpOperation>[] },
   resourceMethods: readonly ResourceMethod[],
   methodLookup: Map<string, SdkServiceMethod<SdkHttpOperation>>,
@@ -335,7 +335,7 @@ function findRestClient(
  * Extracts the default API version from the TCGC package.
  * Falls back to "unknown" if no API version is found.
  */
-function getDefaultApiVersion(sdkPackage: {
+export function getDefaultApiVersion(sdkPackage: {
   clients: readonly SdkClientType<SdkHttpOperation>[];
 }): string {
   for (const client of sdkPackage.clients) {
@@ -354,7 +354,7 @@ function getDefaultApiVersion(sdkPackage: {
  * Example: "/subscriptions/{subscriptionId}/resourceGroups/{rg}/providers/Foo/bars/{barName}"
  *   → ["subscriptionId", "rg", "barName"]
  */
-function extractVariableSegments(pattern: string): string[] {
+export function extractVariableSegments(pattern: string): string[] {
   return pattern
     .split("/")
     .filter(isVariableSegment)
@@ -369,7 +369,7 @@ function extractVariableSegments(pattern: string): string[] {
  *
  * Returns an array of C# expressions in the same order as the variable segments.
  */
-function buildIdAccessorExpressions(pattern: string): string[] {
+export function buildIdAccessorExpressions(pattern: string): string[] {
   const segments = pattern.split("/").filter(Boolean);
   const variables = segments.filter(isVariableSegment);
 
@@ -914,7 +914,7 @@ public virtual ${returnType} ${methodName}(${Azure.WaitUntil} waitUntil${bodyPar
 /**
  * Converts a TCGC method name (camelCase) to a PascalCase C# method name.
  */
-function getOperationMethodName(tcgcName: string): string {
+export function getOperationMethodName(tcgcName: string): string {
   if (!tcgcName) return "Unknown";
   return tcgcName.charAt(0).toUpperCase() + tcgcName.slice(1);
 }

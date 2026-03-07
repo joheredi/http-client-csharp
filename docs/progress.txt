@@ -6168,3 +6168,29 @@ E2E tests have pre-existing failures (CS0122 ClientDiagnostics, CS0534 ErrorResu
   - `ArmResourceDeleteAsync` is deprecated in current ARM TypeSpec; use `ArmResourceDeleteWithoutOkAsync`.
   - `SdkClientType.methods` includes `clientaccessor` kind; TypeScript type narrowing requires `"crossLanguageDefinitionId" in method` check instead of `method.kind !== "clientaccessor"`.
 - **What's next:** Task 19.2b (Collection class) or 19.3 (property flattening). Future work should also add LRO operation support once resource detection handles async ARM operations.
+
+### Task 19.2b — ARM Collection class generation (2026-03-07)
+- **What was done:** Implemented `CollectionFile.tsx` component that generates `{Resource}Collection.cs` for each detected ARM resource.
+- **Files created:**
+  - `src/components/arm/CollectionFile.tsx` — Main collection class component (~900 lines)
+  - `src/components/arm/PageableWrapperFiles.tsx` — Infrastructure: AsyncPageableWrapper<T,U> and PageableWrapper<T,U>
+  - `test/arm/collection-file.test.ts` — 16 unit tests validating structure against BazCollection.cs ground truth
+- **Files modified:**
+  - `src/builtins/azure.ts` — Added AsyncPageable, Pageable, NullableResponse, NoValueResponse
+  - `src/components/arm/ResourceFile.tsx` — Exported shared helper functions (findModelByDefinitionId, buildMethodLookup, findRestClient, getDefaultApiVersion, extractVariableSegments, buildIdAccessorExpressions, getOperationMethodName)
+  - `src/emitter.tsx` — Wired CollectionFile and PageableWrapperFiles into output tree
+- **Key patterns:**
+  - Mirrors ResourceFile.tsx architecture: same helper functions, same diagnostic scope pattern
+  - Collection class extends ArmCollection, implements IEnumerable<T>/IAsyncEnumerable<T>
+  - CreateOrUpdate uses OperationFinalStateVia.AzureAsyncOperation (ARM create convention)
+  - GetAll wraps CollectionResultOfT in AsyncPageableWrapper/PageableWrapper (no diagnostic scope — paging is lazy)
+  - Exists/GetIfExists use Pipeline.SendAsync/Send directly with 200/404/default status switch
+  - Parent scope ID accessors = resource ID accessors minus last segment (resource name → method param)
+  - Uses `using` prop on SourceFile for System.Collections (non-generic IEnumerator/IEnumerable)
+  - Model type resolves as Models.Baz (with namespace prefix) via efCsharpRefkey — different from ground truth BazData
+  - PageableWrapper files are static infrastructure emitted only when management=true
+- **Gotchas discovered:**
+  - ClassDeclaration prop for interfaces is `interfaceTypes` (not `interfaces`)
+  - ConditionalAttribute resolves as `ConditionalAttribute("DEBUG")` not `Conditional("DEBUG")` — both valid C#
+  - Legacy resource detection (default) does NOT detect LRO create or list operations; tests use new detection mode
+  - API version variable name derived from resource name (bazApiVersion), not client name (bazsApiVersion)
