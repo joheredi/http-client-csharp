@@ -4246,3 +4246,24 @@ The fix: `buildIdAccessorExpressions()` now accepts an optional `ResourceScope` 
 - **Why**: Nested code template interpolation caused indentation corruption. The existing `buildStandardOperation()` and `buildLroOperation()` also use flat templates — this is the proven pattern.
 - **Rejected**: Parameterized template with async/sync string substitution — caused `GetAsyncAsync` double-suffix bug and indentation inconsistencies.
 - **Detection**: `resourceSupportsTags()` walks model inheritance for `tags` property of type `dict<string, string>`. PUT vs PATCH determined by comparing Update body param type with resource model crossLanguageDefinitionId.
+
+## Design Decisions
+
+### Azure.Core Version for Data Plane Projects (Task 20.3)
+**Decision**: Use Azure.Core 1.51.1 for ALL Azure flavors (data plane and management), not just management.
+**Why**: Azure.Core 1.44.1 doesn't transitively include System.ClientModel with ModelReaderWriterContext/ModelReaderWriterBuildable support. The legacy emitter uses 1.51.1 for all Azure projects via central package management.
+**Rejected**: Adding explicit System.ClientModel PackageReference alongside Azure.Core — the legacy emitter doesn't do this, and it would add a redundant dependency.
+
+## Design Decisions
+
+### Azure shared source files in generated .csproj (Task 20.4)
+
+**Decision**: Add `<Compile Include="$(AzureCoreSharedSources)..." LinkBase="Shared/Core" />` entries directly in the generated .csproj via `ProjectFile.tsx`, and generate a `Directory.Build.props` in the e2e output directory to define the MSBuild variable.
+
+**Why**: The Azure SDK uses a "shared source" pattern for internal infrastructure types like `ClientDiagnostics`, `DiagnosticScope`, `HttpMessageSanitizer`, etc. These are `internal` in the Azure.Core NuGet package and cannot be referenced directly — each project must compile its own copy. The generated .csproj must include these shared source file references.
+
+**Rejected alternative**: "Only fix Spector.Tests.csproj" — The test project includes generated projects via `<ProjectReference>`, meaning each generated project compiles as a separate assembly. Shared sources in the test project are NOT accessible to referenced assemblies. The fix must be in the generated .csproj itself.
+
+**Key pattern**: The `@alloy-js/msbuild` `Compile` component doesn't type `LinkBase` in its props, but `makeTag` renders ALL props as XML attributes at runtime. A `CompileWithLinkBase` type-safe cast wrapper was created to handle this cleanly.
+
+**MSBuild variable**: `$(AzureCoreSharedSources)` is the standard Azure SDK variable (defined in `Directory.Build.Common.props` in real Azure SDK builds). For e2e tests, it's defined in a generated `Directory.Build.props` in `temp/e2e/Spector/http/`.

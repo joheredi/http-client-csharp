@@ -6415,3 +6415,22 @@ Implemented tag manipulation methods for ARM resources that support tags. Each t
 - ✅ Generated csproj now shows Azure.Core 1.51.1
 - ✅ CS0246 ModelReaderWriterContext errors eliminated
 - ⚠️ Pre-existing E2E failures remain: CS0122 ClientDiagnostics (task 20.4)
+
+## Task 20.4 — Fix ClientDiagnostics accessibility for Azure flavor (2026-03-07)
+
+**Problem**: Azure-flavored generated projects failed with CS0122 (member inaccessible) when referencing `ClientDiagnostics` and `DiagnosticScope`. These types are `internal` in the Azure.Core NuGet package and cannot be accessed from generated code. The Azure SDK uses a "shared source" pattern where each project compiles its own copy from source.
+
+**Fix** (two parts):
+1. **`src/components/infrastructure/ProjectFile.tsx`** — Added an `<ItemGroup>` with `<Compile Include="$(AzureCoreSharedSources)..." LinkBase="Shared/Core" />` entries for the 9 base shared source files when `flavor="azure"`. Uses a `CompileWithLinkBase` type-safe wrapper to handle the `LinkBase` attribute not being in `@alloy-js/msbuild`'s typed CompileProps.
+2. **`eng/scripts/emit-e2e.ts`** — Added `generateDirectoryBuildProps()` function that creates `temp/e2e/Spector/http/Directory.Build.props` defining `$(AzureCoreSharedSources)` pointing to the azure-sdk-for-net submodule's shared source directory.
+
+**Shared source files included** (matches legacy `NewAzureProjectScaffolding._operationSharedFiles`):
+- RawRequestUriBuilder.cs, TypeFormatters.cs, RequestHeaderExtensions.cs
+- AppContextSwitchHelper.cs, ClientDiagnostics.cs, DiagnosticScopeFactory.cs
+- DiagnosticScope.cs, HttpMessageSanitizer.cs, TrimmingAttribute.cs
+
+**Tests added**: 2 new tests in `test/project-scaffolding.test.ts`:
+- Verifies Azure csproj includes all 9 shared source files
+- Verifies unbranded csproj does NOT include shared source files
+
+**Results**: ✅ Build passes | ✅ All unit tests pass | ✅ CS0122 errors eliminated | ⚠️ Pre-existing E2E failures remain (CS0246 HttpMessage, CS1501 CreateMessage — separate tasks)

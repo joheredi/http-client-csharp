@@ -112,6 +112,48 @@ describe("ProjectFile", () => {
   });
 
   /**
+   * Verifies that Azure-flavored projects include Azure.Core shared source files
+   * via $(AzureCoreSharedSources) MSBuild variable. These internal types (ClientDiagnostics,
+   * DiagnosticScope, etc.) cannot be referenced from the Azure.Core NuGet package because
+   * they are internal. Each generated project must compile its own copy from source.
+   *
+   * Without these includes, Azure projects fail with CS0122 (member inaccessible due to
+   * protection level) when referencing ClientDiagnostics or DiagnosticScope.
+   *
+   * This matches the legacy emitter's NewAzureProjectScaffolding behavior.
+   */
+  it("includes Azure.Core shared source files when flavor is azure", async () => {
+    const [{ outputs }] = await AzureHttpTester.compileAndDiagnose(`
+      @service
+      namespace AzureService;
+    `);
+
+    const csprojKey = Object.keys(outputs).find((k) => k.endsWith(".csproj"));
+    expect(csprojKey).toBeDefined();
+
+    const csproj = outputs[csprojKey!];
+
+    // All 9 base shared source files must be present
+    const expectedSharedFiles = [
+      "RawRequestUriBuilder.cs",
+      "TypeFormatters.cs",
+      "RequestHeaderExtensions.cs",
+      "AppContextSwitchHelper.cs",
+      "ClientDiagnostics.cs",
+      "DiagnosticScopeFactory.cs",
+      "DiagnosticScope.cs",
+      "HttpMessageSanitizer.cs",
+      "TrimmingAttribute.cs",
+    ];
+
+    for (const file of expectedSharedFiles) {
+      expect(csproj).toContain(
+        `<Compile Include="$(AzureCoreSharedSources)${file}" LinkBase="Shared/Core" />`,
+      );
+    }
+  });
+
+  /**
    * Verifies that unbranded (default) flavor continues to reference
    * System.ClientModel and does NOT include Azure.Core. This ensures
    * the Azure flavor change doesn't regress the default behavior.
@@ -130,6 +172,25 @@ describe("ProjectFile", () => {
       '<PackageReference Include="System.ClientModel" Version="1.9.0" />',
     );
     expect(csproj).not.toContain("Azure.Core");
+  });
+
+  /**
+   * Verifies that unbranded projects do NOT include Azure.Core shared source files.
+   * Only Azure-flavored projects need the shared source includes. Including them
+   * in unbranded projects would cause build failures ($(AzureCoreSharedSources) undefined).
+   */
+  it("does not include shared source files when flavor is unbranded", async () => {
+    const [{ outputs }] = await HttpTester.compileAndDiagnose(`
+      @service
+      namespace UnbrandedService;
+    `);
+
+    const csprojKey = Object.keys(outputs).find((k) => k.endsWith(".csproj"));
+    expect(csprojKey).toBeDefined();
+
+    const csproj = outputs[csprojKey!];
+    expect(csproj).not.toContain("AzureCoreSharedSources");
+    expect(csproj).not.toContain("LinkBase");
   });
 
   /**
