@@ -1379,7 +1379,7 @@
           "title": "Cascade Azure pipeline types to REST operations",
           "description": "Update all operation-level components to use Azure pipeline types when flavor=azure. RestClientFile.tsx: HttpMessage/Request for CreateMessage, ResponseClassifier for classification. ProtocolMethod.tsx: HttpMessage in method body, Response return type, RequestContext parameter. ConvenienceMethod.tsx: Response return type, RequestFailedException for exceptions. PagingMethods.tsx: RequestContext parameter, Response-based returns. CollectionResultFile.tsx: HttpMessage in iteration logic. ErrorResultFile.tsx: Response type, RequestFailedException. CastOperators.tsx: Response type in extraction operators. CancellationTokenExtensionsFile.tsx: RequestContext return type. End-to-end tests for Azure-flavored protocol and convenience methods.",
           "phase": "phase-17",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "17.3"
           ],

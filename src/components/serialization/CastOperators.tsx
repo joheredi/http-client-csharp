@@ -34,6 +34,7 @@ import { SystemTextJson } from "../../builtins/system-text-json.js";
 import { SystemXmlLinq } from "../../builtins/system-xml-linq.js";
 import { isDynamicModel } from "../models/DynamicModel.js";
 import { collectPropertyCSharpNames } from "../../utils/property.js";
+import { getPipelineTypes } from "../../utils/pipeline-types.js";
 
 /**
  * Props for the {@link ImplicitBinaryContentOperator} component.
@@ -41,6 +42,8 @@ import { collectPropertyCSharpNames } from "../../utils/property.js";
 export interface ImplicitBinaryContentOperatorProps {
   /** The TCGC SDK model type for which to generate the cast operator. */
   type: SdkModelType;
+  /** The emitter flavor ("azure" or "unbranded") for selecting pipeline types. */
+  flavor?: string;
 }
 
 /**
@@ -93,7 +96,8 @@ export interface ImplicitBinaryContentOperatorProps {
 export function ImplicitBinaryContentOperator(
   props: ImplicitBinaryContentOperatorProps,
 ) {
-  const { type } = props;
+  const { type, flavor } = props;
+  const pipelineTypes = getPipelineTypes(flavor ?? "unbranded");
 
   // Only generate for input models — models used as operation parameters.
   // Output-only models (UsageFlags.Output without Input) don't need this
@@ -113,14 +117,14 @@ export function ImplicitBinaryContentOperator(
     <>
       {`/// <param name="${paramName}"> The <see cref="${modelName}"/> to serialize into <see cref="BinaryContent"/>. </param>`}
       {"\n"}
-      {code`public static implicit operator ${SystemClientModel.BinaryContent}(${modelName} ${paramName})`}
+      {code`public static implicit operator ${pipelineTypes.binaryContent}(${modelName} ${paramName})`}
       {"\n{"}
       {`\n    if (${paramName} == null)`}
       {"\n    {"}
       {"\n        return null;"}
       {"\n    }"}
       {"\n"}
-      {code`    return ${SystemClientModel.BinaryContent}.Create(${paramName}, ModelSerializationExtensions.WireOptions);`}
+      {code`    return ${pipelineTypes.binaryContent}.Create(${paramName}, ModelSerializationExtensions.WireOptions);`}
       {"\n}"}
     </>
   );
@@ -132,6 +136,8 @@ export function ImplicitBinaryContentOperator(
 export interface ExplicitClientResultOperatorProps {
   /** The TCGC SDK model type for which to generate the cast operator. */
   type: SdkModelType;
+  /** The emitter flavor ("azure" or "unbranded") for selecting pipeline types. */
+  flavor?: string;
 }
 
 /**
@@ -232,7 +238,9 @@ export interface ExplicitClientResultOperatorProps {
 export function ExplicitClientResultOperator(
   props: ExplicitClientResultOperatorProps,
 ) {
-  const { type } = props;
+  const { type, flavor } = props;
+  const pipelineTypes = getPipelineTypes(flavor ?? "unbranded");
+  const isAzure = flavor === "azure";
 
   // Only generate for output models — models returned from operations.
   // Input-only models (UsageFlags.Input without Output) don't need this
@@ -261,11 +269,11 @@ export function ExplicitClientResultOperator(
   // Select the appropriate operator body based on the model's serialization formats.
   // The dispatch mirrors the legacy emitter's GetExplicitFromClientResultMethod().
   if (supportsJson && supportsXml) {
-    return renderDualFormatOperator(modelName, typeRef, isDynamic);
+    return renderDualFormatOperator(modelName, typeRef, isDynamic, pipelineTypes, isAzure);
   } else if (supportsXml) {
-    return renderXmlOnlyOperator(modelName, typeRef);
+    return renderXmlOnlyOperator(modelName, typeRef, pipelineTypes, isAzure);
   } else {
-    return renderJsonOnlyOperator(modelName, typeRef, isDynamic);
+    return renderJsonOnlyOperator(modelName, typeRef, isDynamic, pipelineTypes, isAzure);
   }
 }
 
@@ -284,20 +292,29 @@ function renderJsonOnlyOperator(
   modelName: string,
   typeRef: string,
   isDynamic: boolean,
+  pipelineTypes?: import("../../utils/pipeline-types.js").PipelineTypes,
+  isAzure?: boolean,
 ) {
+  const resultType = pipelineTypes?.clientResult ?? SystemClientModel.ClientResult;
+  const responseType = pipelineTypes?.response ?? SystemClientModelPrimitives.PipelineResponse;
   // Dynamic models need the BinaryData data parameter for JsonPatch initialization
   const deserializeArgs = isDynamic
     ? `document.RootElement, response.Content, ModelSerializationExtensions.WireOptions`
     : `document.RootElement, ModelSerializationExtensions.WireOptions`;
 
+  // Azure: result IS the Response — no GetRawResponse() needed
+  const responseExpr = isAzure
+    ? code`${responseType} response = result;`
+    : code`${responseType} response = result.GetRawResponse();`;
+
   return (
     <>
       {`/// <param name="result"> The <see cref="ClientResult"/> to deserialize the <see cref="${modelName}"/> from. </param>`}
       {"\n"}
-      {code`public static explicit operator ${modelName}(${SystemClientModel.ClientResult} result)`}
+      {code`public static explicit operator ${modelName}(${resultType} result)`}
       {"\n{"}
       {"\n    "}
-      {code`${SystemClientModelPrimitives.PipelineResponse} response = result.GetRawResponse();`}
+      {responseExpr}
       {"\n    "}
       {code`using ${SystemTextJson.JsonDocument} document = ${SystemTextJson.JsonDocument}.Parse(response.Content, ModelSerializationExtensions.JsonDocumentOptions);`}
       {`\n    return ${typeRef}.Deserialize${modelName}(${deserializeArgs});`}
@@ -315,15 +332,29 @@ function renderJsonOnlyOperator(
  *
  * The legacy emitter generates this in `BuildXmlExplicitFromClientResult()`.
  */
-function renderXmlOnlyOperator(modelName: string, typeRef: string) {
+function renderXmlOnlyOperator(
+  modelName: string,
+  typeRef: string,
+  pipelineTypes?: import("../../utils/pipeline-types.js").PipelineTypes,
+  isAzure?: boolean,
+) {
+  const resultType = pipelineTypes?.clientResult ?? SystemClientModel.ClientResult;
+  const responseType = pipelineTypes?.response ?? SystemClientModelPrimitives.PipelineResponse;
+
+  // Azure: result IS the Response; unbranded: need GetRawResponse()
+  // XML operator uses `using` on the response variable
+  const responseExpr = isAzure
+    ? code`using ${responseType} response = result;`
+    : code`using ${responseType} response = result.GetRawResponse();`;
+
   return (
     <>
       {`/// <param name="result"> The <see cref="ClientResult"/> to deserialize the <see cref="${modelName}"/> from. </param>`}
       {"\n"}
-      {code`public static explicit operator ${modelName}(${SystemClientModel.ClientResult} result)`}
+      {code`public static explicit operator ${modelName}(${resultType} result)`}
       {"\n{"}
       {"\n    "}
-      {code`using ${SystemClientModelPrimitives.PipelineResponse} response = result.GetRawResponse();`}
+      {responseExpr}
       {"\n    "}
       {code`using ${SystemIO.Stream} stream = response.ContentStream;`}
       {"\n    if ((stream == null))"}
@@ -358,20 +389,29 @@ function renderDualFormatOperator(
   modelName: string,
   typeRef: string,
   isDynamic: boolean,
+  pipelineTypes?: import("../../utils/pipeline-types.js").PipelineTypes,
+  isAzure?: boolean,
 ) {
+  const resultType = pipelineTypes?.clientResult ?? SystemClientModel.ClientResult;
+  const responseType = pipelineTypes?.response ?? SystemClientModelPrimitives.PipelineResponse;
   // Dynamic models need the BinaryData data parameter for JsonPatch initialization
   const jsonDeserializeArgs = isDynamic
     ? `document.RootElement, response.Content, ModelSerializationExtensions.WireOptions`
     : `document.RootElement, ModelSerializationExtensions.WireOptions`;
 
+  // Azure: result IS the Response; unbranded: need GetRawResponse()
+  const responseExpr = isAzure
+    ? code`using ${responseType} response = result;`
+    : code`using ${responseType} response = result.GetRawResponse();`;
+
   return (
     <>
       {`/// <param name="result"> The <see cref="ClientResult"/> to deserialize the <see cref="${modelName}"/> from. </param>`}
       {"\n"}
-      {code`public static explicit operator ${modelName}(${SystemClientModel.ClientResult} result)`}
+      {code`public static explicit operator ${modelName}(${resultType} result)`}
       {"\n{"}
       {"\n    "}
-      {code`using ${SystemClientModelPrimitives.PipelineResponse} response = result.GetRawResponse();`}
+      {responseExpr}
       {"\n"}
       {"\n    "}
       {code`if ((response.Headers.TryGetValue("Content-Type", out string value) && value.StartsWith("application/json", ${System.StringComparison}.OrdinalIgnoreCase)))`}

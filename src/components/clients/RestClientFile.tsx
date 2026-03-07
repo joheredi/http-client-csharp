@@ -44,6 +44,10 @@ import {
   getContinuationTokenParamName,
   reorderTokenFirst,
 } from "../../utils/parameter-ordering.js";
+import {
+  getPipelineTypes,
+  type PipelineTypes,
+} from "../../utils/pipeline-types.js";
 
 /**
  * A unique set of success status codes that needs a PipelineMessageClassifier.
@@ -127,6 +131,7 @@ export function RestClientFile(props: RestClientFileProps) {
   const siblingNames = buildSiblingNameSet(client.methods, (n) =>
     namePolicy.getName(n, "class"),
   );
+  const pipelineTypes = getPipelineTypes(options.flavor ?? "unbranded");
 
   // Get service methods that have HTTP operations.
   // Filter to methods with an HTTP operation (basic, paging, lro, lropaging).
@@ -168,6 +173,7 @@ export function RestClientFile(props: RestClientFileProps) {
                 method={method}
                 classifiers={classifiers}
                 siblingNames={siblingNames}
+                pipelineTypes={pipelineTypes}
               />
             </>
           ))}
@@ -184,6 +190,7 @@ export function RestClientFile(props: RestClientFileProps) {
                 }
                 classifiers={classifiers}
                 siblingNames={siblingNames}
+                pipelineTypes={pipelineTypes}
               />
             </>
           ))}
@@ -251,6 +258,8 @@ interface CreateRequestMethodProps {
   classifiers: ClassifierInfo[];
   /** PascalCase names of all sibling methods, used to avoid List→Get naming collisions. */
   siblingNames: Set<string>;
+  /** Flavor-resolved pipeline type references for HttpMessage/Request/RequestOptions. */
+  pipelineTypes: PipelineTypes;
 }
 
 /**
@@ -266,7 +275,7 @@ interface CreateRequestMethodProps {
  * 6. Return the configured message
  */
 function CreateRequestMethod(props: CreateRequestMethodProps) {
-  const { method, siblingNames } = props;
+  const { method, siblingNames, pipelineTypes } = props;
   const operation = method.operation;
   const namePolicy = useCSharpNamePolicy();
 
@@ -303,6 +312,7 @@ function CreateRequestMethod(props: CreateRequestMethodProps) {
     queryParams,
     headerParams,
     bodyParam,
+    pipelineTypes,
   );
 
   // For paging methods with continuation tokens, reorder params so the
@@ -333,13 +343,14 @@ function CreateRequestMethod(props: CreateRequestMethodProps) {
     httpVerb,
     classifierRef,
     getParamName,
+    pipelineTypes,
   );
 
   return (
     <Method
       internal
       name={namekey(methodName, { ignoreNameConflict: true })}
-      returns={SystemClientModelPrimitives.PipelineMessage}
+      returns={pipelineTypes.message}
       parameters={methodParams}
     >
       {body}
@@ -374,6 +385,8 @@ interface CreateNextRequestMethodProps {
     );
   classifiers: ClassifierInfo[];
   siblingNames: Set<string>;
+  /** Flavor-resolved pipeline type references for HttpMessage/Request/RequestOptions. */
+  pipelineTypes: PipelineTypes;
 }
 
 /**
@@ -407,7 +420,7 @@ interface CreateNextRequestMethodProps {
  * ```
  */
 function CreateNextRequestMethod(props: CreateNextRequestMethodProps) {
-  const { method, siblingNames } = props;
+  const { method, siblingNames, pipelineTypes } = props;
   const operation = method.operation;
   const namePolicy = useCSharpNamePolicy();
 
@@ -448,9 +461,9 @@ function CreateNextRequestMethod(props: CreateNextRequestMethodProps) {
     "\n",
     "}",
     "\n",
-    `PipelineMessage message = Pipeline.CreateMessage(uri.ToUri(), "${httpVerb}", ${classifierRef});`,
+    code`${pipelineTypes.message} message = Pipeline.CreateMessage(uri.ToUri(), "${httpVerb}", ${classifierRef});`,
     "\n",
-    "PipelineRequest request = message.Request;",
+    code`${pipelineTypes.request} request = message.Request;`,
   ];
 
   // Add Accept header if the operation specifies one
@@ -464,12 +477,12 @@ function CreateNextRequestMethod(props: CreateNextRequestMethodProps) {
     <Method
       internal
       name={namekey(methodName, { ignoreNameConflict: true })}
-      returns={SystemClientModelPrimitives.PipelineMessage}
+      returns={pipelineTypes.message}
       parameters={[
         { name: "nextPage", type: System.Uri as Children },
         {
           name: "options",
-          type: SystemClientModelPrimitives.RequestOptions as Children,
+          type: pipelineTypes.requestOptions as Children,
         },
       ]}
     >
@@ -659,6 +672,7 @@ function buildMethodParams(
   queryParams: SdkQueryParameter[],
   headerParams: SdkHeaderParameter[],
   bodyParam?: SdkBodyParameter,
+  pipelineTypes?: PipelineTypes,
 ): Array<{ name: string; type: Children }> {
   const params: Array<{
     name: string;
@@ -720,7 +734,7 @@ function buildMethodParams(
     const priority = bodyParam.optional ? 300 : 200;
     params.push({
       name: "content",
-      type: SystemClientModel.BinaryContent,
+      type: pipelineTypes?.binaryContent ?? SystemClientModel.BinaryContent,
       priority,
       index: index++,
     });
@@ -745,7 +759,7 @@ function buildMethodParams(
   const result = params.map(({ name, type }) => ({ name, type }));
   result.push({
     name: "options",
-    type: SystemClientModelPrimitives.RequestOptions,
+    type: pipelineTypes?.requestOptions ?? SystemClientModelPrimitives.RequestOptions,
   });
 
   return result;
@@ -1396,8 +1410,10 @@ function buildRequestBody(
   httpVerb: string,
   classifierRef: string,
   getParamName: (name: string) => string,
+  pipelineTypes?: PipelineTypes,
 ): Children {
-  const SCP = SystemClientModelPrimitives;
+  const msgType = pipelineTypes?.message ?? SystemClientModelPrimitives.PipelineMessage;
+  const reqType = pipelineTypes?.request ?? SystemClientModelPrimitives.PipelineRequest;
   const parts: Children[] = [];
 
   // 1. URI builder initialization
@@ -1435,9 +1451,9 @@ function buildRequestBody(
   // Note: \n must be a separate plain string — the code`` template tag strips leading \n.
   parts.push(
     "\n",
-    code`${SCP.PipelineMessage} message = Pipeline.CreateMessage(uri.ToUri(), "${httpVerb}", ${classifierRef});`,
+    code`${msgType} message = Pipeline.CreateMessage(uri.ToUri(), "${httpVerb}", ${classifierRef});`,
   );
-  parts.push("\n", code`${SCP.PipelineRequest} request = message.Request;`);
+  parts.push("\n", code`${reqType} request = message.Request;`);
 
   // 5. Headers — custom headers first
   // Check if Accept is a variable header param (content negotiation)

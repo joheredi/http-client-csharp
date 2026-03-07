@@ -48,6 +48,10 @@ import {
 import { reorderTokenFirst } from "../../utils/parameter-ordering.js";
 import { getClientFileName } from "../../utils/clients.js";
 import { buildProtocolParams } from "../clients/ProtocolMethod.js";
+import {
+  getPipelineTypes,
+  type PipelineTypes,
+} from "../../utils/pipeline-types.js";
 
 /**
  * Props for the {@link CollectionResultFiles} component.
@@ -151,6 +155,8 @@ interface CollectionResultFileProps {
 function CollectionResultFile(props: CollectionResultFileProps) {
   const { client, method, options, isAsync, isConvenience } = props;
   const namePolicy = useCSharpNamePolicy();
+  const pipelineTypes = getPipelineTypes(options.flavor ?? "unbranded");
+  const isAzure = options.flavor === "azure";
   // Use the hierarchical client name to match the legacy emitter's naming
   // convention. For depth-2+ sub-clients, this produces names like
   // "PathParametersLabelExpansion" instead of just "LabelExpansion".
@@ -306,8 +312,8 @@ function CollectionResultFile(props: CollectionResultFileProps) {
   // Method name and return type for GetRawPages/GetRawPagesAsync
   const getRawPagesName = isAsync ? "GetRawPagesAsync" : "GetRawPages";
   const returnType = isAsync
-    ? code`${SystemCollectionsGeneric.IAsyncEnumerable}<${SystemClientModel.ClientResult}>`
-    : code`${SystemCollectionsGeneric.IEnumerable}<${SystemClientModel.ClientResult}>`;
+    ? code`${SystemCollectionsGeneric.IAsyncEnumerable}<${pipelineTypes.clientResult}>`
+    : code`${SystemCollectionsGeneric.IEnumerable}<${pipelineTypes.clientResult}>`;
 
   // Request factory method name (matches RestClientFile's Create{Op}Request pattern)
   const requestMethodName = `Create${operationName}Request`;
@@ -325,6 +331,8 @@ function CollectionResultFile(props: CollectionResultFileProps) {
         nextLinkPropertyPath!,
         operationParams,
         isNextLinkString,
+        pipelineTypes,
+        isAzure,
       )
     : hasContinuationToken
       ? isContinuationTokenHeader
@@ -334,6 +342,8 @@ function CollectionResultFile(props: CollectionResultFileProps) {
             operationParams,
             tokenParamName!,
             continuationTokenHeaderName!,
+            pipelineTypes,
+            isAzure,
           )
         : buildContinuationTokenBodyGetRawPagesBody(
             isAsync,
@@ -342,11 +352,15 @@ function CollectionResultFile(props: CollectionResultFileProps) {
             tokenParamName!,
             responseTypeExpr!,
             continuationTokenPropertyPath!,
+            pipelineTypes,
+            isAzure,
           )
       : buildSinglePageGetRawPagesBody(
           isAsync,
           requestMethodName,
           operationParams,
+          pipelineTypes,
+          isAzure,
         );
 
   // Build GetContinuationToken method body.
@@ -394,7 +408,7 @@ function CollectionResultFile(props: CollectionResultFileProps) {
             private
             readonly
             name="options"
-            type={SystemClientModelPrimitives.RequestOptions}
+            type={pipelineTypes.requestOptions}
           />
           {"\n\n"}
           {buildConstructorDoc(className, clientName, operationParams)}
@@ -409,7 +423,7 @@ function CollectionResultFile(props: CollectionResultFileProps) {
               })),
               {
                 name: "options",
-                type: SystemClientModelPrimitives.RequestOptions as Children,
+                type: pipelineTypes.requestOptions as Children,
               },
             ]}
           >
@@ -441,7 +455,7 @@ function CollectionResultFile(props: CollectionResultFileProps) {
             parameters={[
               {
                 name: "page",
-                type: SystemClientModel.ClientResult as Children,
+                type: pipelineTypes.clientResult as Children,
               },
             ]}
           >
@@ -465,7 +479,7 @@ function CollectionResultFile(props: CollectionResultFileProps) {
                 parameters={[
                   {
                     name: "page",
-                    type: SystemClientModel.ClientResult as Children,
+                    type: pipelineTypes.clientResult as Children,
                   },
                 ]}
               >
@@ -535,20 +549,32 @@ function buildSinglePageGetRawPagesBody(
   isAsync: boolean,
   requestMethodName: string,
   params: { name: string }[],
+  pipelineTypes?: PipelineTypes,
+  isAzure?: boolean,
 ): Children[] {
   const requestArgs = buildStoredFieldArgs(params);
+  const msgType = pipelineTypes?.message ?? SystemClientModelPrimitives.PipelineMessage;
+  const resultType = pipelineTypes?.clientResult ?? SystemClientModel.ClientResult;
 
   if (isAsync) {
+    const processExpr = `await _client.Pipeline.ProcessMessageAsync(message, _options).ConfigureAwait(false)`;
+    const yieldExpr = isAzure
+      ? code`yield return ${processExpr};`
+      : code`yield return ${resultType}.FromResponse(${processExpr});`;
     return [
-      code`${SystemClientModelPrimitives.PipelineMessage} message = _client.${requestMethodName}(${requestArgs});`,
+      code`${msgType} message = _client.${requestMethodName}(${requestArgs});`,
       "\n",
-      code`yield return ${SystemClientModel.ClientResult}.FromResponse(await _client.Pipeline.ProcessMessageAsync(message, _options).ConfigureAwait(false));`,
+      yieldExpr,
     ];
   }
+  const processExpr = `_client.Pipeline.ProcessMessage(message, _options)`;
+  const yieldExpr = isAzure
+    ? code`yield return ${processExpr};`
+    : code`yield return ${resultType}.FromResponse(${processExpr});`;
   return [
-    code`${SystemClientModelPrimitives.PipelineMessage} message = _client.${requestMethodName}(${requestArgs});`,
+    code`${msgType} message = _client.${requestMethodName}(${requestArgs});`,
     "\n",
-    code`yield return ${SystemClientModel.ClientResult}.FromResponse(_client.Pipeline.ProcessMessage(message, _options));`,
+    yieldExpr,
   ];
 }
 
@@ -577,12 +603,16 @@ function buildNextLinkGetRawPagesBody(
   nextLinkPropertyPath: string,
   params: { name: string }[],
   isStringNextLink: boolean,
+  pipelineTypes?: PipelineTypes,
+  isAzure?: boolean,
 ): Children[] {
   const processMessage = isAsync
     ? code`await _client.Pipeline.ProcessMessageAsync(message, _options).ConfigureAwait(false)`
     : code`_client.Pipeline.ProcessMessage(message, _options)`;
 
   const requestArgs = buildStoredFieldArgs(params);
+  const msgType = pipelineTypes?.message ?? SystemClientModelPrimitives.PipelineMessage;
+  const resultType = pipelineTypes?.clientResult ?? SystemClientModel.ClientResult;
 
   // For string next-link properties, extract the string and convert to Uri.
   // For Uri next-link properties, assign directly.
@@ -596,8 +626,13 @@ function buildNextLinkGetRawPagesBody(
         code`    nextPageUri = ((${responseTypeExpr})result).${nextLinkPropertyPath};`,
       ];
 
+  // Azure: ProcessMessage returns Response directly (no FromResponse wrapper)
+  const resultExpr = isAzure
+    ? code`${resultType} result = ${processMessage};`
+    : code`${resultType} result = ${resultType}.FromResponse(${processMessage});`;
+
   return [
-    code`${SystemClientModelPrimitives.PipelineMessage} message = _client.${requestMethodName}(${requestArgs});`,
+    code`${msgType} message = _client.${requestMethodName}(${requestArgs});`,
     "\n",
     code`${System.Uri} nextPageUri = null;`,
     "\n",
@@ -605,10 +640,8 @@ function buildNextLinkGetRawPagesBody(
     "\n",
     "{",
     "\n",
-    // Indentation is separated from code templates to avoid whitespace-only
-    // first template chunks being stripped by the code tag.
     "    ",
-    code`${SystemClientModel.ClientResult} result = ${SystemClientModel.ClientResult}.FromResponse(${processMessage});`,
+    resultExpr,
     "\n",
     "    yield return result;",
     "\n",
@@ -749,6 +782,8 @@ function buildContinuationTokenBodyGetRawPagesBody(
   tokenParamName: string,
   responseTypeExpr: Children,
   tokenPropertyPath: string,
+  pipelineTypes?: PipelineTypes,
+  isAzure?: boolean,
 ): Children[] {
   const processMessage = isAsync
     ? code`await _client.Pipeline.ProcessMessageAsync(message, _options).ConfigureAwait(false)`
@@ -756,9 +791,15 @@ function buildContinuationTokenBodyGetRawPagesBody(
 
   const initialArgs = buildCreateRequestArgs(params, tokenParamName, false);
   const subsequentArgs = buildCreateRequestArgs(params, tokenParamName, true);
+  const msgType = pipelineTypes?.message ?? SystemClientModelPrimitives.PipelineMessage;
+  const resultType = pipelineTypes?.clientResult ?? SystemClientModel.ClientResult;
+
+  const resultExpr = isAzure
+    ? code`${resultType} result = ${processMessage};`
+    : code`${resultType} result = ${resultType}.FromResponse(${processMessage});`;
 
   return [
-    code`${SystemClientModelPrimitives.PipelineMessage} message = _client.${requestMethodName}(${initialArgs});`,
+    code`${msgType} message = _client.${requestMethodName}(${initialArgs});`,
     "\n",
     "string nextToken = null;",
     "\n",
@@ -767,7 +808,7 @@ function buildContinuationTokenBodyGetRawPagesBody(
     "{",
     "\n",
     "    ",
-    code`${SystemClientModel.ClientResult} result = ${SystemClientModel.ClientResult}.FromResponse(${processMessage});`,
+    resultExpr,
     "\n",
     "    yield return result;",
     "\n",
@@ -808,6 +849,8 @@ function buildContinuationTokenHeaderGetRawPagesBody(
   params: { name: string }[],
   tokenParamName: string,
   headerName: string,
+  pipelineTypes?: PipelineTypes,
+  isAzure?: boolean,
 ): Children[] {
   const processMessage = isAsync
     ? code`await _client.Pipeline.ProcessMessageAsync(message, _options).ConfigureAwait(false)`
@@ -815,9 +858,21 @@ function buildContinuationTokenHeaderGetRawPagesBody(
 
   const initialArgs = buildCreateRequestArgs(params, tokenParamName, false);
   const subsequentArgs = buildCreateRequestArgs(params, tokenParamName, true);
+  const msgType = pipelineTypes?.message ?? SystemClientModelPrimitives.PipelineMessage;
+  const resultType = pipelineTypes?.clientResult ?? SystemClientModel.ClientResult;
+
+  const resultExpr = isAzure
+    ? code`${resultType} result = ${processMessage};`
+    : code`${resultType} result = ${resultType}.FromResponse(${processMessage});`;
+
+  // For Azure, result IS the Response — use it directly for header access.
+  // For unbranded, need result.GetRawResponse() to access headers.
+  const headerAccessExpr = isAzure
+    ? `result.Headers.TryGetValue("${headerName}", out string value)`
+    : `result.GetRawResponse().Headers.TryGetValue("${headerName}", out string value)`;
 
   return [
-    code`${SystemClientModelPrimitives.PipelineMessage} message = _client.${requestMethodName}(${initialArgs});`,
+    code`${msgType} message = _client.${requestMethodName}(${initialArgs});`,
     "\n",
     "string nextToken = null;",
     "\n",
@@ -826,12 +881,12 @@ function buildContinuationTokenHeaderGetRawPagesBody(
     "{",
     "\n",
     "    ",
-    code`${SystemClientModel.ClientResult} result = ${SystemClientModel.ClientResult}.FromResponse(${processMessage});`,
+    resultExpr,
     "\n",
     "    yield return result;",
     "\n",
     "\n",
-    `    if (result.GetRawResponse().Headers.TryGetValue("${headerName}", out string value) && !string.IsNullOrEmpty(value))`,
+    `    if (${headerAccessExpr} && !string.IsNullOrEmpty(value))`,
     "\n",
     "    {",
     "\n",

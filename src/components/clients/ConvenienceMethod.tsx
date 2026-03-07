@@ -31,6 +31,7 @@ import {
   buildSiblingNameSet,
   cleanOperationName,
 } from "../../utils/operation-naming.js";
+import { getPipelineTypes } from "../../utils/pipeline-types.js";
 
 /**
  * Metadata for a convenience method parameter, including the type expression,
@@ -68,6 +69,8 @@ export interface ConvenienceParam {
 export interface ConvenienceMethodsProps {
   /** The TCGC SDK client type whose HTTP operations produce convenience method pairs. */
   client: SdkClientType<SdkHttpOperation>;
+  /** The emitter flavor ("azure" or "unbranded") for selecting pipeline types. */
+  flavor?: string;
 }
 
 /**
@@ -110,11 +113,13 @@ export interface ConvenienceMethodsProps {
  * ```
  */
 export function ConvenienceMethods(props: ConvenienceMethodsProps) {
-  const { client } = props;
+  const { client, flavor } = props;
   const namePolicy = useCSharpNamePolicy();
   const siblingNames = buildSiblingNameSet(client.methods, (n) =>
     namePolicy.getName(n, "class"),
   );
+  const pipelineTypes = getPipelineTypes(flavor ?? "unbranded");
+  const isAzure = flavor === "azure";
 
   const methods = client.methods.filter(
     (m): m is SdkServiceMethod<SdkHttpOperation> =>
@@ -203,11 +208,11 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
 
         // Build return types
         const syncReturn = responseInfo
-          ? code`${SystemClientModel.ClientResult}<${responseInfo.typeExpr}>`
-          : SystemClientModel.ClientResult;
+          ? code`${pipelineTypes.clientResult}<${responseInfo.typeExpr}>`
+          : pipelineTypes.clientResult;
         const asyncReturn = responseInfo
-          ? code`${SystemThreadingTasks.Task}<${SystemClientModel.ClientResult}<${responseInfo.typeExpr}>>`
-          : code`${SystemThreadingTasks.Task}<${SystemClientModel.ClientResult}>`;
+          ? code`${SystemThreadingTasks.Task}<${pipelineTypes.clientResult}<${responseInfo.typeExpr}>>`
+          : code`${SystemThreadingTasks.Task}<${pipelineTypes.clientResult}>`;
 
         const xmlDoc = buildConvenienceXmlDoc(
           description,
@@ -218,14 +223,17 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
         const validation = buildConvenienceValidation(assertableParams);
 
         // Sync method body — typed responses deserialize the result and wrap
-        // in ClientResult.FromValue(). Void responses delegate directly.
+        // in ClientResult.FromValue() / Response.FromValue(). Void responses delegate directly.
+        // Azure: Response.FromValue(value, result) — result IS the Response
+        // Unbranded: ClientResult.FromValue(value, result.GetRawResponse())
+        const rawResponseExpr = isAzure ? "result" : "result.GetRawResponse()";
         const syncBody = responseInfo
           ? [
               validation,
               assertableParams.length > 0 ? "\n\n" : "",
-              code`${SystemClientModel.ClientResult} result = ${methodName}(${protocolCallExpr});`,
+              code`${pipelineTypes.clientResult} result = ${methodName}(${protocolCallExpr});`,
               "\n",
-              code`return ${SystemClientModel.ClientResult}.FromValue(${responseInfo.deserializeExpr}, result.GetRawResponse());`,
+              code`return ${pipelineTypes.clientResult}.FromValue(${responseInfo.deserializeExpr}, ${rawResponseExpr});`,
             ]
           : [
               validation,
@@ -238,9 +246,9 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
           ? [
               validation,
               assertableParams.length > 0 ? "\n\n" : "",
-              code`${SystemClientModel.ClientResult} result = await ${methodName}Async(${protocolCallExpr}).ConfigureAwait(false);`,
+              code`${pipelineTypes.clientResult} result = await ${methodName}Async(${protocolCallExpr}).ConfigureAwait(false);`,
               "\n",
-              code`return ${SystemClientModel.ClientResult}.FromValue(${responseInfo.deserializeExpr}, result.GetRawResponse());`,
+              code`return ${pipelineTypes.clientResult}.FromValue(${responseInfo.deserializeExpr}, ${rawResponseExpr});`,
             ]
           : [
               validation,

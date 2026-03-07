@@ -393,9 +393,9 @@ export function ClientFile(props: ClientFileProps) {
             </>
           )}
           {props.children}
-          <ConvenienceMethods client={client} />
-          <ProtocolMethods client={client} />
-          <PagingMethods client={client} />
+          <ConvenienceMethods client={client} flavor={options.flavor} />
+          <ProtocolMethods client={client} flavor={options.flavor} />
+          <PagingMethods client={client} flavor={options.flavor} />
           <SubClientFactoryMethods children={children} isAzure={isAzure} />
         </ClassDeclaration>
       </Namespace>

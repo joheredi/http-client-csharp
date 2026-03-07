@@ -27,6 +27,7 @@ import {
   buildSiblingNameSet,
   cleanOperationName,
 } from "../../utils/operation-naming.js";
+import { getPipelineTypes } from "../../utils/pipeline-types.js";
 
 /**
  * Metadata for a protocol method parameter, including optionality and type
@@ -60,6 +61,8 @@ export interface ProtocolParam {
 export interface ProtocolMethodsProps {
   /** The TCGC SDK client type whose HTTP operations produce protocol method pairs. */
   client: SdkClientType<SdkHttpOperation>;
+  /** The emitter flavor ("azure" or "unbranded") for selecting pipeline types. */
+  flavor?: string;
 }
 
 /**
@@ -106,11 +109,13 @@ export interface ProtocolMethodsProps {
  * ```
  */
 export function ProtocolMethods(props: ProtocolMethodsProps) {
-  const { client } = props;
+  const { client, flavor } = props;
   const namePolicy = useCSharpNamePolicy();
   const siblingNames = buildSiblingNameSet(client.methods, (n) =>
     namePolicy.getName(n, "class"),
   );
+  const pipelineTypes = getPipelineTypes(flavor ?? "unbranded");
+  const isAzure = flavor === "azure";
 
   const methods = client.methods.filter(
     (m): m is SdkServiceMethod<SdkHttpOperation> =>
@@ -180,7 +185,7 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
           })),
           {
             name: "options",
-            type: SystemClientModelPrimitives.RequestOptions as Children,
+            type: pipelineTypes.requestOptions as Children,
             ...(optionsDefault ? { default: "null" } : {}),
           },
         ];
@@ -193,6 +198,40 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
         const xmlDoc = buildXmlDoc(description, params, validatedParams);
         const validation = buildValidation(validatedParams);
 
+        // Azure protocol methods return Response directly from ProcessMessage.
+        // Unbranded protocol methods wrap in ClientResult.FromResponse().
+        const syncBody = isAzure
+          ? [
+              validation,
+              validatedParams.length > 0 ? "\n\n" : "",
+              code`using ${pipelineTypes.message} message = Create${methodName}Request(${argList});`,
+              "\n",
+              code`return Pipeline.ProcessMessage(message, options);`,
+            ]
+          : [
+              validation,
+              validatedParams.length > 0 ? "\n\n" : "",
+              code`using ${pipelineTypes.message} message = Create${methodName}Request(${argList});`,
+              "\n",
+              code`return ${pipelineTypes.clientResult}.FromResponse(Pipeline.ProcessMessage(message, options));`,
+            ];
+
+        const asyncBody = isAzure
+          ? [
+              validation,
+              validatedParams.length > 0 ? "\n\n" : "",
+              code`using ${pipelineTypes.message} message = Create${methodName}Request(${argList});`,
+              "\n",
+              code`return await Pipeline.ProcessMessageAsync(message, options).ConfigureAwait(false);`,
+            ]
+          : [
+              validation,
+              validatedParams.length > 0 ? "\n\n" : "",
+              code`using ${pipelineTypes.message} message = Create${methodName}Request(${argList});`,
+              "\n",
+              code`return ${pipelineTypes.clientResult}.FromResponse(await Pipeline.ProcessMessageAsync(message, options).ConfigureAwait(false));`,
+            ];
+
         return (
           <>
             {"\n\n"}
@@ -202,14 +241,10 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
               {...accessProps}
               virtual
               name={namekey(methodName, { ignoreNameConflict: true })}
-              returns={SystemClientModel.ClientResult}
+              returns={pipelineTypes.clientResult}
               parameters={methodParams}
             >
-              {validation}
-              {validatedParams.length > 0 ? "\n\n" : ""}
-              {code`using ${SystemClientModelPrimitives.PipelineMessage} message = Create${methodName}Request(${argList});`}
-              {"\n"}
-              {code`return ${SystemClientModel.ClientResult}.FromResponse(Pipeline.ProcessMessage(message, options));`}
+              {syncBody}
             </Method>
             {"\n\n"}
             {xmlDoc}
@@ -219,14 +254,10 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
               virtual
               async
               name={namekey(`${methodName}Async`, { ignoreNameConflict: true })}
-              returns={code`${SystemThreadingTasks.Task}<${SystemClientModel.ClientResult}>`}
+              returns={code`${SystemThreadingTasks.Task}<${pipelineTypes.clientResult}>`}
               parameters={methodParams}
             >
-              {validation}
-              {validatedParams.length > 0 ? "\n\n" : ""}
-              {code`using ${SystemClientModelPrimitives.PipelineMessage} message = Create${methodName}Request(${argList});`}
-              {"\n"}
-              {code`return ${SystemClientModel.ClientResult}.FromResponse(await Pipeline.ProcessMessageAsync(message, options).ConfigureAwait(false));`}
+              {asyncBody}
             </Method>
           </>
         );

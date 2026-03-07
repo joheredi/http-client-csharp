@@ -36,6 +36,7 @@ import {
   getContinuationTokenParamName,
   reorderTokenFirst,
 } from "../../utils/parameter-ordering.js";
+import { getPipelineTypes } from "../../utils/pipeline-types.js";
 import {
   buildProtocolParams,
   buildXmlDoc as buildProtocolXmlDoc,
@@ -51,6 +52,8 @@ import {
 export interface PagingMethodsProps {
   /** The TCGC SDK client type whose paging operations produce paging method sets. */
   client: SdkClientType<SdkHttpOperation>;
+  /** The emitter flavor ("azure" or "unbranded") for selecting pipeline types. */
+  flavor?: string;
 }
 
 /**
@@ -93,13 +96,14 @@ export interface PagingMethodsProps {
  * ```
  */
 export function PagingMethods(props: PagingMethodsProps) {
-  const { client } = props;
+  const { client, flavor } = props;
   const namePolicy = useCSharpNamePolicy();
   const toClassName = (name: string) => namePolicy.getName(name, "class");
   const clientName = getClientFileName(client, toClassName);
   const siblingNames = buildSiblingNameSet(client.methods, (n) =>
     namePolicy.getName(n, "class"),
   );
+  const pipelineTypes = getPipelineTypes(flavor ?? "unbranded");
 
   const methods = client.methods.filter(
     (m): m is PagingLikeMethod<SdkHttpOperation> =>
@@ -163,6 +167,7 @@ export function PagingMethods(props: PagingMethodsProps) {
             operation,
             tokenParamName,
             getParamName,
+            pipelineTypes,
           ),
         );
 
@@ -179,6 +184,7 @@ export function PagingMethods(props: PagingMethodsProps) {
               itemTypeExpr,
               tokenParamName,
               getParamName,
+              pipelineTypes,
             ),
           );
         }
@@ -205,6 +211,7 @@ function renderProtocolPagingMethods(
   operation: SdkHttpOperation,
   tokenParamName: string | undefined,
   getParamName: (name: string) => string,
+  pipelineTypes?: import("../../utils/pipeline-types.js").PipelineTypes,
 ): Children[] {
   const params = reorderTokenFirst(
     buildProtocolParams(operation, getParamName),
@@ -221,6 +228,7 @@ function renderProtocolPagingMethods(
   ].join(", ");
 
   // Build <Method> parameter props
+  const reqOpts = pipelineTypes?.requestOptions ?? SystemClientModelPrimitives.RequestOptions;
   const methodParams = [
     ...params.map((p) => ({
       name: p.name,
@@ -229,7 +237,7 @@ function renderProtocolPagingMethods(
     })),
     {
       name: "options",
-      type: SystemClientModelPrimitives.RequestOptions as Children,
+      type: reqOpts as Children,
       ...(hasOptionalParams ? { default: "null" } : {}),
     },
   ];
@@ -292,6 +300,7 @@ function renderConveniencePagingMethods(
   itemTypeExpr: Children,
   tokenParamName: string | undefined,
   getParamName: (name: string) => string,
+  _pipelineTypes?: import("../../utils/pipeline-types.js").PipelineTypes,
 ): Children[] {
   const { params } = buildConvenienceParams(operation, getParamName);
   const reorderedParams = reorderTokenFirst(params, tokenParamName);

@@ -49,6 +49,12 @@ export interface PipelineTypes {
   pipelineIsVirtual: boolean;
   /** Whether this flavor uses ClientDiagnostics for distributed tracing. True for Azure. */
   hasDiagnostics: boolean;
+  /** The client result type: `Response` (Azure) or `ClientResult` (unbranded). Used as return type for protocol/convenience methods. */
+  clientResult: Children;
+  /** The request body content type: `RequestContent` (Azure) or `BinaryContent` (unbranded). */
+  binaryContent: Children;
+  /** The HTTP request type: `Request` (Azure) or `PipelineRequest` (unbranded). Used in REST client request building. */
+  request: Children;
 }
 
 /**
@@ -83,6 +89,9 @@ export function getPipelineTypes(
       errorBehaviors: Azure.ErrorOptions,
       pipelineIsVirtual: true,
       hasDiagnostics: true,
+      clientResult: Azure.Response,
+      binaryContent: AzureCore.RequestContent,
+      request: AzureCore.Request,
     };
   }
 
@@ -98,5 +107,8 @@ export function getPipelineTypes(
     errorBehaviors: SystemClientModelPrimitives.ClientErrorBehaviors,
     pipelineIsVirtual: false,
     hasDiagnostics: false,
+    clientResult: SystemClientModel.ClientResult,
+    binaryContent: SystemClientModel.BinaryContent,
+    request: SystemClientModelPrimitives.PipelineRequest,
   };
 }

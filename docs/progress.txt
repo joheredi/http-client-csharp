@@ -5648,3 +5648,68 @@ Task 17.3 ("Replace ClientPipeline with HttpPipeline for Azure flavor") was anal
 
 ### What's next (17.3b):
 Cascade Azure pipeline types to RestClientFile, ProtocolMethod, ConvenienceMethod, PagingMethods, CollectionResultFile, ErrorResultFile, CastOperators, CancellationTokenExtensions. These components still reference System.ClientModel types even in Azure mode.
+
+---
+
+## Task 17.3b — Cascade Azure pipeline types to REST operations (2026-03-07)
+
+**Status**: Done
+
+### What was done:
+1. **Extended Azure builtins** (`src/builtins/azure.ts`): Added `Request` and `RequestContent` to AzureCore library — Azure equivalents of `PipelineRequest` and `BinaryContent`.
+
+2. **Extended `getPipelineTypes()`** (`src/utils/pipeline-types.ts`): Added 3 new fields to PipelineTypes interface:
+   - `clientResult`: Response (Azure) or ClientResult (unbranded) — for method return types
+   - `binaryContent`: RequestContent (Azure) or BinaryContent (unbranded) — for request body content
+   - `request`: Request (Azure) or PipelineRequest (unbranded) — for HTTP request type
+
+3. **Updated RestClientFile.tsx**: CreateRequestMethod and CreateNextRequestMethod now use flavor-aware types for:
+   - Return type: HttpMessage (Azure) / PipelineMessage (unbranded)
+   - Request variable: Request (Azure) / PipelineRequest (unbranded)
+   - Options parameter: RequestContext (Azure) / RequestOptions (unbranded)
+   - Body content: RequestContent (Azure) / BinaryContent (unbranded)
+   - `buildMethodParams` and `buildRequestBody` accept and use pipelineTypes
+
+4. **Updated ProtocolMethod.tsx**: Added `flavor` prop. Azure protocol methods:
+   - Return `Response` / `Task<Response>` instead of `ClientResult`
+   - Accept `RequestContext` instead of `RequestOptions`
+   - Use `HttpMessage` instead of `PipelineMessage`
+   - Return `Pipeline.ProcessMessage()` directly (no `ClientResult.FromResponse` wrapper)
+
+5. **Updated ConvenienceMethod.tsx**: Added `flavor` prop. Azure convenience methods:
+   - Return `Response<T>` / `Task<Response<T>>` instead of `ClientResult<T>`
+   - Use `Response.FromValue(value, result)` instead of `ClientResult.FromValue(value, result.GetRawResponse())`
+   - Azure `result` IS the Response (no `GetRawResponse()` call needed)
+
+6. **Updated PagingMethods.tsx**: Added `flavor` prop. Protocol paging methods use `RequestContext` for Azure.
+
+7. **Updated CollectionResultFile.tsx**: Azure collection results use:
+   - `HttpMessage` in iteration logic (was `PipelineMessage`)
+   - `RequestContext` for stored options field (was `RequestOptions`)
+   - `Response` for result types (was `ClientResult`)
+   - ProcessMessage returns Response directly for Azure (no FromResponse)
+
+8. **Updated ErrorResultFile.tsx**: Azure ErrorResult uses `Response<T>`, `Response`, `RequestFailedException`.
+
+9. **Updated CancellationTokenExtensionsFile.tsx**: Azure uses `RequestContext` instead of `RequestOptions`.
+
+10. **Updated CastOperators.tsx**: Added `flavor` prop to both operators:
+    - ImplicitBinaryContentOperator: `RequestContent` (Azure) / `BinaryContent` (unbranded)
+    - ExplicitClientResultOperator: `Response` (Azure) / `ClientResult` (unbranded), Azure skips `GetRawResponse()`
+
+11. **Threaded flavor through component tree**:
+    - ClientFile.tsx → ProtocolMethods, ConvenienceMethods, PagingMethods (via `flavor` prop)
+    - emitter.tsx → ImplicitBinaryContentOperator, ExplicitClientResultOperator (via `flavor` prop)
+
+12. **Created 10 new tests** in `test/azure-cascade-types.test.ts` covering all Azure operation-level type cascading.
+
+### Key patterns:
+- Components that already have `options` prop (RestClientFile, CollectionResultFile, ErrorResultFile, CancellationTokenExtensionsFile) get `flavor` from `options.flavor`
+- Components that only have `client` prop (ProtocolMethods, ConvenienceMethods, PagingMethods) receive a new `flavor` prop threaded from ClientFile
+- CastOperators receive `flavor` prop threaded from emitter.tsx
+- Azure `ProcessMessage`/`ProcessMessageAsync` returns `Response` directly — no need for `ClientResult.FromResponse()` wrapper
+- Azure `Response` IS the raw response — `result.GetRawResponse()` becomes just `result`
+- `PipelineMessageClassifier` is shared between both flavors (Azure HttpPipeline wraps SCM)
+
+### What's next (17.4):
+Implement Azure client options base class — Azure clients use `ClientOptions` (from Azure.Core) instead of `ClientPipelineOptions` (from System.ClientModel.Primitives).

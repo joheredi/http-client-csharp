@@ -356,9 +356,9 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
               {"\n\n"}
               <PersistableModelInterfaceMethods type={m} />
               {"\n\n"}
-              <ImplicitBinaryContentOperator type={m} />
+              <ImplicitBinaryContentOperator type={m} flavor={options.flavor} />
               {"\n\n"}
-              <ExplicitClientResultOperator type={m} />
+              <ExplicitClientResultOperator type={m} flavor={options.flavor} />
               {supportsJson && "\n\n"}
               {supportsJson && <JsonModelInterfaceWrite type={m} />}
               {supportsJson && "\n\n"}

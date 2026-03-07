@@ -3682,3 +3682,22 @@ OAuth2 flows in TypeSpec tests should NOT include inline `scopes` objects. Use t
 }]>)
 ```
 Including `scopes: [{ value: "..." }]` causes compilation failures in TCGC.
+
+## Azure Pipeline Type Cascading (Task 17.3b)
+
+### Key Insight: Azure `Response` vs Unbranded `ClientResult`
+Azure protocol methods return `Response` directly from `Pipeline.ProcessMessage()` — there is NO `ClientResult.FromResponse()` wrapper. This is because Azure's `Response` IS the result type (equivalent to both `PipelineResponse` and `ClientResult` in unbranded). Similarly, Azure convenience methods call `Response.FromValue(value, result)` where `result` is the Response directly (no `.GetRawResponse()` needed), while unbranded uses `ClientResult.FromValue(value, result.GetRawResponse())`.
+
+### Design Decision: `getPipelineTypes()` Extension Approach
+Chose to extend the existing `getPipelineTypes()` utility with `clientResult`, `binaryContent`, and `request` fields rather than using separate per-component conditionals. This keeps flavor-aware type resolution centralized and consistent with the pattern established in task 17.3.
+
+### `PipelineMessageClassifier` is Shared
+`PipelineMessageClassifier` from System.ClientModel.Primitives is used by BOTH Azure and unbranded flavors. Azure's `HttpPipeline.CreateMessage(uri, method, classifier)` accepts the same classifier type. The `ClassifierDeclarations` component in RestClientFile does NOT need flavor-aware changes.
+
+### Threading Flavor to Components
+Components access flavor in two ways:
+1. Via `options.flavor` — for components that already receive `ResolvedCSharpEmitterOptions` (RestClientFile, CollectionResultFile, ErrorResultFile, CancellationTokenExtensionsFile)
+2. Via a new `flavor` prop — for components that only receive `client` (ProtocolMethods, ConvenienceMethods, PagingMethods) or `type` (CastOperators). Flavor is threaded from ClientFile.tsx and emitter.tsx respectively.
+
+### Azure Plugin Test Projects Use SCM Types
+The legacy emitter's Azure Plugin test projects (in submodules/typespec/packages/http-client-csharp/generator/TestProjects/Plugin/) actually use System.ClientModel types (ClientPipeline, PipelineMessage, ClientResult), NOT Azure.Core types. This is a specific Plugin configuration, NOT the target for our "azure" flavor. Our emitter intentionally maps "azure" flavor to Azure.Core types (HttpPipeline, HttpMessage, Response) as established in task 17.3.

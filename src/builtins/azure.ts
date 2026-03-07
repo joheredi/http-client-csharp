@@ -179,6 +179,32 @@ export const AzureCore = createLibrary("Azure.Core", {
       },
     },
   },
+
+  /**
+   * Represents an HTTP request in the Azure pipeline.
+   * Azure equivalent of System.ClientModel.Primitives' `PipelineRequest`.
+   * Accessible via `HttpMessage.Request`.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/azure.core.request
+   */
+  Request: {
+    kind: "class",
+    members: {},
+  },
+
+  /**
+   * Abstract base class for HTTP request body content in Azure.
+   * Azure equivalent of System.ClientModel's `BinaryContent`.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/azure.core.requestcontent
+   */
+  RequestContent: {
+    kind: "class",
+    members: {
+      /** Creates RequestContent from a serializable model. */
+      Create: { kind: "method", methodKind: "ordinary", isStatic: true },
+    },
+  },
 });
 
 /**
