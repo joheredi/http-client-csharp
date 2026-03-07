@@ -48,6 +48,7 @@ import {
   getPipelineTypes,
   type PipelineTypes,
 } from "../../utils/pipeline-types.js";
+import { isSpecialHeaderParam } from "../../utils/special-headers.js";
 
 /**
  * A unique set of success status codes that needs a PipelineMessageClassifier.
@@ -174,6 +175,7 @@ export function RestClientFile(props: RestClientFileProps) {
                 classifiers={classifiers}
                 siblingNames={siblingNames}
                 pipelineTypes={pipelineTypes}
+                flavor={options.flavor}
               />
             </>
           ))}
@@ -260,6 +262,8 @@ interface CreateRequestMethodProps {
   siblingNames: Set<string>;
   /** Flavor-resolved pipeline type references for HttpMessage/Request/RequestOptions. */
   pipelineTypes: PipelineTypes;
+  /** The emitter flavor ("azure" or "unbranded") for flavor-conditional header handling. */
+  flavor?: string;
 }
 
 /**
@@ -275,7 +279,7 @@ interface CreateRequestMethodProps {
  * 6. Return the configured message
  */
 function CreateRequestMethod(props: CreateRequestMethodProps) {
-  const { method, siblingNames, pipelineTypes } = props;
+  const { method, siblingNames, pipelineTypes, flavor } = props;
   const operation = method.operation;
   const namePolicy = useCSharpNamePolicy();
 
@@ -313,6 +317,7 @@ function CreateRequestMethod(props: CreateRequestMethodProps) {
     headerParams,
     bodyParam,
     pipelineTypes,
+    flavor,
   );
 
   // For paging methods with continuation tokens, reorder params so the
@@ -344,6 +349,7 @@ function CreateRequestMethod(props: CreateRequestMethodProps) {
     classifierRef,
     getParamName,
     pipelineTypes,
+    flavor,
   );
 
   return (
@@ -673,6 +679,7 @@ function buildMethodParams(
   headerParams: SdkHeaderParameter[],
   bodyParam?: SdkBodyParameter,
   pipelineTypes?: PipelineTypes,
+  flavor?: string,
 ): Array<{ name: string; type: Children }> {
   const params: Array<{
     name: string;
@@ -697,7 +704,7 @@ function buildMethodParams(
   for (const p of headerParams) {
     if (isConstantType(p.type) || p.onClient) continue;
     if (isImplicitContentTypeHeader(p)) continue;
-    if (isSpecialHeaderParam(p)) continue;
+    if (isSpecialHeaderParam(p, flavor)) continue;
     const priority = p.optional ? 400 : 100;
     const typeExpr = maybeNullable(
       getProtocolTypeExpression(p.type),
@@ -776,28 +783,7 @@ function isImplicitContentTypeHeader(param: SdkHeaderParameter): boolean {
   return param.serializedName.toLowerCase() === "content-type";
 }
 
-/**
- * Known header names that are auto-populated at runtime and should not appear
- * in public method signatures.  Values are auto-generated in the request
- * creation method (see {@link buildRequestBody}).
- *
- * Per the OASIS repeatability spec, `Repeatability-Request-ID` gets a new GUID
- * and `Repeatability-First-Sent` gets the current UTC timestamp.
- */
-const specialHeaderNames = new Set([
-  "repeatability-request-id",
-  "repeatability-first-sent",
-]);
 
-/**
- * Checks if a header parameter is a "special" header that should be
- * auto-populated at runtime rather than exposed as a method parameter.
- * Detection is by serialized header name (case-insensitive), matching
- * the legacy emitter's `TryGetSpecialHeaderParam` behaviour.
- */
-function isSpecialHeaderParam(param: SdkHeaderParameter): boolean {
-  return specialHeaderNames.has(param.serializedName.toLowerCase());
-}
 
 /**
  * Checks if a header parameter is a constant-valued Accept header.
@@ -1413,6 +1399,7 @@ function buildRequestBody(
   classifierRef: string,
   getParamName: (name: string) => string,
   pipelineTypes?: PipelineTypes,
+  flavor?: string,
 ): Children {
   const msgType =
     pipelineTypes?.message ?? SystemClientModelPrimitives.PipelineMessage;
@@ -1468,7 +1455,7 @@ function buildRequestBody(
 
   for (const param of headerParams) {
     if (isImplicitContentTypeHeader(param)) continue;
-    if (isSpecialHeaderParam(param)) continue;
+    if (isSpecialHeaderParam(param, flavor)) continue;
     // Skip constant Accept headers — they are handled by the auto-derived Accept
     // logic below (after Content-Type) to ensure correct header ordering.
     if (isConstantAcceptHeader(param)) continue;
@@ -1480,7 +1467,7 @@ function buildRequestBody(
   // automatically per the OASIS repeatability specification.
   // Using code`...` with Alloy builtin references ensures `using System;` is emitted.
   for (const param of headerParams) {
-    if (!isSpecialHeaderParam(param)) continue;
+    if (!isSpecialHeaderParam(param, flavor)) continue;
     const sn = param.serializedName.toLowerCase();
     if (sn === "repeatability-request-id") {
       parts.push(

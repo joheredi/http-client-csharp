@@ -1481,7 +1481,7 @@
           "title": "Strip x-ms-client-request-id parameter for Azure flavor",
           "description": "When flavor='azure', the x-ms-client-request-id header should NOT be exposed as a method parameter. Azure's HttpPipeline policy automatically adds this header to every outgoing request for request correlation.\n\nImplementation:\n- Add 'x-ms-client-request-id' to the special headers set (conditionally, for Azure flavor only)\n- This strips the parameter from protocol method, convenience method, and REST client CreateRequest signatures\n- Do NOT auto-inject the header in CreateRequest \u2014 the Azure pipeline policy handles it\n- The specialHeaderNames mechanism in RestClientFile.tsx, ProtocolMethod.tsx, and ConvenienceMethod.tsx already handles exclusion; just needs flavor-conditional header names\n\nGround truth: submodules/azure-sdk-for-net/.../TestProjects/Spector/http/azure/special-headers/client-request-id/src/Generated/XmsClientRequestIdClient.cs shows Get() with NO clientRequestId parameter.\n\nTypeSpec spec says: 'SDK should not generate clientRequestId parameter but use policy to auto-set the header'.",
           "phase": "phase-17",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "17.3",
             "17.3b"

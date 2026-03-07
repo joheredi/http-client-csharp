@@ -31,6 +31,7 @@ import {
   getPipelineTypes,
   type PipelineTypes,
 } from "../../utils/pipeline-types.js";
+import { isSpecialHeaderParam } from "../../utils/special-headers.js";
 
 /**
  * Metadata for a protocol method parameter, including optionality and type
@@ -144,7 +145,7 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
 
         const getParamName = (name: string) =>
           namePolicy.getName(name, "parameter");
-        const params = buildProtocolParams(operation, getParamName);
+        const params = buildProtocolParams(operation, getParamName, flavor);
         const validatedParams = params.filter((p) => p.needsValidation);
 
         // Detect Azure LRO methods — these get Operation<T> return types and
@@ -295,6 +296,7 @@ export function ProtocolMethods(props: ProtocolMethodsProps) {
 export function buildProtocolParams(
   operation: SdkHttpOperation,
   getParamName: (name: string) => string,
+  flavor?: string,
 ): ProtocolParam[] {
   const pathParams = operation.parameters.filter(
     (p): p is SdkPathParameter => p.kind === "path",
@@ -331,7 +333,7 @@ export function buildProtocolParams(
   for (const p of headerParams) {
     if (isConstantType(p.type) || p.onClient) continue;
     if (isImplicitContentTypeHeader(p)) continue;
-    if (isSpecialHeaderParam(p)) continue;
+    if (isSpecialHeaderParam(p, flavor)) continue;
     const typeInfo = getTypeInfo(p.type);
     const typeExpr = maybeNullable(typeInfo.expression, p.type, p.optional);
     params.push({
@@ -647,24 +649,6 @@ function isConstantType(type: SdkType): boolean {
 /** Checks if a header parameter is the implicit Content-Type header. */
 function isImplicitContentTypeHeader(param: SdkHeaderParameter): boolean {
   return param.serializedName.toLowerCase() === "content-type";
-}
-
-/**
- * Known header names that are auto-populated at runtime and should not appear
- * in public method signatures. See RestClientFile.tsx for where the values
- * are generated in the request creation method.
- */
-const specialHeaderNames = new Set([
-  "repeatability-request-id",
-  "repeatability-first-sent",
-]);
-
-/**
- * Checks if a header parameter is a "special" header that is auto-populated
- * at runtime rather than exposed as a method parameter.
- */
-function isSpecialHeaderParam(param: SdkHeaderParameter): boolean {
-  return specialHeaderNames.has(param.serializedName.toLowerCase());
 }
 
 /**

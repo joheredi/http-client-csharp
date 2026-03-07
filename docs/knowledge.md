@@ -3860,3 +3860,14 @@ The `specialHeaderNames` set is duplicated in 3 files (RestClientFile.tsx, Proto
 3. **Centralize to utils** — extract to shared util, but still need flavor at call sites
 
 Recommend option 1 for 17.7a since the flavor is already available (or passed as prop) in all three component files.
+
+## Design Decisions
+
+### Special Header Centralization (Task 17.7a)
+**Decision**: Centralized the `isSpecialHeaderParam` function into `src/utils/special-headers.ts` instead of modifying the duplicated copies in RestClientFile, ProtocolMethod, and ConvenienceMethod.
+**Reason**: DRY, easier to extend for 17.7b (conditional headers), follows project's utility pattern.
+**Impact**: All call sites now pass `flavor` parameter. The function checks `baseSpecialHeaderNames` (repeatability headers, always active) and `azureSpecialHeaderNames` (`x-ms-client-request-id`, active only for azure flavor).
+**Key detail**: x-ms-client-request-id is stripped but NOT auto-populated in CreateRequest — the Azure pipeline policy handles it. The auto-population loop in `buildRequestBody` only has cases for repeatability headers.
+
+### Gotcha: `buildProtocolParams` and `buildConvenienceParams` are exported standalone functions
+These are used by PagingMethods.tsx and CollectionResultFile.tsx. When adding parameters to these functions, all external call sites must be updated. Check with `grep -rn buildProtocolParams src/` before changing the signature.

@@ -299,7 +299,7 @@ function CollectionResultFile(props: CollectionResultFileProps) {
 
   const getParamName = (name: string) => namePolicy.getName(name, "parameter");
   const operationParams = reorderTokenFirst(
-    buildProtocolParams(method.operation, getParamName),
+    buildProtocolParams(method.operation, getParamName, options.flavor),
     tokenParamName,
   );
 

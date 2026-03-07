@@ -36,6 +36,7 @@ import {
   getPipelineTypes,
   type PipelineTypes,
 } from "../../utils/pipeline-types.js";
+import { isSpecialHeaderParam } from "../../utils/special-headers.js";
 
 /**
  * Metadata for a convenience method parameter, including the type expression,
@@ -161,7 +162,7 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
 
         const getParamName = (name: string) =>
           namePolicy.getName(name, "parameter");
-        const params = buildConvenienceParams(operation, getParamName);
+        const params = buildConvenienceParams(operation, getParamName, flavor);
         const requiredParams = params.params.filter((p) => !p.optional);
         const assertableParams = requiredParams.filter((p) => p.needsAssertion);
 
@@ -345,6 +346,7 @@ export interface ConvenienceParamsResult {
 export function buildConvenienceParams(
   operation: SdkHttpOperation,
   getParamName: (name: string) => string,
+  flavor?: string,
 ): ConvenienceParamsResult {
   const pathParams = operation.parameters.filter(
     (p): p is SdkPathParameter => p.kind === "path",
@@ -384,7 +386,7 @@ export function buildConvenienceParams(
   for (const p of headerParams) {
     if (isConstantType(p.type) || p.onClient) continue;
     if (isImplicitContentTypeHeader(p)) continue;
-    if (isSpecialHeaderParam(p)) continue;
+    if (isSpecialHeaderParam(p, flavor)) continue;
     const convInfo = getConvenienceTypeInfo(p.type);
     const typeExpr = maybeNullable(convInfo.expression, p.type, p.optional);
     const csharpName = getParamName(p.name);
@@ -1359,24 +1361,6 @@ function isConstantType(type: SdkType): boolean {
 /** Checks if a header parameter is the implicit Content-Type header. */
 function isImplicitContentTypeHeader(param: SdkHeaderParameter): boolean {
   return param.serializedName.toLowerCase() === "content-type";
-}
-
-/**
- * Known header names that are auto-populated at runtime and should not appear
- * in public method signatures. See RestClientFile.tsx for where the values
- * are generated in the request creation method.
- */
-const specialHeaderNames = new Set([
-  "repeatability-request-id",
-  "repeatability-first-sent",
-]);
-
-/**
- * Checks if a header parameter is a "special" header that is auto-populated
- * at runtime rather than exposed as a method parameter.
- */
-function isSpecialHeaderParam(param: SdkHeaderParameter): boolean {
-  return specialHeaderNames.has(param.serializedName.toLowerCase());
 }
 
 /**

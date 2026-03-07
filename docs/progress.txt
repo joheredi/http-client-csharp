@@ -5953,3 +5953,30 @@ These existed before task 17.8.1 and are tracked separately.
 - Need to define RequestConditions and MatchConditions in src/builtins/azure.ts (ETag already exists)
 - Azure traits test project shows RequestConditions grouping in action
 - Unbranded spec uses individual params (correct as-is)
+
+## Task 17.7a — Strip x-ms-client-request-id parameter for Azure flavor (2026-03-07)
+
+### What was done
+- Created `src/utils/special-headers.ts` — centralized utility for special header detection
+- Refactored the duplicated `specialHeaderNames` Set and `isSpecialHeaderParam()` function out of three files (RestClientFile.tsx, ProtocolMethod.tsx, ConvenienceMethod.tsx) into a single shared utility
+- Added flavor-conditional logic: `x-ms-client-request-id` is treated as a special header only when `flavor === "azure"`
+- Threaded `flavor` parameter through `buildMethodParams()`, `buildRequestBody()`, `buildProtocolParams()`, `buildConvenienceParams()`, and the `CreateRequestMethod` component props
+- Updated call sites in PagingMethods.tsx and CollectionResultFile.tsx to pass flavor
+- Created comprehensive test suite `test/special-headers-client-request-id.test.ts` with 4 tests
+
+### Design Decision
+Centralized special header logic (Approach A) over inline per-file modification (Approach B) because:
+- DRY: single source of truth for special header definitions
+- Easy to extend for future tasks (17.7b conditional headers)
+- Follows project pattern of utility functions in `src/utils/`
+
+### Key Insight
+For Azure flavor: x-ms-client-request-id is stripped from all method signatures but NOT auto-populated in CreateRequest — the Azure HttpPipeline policy handles it automatically. This differs from repeatability headers which ARE auto-populated with Guid/DateTimeOffset values.
+
+### Patterns used
+- `isSpecialHeaderParam(param, flavor?)` — centralized check with optional flavor
+- Separate `baseSpecialHeaderNames` and `azureSpecialHeaderNames` sets
+- Threading flavor through component props chain (RestClientFile → CreateRequestMethod → buildMethodParams/buildRequestBody)
+
+### E2E note
+E2E build failures (CS0122 ClientDiagnostics, CS0246 ModelReaderWriterBuildable, CS0534 ErrorResult) are pre-existing — verified by running e2e with `git stash` (same failures without changes).

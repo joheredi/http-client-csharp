@@ -168,6 +168,7 @@ export function PagingMethods(props: PagingMethodsProps) {
             tokenParamName,
             getParamName,
             pipelineTypes,
+            flavor,
           ),
         );
 
@@ -185,6 +186,7 @@ export function PagingMethods(props: PagingMethodsProps) {
               tokenParamName,
               getParamName,
               pipelineTypes,
+              flavor,
             ),
           );
         }
@@ -212,9 +214,10 @@ function renderProtocolPagingMethods(
   tokenParamName: string | undefined,
   getParamName: (name: string) => string,
   pipelineTypes?: import("../../utils/pipeline-types.js").PipelineTypes,
+  flavor?: string,
 ): Children[] {
   const params = reorderTokenFirst(
-    buildProtocolParams(operation, getParamName),
+    buildProtocolParams(operation, getParamName, flavor),
     tokenParamName,
   );
   const hasOptionalParams = params.some((p) => p.optional);
@@ -302,8 +305,9 @@ function renderConveniencePagingMethods(
   tokenParamName: string | undefined,
   getParamName: (name: string) => string,
   _pipelineTypes?: import("../../utils/pipeline-types.js").PipelineTypes,
+  flavor?: string,
 ): Children[] {
-  const { params } = buildConvenienceParams(operation, getParamName);
+  const { params } = buildConvenienceParams(operation, getParamName, flavor);
   const reorderedParams = reorderTokenFirst(params, tokenParamName);
 
   // Build constructor args: this, ...convertedParams, cancellationToken.ToRequestOptions()
