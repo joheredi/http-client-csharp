@@ -1410,7 +1410,7 @@
           "title": "Implement Azure client options base class",
           "description": "Azure client options should use Azure-specific base types. The AzureTypeFactory maps several provider types that replace System.ClientModel equivalents:\n\n- AzureClientResponseProvider.Instance \u2192 Azure Response types\n- AzureResponseProvider.Instance \u2192 Response<T> wrapper\n- HttpRequestOptionsProvider.Instance \u2192 RequestContext\n- RequestContentProvider.Instance \u2192 RequestContent\n- StatusCodeClassifierProvider.Instance \u2192 ResponseClassifier\n\nWhen flavor='azure', generate client option classes that extend Azure.Core types and use Azure-specific request/response handling.\n\nReference files:\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/AzureTypeFactory.cs (lines 30-51: all provider instance mappings)\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/Providers/ (5 provider definition files)\n- src/components/client-options/ (existing client options generation)",
           "phase": "phase-17",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "17.3"
           ],

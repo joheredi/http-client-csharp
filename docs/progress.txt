@@ -5713,3 +5713,36 @@ Cascade Azure pipeline types to RestClientFile, ProtocolMethod, ConvenienceMetho
 
 ### What's next (17.4):
 Implement Azure client options base class — Azure clients use `ClientOptions` (from Azure.Core) instead of `ClientPipelineOptions` (from System.ClientModel.Primitives).
+
+---
+
+### Task 17.4: Implement Azure client options base class
+**Date:** 2026-03-07
+**Status:** Done
+
+**What was done:**
+- Modified `src/components/client-options/ClientOptionsFile.tsx` to select the base class based on `options.flavor`:
+  - `flavor === "azure"` → `AzureCore.ClientOptions` (from `Azure.Core`)
+  - `flavor === "unbranded"` → `SystemClientModelPrimitives.ClientPipelineOptions` (from `System.ClientModel.Primitives`)
+- Added import for `AzureCore` from `../../builtins/azure.js`
+- Created a `baseType` variable that conditionally selects the base class
+- Used `baseType` in both versioned and unversioned code paths (replaced 2 hardcoded references)
+- Added 2 new tests in `test/client-options.test.ts`:
+  - Azure versioned service → verifies `ClientOptions` base + `using Azure.Core;`
+  - Azure unversioned service → verifies empty class with `ClientOptions` base
+- Updated JSDoc to document flavor-aware behavior
+
+**Design decision:**
+- Chose simple conditional in component (Approach 1) over extending `getPipelineTypes()` (Approach 2).
+  Rationale: The client options base is a simple two-way mapping that doesn't need the full pipeline types utility.
+  The change is self-contained within the component.
+
+**Ground truth verified against:**
+- `submodules/azure-sdk-for-net/.../TestProjects/Local/Basic-TypeSpec/src/Generated/BasicTypeSpecClientOptions.cs`
+- `submodules/azure-sdk-for-net/.../TestProjects/Spector/http/authentication/api-key/src/Generated/ApiKeyClientOptions.cs`
+
+**Build:** ✅ Pass | **Unit tests:** ✅ 1437 passed | **E2E:** ❌ Pre-existing failure (missing Azure.Core PackageReference — task 17.2)
+
+### What's next (17.2 or 17.5):
+- 17.2: Generate Azure.Core PackageReference in scaffolded .csproj — needed to fix e2e compilation of Azure projects
+- 17.5: Implement LRO Operation<T> return types — depends on 17.4 (now done)

@@ -3701,3 +3701,10 @@ Components access flavor in two ways:
 
 ### Azure Plugin Test Projects Use SCM Types
 The legacy emitter's Azure Plugin test projects (in submodules/typespec/packages/http-client-csharp/generator/TestProjects/Plugin/) actually use System.ClientModel types (ClientPipeline, PipelineMessage, ClientResult), NOT Azure.Core types. This is a specific Plugin configuration, NOT the target for our "azure" flavor. Our emitter intentionally maps "azure" flavor to Azure.Core types (HttpPipeline, HttpMessage, Response) as established in task 17.3.
+
+## Design Decisions
+
+### 17.4 — Azure client options base class selection
+**Approach chosen:** Simple conditional in `ClientOptionsFile.tsx` component.
+**Rejected:** Extending `getPipelineTypes()` utility — over-engineering for a two-way base class swap.
+**Key insight:** The `AzureCore.ClientOptions` type was already defined in `src/builtins/azure.ts` but unused by the options component. The only change needed was a conditional `baseType` variable. Alloy handles `using Azure.Core;` vs `using System.ClientModel.Primitives;` automatically via refkeys.

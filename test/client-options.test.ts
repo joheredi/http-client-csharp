@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HttpTester } from "./test-host.js";
+import { AzureHttpTester, HttpTester } from "./test-host.js";
 
 /**
  * Tests for the ClientOptionsFile component.
@@ -248,5 +248,115 @@ describe("ClientOptionsFile", () => {
     expect(optionsFile).toContain(
       "private const ServiceVersion LatestVersion = ServiceVersion.V2024_08_16_Preview",
     );
+  });
+
+  /**
+   * Verifies that Azure-flavored versioned services generate client options
+   * that extend Azure.Core.ClientOptions instead of
+   * System.ClientModel.Primitives.ClientPipelineOptions.
+   *
+   * This is critical because Azure SDK clients must inherit from Azure.Core.ClientOptions
+   * to integrate with the Azure SDK ecosystem (diagnostics, retry policies, etc.).
+   * The generated class structure is identical to unbranded, only the base class
+   * and using directive differ.
+   *
+   * Ground truth: submodules/azure-sdk-for-net/.../TestProjects/Local/Basic-TypeSpec/
+   *   src/Generated/BasicTypeSpecClientOptions.cs
+   */
+  it("generates azure client options with ClientOptions base for versioned service", async () => {
+    const [{ outputs }, diagnostics] =
+      await AzureHttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+      using TypeSpec.Versioning;
+
+      @versioned(Versions)
+      @service
+      namespace AzureWidget;
+
+      enum Versions {
+        \`2024-01-01\`,
+        \`2024-06-01-preview\`,
+      }
+
+      model Widget {
+        id: string;
+        name: string;
+      }
+
+      @route("/widgets")
+      op listWidgets(): Widget[];
+    `);
+
+    expect(diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+
+    const optionsKey = Object.keys(outputs).find((k) =>
+      k.includes("ClientOptions"),
+    );
+    expect(optionsKey).toBeDefined();
+
+    const optionsFile = outputs[optionsKey!];
+
+    // Azure flavor: base class is Azure.Core.ClientOptions, not ClientPipelineOptions
+    expect(optionsFile).toContain("ClientOptions : ClientOptions");
+    expect(optionsFile).toContain("public partial class");
+
+    // Azure using directive instead of System.ClientModel.Primitives
+    expect(optionsFile).toContain("using Azure.Core;");
+    expect(optionsFile).not.toContain("using System.ClientModel.Primitives;");
+
+    // Version structure is identical to unbranded
+    expect(optionsFile).toContain(
+      "private const ServiceVersion LatestVersion = ServiceVersion.V2024_06_01_Preview",
+    );
+    expect(optionsFile).toContain("V2024_01_01 = 1");
+    expect(optionsFile).toContain("V2024_06_01_Preview = 2");
+    expect(optionsFile).toContain("internal string Version { get; }");
+  });
+
+  /**
+   * Verifies that Azure-flavored unversioned services generate an empty
+   * client options class extending Azure.Core.ClientOptions.
+   *
+   * Ground truth: submodules/azure-sdk-for-net/.../TestProjects/Spector/
+   *   http/authentication/api-key/src/Generated/ApiKeyClientOptions.cs
+   */
+  it("generates azure empty client options with ClientOptions base for unversioned service", async () => {
+    const [{ outputs }, diagnostics] =
+      await AzureHttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace AzureUnversioned;
+
+      model Thing {
+        id: string;
+      }
+
+      @route("/things")
+      op getThing(): Thing;
+    `);
+
+    expect(diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+
+    const optionsKey = Object.keys(outputs).find((k) =>
+      k.includes("ClientOptions"),
+    );
+    expect(optionsKey).toBeDefined();
+
+    const optionsFile = outputs[optionsKey!];
+
+    // Azure flavor: extends Azure.Core.ClientOptions
+    expect(optionsFile).toContain(
+      "AzureUnversionedClientOptions : ClientOptions",
+    );
+    expect(optionsFile).toContain("public partial class");
+
+    // Azure using directive
+    expect(optionsFile).toContain("using Azure.Core;");
+    expect(optionsFile).not.toContain("using System.ClientModel.Primitives;");
+
+    // Should NOT contain versioning artifacts
+    expect(optionsFile).not.toContain("ServiceVersion");
+    expect(optionsFile).not.toContain("LatestVersion");
   });
 });

@@ -12,6 +12,7 @@ import type {
   SdkClientType,
   SdkHttpOperation,
 } from "@azure-tools/typespec-client-generator-core";
+import { AzureCore } from "../../builtins/azure.js";
 import { SystemClientModelPrimitives } from "../../builtins/system-client-model.js";
 import { System } from "../../builtins/system.js";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
@@ -32,8 +33,12 @@ export interface ClientOptionsFileProps {
 /**
  * Generates a C# source file containing the client options class.
  *
+ * The base class depends on the emitter flavor:
+ * - `"azure"` → `Azure.Core.ClientOptions`
+ * - `"unbranded"` → `System.ClientModel.Primitives.ClientPipelineOptions`
+ *
  * For versioned services (with API versions), the generated class inherits
- * from `ClientPipelineOptions` and contains:
+ * from the appropriate base class and contains:
  * - A nested `ServiceVersion` enum with a monotonic ordinal for each API version
  * - A `LatestVersion` const field pointing to the latest enum member
  * - A constructor that maps each `ServiceVersion` member to its string value
@@ -90,13 +95,20 @@ export function ClientOptionsFile(props: ClientOptionsFileProps) {
   const header = getLicenseHeader(options);
   const namePolicy = useCSharpNamePolicy();
 
+  // Azure clients extend Azure.Core.ClientOptions; unbranded clients extend
+  // System.ClientModel.Primitives.ClientPipelineOptions.
+  const baseType =
+    options.flavor === "azure"
+      ? AzureCore.ClientOptions
+      : SystemClientModelPrimitives.ClientPipelineOptions;
+
   const clientName = namePolicy.getName(
     getSimpleClientName(client.name),
     "class",
   );
   const optionsClassName = `${clientName}Options`;
 
-  // Non-versioned services get an empty options class extending ClientPipelineOptions.
+  // Non-versioned services get an empty options class extending the appropriate base.
   // This matches the legacy emitter which generates per-client options for all specs.
   if (apiVersions.length === 0) {
     return (
@@ -110,7 +122,7 @@ export function ClientOptionsFile(props: ClientOptionsFileProps) {
             public
             partial
             name={optionsClassName}
-            baseType={SystemClientModelPrimitives.ClientPipelineOptions}
+            baseType={baseType}
           />
         </Namespace>
       </SourceFile>
@@ -142,7 +154,7 @@ export function ClientOptionsFile(props: ClientOptionsFileProps) {
           public
           partial
           name={optionsClassName}
-          baseType={SystemClientModelPrimitives.ClientPipelineOptions}
+          baseType={baseType}
         >
           {code`private const ServiceVersion LatestVersion = ServiceVersion.${latestMember.name};`}
           {"\n\n"}
