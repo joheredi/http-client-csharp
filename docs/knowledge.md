@@ -3835,6 +3835,7 @@ The existing Azure tests (azure-diagnostics, azure-cascade-types, etc.) don't hi
 ## Design Decisions
 
 ### metadata.json generation (Task 17.9)
+
 - **Approach chosen:** Direct `emitFile()` call after JSX tree rendering in `$onEmit`.
 - **Why:** metadata.json is plain JSON, not C# code. Using the Alloy JSX pipeline would be overkill. The direct write matches the legacy emitter's pattern exactly and keeps the implementation simple.
 - **Rejected:** JSX component approach (`<SourceFile filetype="json">`) — unnecessary complexity for a static JSON file.
@@ -3855,6 +3856,7 @@ The existing Azure tests (azure-diagnostics, azure-cascade-types, etc.) don't hi
 ### specialHeaderNames pattern — flavor-aware headers (2026-03-07)
 
 The `specialHeaderNames` set is duplicated in 3 files (RestClientFile.tsx, ProtocolMethod.tsx, ConvenienceMethod.tsx). To add Azure-only headers, each file needs flavor context. Options:
+
 1. **Pass flavor as function parameter** — cleanest, each isSpecialHeaderParam call gets flavor
 2. **Use Alloy context** — could use useTsp() or a custom context, but adds coupling
 3. **Centralize to utils** — extract to shared util, but still need flavor at call sites
@@ -3864,12 +3866,14 @@ Recommend option 1 for 17.7a since the flavor is already available (or passed as
 ## Design Decisions
 
 ### Special Header Centralization (Task 17.7a)
+
 **Decision**: Centralized the `isSpecialHeaderParam` function into `src/utils/special-headers.ts` instead of modifying the duplicated copies in RestClientFile, ProtocolMethod, and ConvenienceMethod.
 **Reason**: DRY, easier to extend for 17.7b (conditional headers), follows project's utility pattern.
 **Impact**: All call sites now pass `flavor` parameter. The function checks `baseSpecialHeaderNames` (repeatability headers, always active) and `azureSpecialHeaderNames` (`x-ms-client-request-id`, active only for azure flavor).
 **Key detail**: x-ms-client-request-id is stripped but NOT auto-populated in CreateRequest — the Azure pipeline policy handles it. The auto-population loop in `buildRequestBody` only has cases for repeatability headers.
 
 ### Gotcha: `buildProtocolParams` and `buildConvenienceParams` are exported standalone functions
+
 These are used by PagingMethods.tsx and CollectionResultFile.tsx. When adding parameters to these functions, all external call sites must be updated. Check with `grep -rn buildProtocolParams src/` before changing the signature.
 
 ### Task 17.7b — Conditional header grouping for Azure flavor (2026-03-07)
@@ -3881,6 +3885,7 @@ These are used by PagingMethods.tsx and CollectionResultFile.tsx. When adding pa
 **Rejected:** Descriptor-based pre-processing that would transform operations before they reach components. More invasive, adds an abstraction layer that the simple grouping logic doesn't warrant.
 
 **Key implementation details:**
+
 - `ConditionalHeaderFlags` enum uses bit flags matching the legacy `RequestConditionHeaders`
 - Grouping is always optional (priority 400) — conditions params get `= default` in convenience methods
 - ETag case uses `request.Headers.Set()` with `.Value.ToString()` for nullable struct unpacking
@@ -3895,8 +3900,22 @@ The conditional header validation (ArgumentException for unsupported properties)
 ## Design Decisions
 
 ### Management plane options — flat interface with `management` boolean (Task 18.2)
+
 - **Chosen**: Add `management` boolean + `enable-wire-path-attribute` + `use-legacy-resource-detection` as flat options on `CSharpEmitterOptions`
 - **Rejected**: Adding `"azure-mgmt"` flavor variant — would require changing 40+ files that check `flavor === "azure"` to also handle `"azure-mgmt"`. Too invasive.
 - **Rejected**: Adding only sub-options without `management` master switch — checking `enable-wire-path-attribute !== undefined` is fragile. The `management` boolean is an explicit signal for downstream ARM features.
 - `management: true` implies `model-namespace: true` (matches legacy mgmt emitter behavior)
 - Resolved options guarantee `management`, `enable-wire-path-attribute`, and `use-legacy-resource-detection` are always present via `defaultOptions`
+
+## SystemTextJsonConverter Pattern (Task 17.10)
+
+### GOTCHA: TCGC additionalDecorators Required
+The `@useSystemTextJsonConverter` decorator only appears in `model.decorators` when `additionalDecorators` is configured in `createSdkContext` options. Without `additionalDecorators: ["Azure\\.ClientGenerator\\.Core\\.@useSystemTextJsonConverter"]`, the decorator is silently filtered out by TCGC and `model.decorators` will be an empty array. This is because TCGC has an allowlist for decorators — only explicitly registered ones are included.
+
+### GOTCHA: Nested Class Refkeys Resolve Fully-Qualified
+When using a refkey in `typeof()` to reference a nested class declared via `<ClassDeclaration refkey={...}>` inside another class, Alloy resolves the refkey to the fully-qualified name (e.g., `FooProperties.FooPropertiesConverter`). The legacy emitter uses the short name `FooPropertiesConverter` (valid since the attribute is on the containing class). Solution: use a plain string `typeof(${converterName})` instead of a refkey for nested class references in the same scope.
+
+### Design Decision: Plain String vs Refkey for Nested Class typeof()
+Approach chosen: Plain string `typeof(${modelName}Converter)` for the `[JsonConverter]` attribute argument.
+Approach rejected: Refkey-based `code\`typeof(${converterRefkey})\`` which would auto-resolve but produces `typeof(OuterClass.NestedClass)` format that doesn't match legacy output.
+Reason: The converter is always a nested class in the same serialization partial class — no cross-file resolution is needed, and the short name is correct C#.

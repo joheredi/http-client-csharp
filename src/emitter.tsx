@@ -104,6 +104,7 @@ import {
 } from "./utils/additional-properties.js";
 import { fixAllNamespaceBraceStyles } from "./utils/namespace-brace-style.js";
 import { reorderAllFileHeaders } from "./utils/reorder-header.js";
+import { SYSTEM_TEXT_JSON_CONVERTER_DECORATOR_PATTERN } from "./utils/system-text-json-converter.js";
 
 /**
  * TypeSpec emitter entry point for the C# HTTP client generator.
@@ -128,8 +129,16 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
   const options = resolveOptions(context);
 
   // Create the TCGC SDK context which processes the TypeSpec program into
-  // a client-oriented model (SdkPackage) with clients, models, and enums
-  const sdkContext = await createSdkContext(context, $lib.name);
+  // a client-oriented model (SdkPackage) with clients, models, and enums.
+  // When flavor is "azure", configure TCGC to include the
+  // @useSystemTextJsonConverter decorator in model decorator lists so the
+  // emitter can detect it and generate JsonConverter<T> nested classes.
+  const sdkContext = await createSdkContext(context, $lib.name, {
+    additionalDecorators:
+      options.flavor === "azure"
+        ? [SYSTEM_TEXT_JSON_CONVERTER_DECORATOR_PATTERN]
+        : undefined,
+  });
 
   // Surface any TCGC diagnostics to the TypeSpec program so they appear
   // in compiler output alongside TypeSpec's own diagnostics

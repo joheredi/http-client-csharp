@@ -25,5 +25,35 @@ export const SystemTextJsonSerialization = createLibrary(
       kind: "class",
       members: {},
     },
+
+    /**
+     * Specifies the converter type to use for a type when serializing
+     * or deserializing with System.Text.Json. Applied to model classes
+     * that have the `@useSystemTextJsonConverter` decorator (Azure flavor)
+     * to register a nested converter class for custom JSON handling.
+     *
+     * @example `[JsonConverter(typeof(FooPropertiesConverter))]`
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.text.json.serialization.jsonconverterattribute
+     */
+    JsonConverterAttribute: {
+      kind: "class",
+      members: {},
+    },
+
+    /**
+     * Abstract base class for converting objects to and from JSON.
+     * The generated `{ModelName}Converter` nested class inherits from
+     * `JsonConverter<T>` and overrides `Write` and `Read` methods to
+     * delegate to the model's `IJsonModel<T>` implementation.
+     *
+     * @example `internal partial class FooConverter : JsonConverter<Foo>`
+     *
+     * @see https://learn.microsoft.com/en-us/dotnet/api/system.text.json.serialization.jsonconverter-1
+     */
+    JsonConverter: {
+      kind: "class",
+      members: {},
+    },
   },
 );

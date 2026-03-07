@@ -11,6 +11,7 @@ import {
   UsageFlags,
 } from "@azure-tools/typespec-client-generator-core";
 import { SystemClientModelPrimitives } from "../../builtins/system-client-model.js";
+import { SystemTextJsonSerialization } from "../../builtins/system-text-json-serialization.js";
 import {
   getCustomNamespace,
   useCustomCode,
@@ -18,8 +19,10 @@ import {
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";
 import { efCsharpRefkey, unknownModelRefkey } from "../../utils/refkey.js";
+import { hasSystemTextJsonConverter } from "../../utils/system-text-json-converter.js";
 import { isModelAbstract } from "../models/ModelConstructors.js";
 import { isDynamicModel } from "../models/DynamicModel.js";
+import { SystemTextJsonConverterClass } from "./SystemTextJsonConverterClass.js";
 
 /**
  * Props for the {@link ModelSerializationFile} component.
@@ -171,14 +174,31 @@ export function ModelSerializationFile(props: ModelSerializationFileProps) {
   // Abstract base models with discriminated subtypes need the PersistableModelProxy
   // attribute to tell the framework which concrete type to instantiate when the
   // discriminator value is unrecognized during deserialization.
-  const attributes = isAbstract
-    ? [
-        <Attribute
-          name={SystemClientModelPrimitives.PersistableModelProxyAttribute}
-          args={[code`typeof(${unknownModelRefkey(props.type.__raw!)})`]}
-        />,
-      ]
-    : undefined;
+  //
+  // Models with the @useSystemTextJsonConverter decorator (Azure flavor) need a
+  // [JsonConverter(typeof({Model}Converter))] attribute to register the nested
+  // converter class for System.Text.Json serialization support.
+  const needsJsonConverter = hasSystemTextJsonConverter(props.type);
+  const converterName = `${modelName}Converter`;
+  const attributes: Children[] = [];
+  if (needsJsonConverter) {
+    // Use a plain string for typeof() since the converter is a nested class
+    // in the same scope — no cross-file refkey resolution needed.
+    attributes.push(
+      <Attribute
+        name={SystemTextJsonSerialization.JsonConverterAttribute}
+        args={[`typeof(${converterName})`]}
+      />,
+    );
+  }
+  if (isAbstract) {
+    attributes.push(
+      <Attribute
+        name={SystemClientModelPrimitives.PersistableModelProxyAttribute}
+        args={[code`typeof(${unknownModelRefkey(props.type.__raw!)})`]}
+      />,
+    );
+  }
 
   return (
     <SourceFile
@@ -200,9 +220,13 @@ export function ModelSerializationFile(props: ModelSerializationFileProps) {
               : undefined
           }
           interfaceTypes={getSerializationInterfaces(props.type, modelName)}
-          attributes={attributes}
+          attributes={attributes.length > 0 ? attributes : undefined}
         >
           {props.children}
+          {needsJsonConverter && "\n\n"}
+          {needsJsonConverter && (
+            <SystemTextJsonConverterClass type={props.type} />
+          )}
         </ClassDeclaration>
       </Namespace>
     </SourceFile>

@@ -817,8 +817,6 @@ function isImplicitContentTypeHeader(param: SdkHeaderParameter): boolean {
   return param.serializedName.toLowerCase() === "content-type";
 }
 
-
-
 /**
  * Checks if a header parameter is a constant-valued Accept header.
  * Constant Accept headers are skipped in the regular header loop because

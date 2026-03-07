@@ -27,7 +27,8 @@ describe("conditional header grouping", () => {
    *   if (ifMatch != null) { request.Headers.Set("If-Match", ifMatch.Value.ToString()); }
    */
   it("single If-Match → ETag? parameter (Azure)", async () => {
-    const [{ outputs }, diagnostics] = await AzureHttpTester.compileAndDiagnose(`
+    const [{ outputs }, diagnostics] =
+      await AzureHttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
       @service
@@ -58,7 +59,8 @@ describe("conditional header grouping", () => {
    * header name.
    */
   it("single If-None-Match → ETag? parameter (Azure)", async () => {
-    const [{ outputs }, diagnostics] = await AzureHttpTester.compileAndDiagnose(`
+    const [{ outputs }, diagnostics] =
+      await AzureHttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
       @service
@@ -92,7 +94,8 @@ describe("conditional header grouping", () => {
    *   if (matchConditions != null) { request.Headers.Add(matchConditions); }
    */
   it("If-Match + If-None-Match → MatchConditions parameter (Azure)", async () => {
-    const [{ outputs }, diagnostics] = await AzureHttpTester.compileAndDiagnose(`
+    const [{ outputs }, diagnostics] =
+      await AzureHttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
       @service
@@ -131,7 +134,8 @@ describe("conditional header grouping", () => {
    *   if (requestConditions != null) { request.Headers.Add(requestConditions); }
    */
   it("If-Match + If-Modified-Since → RequestConditions parameter (Azure)", async () => {
-    const [{ outputs }, diagnostics] = await AzureHttpTester.compileAndDiagnose(`
+    const [{ outputs }, diagnostics] =
+      await AzureHttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
       @service
@@ -168,7 +172,8 @@ describe("conditional header grouping", () => {
    * DateTimeOffset? parameter. Time-based headers always use RequestConditions.
    */
   it("single If-Modified-Since → RequestConditions parameter (Azure)", async () => {
-    const [{ outputs }, diagnostics] = await AzureHttpTester.compileAndDiagnose(`
+    const [{ outputs }, diagnostics] =
+      await AzureHttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
       @service
@@ -203,7 +208,8 @@ describe("conditional header grouping", () => {
    * unsupported properties to prevent callers from setting them.
    */
   it("protocol method validates unsupported conditional headers (Azure)", async () => {
-    const [{ outputs }, diagnostics] = await AzureHttpTester.compileAndDiagnose(`
+    const [{ outputs }, diagnostics] =
+      await AzureHttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
       @service
@@ -222,12 +228,16 @@ describe("conditional header grouping", () => {
 
     // Should validate unsupported headers: If-None-Match and If-Unmodified-Since
     expect(clientFile).toContain("requestConditions?.IfNoneMatch != null");
-    expect(clientFile).toContain("requestConditions?.IfUnmodifiedSince != null");
+    expect(clientFile).toContain(
+      "requestConditions?.IfUnmodifiedSince != null",
+    );
     expect(clientFile).toContain("ArgumentException");
 
     // Should NOT validate supported headers
     expect(clientFile).not.toContain("requestConditions?.IfMatch != null");
-    expect(clientFile).not.toContain("requestConditions?.IfModifiedSince != null");
+    expect(clientFile).not.toContain(
+      "requestConditions?.IfModifiedSince != null",
+    );
   });
 
   /**

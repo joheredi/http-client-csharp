@@ -6042,3 +6042,20 @@ Approach: Flat options with `management` master switch (chosen over `"azure-mgmt
 ### Next task considerations
 - Task 18.1 (mgmt test infrastructure) can now reference these options
 - Task 19.x ARM features should check `options.management === true` to activate ARM-specific behaviors
+
+### Task 17.10 — Add SystemTextJsonConverter support (2026-03-07)
+
+**What was done:**
+- Added `JsonConverterAttribute`, `JsonConverter` builtins to `src/builtins/system-text-json-serialization.ts`
+- Added `JsonSerializerOptions` builtin to `src/builtins/system-text-json.ts`
+- Created `src/utils/system-text-json-converter.ts` — utility to detect `@useSystemTextJsonConverter` decorator on models via TCGC's `decorators` array
+- Modified `src/emitter.tsx` to pass `additionalDecorators` to `createSdkContext` when `flavor='azure'` (required for TCGC to include the decorator in model.decorators)
+- Created `src/components/serialization/SystemTextJsonConverterClass.tsx` — generates nested `internal partial class {Model}Converter : JsonConverter<{Model}>` with Write/Read method overrides
+- Modified `src/components/serialization/ModelSerializationFile.tsx` — conditionally adds `[JsonConverter(typeof({Model}Converter))]` attribute and renders the nested converter class
+- Added 7 tests in `test/system-text-json-converter.test.ts`
+
+**Design Decision:** Use plain string `typeof(ConverterName)` in the attribute instead of a refkey, because the converter is a nested class in the same scope — refkeys resolve to fully-qualified `OuterClass.NestedClass` which doesn't match the legacy output.
+
+**Key Pattern:** The `@useSystemTextJsonConverter` decorator is from TCGC but ONLY appears in `model.decorators` when `additionalDecorators` is configured in `createSdkContext` options. Without this configuration, the decorator is silently filtered out by TCGC.
+
+**Pre-existing failures:** E2E spector test fails (ClientDiagnostics accessibility, ModelReaderWriterBuildableAttribute not found) — confirmed pre-existing, not caused by this change. Lint errors in csharpexamples.ts and package-name.test.ts also pre-existing.

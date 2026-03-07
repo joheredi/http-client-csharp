@@ -91,4 +91,16 @@ export const SystemTextJson = createLibrary("System.Text.Json", {
       Serialize: { kind: "method", methodKind: "ordinary", isStatic: true },
     },
   },
+
+  /**
+   * Provides options to be used with JsonSerializer. Used as a parameter
+   * in `JsonConverter<T>.Write` and `JsonConverter<T>.Read` override methods
+   * generated for models with the `@useSystemTextJsonConverter` decorator.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/system.text.json.jsonserializeroptions
+   */
+  JsonSerializerOptions: {
+    kind: "class",
+    members: {},
+  },
 });

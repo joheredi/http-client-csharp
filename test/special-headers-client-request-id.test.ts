@@ -30,7 +30,8 @@ describe("x-ms-client-request-id special header", () => {
    * - The header is NOT auto-injected in CreateRequest (pipeline handles it)
    */
   it("strips x-ms-client-request-id from Azure client method signatures", async () => {
-    const [{ outputs }, diagnostics] = await AzureHttpTester.compileAndDiagnose(`
+    const [{ outputs }, diagnostics] =
+      await AzureHttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
       @service
@@ -145,7 +146,8 @@ describe("x-ms-client-request-id special header", () => {
    * Azure flavor while other headers are preserved.
    */
   it("strips only x-ms-client-request-id, preserves other headers in Azure flavor", async () => {
-    const [{ outputs }, diagnostics] = await AzureHttpTester.compileAndDiagnose(`
+    const [{ outputs }, diagnostics] =
+      await AzureHttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
       @service

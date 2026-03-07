@@ -1587,7 +1587,7 @@
           "title": "Add SystemTextJsonConverter support",
           "description": "The Azure emitter injects a @useSystemTextJsonConverter decorator which causes the generator to add System.Text.Json converter attributes to model types. The SystemTextJsonConverterVisitor adds [JsonConverter(typeof(...))] attributes to model classes.\n\nWhen flavor='azure', support this pattern for model serialization.\n\nReference files:\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/Visitors/SystemTextJsonConverterVisitor.cs\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/emitter/src/emitter.ts (lines 35-38: @useSystemTextJsonConverter decorator injection)",
           "phase": "phase-17",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "17.1"
           ],
