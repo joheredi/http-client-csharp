@@ -106,6 +106,7 @@ import { fixAllNamespaceBraceStyles } from "./utils/namespace-brace-style.js";
 import { reorderAllFileHeaders } from "./utils/reorder-header.js";
 import { SYSTEM_TEXT_JSON_CONVERTER_DECORATOR_PATTERN } from "./utils/system-text-json-converter.js";
 import { detectArmResources } from "./utils/resource-detection.js";
+import { transformSubscriptionIdParameters } from "./utils/subscription-id-transformer.js";
 
 /**
  * TypeSpec emitter entry point for the C# HTTP client generator.
@@ -149,6 +150,15 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
 
   // Render the JSX component tree and write generated C# files to disk
   const clients = sdkContext.sdkPackage.clients;
+
+  // For management plane, transform subscriptionId from client scope to method
+  // scope. TCGC puts subscriptionId in client initialization by default, but
+  // ARM operations need it as a per-method parameter. This must happen before
+  // other transformations that depend on parameter placement (e.g., method
+  // signature building, field generation).
+  if (options.management) {
+    transformSubscriptionIdParameters(clients);
+  }
 
   // Apply unreferenced-types-handling option to filter or internalize
   // types that are not reachable from any client operation signature

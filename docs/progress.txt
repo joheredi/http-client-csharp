@@ -6105,3 +6105,31 @@ Approach: Flat options with `management` master switch (chosen over `"azure-mgmt
 ### Known limitations
 - Integration tests can't directly assert ArmProviderSchema contents because resolveArmResources requires the emitter execution context. The pure algorithm tests cover correctness.
 - E2e test failures are pre-existing (ModelReaderWriterContext, ClientDiagnostics issues) — not related to this task.
+
+## Task 19.4 — Implement subscription ID parameter transformation (2026-03-07)
+
+### What was done
+- Created `src/utils/subscription-id-transformer.ts` — transforms subscriptionId parameters from client scope to method scope for ARM management plane
+- Modified `src/emitter.tsx` — calls `transformSubscriptionIdParameters(clients)` when `management === true`, right after TCGC context creation and before all other processing
+- Created `test/utils/subscription-id-transformer.test.ts` — 9 unit tests + 2 integration tests
+
+### Design Decision
+**Approach chosen:** Mutate TCGC data structures in `$onEmit` before rendering (set `onClient = false` on subscriptionId operation path parameters, remove from client initialization).
+
+**Why:** Matches the legacy emitter's `subscription-id-transformer.ts` pattern exactly. All downstream components (buildProtocolParams, buildConvenienceParams, buildMethodParams, buildPathParamStatement) already respect the `onClient` flag — no component changes needed. Single centralized transformation.
+
+**Rejected:** Component-level transformation (each component checks `management === true` and handles subscriptionId differently). Too scattered, requires modifying RestClientFile, ProtocolMethod, ConvenienceMethod, and ClientFile.
+
+### Key Patterns
+- `p.onClient` is the universal switch: when `true`, param is excluded from method signatures and resolved from client field; when `false`, included in method signatures and used directly
+- Setting `onClient = false` on operation path params automatically makes them appear in protocol, convenience, and REST client method signatures
+- Removing from `clientInitialization.parameters` prevents `_subscriptionId` field generation
+- Parent chain traversal ensures subscription ID is removed from root and all ancestor clients
+- Safe to call when subscriptionId is already at method scope (e.g., via `@clientLocation` decorator) — the `onClient === true` check prevents double-processing
+
+### Test coverage
+- Unit tests: onClient flag mutation, client init param removal, non-subscriptionId param preservation, already-at-method-scope skip, methods-without-operations skip, parent chain removal, multiple methods handling, no-subscriptionId no-op, path-only filtering
+- Integration tests: ARM TypeSpec compilation verifying subscriptionId appears as method param (not client field) in generated REST client output
+
+### Pre-existing failures
+E2E tests have pre-existing failures (CS0122 ClientDiagnostics, CS0534 ErrorResult, CS0246 ModelReaderWriterContext) — not related to this task.

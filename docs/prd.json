@@ -1772,7 +1772,7 @@
           "title": "Implement subscription ID parameter transformation",
           "description": "ARM operations need subscriptionId at the method level rather than the client constructor level. The mgmt emitter's transformSubscriptionIdParameters() function moves subscriptionId from client scope to method scope.\n\nThis transformation:\n1. Finds subscriptionId in client constructor parameters\n2. Removes it from the client constructor\n3. Adds it as a method parameter on each operation that needs it\n4. Adjusts the REST client request-building to use the method-level parameter\n\nReference files:\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/emitter/src/subscription-id-transformer.ts (full implementation)\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/emitter/src/emitter.ts (calls transformSubscriptionIdParameters in updateCodeModel)",
           "phase": "phase-19",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "19.1"
           ],

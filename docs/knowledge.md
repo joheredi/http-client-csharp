@@ -3956,3 +3956,27 @@ These affect `azure/client-generator-core/client-location` and `azure/client-gen
 - **DecoratorApplication type**: The TypeSpec compiler's `DecoratorApplication.decorator.namespace` is a plain `string | undefined`, while `DecoratorApplication.definition.namespace` is a `Namespace` object. Use `getNamespaceFullName()` from `@typespec/compiler` to build fully qualified decorator names.
 - **ARM TypeSpec test fixtures need `using` directives**: Even with `.importLibraries()`, inline TypeSpec code needs `using Azure.ResourceManager;`, `using TypeSpec.Rest;`, etc. for ARM types like `TrackedResource<T>` to resolve.
 - **Legacy detection two-pass strategy**: CRUD operations must be processed first (pass 1) to establish resource paths before non-CRUD operations (List, Action) can match against them (pass 2).
+
+## Subscription ID Transformation (Task 19.4)
+
+### Design Decision: Centralized TCGC mutation vs component-level
+- **Chosen:** Mutate TCGC data in `$onEmit` by setting `onClient = false` on subscriptionId operation path params and removing from `clientInitialization.parameters`
+- **Why:** All downstream components already check `p.onClient` flag — setting it to `false` makes subscriptionId appear in method signatures without any component changes
+- **Rejected:** Component-level checks for `management === true` — too scattered (4+ files), error-prone
+
+### Gotcha: `onClient` is the universal parameter scope switch
+The `onClient` boolean on `SdkPathParameter`, `SdkQueryParameter`, and `SdkHeaderParameter` controls:
+1. Whether the param appears in method signatures (skipped when `true`)
+2. Whether path building uses a field reference (`_paramName`) or method parameter
+3. Whether `getOnClientFieldName` / `correspondingMethodParams` are used for alias resolution
+
+Setting `onClient = false` and removing from `clientInitialization.parameters` is sufficient to move any parameter from client scope to method scope. No component-level changes needed.
+
+### Gotcha: `correspondingMethodParams` not affected
+When `onClient` is set to `false`, the `correspondingMethodParams` property on the operation parameter is never accessed by downstream code — `getOnClientFieldName()` is only called when `onClient === true`. Safe to leave as-is.
+
+### Gotcha: Transformation ordering in $onEmit
+`transformSubscriptionIdParameters(clients)` must be called:
+- AFTER `createSdkContext()` (needs TCGC data)
+- BEFORE `getAllClients()` / `applyUnreferencedTypeHandling()` / component rendering
+- Currently placed right after `const clients = sdkContext.sdkPackage.clients` in emitter.tsx
