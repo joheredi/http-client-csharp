@@ -20,7 +20,7 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageReference Include="System.Memory.Data" Version="10.0.1" />
     <PackageReference Include="System.ClientModel" Version="1.9.0" />
-    <PackageReference Include="Azure.Core" Version="1.44.1" />
+    <PackageReference Include="Azure.Core" Version="1.51.1" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.8.0" />
   </ItemGroup>
 

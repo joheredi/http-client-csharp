@@ -106,7 +106,7 @@ describe("ProjectFile", () => {
 
     const csproj = outputs[csprojKey!];
     expect(csproj).toContain(
-      '<PackageReference Include="Azure.Core" Version="1.44.1" />',
+      '<PackageReference Include="Azure.Core" Version="1.51.1" />',
     );
     expect(csproj).not.toContain("System.ClientModel");
   });
@@ -172,7 +172,7 @@ describe("ProjectFile", () => {
 
     const csproj = outputs[csprojKey!];
     expect(csproj).toContain(
-      '<PackageReference Include="Azure.Core" Version="1.44.1" />',
+      '<PackageReference Include="Azure.Core" Version="1.51.1" />',
     );
     expect(csproj).not.toContain("Azure.ResourceManager");
   });

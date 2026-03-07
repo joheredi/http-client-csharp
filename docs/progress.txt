@@ -6395,3 +6395,23 @@ Implemented tag manipulation methods for ARM resources that support tags. Each t
 - ⚠️ Pre-existing E2E failures remain: CS0122 ClientDiagnostics (task 20.4), CS0246 ModelReaderWriterContext (task 20.3)
 
 **Pattern**: Conditional code generation using `isAzure ? code\`...\` : undefined` inside ClassDeclaration children. This is the idiomatic Alloy pattern for flavor-specific member generation.
+
+## Task 20.3 — Fix ModelReaderWriterContext dependency for Azure projects — 2026-03-07
+
+**Problem**: Azure-flavored .csproj files referenced Azure.Core 1.44.1, which doesn't transitively include a sufficient System.ClientModel version with `ModelReaderWriterContext` and `ModelReaderWriterBuildableAttribute`. This caused CS0246 errors in the generated `_Specs_AzureCoreBasicContext.cs`.
+
+**Fix**: Bumped Azure.Core from 1.44.1 to 1.51.1 for ALL Azure flavors (not just management). This matches the legacy emitter's `NewAzureProjectScaffolding` which uses 1.51.1. Azure.Core 1.51.1 transitively includes a System.ClientModel version with full ModelReaderWriterContext support.
+
+**Files changed**:
+- `src/components/infrastructure/ProjectFile.tsx` — Changed `azureCoreVersion` from conditional (`isManagement ? "1.51.1" : "1.44.1"`) to constant `"1.51.1"` for all Azure flavors
+- `test/project-scaffolding.test.ts` — Updated two test expectations from 1.44.1 → 1.51.1
+- `test/e2e/Spector.Tests/Spector.Tests.csproj` — Bumped Azure.Core from 1.44.1 → 1.51.1 to match generated projects
+
+**Design decision**: Chose to bump Azure.Core version rather than adding explicit System.ClientModel reference. The legacy emitter uses 1.51.1 for all Azure projects and does NOT add explicit System.ClientModel, so this approach aligns with legacy behavior.
+
+**Validation**:
+- ✅ Build passes
+- ✅ 569 unit tests pass (0 failures)
+- ✅ Generated csproj now shows Azure.Core 1.51.1
+- ✅ CS0246 ModelReaderWriterContext errors eliminated
+- ⚠️ Pre-existing E2E failures remain: CS0122 ClientDiagnostics (task 20.4)
