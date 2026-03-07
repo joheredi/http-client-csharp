@@ -252,19 +252,20 @@ export function ResourceFile(props: ResourceFileProps) {
   return (
     <SourceFile path={`src/Generated/${className}.cs`}>
       {header}
+      {"\n\n"}
       <Namespace name={ns}>
-        {buildClassXmlDoc(
-          resourceName,
-          className,
-          parentScopeDesc,
-          clientSimpleName,
-        )}
         <ClassDeclaration
           public
           partial
           name={className}
           refkey={resourceRefkey}
           baseType={AzureResourceManager.ArmResource}
+          doc={buildClassXmlDoc(
+            resourceName,
+            className,
+            parentScopeDesc,
+            clientSimpleName,
+          )}
         >
           {fieldsBlock}
           {resourceTypeField}
@@ -474,14 +475,13 @@ function buildClassXmlDoc(
   className: string,
   parentScope: { typeName: string; methodPrefix: string },
   clientSimpleName: string,
-): Children {
+): string {
   const collectionMethodName = `${parentScope.methodPrefix}${clientSimpleName}`;
-  return code`/// <summary>
-/// A class representing a ${resourceName} along with the instance operations that can be performed on it.
-/// If you have a <see cref="ResourceIdentifier"/> you can construct a <see cref="${className}"/> from an instance of <see cref="ArmClient"/> using the GetResource method.
-/// Otherwise you can get one from its parent resource <see cref="${parentScope.typeName}"/> using the ${collectionMethodName} method.
-/// </summary>
-`;
+  return `<summary>
+A class representing a ${resourceName} along with the instance operations that can be performed on it.
+If you have a <see cref="ResourceIdentifier"/> you can construct a <see cref="${className}"/> from an instance of <see cref="ArmClient"/> using the GetResource method.
+Otherwise you can get one from its parent resource <see cref="${parentScope.typeName}"/> using the ${collectionMethodName} method.
+</summary>`;
 }
 
 // ─── Helper: Build fields ────────────────────────────────────────────────────

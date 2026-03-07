@@ -6518,3 +6518,18 @@ Fixed CS0305, CS0508, CS0534, CS0115 compilation errors in Azure-flavored paging
 - Build passes, 1670 unit tests pass, no regressions
 - E2E "should build" test failure is pre-existing (net8.0 build errors, documented in knowledge.md)
 - Next: Tasks 20.9-20.12 will fix the ARM-specific compilation errors (CS0103, CS0191, CS1983, CS0118)
+
+## Task 20.9 — Fix ARM rendering bugs: missing newlines in generated output (2026-03-07)
+
+- **Root cause found**: PRD predicted CS0103 (Argument helper not found) but actual errors were rendering bugs — missing `{"\n\n"}` JSX separators between `{header}` and `<Namespace>` in ARM components, and doc comments rendered as children instead of via `doc` prop on `<ClassDeclaration>`
+- **Files fixed**:
+  - `src/components/arm/PageableWrapperFiles.tsx` — added `{"\n\n"}` in AsyncPageableWrapperFile and PageableWrapperFile
+  - `src/components/arm/ResourceFile.tsx` — added `{"\n\n"}` + moved `buildClassXmlDoc` to `doc` prop (returns plain string without `///` prefixes)
+  - `src/components/arm/CollectionFile.tsx` — added `{"\n\n"}` + moved `buildCollectionClassXmlDoc` to `doc` prop
+- **Result**: ~3524 errors reduced to ~1180 across 9 ARM specs (67% reduction)
+- All errors were cascading from `#nullable disablenamespace` (missing newline) and `/// </summary>public partial class` (missing newline)
+- Also marked 20.10 and 20.11 as done — those predicted errors (CS0191, CS1983) never existed; they were cascading from the rendering bug
+- Build passes, 1670 unit tests pass, no regressions
+- E2E "should build" failure is pre-existing (NestedFlattenModel, ClientDefaultValue issues)
+- **Pattern**: When adding new `SourceFile` components, always include `{"\n\n"}` between `{header}` and `<Namespace>`. Use `doc` prop for class-level XML doc comments instead of rendering as children.
+- Next: Task 20.12 — fix remaining ARM semantic errors (CS0246 AzureLocation, CS0104/CS0118 namespace collisions)

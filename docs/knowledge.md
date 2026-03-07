@@ -4299,3 +4299,24 @@ The `pnpm test:e2e` build test was failing before task 20.5 due to 10 non-Azure 
 
 ### Non-Azure specs generating Azure-flavored code
 10 non-Azure specs generate code using Azure.Core types (HttpMessage, RequestContext, RequestContent) under net8.0. This suggests the net8.0 conditional compilation in generated infrastructure files applies Azure-flavor APIs incorrectly. Root cause investigation needed.
+
+## ARM Component Rendering Pattern (Task 20.9)
+
+**Gotcha**: ARM component files (CollectionFile.tsx, ResourceFile.tsx, PageableWrapperFiles.tsx) were missing `{"\n\n"}` between `{header}` and `<Namespace>`, causing `#nullable disablenamespace ...` in generated output. This produced ~2500 cascading syntax errors.
+
+**Rule**: Every `<SourceFile>` component MUST include `{"\n\n"}` between `{header}` and `<Namespace>`:
+```tsx
+<SourceFile path="...">
+  {header}
+  {"\n\n"}
+  <Namespace name={ns}>
+```
+
+**Doc comments**: Use the `doc` prop on `<ClassDeclaration>` instead of rendering `/// <summary>...` as a child before the declaration. The `doc` prop accepts XML content WITHOUT `///` prefixes (the component adds them). This matches the pattern in ModelFile.tsx.
+
+## Design Decisions
+
+### ARM doc comment approach (Task 20.9)
+**Chosen**: Pass doc comment content via `doc` prop on `<ClassDeclaration>`, returning plain XML without `///` prefixes.
+**Rejected**: Rendering `code` template with `///` prefixes as a child before `<ClassDeclaration>` — this caused missing newline between doc comment and class declaration because Alloy concatenates adjacent children.
+**Reason**: The `doc` prop is the idiomatic Alloy pattern (used by ModelFile.tsx) and handles `///` prefix insertion and newline management automatically.

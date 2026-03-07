@@ -65,6 +65,7 @@ function AsyncPageableWrapperFile(props: WrapperFileProps) {
       ]}
     >
       {header}
+      {"\n\n"}
       <Namespace name={ns}>
         {code`internal partial class AsyncPageableWrapper<T, U> : AsyncPageable<U>
 {
@@ -119,6 +120,7 @@ function PageableWrapperFile(props: WrapperFileProps) {
       using={["System", "System.Collections.Generic", "Azure"]}
     >
       {header}
+      {"\n\n"}
       <Namespace name={ns}>
         {code`internal partial class PageableWrapper<T, U> : Pageable<U>
 {

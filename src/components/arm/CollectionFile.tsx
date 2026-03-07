@@ -346,20 +346,21 @@ export function CollectionFile(props: CollectionFileProps) {
       using={["System.Collections"]}
     >
       {header}
+      {"\n\n"}
       <Namespace name={ns}>
-        {buildCollectionClassXmlDoc(
-          resourceName,
-          resourceClassName,
-          collectionClassName,
-          parentScopeDesc,
-          clientSimpleName,
-        )}
         <ClassDeclaration
           public
           partial
           name={collectionClassName}
           refkey={collectionRefkey}
           baseType={AzureResourceManager.ArmCollection}
+          doc={buildCollectionClassXmlDoc(
+            resourceName,
+            resourceClassName,
+            collectionClassName,
+            parentScopeDesc,
+            clientSimpleName,
+          )}
           interfaceTypes={[
             code`${SystemCollectionsGeneric.IEnumerable}<${resourceClassRef}>`,
             code`${SystemCollectionsGeneric.IAsyncEnumerable}<${resourceClassRef}>`,
@@ -436,14 +437,13 @@ function buildCollectionClassXmlDoc(
   collectionClassName: string,
   parentScope: { typeName: string; methodPrefix: string },
   clientSimpleName: string,
-): Children {
+): string {
   const collectionMethodName = `${parentScope.methodPrefix}${clientSimpleName}`;
-  return code`/// <summary>
-/// A class representing a collection of <see cref="${resourceClassName}"/> and their operations.
-/// Each <see cref="${resourceClassName}"/> in the collection will belong to the same instance of <see cref="${parentScope.typeName}"/>.
-/// To get a <see cref="${collectionClassName}"/> instance call the ${collectionMethodName} method from an instance of <see cref="${parentScope.typeName}"/>.
-/// </summary>
-`;
+  return `<summary>
+A class representing a collection of <see cref="${resourceClassName}"/> and their operations.
+Each <see cref="${resourceClassName}"/> in the collection will belong to the same instance of <see cref="${parentScope.typeName}"/>.
+To get a <see cref="${collectionClassName}"/> instance call the ${collectionMethodName} method from an instance of <see cref="${parentScope.typeName}"/>.
+</summary>`;
 }
 
 // ─── Helper: Build fields ────────────────────────────────────────────────────
