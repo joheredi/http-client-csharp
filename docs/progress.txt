@@ -6306,3 +6306,27 @@ E2E tests have pre-existing failures (CS0122 ClientDiagnostics, CS0534 ErrorResu
 - 19.5c: Extension resource support (scope parameter, generic parent)
 - 19.5d: Non-resource method code generation
 - 19.5e: Tag operations (most complex)
+
+## Task 19.5d — Non-resource method code generation (2026-03-07)
+
+Implemented code generation for non-resource methods (provider-level operations not tied to ARM resources).
+
+### Changes:
+- **MockableProviderFile.tsx**: Extended `ScopeResources` to include `nonResourceMethods`. Modified `categorizeResourcesByScope()` to group non-resource methods by scope (Extension→ArmClient, Subscription, ResourceGroup, Tenant, ManagementGroup). Added `buildNonResourceRenderData()` for TCGC method lookup, `buildNonResourceFields()` for REST client lazy-init fields, `buildNonResourceStandardOperation()` for async/sync method pairs with diagnostic scope, request creation, pipeline processing, and response deserialization.
+- **ExtensionsFile.tsx**: Added `buildNonResourceExtensions()` for static extension method wrappers that delegate to mockable providers. Both async and sync variants with mocking hints in XML docs.
+- **test/arm/non-resource-methods.test.ts**: 17 new tests covering MockableProvider generation (REST client fields, async/sync signatures, diagnostic scope, scope-derived args, body serialization, header filtering, response handling) and Extensions generation (delegation pattern, mocking hints, no unresolved symbols).
+
+### Patterns used:
+- TCGC method parameters filtered by `onClient` flag and `isApiVersionParam`
+- HTTP header parameters identified via `operation.parameters[].correspondingMethodParams` and excluded from method signatures
+- Body parameters identified via `operation.bodyParam.correspondingMethodParams`
+- Scope-derived args: Subscription→`Guid.Parse(Id.SubscriptionId)`, ResourceGroup→`Id.SubscriptionId,Id.ResourceGroupName`, Extension→`scope.ToString()`, ManagementGroup→`Id.Name`
+- Response model refkeys via `efCsharpRefkey(responseType.__raw)`
+
+### Key learnings:
+- `interface Operations extends Azure.ResourceManager.Operations {}` produces provider-level operations that become nonResourceMethods
+- `SdkMethodParameter.kind` is always "method" — body detection uses `operation.bodyParam.correspondingMethodParams`
+- `code` template tag cannot accept `undefined` values — always add null guards
+- Empty `code` template (`` code`` ``) crashes `processLiteralString` — return `null` instead
+
+### Next priorities: 19.5c (extension resources) and 19.5e (tag operations)

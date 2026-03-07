@@ -4182,3 +4182,29 @@ The WirePathAttribute class is generated in each project's `src/Generated/Intern
 ### Property Component Supports attributes Prop
 
 The `<Property>` component from `@alloy-js/csharp` has an `attributes` prop that accepts `Array<string | AttributeProps | Children>`. Use `attributes={[<Attribute name={refkey} args={[...]} />]}` to add attributes before the property declaration. No need for manual string rendering.
+
+## Gotchas — Non-resource method generation (2026-03-07)
+
+### TCGC parameter filtering for ARM non-resource methods
+
+- `SdkMethodParameter.kind` is always `"method"` — do NOT compare to `"body"`, `"endpoint"`, etc.
+- Filter user-facing params with `!p.onClient && !p.isApiVersionParam`
+- Identify body params via `operation.bodyParam.correspondingMethodParams`
+- Identify header params via `operation.parameters[].kind === "header"` and their `correspondingMethodParams` — exclude these from method signatures
+- The `Operations` interface (`extends Azure.ResourceManager.Operations`) produces provider operations that automatically become nonResourceMethods
+
+### Alloy `code` template tag crashes
+
+- Empty code template ` code` ``crashes with "Cannot read properties of undefined (reading 'match')" in`processLiteralString`
+- Always return `null` instead of ` code` `` for empty/no-op cases
+- Never interpolate `undefined` into a `code` template — add null guards for all interpolated values
+
+## Design Decisions — Non-resource method rendering (2026-03-07)
+
+### Approach: Inline in MockableProviderFile + ExtensionsFile (chosen over separate component)
+
+- Non-resource methods are rendered inline within MockableProviderFile, alongside resource methods
+- The `ScopeResources` interface was extended to include `nonResourceMethods: NonResourceMethod[]`
+- `categorizeResourcesByScope()` groups non-resource methods by their `operationScope`
+- This keeps the single-file-per-scope pattern and avoids creating a separate component
+- Rejected alternative: separate `NonResourceMethods.tsx` component — would add indirection without benefit

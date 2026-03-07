@@ -16,6 +16,11 @@
 
 import { Children, code } from "@alloy-js/core";
 import { ClassDeclaration, Namespace, SourceFile } from "@alloy-js/csharp";
+import type {
+  SdkClientType,
+  SdkHttpOperation,
+  SdkMethodParameter,
+} from "@azure-tools/typespec-client-generator-core";
 import {
   ArmProviderSchema,
   ResourceScope,
@@ -26,9 +31,14 @@ import {
   AzureResourceManagerResources,
   AzureResourceManagerManagementGroups,
 } from "../../builtins/azure-arm.js";
-import { AzureCore } from "../../builtins/azure.js";
+import { Azure, AzureCore } from "../../builtins/azure.js";
+import {
+  SystemThreading,
+  SystemThreadingTasks,
+} from "../../builtins/system-threading.js";
 import { armResourceRefkey } from "./ResourceFile.js";
 import { armCollectionRefkey } from "./CollectionFile.js";
+import { buildMethodLookup, getOperationMethodName } from "./ResourceFile.js";
 import {
   ScopeResources,
   categorizeResourcesByScope,
@@ -37,6 +47,7 @@ import {
 import { extractVariableSegments } from "./ResourceFile.js";
 import { useEmitterContext } from "../../contexts/emitter-context.js";
 import { getLicenseHeader } from "../../utils/header.js";
+import { efCsharpRefkey } from "../../utils/refkey.js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -74,7 +85,7 @@ function getExtensionsClassName(libraryName: string): string {
 export function ExtensionsFile(props: ExtensionsFileProps) {
   const { schema, libraryName } = props;
   const ctx = useEmitterContext();
-  const { options } = ctx;
+  const { options, sdkPackage, packageName } = ctx;
 
   const header = getLicenseHeader(options);
   const className = getExtensionsClassName(libraryName);
@@ -93,6 +104,12 @@ export function ExtensionsFile(props: ExtensionsFileProps) {
           {buildPrivateGetters(scopes, libraryName)}
           {buildArmClientExtensions(scopes, libraryName)}
           {buildScopeExtensions(scopes, libraryName)}
+          {buildNonResourceExtensions(
+            scopes,
+            libraryName,
+            sdkPackage,
+            packageName,
+          )}
         </ClassDeclaration>
       </Namespace>
     </SourceFile>
@@ -336,7 +353,324 @@ public static ${code`Response<${resourceRef}>`} Get${resourceName}(this ${scopeT
   return methods;
 }
 
-// ─── Utilities ───────────────────────────────────────────────────────────────
+// ─── Non-resource Extension Methods ──────────────────────────────────────────
+
+/**
+ * Generates public static extension methods for non-resource operations.
+ *
+ * Each non-resource method gets an async and sync extension method wrapper
+ * that delegates to the corresponding mockable provider method. This follows
+ * the ARM SDK design pattern where static extension methods provide the
+ * consumer-facing API while mockable provider classes enable unit testing.
+ */
+function buildNonResourceExtensions(
+  scopes: ScopeResources[],
+  libraryName: string,
+  sdkPackage: {
+    clients: readonly SdkClientType<SdkHttpOperation>[];
+  },
+  _packageName: string,
+): Children {
+  const methods: Children[] = [];
+  const methodLookup = buildMethodLookup(sdkPackage);
+
+  for (const scope of scopes) {
+    if (!scope.nonResourceMethods || scope.nonResourceMethods.length === 0) {
+      continue;
+    }
+
+    const mockableClassName = getMockableClassName(
+      libraryName,
+      scope.scopeName,
+    );
+    const scopeTypeRef = getScopeTypeRef(scope.scopeName);
+    const paramName = scope.scopeParamName;
+
+    for (const nrm of scope.nonResourceMethods) {
+      const tcgcMethod = methodLookup.get(nrm.methodId);
+      if (!tcgcMethod) continue;
+
+      const methodName = getOperationMethodName(tcgcMethod.name);
+
+      // Filter user-facing parameters, excluding header params
+      const headerMethodParamNames = new Set<string>();
+      if (tcgcMethod.operation?.parameters) {
+        for (const httpParam of tcgcMethod.operation.parameters) {
+          if (
+            httpParam.kind === "header" &&
+            httpParam.correspondingMethodParams
+          ) {
+            for (const cp of httpParam.correspondingMethodParams) {
+              if (cp.kind === "method") {
+                headerMethodParamNames.add(cp.name);
+              }
+            }
+          }
+        }
+      }
+
+      const userParams = tcgcMethod.parameters.filter(
+        (p: SdkMethodParameter) =>
+          !p.onClient &&
+          !p.isApiVersionParam &&
+          !headerMethodParamNames.has(p.name),
+      );
+
+      // Identify body params via the HTTP operation
+      const bodyMethodParamNames = new Set<string>();
+      const httpBodyParam = tcgcMethod.operation?.bodyParam;
+      if (httpBodyParam?.correspondingMethodParams) {
+        for (const cp of httpBodyParam.correspondingMethodParams) {
+          if (cp.kind === "method") {
+            bodyMethodParamNames.add(cp.name);
+          }
+        }
+      }
+
+      const bodyParam = userParams.find((p: SdkMethodParameter) =>
+        bodyMethodParamNames.has(p.name),
+      );
+      const nonBodyParams = userParams.filter(
+        (p: SdkMethodParameter) => !bodyMethodParamNames.has(p.name),
+      );
+
+      // Determine response model refkey
+      let responseModelRef: Children | undefined;
+      const responseType = tcgcMethod.response?.type;
+      if (responseType && "__raw" in responseType && responseType.__raw) {
+        responseModelRef = efCsharpRefkey(
+          responseType.__raw as import("@typespec/compiler").Type,
+        );
+      }
+
+      // Build parameter declarations for extension method
+      const extParamDecls = buildExtNonResourceParamDecls(
+        scope.scopeName,
+        scopeTypeRef,
+        paramName,
+        nonBodyParams,
+        bodyParam,
+      );
+
+      // Build forwarding args (just param names, not types)
+      const fwdArgs = buildExtNonResourceForwardArgs(
+        scope.scopeName,
+        nonBodyParams,
+        bodyParam,
+      );
+
+      const hasResponseModel = responseModelRef !== undefined;
+
+      // Async extension method
+      if (hasResponseModel) {
+        methods.push(code`
+/// <summary>
+/// ${methodName}
+/// <item>
+/// <term> Mocking. </term>
+/// <description> To mock this method, please mock <see cref="${mockableClassName}.${methodName}Async"/> instead. </description>
+/// </item>
+/// </summary>
+/// <param name="${paramName}"> The <see cref="${scope.scopeName === "ArmClient" ? "ArmClient" : getScopeResourceCref(scope.scopeName)}"/> the method will execute against. </param>
+/// <param name="cancellationToken"> The cancellation token to use. </param>
+/// <exception cref="ArgumentNullException"> <paramref name="${paramName}"/> is null. </exception>
+public static async ${SystemThreadingTasks.Task}<${code`${Azure.Response}<${responseModelRef}>`}> ${methodName}Async(this ${scopeTypeRef} ${paramName}, ${extParamDecls}${SystemThreading.CancellationToken} cancellationToken = default)
+{
+    ${AzureCore.Argument}.AssertNotNull(${paramName}, nameof(${paramName}));
+
+    return await Get${mockableClassName}(${paramName}).${methodName}Async(${fwdArgs}cancellationToken).ConfigureAwait(false);
+}
+`);
+
+        // Sync extension method
+        methods.push(code`
+/// <summary>
+/// ${methodName}
+/// <item>
+/// <term> Mocking. </term>
+/// <description> To mock this method, please mock <see cref="${mockableClassName}.${methodName}"/> instead. </description>
+/// </item>
+/// </summary>
+/// <param name="${paramName}"> The <see cref="${scope.scopeName === "ArmClient" ? "ArmClient" : getScopeResourceCref(scope.scopeName)}"/> the method will execute against. </param>
+/// <param name="cancellationToken"> The cancellation token to use. </param>
+/// <exception cref="ArgumentNullException"> <paramref name="${paramName}"/> is null. </exception>
+public static ${code`${Azure.Response}<${responseModelRef}>`} ${methodName}(this ${scopeTypeRef} ${paramName}, ${extParamDecls}${SystemThreading.CancellationToken} cancellationToken = default)
+{
+    ${AzureCore.Argument}.AssertNotNull(${paramName}, nameof(${paramName}));
+
+    return Get${mockableClassName}(${paramName}).${methodName}(${fwdArgs}cancellationToken);
+}
+`);
+      } else {
+        // Void/untyped response
+        methods.push(code`
+/// <summary>
+/// ${methodName}
+/// <item>
+/// <term> Mocking. </term>
+/// <description> To mock this method, please mock <see cref="${mockableClassName}.${methodName}Async"/> instead. </description>
+/// </item>
+/// </summary>
+/// <param name="${paramName}"> The <see cref="${scope.scopeName === "ArmClient" ? "ArmClient" : getScopeResourceCref(scope.scopeName)}"/> the method will execute against. </param>
+/// <param name="cancellationToken"> The cancellation token to use. </param>
+/// <exception cref="ArgumentNullException"> <paramref name="${paramName}"/> is null. </exception>
+public static async ${SystemThreadingTasks.Task}<${Azure.Response}> ${methodName}Async(this ${scopeTypeRef} ${paramName}, ${extParamDecls}${SystemThreading.CancellationToken} cancellationToken = default)
+{
+    ${AzureCore.Argument}.AssertNotNull(${paramName}, nameof(${paramName}));
+
+    return await Get${mockableClassName}(${paramName}).${methodName}Async(${fwdArgs}cancellationToken).ConfigureAwait(false);
+}
+`);
+
+        methods.push(code`
+/// <summary>
+/// ${methodName}
+/// <item>
+/// <term> Mocking. </term>
+/// <description> To mock this method, please mock <see cref="${mockableClassName}.${methodName}"/> instead. </description>
+/// </item>
+/// </summary>
+/// <param name="${paramName}"> The <see cref="${scope.scopeName === "ArmClient" ? "ArmClient" : getScopeResourceCref(scope.scopeName)}"/> the method will execute against. </param>
+/// <param name="cancellationToken"> The cancellation token to use. </param>
+/// <exception cref="ArgumentNullException"> <paramref name="${paramName}"/> is null. </exception>
+public static ${Azure.Response} ${methodName}(this ${scopeTypeRef} ${paramName}, ${extParamDecls}${SystemThreading.CancellationToken} cancellationToken = default)
+{
+    ${AzureCore.Argument}.AssertNotNull(${paramName}, nameof(${paramName}));
+
+    return Get${mockableClassName}(${paramName}).${methodName}(${fwdArgs}cancellationToken);
+}
+`);
+      }
+    }
+  }
+
+  return methods;
+}
+
+/**
+ * Builds parameter declarations for a non-resource extension method.
+ *
+ * Extension methods have the same parameters as the mockable provider method,
+ * but the scope parameter is replaced with `this ScopeType paramName`.
+ * For ArmClient scope, includes a ResourceIdentifier scope parameter.
+ */
+function buildExtNonResourceParamDecls(
+  scopeName: string,
+  _scopeTypeRef: Children,
+  _paramName: string,
+  nonBodyParams: SdkMethodParameter[],
+  bodyParam?: SdkMethodParameter,
+): Children {
+  const parts: Children[] = [];
+
+  // Extension/ArmClient scope: add ResourceIdentifier scope parameter
+  if (scopeName === "ArmClient") {
+    parts.push(code`${AzureCore.ResourceIdentifier} scope`);
+  }
+
+  // Non-body parameters
+  for (const param of nonBodyParams) {
+    if (!param.name || !param.type) continue;
+    const typeRef = mapExtParamTypeToRef(param);
+    const defaultVal = param.optional ? " = default" : "";
+    parts.push(code`${typeRef} ${param.name}${defaultVal}`);
+  }
+
+  // Body parameter
+  if (bodyParam) {
+    if (bodyParam.name && bodyParam.type) {
+      const typeRef = mapExtParamTypeToRef(bodyParam);
+      const defaultVal = bodyParam.optional ? " = default" : "";
+      parts.push(code`${typeRef} ${bodyParam.name}${defaultVal}`);
+    }
+  }
+
+  if (parts.length === 0) return null;
+
+  const result: Children[] = [];
+  for (let i = 0; i < parts.length; i++) {
+    if (i > 0) result.push(", ");
+    result.push(parts[i]);
+  }
+  result.push(", ");
+  return result;
+}
+
+/**
+ * Builds the forwarding argument list for a non-resource extension method.
+ * Just the parameter names (no types) in order, with trailing comma-space.
+ */
+function buildExtNonResourceForwardArgs(
+  scopeName: string,
+  nonBodyParams: SdkMethodParameter[],
+  bodyParam?: SdkMethodParameter,
+): string {
+  const args: string[] = [];
+
+  if (scopeName === "ArmClient") {
+    args.push("scope");
+  }
+
+  for (const param of nonBodyParams) {
+    args.push(param.name);
+  }
+
+  if (bodyParam) {
+    args.push(bodyParam.name);
+  }
+
+  return args.length > 0 ? args.join(", ") + ", " : "";
+}
+
+/**
+ * Maps an SdkMethodParameter type to C# for extension method declarations.
+ * Uses the same mapping as the mockable provider.
+ */
+function mapExtParamTypeToRef(param: SdkMethodParameter): Children {
+  const type = param.type;
+  if (!type) return "object";
+  if (type.kind === "nullable") {
+    const innerRef = mapExtSdkTypeToRef(type.type);
+    return code`${innerRef}?`;
+  }
+  return mapExtSdkTypeToRef(type);
+}
+
+/**
+ * Maps an SdkType to a C# type reference for use in extension methods.
+ */
+function mapExtSdkTypeToRef(
+  type: import("@azure-tools/typespec-client-generator-core").SdkType,
+): Children {
+  switch (type.kind) {
+    case "string":
+      return "string";
+    case "int32":
+      return "int";
+    case "int64":
+      return "long";
+    case "float32":
+      return "float";
+    case "float64":
+      return "double";
+    case "boolean":
+      return "bool";
+    case "model": {
+      const rawType = (type as { __raw?: import("@typespec/compiler").Type })
+        .__raw;
+      if (rawType) return efCsharpRefkey(rawType);
+      return "object";
+    }
+    case "enum": {
+      const rawType = (type as { __raw?: import("@typespec/compiler").Type })
+        .__raw;
+      if (rawType) return efCsharpRefkey(rawType);
+      return "string";
+    }
+    default:
+      return "object";
+  }
+}
 
 /**
  * Gets the Alloy type reference for a scope name.
