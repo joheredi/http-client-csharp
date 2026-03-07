@@ -106,7 +106,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["src/emitter.tsx"],
+            "modify": [
+              "src/emitter.tsx"
+            ],
             "reference": [
               "src/utils/package-name.ts",
               "src/components/infrastructure/ArgumentFile.tsx",
@@ -132,7 +134,9 @@
               "src/components/clients/ProtocolMethod.tsx",
               "src/components/clients/ConvenienceMethod.tsx"
             ],
-            "reference": ["src/components/HttpClientCSharpOutput.tsx"]
+            "reference": [
+              "src/components/HttpClientCSharpOutput.tsx"
+            ]
           },
           "acceptance_criteria": [
             "special-words spec compiles without syntax errors from reserved keyword parameter names",
@@ -148,8 +152,12 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["src/components/clients/ConvenienceMethod.tsx"],
-            "reference": ["src/components/clients/ProtocolMethod.tsx"]
+            "modify": [
+              "src/components/clients/ConvenienceMethod.tsx"
+            ],
+            "reference": [
+              "src/components/clients/ProtocolMethod.tsx"
+            ]
           },
           "acceptance_criteria": [
             "Hyphenated parameter names are converted to valid camelCase C# identifiers in all usage sites",
@@ -165,7 +173,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["src/components/model-factory/ModelFactoryFile.tsx"]
+            "modify": [
+              "src/components/model-factory/ModelFactoryFile.tsx"
+            ]
           },
           "acceptance_criteria": [
             "Generated ModelFactory files include using System; when System types are used",
@@ -184,7 +194,9 @@
             "modify": [
               "src/components/infrastructure/CodeGenAttributeFiles.tsx"
             ],
-            "reference": ["src/utils/package-name.ts"]
+            "reference": [
+              "src/utils/package-name.ts"
+            ]
           },
           "acceptance_criteria": [
             "Internal helper files using System.Type compile even when namespace contains a Type segment",
@@ -200,8 +212,12 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["src/components/clients/ConvenienceMethod.tsx"],
-            "reference": ["src/components/clients/ProtocolMethod.tsx"]
+            "modify": [
+              "src/components/clients/ConvenienceMethod.tsx"
+            ],
+            "reference": [
+              "src/components/clients/ProtocolMethod.tsx"
+            ]
           },
           "acceptance_criteria": [
             "Convenience methods correctly convert CancellationToken to RequestOptions when calling protocol methods",
@@ -216,7 +232,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["eng/scripts/emit-e2e.ts"]
+            "modify": [
+              "eng/scripts/emit-e2e.ts"
+            ]
           },
           "acceptance_criteria": [
             "Stale output from testignored specs is either cleaned or excluded from project references",
@@ -353,7 +371,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["src/components/serialization/PropertyMatchingLoop.tsx"],
+            "modify": [
+              "src/components/serialization/PropertyMatchingLoop.tsx"
+            ],
             "reference": [
               "src/components/serialization/JsonModelCreateCore.tsx"
             ]
@@ -372,8 +392,12 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["src/components/models/ModelProperty.tsx"],
-            "reference": ["src/components/models/ModelFile.tsx"]
+            "modify": [
+              "src/components/models/ModelProperty.tsx"
+            ],
+            "reference": [
+              "src/components/models/ModelFile.tsx"
+            ]
           },
           "acceptance_criteria": [
             "Properties named the same as their enclosing class are renamed to avoid CS0542",
@@ -388,7 +412,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["src/components/models/ModelFile.tsx"],
+            "modify": [
+              "src/components/models/ModelFile.tsx"
+            ],
             "reference": [
               "src/components/infrastructure/ArgumentFile.tsx",
               "src/emitter.tsx"
@@ -408,7 +434,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["src/components/clients/ConvenienceMethod.tsx"],
+            "modify": [
+              "src/components/clients/ConvenienceMethod.tsx"
+            ],
             "reference": [
               "src/components/clients/ProtocolMethod.tsx",
               "src/components/clients/RestClientFile.tsx"
@@ -428,7 +456,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["src/components/serialization/PropertySerializer.tsx"],
+            "modify": [
+              "src/components/serialization/PropertySerializer.tsx"
+            ],
             "reference": [
               "src/components/serialization/PropertyMatchingLoop.tsx",
               "src/components/enums/ExtensibleEnumSerializationFile.tsx"
@@ -449,7 +479,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["src/components/clients/ConvenienceMethod.tsx"],
+            "modify": [
+              "src/components/clients/ConvenienceMethod.tsx"
+            ],
             "reference": [
               "src/components/models/ModelConstructors.tsx",
               "src/components/clients/RestClientFile.tsx"
@@ -517,7 +549,9 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/emitter.tsx"],
+            "modify": [
+              "src/emitter.tsx"
+            ],
             "reference": [
               "src/utils/namespace-brace-style.ts",
               "src/utils/reorder-header.ts",
@@ -550,7 +584,9 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/components/clients/RestClientFile.tsx"],
+            "modify": [
+              "src/components/clients/RestClientFile.tsx"
+            ],
             "reference": [
               "temp/e2e/Spector/http/azure/client-generator-core/client-initialization/default/src/Generated/ParamAliasClient.RestClient.cs"
             ]
@@ -593,7 +629,9 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/components/models/ModelConstructors.tsx"],
+            "modify": [
+              "src/components/models/ModelConstructors.tsx"
+            ],
             "reference": [
               "temp/e2e/Spector/http/azure/client-generator-core/access/src/Generated/Models/OuterModel.cs"
             ]
@@ -613,7 +651,9 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/emitter.tsx"],
+            "modify": [
+              "src/emitter.tsx"
+            ],
             "reference": [
               "src/components/infrastructure/BinaryContentHelperFile.tsx",
               "temp/e2e/Spector/http/encode/bytes/src/Generated/RequestBody.cs"
@@ -634,7 +674,9 @@
           "dependencies": [],
           "files": {
             "create": [],
-            "modify": ["src/components/clients/RestClientFile.tsx"],
+            "modify": [
+              "src/components/clients/RestClientFile.tsx"
+            ],
             "reference": [
               "temp/e2e/Spector/http/encode/bytes/src/Generated/Header.RestClient.cs",
               "temp/e2e/Spector/http/encode/bytes/src/Generated/Query.RestClient.cs"
@@ -661,7 +703,9 @@
           "dependencies": [],
           "files": {
             "modify": [],
-            "reference": ["test/e2e/.expected-failures"]
+            "reference": [
+              "test/e2e/.expected-failures"
+            ]
           },
           "acceptance_criteria": [
             "All 12 Encode/Array scenarios pass (CommaDelimited, PipeDelimited, SpaceDelimited, NewlineDelimited \u00d7 plain/Enum/ExtensibleEnum)",
@@ -679,7 +723,9 @@
           "dependencies": [],
           "files": {
             "modify": [],
-            "reference": ["test/e2e/.expected-failures"]
+            "reference": [
+              "test/e2e/.expected-failures"
+            ]
           },
           "acceptance_criteria": [
             "All 7 Payload/XML Put scenarios pass",
@@ -696,7 +742,9 @@
           "dependencies": [],
           "files": {
             "modify": [],
-            "reference": ["test/e2e/.expected-failures"]
+            "reference": [
+              "test/e2e/.expected-failures"
+            ]
           },
           "acceptance_criteria": [
             "PutRecursiveModel, RecursiveGet, RecursivePut all pass",
@@ -733,7 +781,9 @@
           "dependencies": [],
           "files": {
             "modify": [],
-            "reference": ["test/e2e/.expected-failures"]
+            "reference": [
+              "test/e2e/.expected-failures"
+            ]
           },
           "acceptance_criteria": [
             "All 5 failing Encode/DateTime tests pass",
@@ -750,7 +800,9 @@
           "dependencies": [],
           "files": {
             "modify": [],
-            "reference": ["test/e2e/.expected-failures"]
+            "reference": [
+              "test/e2e/.expected-failures"
+            ]
           },
           "acceptance_criteria": [
             "All 7 Versioning tests pass",
@@ -767,7 +819,9 @@
           "dependencies": [],
           "files": {
             "modify": [],
-            "reference": ["test/e2e/.expected-failures"]
+            "reference": [
+              "test/e2e/.expected-failures"
+            ]
           },
           "acceptance_criteria": [
             "NoOperationParams, WithOperationPathParam, OptionalPathParamIncluded(True/False) all pass",
@@ -783,7 +837,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["test/e2e/Spector.Tests/Spector.Tests.csproj"],
+            "modify": [
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/_Type/Property/ValueTypes/ValueTypesTests.cs"
             ]
@@ -803,7 +859,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["test/e2e/Spector.Tests/Spector.Tests.csproj"],
+            "modify": [
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/_Type/Property/AdditionalProperties/AdditionalPropertiesTests.cs"
             ]
@@ -823,7 +881,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["test/e2e/Spector.Tests/Spector.Tests.csproj"],
+            "modify": [
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/Routes/PathParameterTests.cs",
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/Routes/QueryTests.cs"
@@ -844,7 +904,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["test/e2e/Spector.Tests/Spector.Tests.csproj"],
+            "modify": [
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/_Type/_Array/ArrayTests.cs",
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/_Type/Dictionary/DictionaryTests.cs",
@@ -868,7 +930,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["test/e2e/Spector.Tests/Spector.Tests.csproj"],
+            "modify": [
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/Encode/Bytes/EncodeBytesTests.cs",
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/Encode/Numeric/EncodeNumericTests.cs"
@@ -889,7 +953,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["test/e2e/Spector.Tests/Spector.Tests.csproj"],
+            "modify": [
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/Client/Structure/Default/DefaultTests.cs",
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/Client/Structure/MultiClient/MultiClientTests.cs",
@@ -912,7 +978,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["test/e2e/Spector.Tests/Spector.Tests.csproj"],
+            "modify": [
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -930,7 +998,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["test/e2e/Spector.Tests/Spector.Tests.csproj"],
+            "modify": [
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
             "reference": [
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/Authentication/OAuth2/OAuth2Tests.cs",
               "submodules/typespec/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/Documentation/DocumentationTests.cs"
@@ -1103,7 +1173,9 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["test/e2e/.testignore"],
+            "modify": [
+              "test/e2e/.testignore"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -1128,7 +1200,10 @@
           "status": "done",
           "dependencies": [],
           "files": {
-            "modify": ["src/options.ts", "src/lib.ts"],
+            "modify": [
+              "src/options.ts",
+              "src/lib.ts"
+            ],
             "reference": [
               "submodules/azure-sdk-for-net/eng/packages/http-client-csharp/emitter/src/options.ts",
               "submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/emitter/src/options.ts"
@@ -1148,9 +1223,13 @@
           "description": "Modify eng/scripts/emit-e2e.ts so that when compiling specs sourced from @azure-tools/azure-http-specs (source: 'azure'), the script passes `--option http-client-csharp.flavor=azure`. Core specs from @typespec/http-specs should continue using the default unbranded flavor.\n\nSpecific changes:\n1. In the compileSpec() function (around line 281), add a conditional: if spec.source === 'azure', add `--option http-client-csharp.flavor=azure` to the args array.\n2. Add azure/versioning/previewVersion to VERSIONED_SPECS with versions ['v1', 'v2'] and source 'azure' (this spec needs versioned compilation like other versioning specs).\n3. Add alias overrides for PreviewVersionV1 and PreviewVersionV2 to ALIAS_OVERRIDES and add 'azure/versioning/' to ALIAS_PREFIXES.\n\nThe SpecEntry interface already has a `source: 'core' | 'azure'` field that distinguishes the spec origin, so no structural changes are needed.\n\nReference files:\n- eng/scripts/emit-e2e.ts (current implementation, study compileSpec at line 272, VERSIONED_SPECS at line 130, ALIAS_OVERRIDES at line 361)",
           "phase": "phase-16",
           "status": "done",
-          "dependencies": ["16.1"],
+          "dependencies": [
+            "16.1"
+          ],
           "files": {
-            "modify": ["eng/scripts/emit-e2e.ts"],
+            "modify": [
+              "eng/scripts/emit-e2e.ts"
+            ],
             "reference": []
           },
           "acceptance_criteria": [
@@ -1167,9 +1246,13 @@
           "description": "Modify test/e2e/Spector.Tests/Spector.Tests.csproj to support Azure-specific tests:\n\n1. Add Azure.Core NuGet PackageReference:\n   <PackageReference Include=\"Azure.Core\" Version=\"1.44.1\" />\n   (Check the Azure submodule's csproj for the exact version pattern.)\n\n2. Add AzureTestRoot property:\n   <AzureTestRoot>$(RepoRoot)submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/TestProjects/Spector.Tests/</AzureTestRoot>\n\n3. Link Azure-specific test files (27 .cs files):\n   <Compile Include=\"$(AzureTestRoot)Http/Azure/**/*.cs\" LinkBase=\"Http/Azure\" />\n   These test files cover: Azure/Core/Basic, Azure/Core/Lro/Standard, Azure/Core/Lro/Rpc, Azure/Core/Model, Azure/Core/Page, Azure/Core/Scalar, Azure/Core/Traits, Azure/ClientGeneratorCore/*, Azure/Encode/Duration, Azure/Example/Basic, Azure/Payload/Pageable, Azure/SpecialHeaders/ClientRequestId, Azure/Versioning/PreviewVersion/*.\n\n4. Link shared Azure.Core source files needed by test infrastructure:\n   The Azure submodule's csproj links 10 shared files from azure-sdk-for-net/sdk/core/Azure.Core/src/Shared/. Link the same files:\n   - AzureKeyCredentialPolicy.cs\n   - RawRequestUriBuilder.cs\n   - AppContextSwitchHelper.cs\n   - ClientDiagnostics.cs\n   - DiagnosticScopeFactory.cs\n   - DiagnosticScope.cs\n   - HttpMessageSanitizer.cs\n   - TypeFormatters.cs\n   - RequestHeaderExtensions.cs\n   And from Azure.Core.TestFramework: ProcessTracker.cs\n   Use paths relative to the submodule: $(RepoRoot)submodules/azure-sdk-for-net/sdk/core/Azure.Core/src/Shared/\n\n5. Initially exclude Azure test files that depend on unimplemented features:\n   <Compile Remove=\"$(AzureTestRoot)Http/Azure/Core/Lro/**/*.cs\" />  (depends on LRO Operation<T>)\n   Add other exclusions as needed based on compilation results.\n\nReference files:\n- test/e2e/Spector.Tests/Spector.Tests.csproj (current structure)\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/TestProjects/Spector.Tests/TestProjects.Spector.Tests.csproj (Azure version with shared file links)",
           "phase": "phase-16",
           "status": "done",
-          "dependencies": ["16.2"],
+          "dependencies": [
+            "16.2"
+          ],
           "files": {
-            "modify": ["test/e2e/Spector.Tests/Spector.Tests.csproj"],
+            "modify": [
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
             "reference": [
               "submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/TestProjects/Spector.Tests/TestProjects.Spector.Tests.csproj"
             ]
@@ -1188,7 +1271,9 @@
           "description": "Update test/e2e/.testignore and test/e2e/.expected-failures to reflect the current state of Azure spec support.\n\nThe .testignore currently lists 9 azure/resource-manager/* specs. Azure data plane specs (azure/core/*, azure/client-generator-core/*, azure/encode/*, azure/example/*, azure/payload/*, azure/special-headers/*, azure/versioning/*) are NOT in .testignore \u2014 they already compile through emit-e2e.ts.\n\nHowever, these specs currently compile WITHOUT Azure flavor. After task 16.2, they will compile WITH flavor=azure, which may cause new generation/compilation issues because the emitter doesn't yet produce Azure.Core types.\n\nSteps:\n1. Run `pnpm emit:e2e --filter azure/` to compile all Azure specs with the new flavor option\n2. Check which specs fail generation and add them to .testignore temporarily\n3. Check which specs generate but fail dotnet build and add test names to .expected-failures\n4. Document the baseline state of Azure test coverage\n5. Create a tracking comment in .testignore for each category of Azure spec\n\nThis task establishes the baseline from which subsequent Phase 17 tasks will progressively improve Azure support.\n\nReference files:\n- test/e2e/.testignore (current ignore list)\n- test/e2e/.expected-failures (current expected failures)\n- test/e2e/.expected-skips (current expected skips)",
           "phase": "phase-16",
           "status": "done",
-          "dependencies": ["16.3"],
+          "dependencies": [
+            "16.3"
+          ],
           "files": {
             "modify": [
               "test/e2e/.testignore",
@@ -1217,10 +1302,16 @@
           "description": "Create Azure.Core type mappings that are activated when flavor='azure'. When the emitter encounters TypeSpec types from Azure.Core, map them to their C# Azure SDK equivalents.\n\nType mappings to implement:\n- Azure.Core.azureLocation \u2192 Azure.AzureLocation\n- Azure.Core.armResourceIdentifier \u2192 Azure.Core.ResourceIdentifier\n- Azure.Core.eTag \u2192 Azure.ETag\n- Azure.ResponseError \u2192 Azure.ResponseError\n- Azure.Core.ipV4Address / ipV6Address \u2192 System.Net.IPAddress\n- Azure.Core.uuid \u2192 string\n\nImplementation approach:\n- Create a new file (e.g., src/builtins/azure-core.ts or extend existing builtins) with Azure type mappings\n- In the type expression component (src/components/CSharpTypeExpression.tsx), check the flavor and apply Azure mappings when appropriate\n- Ensure proper `using` directives are generated for Azure namespaces\n\nReference files:\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/AzureTypeFactory.cs (lines 80-156: CreateCSharpTypeCore and framework type mappings)\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/Primitives/KnownAzureTypes.cs (central type registry)\n- src/builtins/ (existing built-in type definitions)\n- src/components/CSharpTypeExpression.tsx (type rendering component)",
           "phase": "phase-17",
           "status": "done",
-          "dependencies": ["16.4"],
+          "dependencies": [
+            "16.4"
+          ],
           "files": {
-            "create": ["src/builtins/azure-core.ts"],
-            "modify": ["src/components/CSharpTypeExpression.tsx"],
+            "create": [
+              "src/builtins/azure-core.ts"
+            ],
+            "modify": [
+              "src/components/CSharpTypeExpression.tsx"
+            ],
             "reference": [
               "submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/AzureTypeFactory.cs",
               "submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/Primitives/KnownAzureTypes.cs",
@@ -1240,7 +1331,9 @@
           "description": "When flavor='azure', the generated .csproj file should include <PackageReference Include=\"Azure.Core\" /> instead of (or in addition to) <PackageReference Include=\"System.ClientModel\" />.\n\nThe project scaffolding component generates the .csproj content. It needs to be flavor-aware:\n- flavor='unbranded': Reference System.ClientModel (current behavior)\n- flavor='azure': Reference Azure.Core (which transitively includes System.ClientModel)\n\nReference files:\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/Primitives/NewAzureProjectScaffolding.cs (Azure scaffolding)\n- src/components/ (find the project scaffolding component that generates .csproj content)",
           "phase": "phase-17",
           "status": "done",
-          "dependencies": ["16.4"],
+          "dependencies": [
+            "16.4"
+          ],
           "files": {
             "modify": [],
             "reference": [
@@ -1259,7 +1352,9 @@
           "description": "Add Azure.Core.Pipeline builtin library types (HttpPipeline, HttpMessage, HttpPipelineBuilder, HttpPipelinePolicy) and Azure namespace types (Request, Response, RequestContext, RequestFailedException, ClientOptions, AzureKeyCredentialPolicy, BearerTokenAuthenticationPolicy). Create src/utils/pipeline-types.ts utility that returns correct type references per flavor. Update ClientFile.tsx to use HttpPipeline for Azure flavor (Pipeline property type + virtual modifier, constructor parameters, pipeline creation via HttpPipelineBuilder.Build(), sub-client factory methods). Update ClientPipelineExtensionsFile.tsx with complete Azure version (HttpPipeline extensions, RequestContext params, Response returns, RequestFailedException). Unit tests for Azure-flavored client class generation.",
           "phase": "phase-17",
           "status": "done",
-          "dependencies": ["17.1"],
+          "dependencies": [
+            "17.1"
+          ],
           "files": [
             "src/builtins/azure.ts",
             "src/utils/pipeline-types.ts",
@@ -1285,7 +1380,9 @@
           "description": "Update all operation-level components to use Azure pipeline types when flavor=azure. RestClientFile.tsx: HttpMessage/Request for CreateMessage, ResponseClassifier for classification. ProtocolMethod.tsx: HttpMessage in method body, Response return type, RequestContext parameter. ConvenienceMethod.tsx: Response return type, RequestFailedException for exceptions. PagingMethods.tsx: RequestContext parameter, Response-based returns. CollectionResultFile.tsx: HttpMessage in iteration logic. ErrorResultFile.tsx: Response type, RequestFailedException. CastOperators.tsx: Response type in extraction operators. CancellationTokenExtensionsFile.tsx: RequestContext return type. End-to-end tests for Azure-flavored protocol and convenience methods.",
           "phase": "phase-17",
           "status": "done",
-          "dependencies": ["17.3"],
+          "dependencies": [
+            "17.3"
+          ],
           "files": [
             "src/components/clients/RestClientFile.tsx",
             "src/components/clients/ProtocolMethod.tsx",
@@ -1314,7 +1411,9 @@
           "description": "Azure client options should use Azure-specific base types. The AzureTypeFactory maps several provider types that replace System.ClientModel equivalents:\n\n- AzureClientResponseProvider.Instance \u2192 Azure Response types\n- AzureResponseProvider.Instance \u2192 Response<T> wrapper\n- HttpRequestOptionsProvider.Instance \u2192 RequestContext\n- RequestContentProvider.Instance \u2192 RequestContent\n- StatusCodeClassifierProvider.Instance \u2192 ResponseClassifier\n\nWhen flavor='azure', generate client option classes that extend Azure.Core types and use Azure-specific request/response handling.\n\nReference files:\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/AzureTypeFactory.cs (lines 30-51: all provider instance mappings)\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/Providers/ (5 provider definition files)\n- src/components/client-options/ (existing client options generation)",
           "phase": "phase-17",
           "status": "done",
-          "dependencies": ["17.3"],
+          "dependencies": [
+            "17.3"
+          ],
           "files": {
             "modify": [],
             "reference": [
@@ -1335,7 +1434,9 @@
           "description": "For methods with TCGC kind 'lro' or 'lropaging', generate Operation<T> return type from Azure.Core instead of ClientResult<T> when flavor='azure'. This is a critical Azure SDK pattern.\n\nThe Azure generator's LroVisitor (large file) transforms LRO methods to:\n1. Return Operation<T> or Operation (for void returns)\n2. Add WaitForCompletion / WaitForCompletionResponse async methods\n3. Generate OperationState<T> for tracking operation status\n4. Create FromLroResponse helper method for response extraction\n5. Generate both sync and async LRO method variants\n\nCurrently, the new emitter filters LRO methods from convenience method generation (only protocol methods are generated). For Azure flavor, both protocol AND convenience methods need LRO support.\n\nThis is one of the most complex Azure features. Study the LroVisitor carefully.\n\nReference files:\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/Visitors/LroVisitor.cs (full file \u2014 study the Visit* methods, FromLroResponse pattern, polling infrastructure)\n- src/components/clients/ProtocolMethod.tsx (current LRO handling \u2014 filters out lro/lropaging)\n- src/components/clients/ConvenienceMethod.tsx (current LRO handling)\n- test/scenarios/lro/ (existing LRO scenario tests for unbranded)",
           "phase": "phase-17",
           "status": "done",
-          "dependencies": ["17.4"],
+          "dependencies": [
+            "17.4"
+          ],
           "files": {
             "modify": [],
             "reference": [
@@ -1358,7 +1459,9 @@
           "description": "Azure SDKs include distributed tracing via a ClientDiagnostics property on each client class. When flavor='azure':\n\n1. Add a `private readonly ClientDiagnostics _clientDiagnostics;` field to each client\n2. Initialize it in the constructor\n3. Wrap each operation method body with:\n   using var scope = _clientDiagnostics.CreateScope(\"ClientName.MethodName\");\n   scope.Start();\n   try { ... } catch (Exception e) { scope.Failed(e); throw; }\n\nThe Azure generator implements this in DistributedTracingVisitor which adds ClientDiagnostics property and wraps all method bodies with diagnostic scopes.\n\nReference files:\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/Visitors/DistributedTracingVisitor.cs (full file \u2014 study VisitMethod, VisitProperty, CreateScope pattern)\n- src/components/clients/ (client class generation)",
           "phase": "phase-17",
           "status": "done",
-          "dependencies": ["17.4"],
+          "dependencies": [
+            "17.4"
+          ],
           "files": {
             "modify": [],
             "reference": [
@@ -1379,7 +1482,10 @@
           "description": "When flavor='azure', the x-ms-client-request-id header should NOT be exposed as a method parameter. Azure's HttpPipeline policy automatically adds this header to every outgoing request for request correlation.\n\nImplementation:\n- Add 'x-ms-client-request-id' to the special headers set (conditionally, for Azure flavor only)\n- This strips the parameter from protocol method, convenience method, and REST client CreateRequest signatures\n- Do NOT auto-inject the header in CreateRequest \u2014 the Azure pipeline policy handles it\n- The specialHeaderNames mechanism in RestClientFile.tsx, ProtocolMethod.tsx, and ConvenienceMethod.tsx already handles exclusion; just needs flavor-conditional header names\n\nGround truth: submodules/azure-sdk-for-net/.../TestProjects/Spector/http/azure/special-headers/client-request-id/src/Generated/XmsClientRequestIdClient.cs shows Get() with NO clientRequestId parameter.\n\nTypeSpec spec says: 'SDK should not generate clientRequestId parameter but use policy to auto-set the header'.",
           "phase": "phase-17",
           "status": "done",
-          "dependencies": ["17.3", "17.3b"],
+          "dependencies": [
+            "17.3",
+            "17.3b"
+          ],
           "files": {
             "modify": [
               "src/components/clients/RestClientFile.tsx",
@@ -1404,7 +1510,10 @@
           "description": "When flavor='azure', operations with conditional request headers (If-Match, If-None-Match, If-Modified-Since, If-Unmodified-Since) should group these individual parameters into composite Azure SDK types:\n\n- Single If-Match or If-None-Match -> ETag? parameter\n- Both If-Match + If-None-Match -> MatchConditions parameter\n- Any + If-Modified-Since/If-Unmodified-Since -> RequestConditions parameter\n\nThis is the Alloy equivalent of the legacy MatchConditionsHeadersVisitor.\n\nRequires:\n1. Define RequestConditions, MatchConditions types in src/builtins/azure.ts (ETag already exists)\n2. Detect conditional header parameters by serializedName pattern\n3. Determine grouping based on header combination flags\n4. Replace individual header params with grouped param in protocol/convenience/REST client methods\n5. Update CreateRequest to unpack grouped param into individual headers\n6. Handle protocol method body to validate unsupported headers",
           "phase": "phase-17",
           "status": "done",
-          "dependencies": ["17.3", "17.3b"],
+          "dependencies": [
+            "17.3",
+            "17.3b"
+          ],
           "files": {
             "modify": [
               "src/builtins/azure.ts",
@@ -1432,9 +1541,13 @@
           "description": "Azure SDKs place model types in a '.Models' sub-namespace (e.g., Azure.Core.Basic.Models). When the `model-namespace` option is true (Azure default), model classes should be in a Models sub-namespace.\n\nThe Azure generator implements this via:\n- NamespaceVisitor: Moves model types to .Models sub-namespace\n- ModelFactoryRenamerVisitor: Adjusts model factory class naming\n\nThis may require adding a `model-namespace` option to the emitter (or making it implicit when flavor='azure').\n\nReference files:\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/Visitors/NamespaceVisitor.cs\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/Visitors/ModelFactoryRenamerVisitor.cs\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/emitter/src/options.ts (model-namespace option)\n- src/emitter.tsx (output component rendering)",
           "phase": "phase-17",
           "status": "done",
-          "dependencies": ["17.1"],
+          "dependencies": [
+            "17.1"
+          ],
           "files": {
-            "modify": ["src/options.ts"],
+            "modify": [
+              "src/options.ts"
+            ],
             "reference": [
               "submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/Visitors/NamespaceVisitor.cs",
               "submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/Visitors/ModelFactoryRenamerVisitor.cs",
@@ -1454,7 +1567,9 @@
           "description": "The Azure emitter generates a metadata.json file alongside the C# output. This file contains API version mappings from TypeSpec service namespace to API version string.\n\nThe generateMetadataFile() function in the Azure emitter:\n1. Creates an SDK context\n2. Reads the @versioned decorator from the TypeSpec service definition\n3. Builds an apiVersions map (serviceNamespace \u2192 apiVersion)\n4. Writes metadata.json to the Generated/ directory\n\nWhen flavor='azure', generate this metadata.json file.\n\nReference files:\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/emitter/src/emitter.ts (generateMetadataFile function, lines 45-101)",
           "phase": "phase-17",
           "status": "done",
-          "dependencies": ["16.4"],
+          "dependencies": [
+            "16.4"
+          ],
           "files": {
             "modify": [],
             "reference": [
@@ -1473,7 +1588,9 @@
           "description": "The Azure emitter injects a @useSystemTextJsonConverter decorator which causes the generator to add System.Text.Json converter attributes to model types. The SystemTextJsonConverterVisitor adds [JsonConverter(typeof(...))] attributes to model classes.\n\nWhen flavor='azure', support this pattern for model serialization.\n\nReference files:\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/Visitors/SystemTextJsonConverterVisitor.cs\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/emitter/src/emitter.ts (lines 35-38: @useSystemTextJsonConverter decorator injection)",
           "phase": "phase-17",
           "status": "done",
-          "dependencies": ["17.1"],
+          "dependencies": [
+            "17.1"
+          ],
           "files": {
             "modify": [],
             "reference": [
@@ -1520,7 +1637,12 @@
           "description": "Set up the test infrastructure for Azure management plane tests. The mgmt submodule has a different test structure than the data plane \u2014 it uses Local test projects with 31 TypeSpec test files rather than Spector-based tests.\n\nSteps:\n1. Determine how to integrate mgmt tests: either extend the existing Spector.Tests project or create a separate test project\n2. Add Azure.ResourceManager NuGet reference\n3. Link or reference the 31 .tsp test files from the mgmt submodule\n4. Configure the tspconfig.yaml equivalent for mgmt compilation\n\nThe mgmt test fixtures cover: foo, bar, baz, zoo, joo resources, testcertificate, quota, hcivm, chaos, networkaction, extensionresources, redisenterprise, playwright, scheduledaction, vmgroup, sharedmodel, selfhelp, multiplepaths, resourcedata, databox, workload, propertyoverride, sitemanager, endpoint, PrivateEndpointConnection, extensionresourcename, trafficmanager, flatten-with-customized-property, singleton, routes.\n\nReference files:\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/TestProjects/Local/Mgmt-TypeSpec/ (31 .tsp files)\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/TestProjects/Local/Mgmt-TypeSpec/tspconfig.yaml (emitter config: namespace Azure.Generator.MgmtTypeSpec.Tests, enable-wire-path-attribute: true)\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/TestProjects/Directory.Build.props",
           "phase": "phase-18",
           "status": "done",
-          "dependencies": ["17.3", "17.4", "17.5", "17.3b"],
+          "dependencies": [
+            "17.3",
+            "17.4",
+            "17.5",
+            "17.3b"
+          ],
           "files": {
             "modify": [],
             "reference": [
@@ -1540,9 +1662,13 @@
           "description": "Extend the emitter options to support management-specific configuration:\n\n1. enable-wire-path-attribute (boolean, default false): When true, generate WirePathAttribute on model properties for HTTP wire format tracking\n2. use-legacy-resource-detection (boolean, default true): Choose between legacy custom resource detection logic vs standardized resolveArmResources API\n3. Consider adding a flavor sub-variant: flavor='azure-mgmt' or a separate mgmt-specific option\n\nThe mgmt emitter wraps the Azure emitter and adds these options. Study the options hierarchy:\n- CSharpEmitterOptions (base)\n  \u2192 AzureEmitterOptions (adds namespace, model-namespace)\n    \u2192 AzureMgmtEmitterOptions (adds enable-wire-path-attribute, use-legacy-resource-detection)\n\nReference files:\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/emitter/src/options.ts (AzureMgmtEmitterOptions interface and schema)\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/emitter/src/options.ts (AzureEmitterOptions)\n- src/options.ts (current options)",
           "phase": "phase-18",
           "status": "done",
-          "dependencies": ["16.1"],
+          "dependencies": [
+            "16.1"
+          ],
           "files": {
-            "modify": ["src/options.ts"],
+            "modify": [
+              "src/options.ts"
+            ],
             "reference": [
               "submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/emitter/src/options.ts",
               "submodules/azure-sdk-for-net/eng/packages/http-client-csharp/emitter/src/options.ts"
@@ -1568,9 +1694,14 @@
           "description": "Port the resource-detection.ts logic from the mgmt emitter. This is the core ARM feature that identifies Azure Resource Manager resources from URL path patterns.\n\nThe resource detection system:\n1. Analyzes operation paths like /subscriptions/{id}/resourceGroups/{rg}/providers/Microsoft.Foo/bars/{barName}\n2. Identifies resource types (Microsoft.Foo/bars)\n3. Determines resource scope: Tenant, Subscription, ResourceGroup, ManagementGroup, Extension\n4. Identifies parent-child resource relationships\n5. Classifies operations as Create, Read, Update, Delete, List, or Action\n6. Handles special cases: singleton resources, extension resources\n\nThe detection has two modes:\n- Legacy mode (use-legacy-resource-detection=true): Custom buildArmProviderSchema() function\n- New mode (use-legacy-resource-detection=false): Uses resolveArmResources() from @azure-tools/typespec-azure-resource-manager\n\nThis is a 995-line TypeScript file. Consider implementing the new mode (resolveArmResources) as it's the standardized approach.\n\nReference files:\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/emitter/src/resource-detection.ts (995 lines: updateClients, buildArmProviderSchema, getAllClients)\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/emitter/src/resource-metadata.ts (585 lines: ResourceMetadata, ResourceMethod, ResourceOperationKind, ArmProviderSchema)\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/emitter/src/resolve-arm-resources-converter.ts (converter between resolveArmResources API and legacy format)",
           "phase": "phase-19",
           "status": "done",
-          "dependencies": ["18.1", "18.2"],
+          "dependencies": [
+            "18.1",
+            "18.2"
+          ],
           "files": {
-            "create": ["src/utils/resource-detection.ts"],
+            "create": [
+              "src/utils/resource-detection.ts"
+            ],
             "modify": [],
             "reference": [
               "submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/emitter/src/resource-detection.ts",
@@ -1591,10 +1722,16 @@
           "description": "Generate the {Resource}Resource class for each detected ARM resource. Each class extends ArmResource and contains:\n\n1. Static ResourceType field\n2. HasData/Data properties with lazy load guard\n3. Two constructors: data + identifier\n4. Static CreateResourceIdentifier factory method\n5. CRUD instance operations: Get, Update, Delete (async/sync pairs)\n6. Action methods\n7. Child resource accessors\n8. Diagnostic scoping pattern for all operations\n9. Resource.Serialization.cs partial class\n\nGround truth: BazResource.cs (681 lines) in Mgmt-TypeSpec test project.",
           "phase": "phase-19",
           "status": "done",
-          "dependencies": ["19.1"],
+          "dependencies": [
+            "19.1"
+          ],
           "files": {
-            "create": ["src/components/arm/ResourceFile.tsx"],
-            "modify": ["src/components/HttpClientCSharpOutput.tsx"],
+            "create": [
+              "src/components/arm/ResourceFile.tsx"
+            ],
+            "modify": [
+              "src/components/HttpClientCSharpOutput.tsx"
+            ],
             "reference": [
               "submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/TestProjects/Local/Mgmt-TypeSpec/src/Generated/BazResource.cs",
               "submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/Azure.Generator.Management/src/Providers/ResourceClientProvider.cs"
@@ -1614,9 +1751,13 @@
           "description": "Generate the {Resource}Collection class for each ARM resource. Each class extends ArmCollection and contains:\n\n1. CreateOrUpdate with LRO support (WaitUntil, ArmOperation<Resource>)\n2. Get by name\n3. GetAll with paging (AsyncPageable/Pageable)\n4. Exists and GetIfExists\n5. IEnumerable<Resource> and IAsyncEnumerable<Resource>\n6. Diagnostic scoping for all operations\n\nGround truth: BazCollection.cs (580 lines) in Mgmt-TypeSpec test project.",
           "phase": "phase-19",
           "status": "done",
-          "dependencies": ["19.1"],
+          "dependencies": [
+            "19.1"
+          ],
           "files": {
-            "create": ["src/components/arm/CollectionFile.tsx"],
+            "create": [
+              "src/components/arm/CollectionFile.tsx"
+            ],
             "modify": [],
             "reference": [
               "submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/TestProjects/Local/Mgmt-TypeSpec/src/Generated/BazCollection.cs",
@@ -1638,13 +1779,18 @@
           "description": "Generate extension methods and mockable wrapper classes:\n\n1. Extension class with methods on ArmClient, ResourceGroupResource, SubscriptionResource, etc.\n2. Mockable classes for each scope (ArmClient, ResourceGroup, Subscription, Tenant, ManagementGroup)\n3. Wire ARM components into emitter output in HttpClientCSharpOutput.tsx\n\nGround truth: Extensions/ directory in Mgmt-TypeSpec Generated output (~7600 lines combined).",
           "phase": "phase-19",
           "status": "done",
-          "dependencies": ["19.2a", "19.2b"],
+          "dependencies": [
+            "19.2a",
+            "19.2b"
+          ],
           "files": {
             "create": [
               "src/components/arm/ExtensionsFile.tsx",
               "src/components/arm/MockableProviderFile.tsx"
             ],
-            "modify": ["src/components/HttpClientCSharpOutput.tsx"],
+            "modify": [
+              "src/components/HttpClientCSharpOutput.tsx"
+            ],
             "reference": [
               "submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/TestProjects/Local/Mgmt-TypeSpec/src/Generated/Extensions/"
             ]
@@ -1662,7 +1808,9 @@
           "description": "Support the @flatten decorator for ARM models. Property flattening unwraps nested model properties into the parent model, which is a common ARM pattern.\n\nThe mgmt generator's FlattenPropertyVisitor is the largest visitor at 46KB. It:\n1. Detects properties with the @flatten decorator\n2. Promotes nested property members to the parent model level\n3. Adjusts serialization to maintain wire-format compatibility\n4. Handles deeply nested flattening (multiple levels)\n5. Deals with naming conflicts from promoted properties\n\nThe mgmt emitter also sets flatten metadata via decorators in the setFlattenProperty function.\n\nReference files:\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/Azure.Generator.Management/src/Visitors/FlattenPropertyVisitor.cs (46KB, most complex visitor)\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/emitter/src/emitter.ts (setFlattenProperty function)\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/TestProjects/Local/Mgmt-TypeSpec/flatten-with-customized-property.tsp (test fixture)",
           "phase": "phase-19",
           "status": "done",
-          "dependencies": ["19.1"],
+          "dependencies": [
+            "19.1"
+          ],
           "files": {
             "modify": [],
             "reference": [
@@ -1684,7 +1832,9 @@
           "description": "ARM operations need subscriptionId at the method level rather than the client constructor level. The mgmt emitter's transformSubscriptionIdParameters() function moves subscriptionId from client scope to method scope.\n\nThis transformation:\n1. Finds subscriptionId in client constructor parameters\n2. Removes it from the client constructor\n3. Adds it as a method parameter on each operation that needs it\n4. Adjusts the REST client request-building to use the method-level parameter\n\nReference files:\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/emitter/src/subscription-id-transformer.ts (full implementation)\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/emitter/src/emitter.ts (calls transformSubscriptionIdParameters in updateCodeModel)",
           "phase": "phase-19",
           "status": "done",
-          "dependencies": ["19.1"],
+          "dependencies": [
+            "19.1"
+          ],
           "files": {
             "modify": [],
             "reference": [
@@ -1704,7 +1854,9 @@
           "description": "Singleton resource handling is already fully implemented:\n- resource-metadata.ts:108 has singletonResourceName field\n- resource-metadata.ts:385 preserves singletons without Read operations\n- MockableProviderFile.tsx:321,340 generates Id.AppendProviderResource() calls\n- resource-metadata.test.ts:235-266 has full test coverage\n\nNo code changes needed. Just verify and mark done.",
           "phase": "phase-19",
           "status": "done",
-          "dependencies": ["19.2c"],
+          "dependencies": [
+            "19.2c"
+          ],
           "files": {
             "modify": [],
             "reference": []
@@ -1719,7 +1871,9 @@
           "description": "When enable-wire-path-attribute=true emitter option is set, add [WirePath(\"path\")] attributes to model properties indicating their HTTP wire format path.\n\nImplementation:\n1. In ModelProperty.tsx, check the emitter option and emit [WirePath(serializedName)] attribute\n2. In FlattenedProperty.tsx, emit [WirePath(dotted.path)] for flattened property hierarchies\n3. The WirePath attribute type needs to be defined in builtins/azure-arm.ts or similar\n4. For flattened properties, build dot-notation paths from the flatten hierarchy\n\nReference:\n- Legacy: WirePathVisitor.cs visits all ModelProvider properties with WireInfo\n- Option: src/options.ts:131 (enable-wire-path-attribute, default false)\n- Flatten utility: src/utils/flatten.ts:60-63 already computes wirePath arrays\n\nGround truth: Check legacy test output for [WirePath] attribute patterns on model properties.",
           "phase": "phase-19",
           "status": "done",
-          "dependencies": ["19.2c"],
+          "dependencies": [
+            "19.2c"
+          ],
           "files": {
             "modify": [
               "src/components/models/ModelProperty.tsx",
@@ -1743,7 +1897,9 @@
           "description": "Extension resources extend existing resource types (e.g., locks, tags applied to any resource). They differ from regular resources:\n- Parent type is ArmResource (generic) instead of specific parent like ResourceGroupResource\n- Methods take ResourceIdentifier scope parameter instead of specific parent IDs\n- Resource ID uses {resourceUri} placeholder\n- Factory methods in MockableArmClient use scope parameter\n\nImplementation:\n1. Extension resources need scope parameter in collection factory methods\n2. MockableProviderFile needs special handling for extension scope\n3. ResourceFile/CollectionFile may need adjustments for generic parent\n4. Extension + Singleton combination needs special handling\n\nReference:\n- Legacy: ResourceMetadata detects extension scope via /{resourceUri}/ or /{scope}/ patterns\n- Legacy: MockableArmClientProvider has BuildMethodsForExtensionSingletonResource and BuildMethodsForExtensionNonSingletonResource\n- Test fixture: extensionresources.tsp\n- ResourceScope.Extension already exists in resource-metadata.ts:33\n\nGround truth: Check extensionresources.tsp generated output in legacy TestProjects.",
           "phase": "phase-19",
           "status": "done",
-          "dependencies": ["19.2c"],
+          "dependencies": [
+            "19.2c"
+          ],
           "files": {
             "modify": [
               "src/components/arm/MockableProviderFile.tsx",
@@ -1769,7 +1925,9 @@
           "description": "Non-resource methods are operations at subscription/resource-group/tenant level not tied to specific resources. The metadata collection pipeline (assignNonResourceMethodsToResources) is already complete with tests. What's missing is the code generation.\n\nImplementation:\n1. NonResourceMethod metadata is already collected in resource-metadata.ts:74-83 and assigned via resource-metadata.ts:443-518\n2. Need to render these methods in the appropriate MockableProvider files\n3. Methods should appear as extension methods on the relevant scope (SubscriptionResource, etc.)\n4. Both async and sync variants needed\n5. HttpClientCSharpOutput.tsx needs to pass nonResourceMethods to providers\n\nReference:\n- Legacy: NonResourceMethod.cs record, ManagementOutputLibrary groups by scope\n- Legacy: MockableXxxProvider generates both async/sync variants\n- Metadata: src/utils/resource-metadata.ts:74-83 (NonResourceMethod interface)\n- Tests: test/utils/resource-metadata.test.ts:269-450 (metadata tests)\n\nGround truth: Check legacy generated output for non-resource method patterns.",
           "phase": "phase-19",
           "status": "done",
-          "dependencies": ["19.2c"],
+          "dependencies": [
+            "19.2c"
+          ],
           "files": {
             "modify": [
               "src/components/arm/MockableProviderFile.tsx",
@@ -1794,10 +1952,16 @@
           "description": "Generate tag manipulation methods for resources that support tags. Each tagged resource gets 6 methods (3 async + 3 sync):\n- AddTag/AddTagAsync(string key, string value, CancellationToken)\n- RemoveTag/RemoveTagAsync(string key, CancellationToken)\n- SetTags/SetTagsAsync(IDictionary<string, string> tags, CancellationToken)\n\nImplementation complexity:\n- Dual-path logic: Primary path uses TagResource API, fallback uses direct Update/Patch\n- Each method: CanUseTagResource check \u2192 if true, use GetTagResource().Get/CreateOrUpdate; else use resource Update\n- Diagnostic scopes wrapping each method\n- For PATCH vs PUT resources: different update patterns\n\nReference:\n- Legacy: TagMethodProviders/ directory (4 files, ~570 lines)\n  - BaseTagMethodProvider.cs (323 lines) - abstract base\n  - AddTagMethodProvider.cs (83 lines)\n  - RemoveTagMethodProvider.cs (81 lines)\n  - SetTagsMethodProvider.cs (82 lines)\n- builtins/azure-arm.ts:148-151 has TagResource type (unused currently)\n- Legacy test data: TagMethodProviderTests/ with 6 verify files\n\nThis is the most complex sub-task. Consider creating a dedicated TagMethods.tsx component.",
           "phase": "phase-19",
           "status": "done",
-          "dependencies": ["19.2c"],
+          "dependencies": [
+            "19.2c"
+          ],
           "files": {
-            "create": ["src/components/arm/TagMethods.tsx"],
-            "modify": ["src/components/arm/ResourceFile.tsx"],
+            "create": [
+              "src/components/arm/TagMethods.tsx"
+            ],
+            "modify": [
+              "src/components/arm/ResourceFile.tsx"
+            ],
             "reference": [
               "submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/Azure.Generator.Management/src/Providers/TagMethodProviders/"
             ]
@@ -1809,6 +1973,356 @@
             "Dual-path logic (TagResource vs direct Update) implemented",
             "Diagnostic scopes wrap each method",
             "Unit tests validate all 6 method variants"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "phase-20",
+      "title": "Enable Azure Data Plane and ARM E2E Tests",
+      "description": "Fix emitter code generation bugs blocking Azure data plane e2e test compilation, enable the 27 excluded Azure test files, integrate ARM specs into the e2e pipeline with management=true, fix ARM compilation errors, and triage all results. Phase A (Azure fixes) and Phase C (ARM generation setup) are independent and can proceed in parallel.",
+      "tasks": [
+        {
+          "id": "20.1",
+          "title": "Fix CollectionResult/AsyncCollectionResult for Azure flavor",
+          "description": "The CollectionResultFile.tsx component generates System.ClientModel's CollectionResult/AsyncCollectionResult base classes for ALL flavors, but for Azure the override methods use Azure.Core's Response type where the base class expects ClientResult. This produces CS0305, CS0508, CS0534, CS0115 errors.\n\nGenerated code (broken):\n```csharp\n// Extends System.ClientModel base:\ninternal class BasicClientGetAllAsyncCollectionResultOfT : AsyncCollectionResult<User>\n{\n    // Override returns Azure.Response, but base expects ClientResult:\n    public override async IAsyncEnumerable<Response> GetRawPagesAsync() { ... }\n    // Override takes Response, but base expects ClientResult:\n    public override ContinuationToken GetContinuationToken(Response page) { ... }\n    protected override async IAsyncEnumerable<User> GetValuesFromPageAsync(Response page) { ... }\n}\n```\n\nAdditionally, Azure SDK tests expect AsyncPageable<T>/Pageable<T> (from Azure.Core) as the paging return types, not CollectionResult/AsyncCollectionResult.\n\nApproach options:\n1. (Preferred) For Azure flavor, generate Azure-native paging wrappers using AsyncPageable<T>/Pageable<T> from the Azure builtin library instead of System.ClientModel's CollectionResult. This matches what Azure SDK tests expect.\n2. (Alternative) Keep CollectionResult but ensure all override methods consistently use ClientResult (not Response) for Azure flavor, and add adapter code.\n\nThe PagingMethods.tsx component (which emits the client method signatures returning CollectionResult/AsyncCollectionResult) must also be updated to return the correct types for Azure flavor.\n\nKey generated files to verify:\n- temp/e2e/Spector/http/azure/core/basic/src/Generated/CollectionResults/*.cs\n- temp/e2e/Spector/http/azure/core/basic/src/Generated/BasicClient.cs (GetAll/GetAllAsync methods)\n\nReference files:\n- src/components/collection-results/CollectionResultFile.tsx (main component, ~1100 lines)\n- src/components/clients/PagingMethods.tsx (client method return types)\n- src/utils/pipeline-types.ts (flavor-aware type mapping \u2014 clientResult is Azure.Response for azure)\n- src/builtins/azure.ts (Azure.AsyncPageable, Azure.Pageable type declarations)\n- src/builtins/system-client-model.ts (SystemClientModel.CollectionResult, .AsyncCollectionResult)\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/Azure/Core/Basic/BasicTests.cs (tests expect AsyncPageable<User>)\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/Azure/Core/Page/PageTests.cs (paging test expectations)",
+          "phase": "phase-20",
+          "status": "pending",
+          "dependencies": [
+            "17.3b"
+          ],
+          "files": {
+            "modify": [
+              "src/components/collection-results/CollectionResultFile.tsx",
+              "src/components/clients/PagingMethods.tsx"
+            ],
+            "reference": [
+              "src/utils/pipeline-types.ts",
+              "src/builtins/azure.ts",
+              "src/builtins/system-client-model.ts",
+              "submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/Azure/Core/Basic/BasicTests.cs",
+              "submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/Azure/Core/Page/PageTests.cs",
+              "temp/e2e/Spector/http/azure/core/basic/src/Generated/CollectionResults/",
+              "temp/e2e/Spector/http/azure/core/basic/src/Generated/BasicClient.cs"
+            ]
+          },
+          "acceptance_criteria": [
+            "Azure flavor generates AsyncPageable<T>/Pageable<T> (or consistently typed CollectionResult) for paging methods",
+            "Generated paging classes compile without CS0305/CS0508/CS0534/CS0115 errors",
+            "Override methods use type-consistent parameter and return types matching their base class",
+            "Unbranded flavor continues to use CollectionResult/AsyncCollectionResult unchanged",
+            "pnpm build succeeds",
+            "pnpm test:unit passes",
+            "dotnet build on azure/core/basic generated project has no paging-related errors"
+          ]
+        },
+        {
+          "id": "20.2",
+          "title": "Fix ErrorResult<T> missing GetRawResponse() for Azure flavor",
+          "description": "The ErrorResultFile.tsx generates ErrorResult<T> extending Response<T> (Azure) or ClientResult<T> (unbranded). For Azure flavor, Response<T> inherits from NullableResponse<T> which has an abstract GetRawResponse() method. The generated ErrorResult does not override it, causing CS0534.\n\nGenerated code (broken):\n```csharp\ninternal partial class ErrorResult<T> : Response<T>\n{\n    private readonly Response _response;\n    private readonly RequestFailedException _exception;\n    public ErrorResult(Response response, RequestFailedException exception) : base(default, response) { ... }\n    public override T Value => throw _exception;\n    // MISSING: public override Response GetRawResponse() => _response;\n}\n```\n\nFix: Add a conditional GetRawResponse() override in the ErrorResult component when flavor is Azure:\n```csharp\npublic override Response GetRawResponse() => _response;\n```\n\nThis is a small, surgical fix in ErrorResultFile.tsx.\n\nReference files:\n- src/components/infrastructure/ErrorResultFile.tsx (85 lines \u2014 the component)\n- src/utils/pipeline-types.ts (pipelineTypes.response is Azure.Response for azure flavor)\n- temp/e2e/Spector/http/azure/core/basic/src/Generated/Internal/ErrorResult.cs (generated output showing the missing override)",
+          "phase": "phase-20",
+          "status": "done",
+          "dependencies": [
+            "17.3b"
+          ],
+          "files": {
+            "modify": [
+              "src/components/infrastructure/ErrorResultFile.tsx"
+            ],
+            "reference": [
+              "src/utils/pipeline-types.ts",
+              "temp/e2e/Spector/http/azure/core/basic/src/Generated/Internal/ErrorResult.cs"
+            ]
+          },
+          "acceptance_criteria": [
+            "Azure ErrorResult<T> includes public override Response GetRawResponse() => _response;",
+            "Unbranded ErrorResult<T> is unchanged (ClientResult<T> has no GetRawResponse())",
+            "pnpm build succeeds",
+            "pnpm test:unit passes",
+            "dotnet build on azure/core/basic generated project has no ErrorResult errors"
+          ]
+        },
+        {
+          "id": "20.3",
+          "title": "Fix ModelReaderWriterContext dependency for Azure projects",
+          "description": "The ModelReaderWriterContextFile.tsx generates a context class using [ModelReaderWriterBuildable] attributes and ModelReaderWriterContext base class from System.ClientModel.Primitives. However, Azure-flavored .csproj files only reference Azure.Core (not System.ClientModel explicitly). Azure.Core 1.44.1 may not transitively include the required System.ClientModel version that has these types, causing CS0246 errors.\n\nGenerated code (broken):\n```csharp\nusing System.ClientModel.Primitives;\n\n[ModelReaderWriterBuildable(typeof(Error))]  // CS0246: type not found\npublic partial class _Specs_AzureCoreBasicContext : ModelReaderWriterContext  // CS0246\n{\n}\n```\n\nGenerated .csproj:\n```xml\n<PackageReference Include=\"Azure.Core\" Version=\"1.44.1\" />\n<!-- Missing: System.ClientModel reference -->\n```\n\nApproach:\n1. Check if bumping Azure.Core to a newer version (e.g., 1.51.1, used for management) transitively includes System.ClientModel with ModelReaderWriterBuildable\n2. If not, add explicit System.ClientModel PackageReference for Azure-flavored projects\n3. The ProjectFile component that generates .csproj content needs to be updated\n\nNote: The management flavor already uses Azure.Core 1.51.1. Aligning data plane Azure.Core version may resolve this.\n\nReference files:\n- src/components/infrastructure/ModelReaderWriterContextFile.tsx (152 lines \u2014 generates the context class)\n- src/components/infrastructure/ProjectFile.tsx (or wherever .csproj generation lives \u2014 search for PackageReference)\n- temp/e2e/Spector/http/azure/core/basic/src/_Specs_.Azure.Core.Basic.csproj (generated csproj)\n- temp/e2e/Spector/http/azure/core/basic/src/Generated/Models/_Specs_AzureCoreBasicContext.cs (generated context file)",
+          "phase": "phase-20",
+          "status": "pending",
+          "dependencies": [
+            "17.2"
+          ],
+          "files": {
+            "modify": [
+              "src/components/infrastructure/ProjectFile.tsx"
+            ],
+            "reference": [
+              "src/components/infrastructure/ModelReaderWriterContextFile.tsx",
+              "temp/e2e/Spector/http/azure/core/basic/src/_Specs_.Azure.Core.Basic.csproj",
+              "temp/e2e/Spector/http/azure/core/basic/src/Generated/Models/_Specs_AzureCoreBasicContext.cs"
+            ]
+          },
+          "acceptance_criteria": [
+            "Azure-flavored .csproj includes necessary packages for ModelReaderWriterContext and ModelReaderWriterBuildable",
+            "Generated context class compiles without CS0246 errors",
+            "Unbranded projects are unchanged",
+            "pnpm build succeeds",
+            "dotnet build on azure/core/basic generated project has no ModelReaderWriter errors"
+          ]
+        },
+        {
+          "id": "20.4",
+          "title": "Fix ClientDiagnostics accessibility for Azure flavor",
+          "description": "The generated Azure client instantiates ClientDiagnostics directly: `new ClientDiagnostics(options, true)`. However, ClientDiagnostics is internal in Azure.Core and inaccessible from generated code (CS0122).\n\nGenerated code (broken \u2014 BasicClient.cs line 46):\n```csharp\nClientDiagnostics = new ClientDiagnostics(options, true);\n...\ninternal ClientDiagnostics ClientDiagnostics { get; }  // CS0122\n```\n\nThe Azure SDK uses a 'shared source' pattern: internal helper types from Azure.Core/src/Shared/ are compiled directly into each generated project. The Spector.Tests.csproj already links these shared source files (ClientDiagnostics.cs, DiagnosticScopeFactory.cs, DiagnosticScope.cs, etc.) for the TEST project.\n\nFor the GENERATED projects to compile, they need the same shared source files included. The generated .csproj must link the Azure.Core shared source files.\n\nApproach:\n1. Update the project scaffolding component to include <Compile Include=\"...\"> links to Azure.Core shared source files when flavor=azure\n2. The shared files needed: ClientDiagnostics.cs, DiagnosticScopeFactory.cs, DiagnosticScope.cs, HttpMessageSanitizer.cs, AppContextSwitchHelper.cs, TypeFormatters.cs\n3. OR: Generate the ClientDiagnostics as a local internal class in the output (as the legacy emitter does)\n4. OR: Use a public API if one exists in newer Azure.Core versions\n\nNote: The legacy Azure.Generator handles this by including shared source in the project scaffolding.\n\nReference files:\n- src/components/clients/ClientFile.tsx (lines ~340-395 \u2014 ClientDiagnostics instantiation and property)\n- src/builtins/azure.ts (AzureCorePipeline.ClientDiagnostics, .DiagnosticScope declarations)\n- test/e2e/Spector.Tests/Spector.Tests.csproj (lines linking AzureCoreSharedRoot shared source files)\n- submodules/azure-sdk-for-net/sdk/core/Azure.Core/src/Shared/ClientDiagnostics.cs\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/Primitives/NewAzureProjectScaffolding.cs (how legacy handles this)",
+          "phase": "phase-20",
+          "status": "pending",
+          "dependencies": [
+            "17.3"
+          ],
+          "files": {
+            "modify": [
+              "src/components/clients/ClientFile.tsx",
+              "src/components/infrastructure/ProjectFile.tsx"
+            ],
+            "reference": [
+              "src/builtins/azure.ts",
+              "test/e2e/Spector.Tests/Spector.Tests.csproj",
+              "submodules/azure-sdk-for-net/sdk/core/Azure.Core/src/Shared/ClientDiagnostics.cs",
+              "submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/Azure.Generator/src/Primitives/NewAzureProjectScaffolding.cs"
+            ]
+          },
+          "acceptance_criteria": [
+            "Generated Azure client can instantiate ClientDiagnostics without CS0122",
+            "Shared source files are included in generated project OR public API is used",
+            "DiagnosticScope creation works correctly in generated methods",
+            "Unbranded flavor is unchanged (no ClientDiagnostics)",
+            "pnpm build succeeds",
+            "dotnet build on azure/core/basic generated project has no ClientDiagnostics errors"
+          ]
+        },
+        {
+          "id": "20.5",
+          "title": "Enable Azure data plane test files in Spector.Tests.csproj",
+          "description": "Remove the 12 <Compile Remove> blocks (lines 169-214) from Spector.Tests.csproj that exclude all 27 Azure test files. These were added in task 16.3 because phase 17 Azure type generation wasn't complete. Now that tasks 20.1-20.4 fix the compilation issues, the test files can be re-enabled.\n\nBlocks to remove:\n- <Compile Remove=\"$(AzureTestRoot)Http/Azure/Core/Basic/**/*.cs\" />\n- <Compile Remove=\"$(AzureTestRoot)Http/Azure/Core/Lro/**/*.cs\" />\n- <Compile Remove=\"$(AzureTestRoot)Http/Azure/Core/Model/**/*.cs\" />\n- <Compile Remove=\"$(AzureTestRoot)Http/Azure/Core/Page/**/*.cs\" />\n- <Compile Remove=\"$(AzureTestRoot)Http/Azure/Core/Scalar/**/*.cs\" />\n- <Compile Remove=\"$(AzureTestRoot)Http/Azure/Core/Traits/**/*.cs\" />\n- <Compile Remove=\"$(AzureTestRoot)Http/Azure/ClientGeneratorCore/**/*.cs\" />\n- <Compile Remove=\"$(AzureTestRoot)Http/Azure/Encode/**/*.cs\" />\n- <Compile Remove=\"$(AzureTestRoot)Http/Azure/Example/**/*.cs\" />\n- <Compile Remove=\"$(AzureTestRoot)Http/Azure/Payload/**/*.cs\" />\n- <Compile Remove=\"$(AzureTestRoot)Http/Azure/SpecialHeaders/**/*.cs\" />\n- <Compile Remove=\"$(AzureTestRoot)Http/Azure/Versioning/**/*.cs\" />\n\nAlso remove the comment block explaining the exclusion (lines 169-178).\n\nAfter removing, verify that `dotnet build test/e2e/Spector.Tests/Spector.Tests.csproj` succeeds.\n\nReference files:\n- test/e2e/Spector.Tests/Spector.Tests.csproj (lines 169-214 \u2014 the <Compile Remove> blocks)\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/TestProjects/Spector.Tests/ (27 Azure test .cs files)",
+          "phase": "phase-20",
+          "status": "pending",
+          "dependencies": [
+            "20.1",
+            "20.2",
+            "20.3",
+            "20.4"
+          ],
+          "files": {
+            "modify": [
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
+            "reference": [
+              "submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/Azure/"
+            ]
+          },
+          "acceptance_criteria": [
+            "All 12 <Compile Remove> blocks for Azure test paths are removed",
+            "The surrounding comment block is removed",
+            "dotnet build test/e2e/Spector.Tests/Spector.Tests.csproj compiles successfully",
+            "27 Azure test files are included in the build"
+          ]
+        },
+        {
+          "id": "20.6",
+          "title": "Run and triage Azure data plane e2e tests",
+          "description": "Run the full e2e test suite with Azure tests enabled and triage the results.\n\nSteps:\n1. Run `pnpm emit:e2e` to regenerate all specs (Azure specs now with fixed emitter)\n2. Run `pnpm test:e2e` to execute all tests including the 27 newly enabled Azure tests\n3. Categorize results:\n   - Tests that pass: no action needed\n   - Tests that fail due to known emitter gaps: add to test/e2e/.expected-failures with a comment explaining what's missing\n   - Tests unexpectedly skipped by SpectorTestAttribute: add to test/e2e/.expected-skips\n4. Update test/e2e/.testignore Azure data plane comments to reflect new state\n5. Ensure `pnpm test:e2e` passes with the updated expected-failures/skips lists\n\nThe 27 Azure test files cover these scenarios:\n- azure/core/basic (CRUD, paging via AsyncPageable<T>)\n- azure/core/lro/rpc, azure/core/lro/standard (Operation<T> with WaitUntil)\n- azure/core/model, azure/core/scalar, azure/core/traits (Response, RequestContent)\n- azure/core/page (AsyncPageable<T>, Page<T>)\n- azure/client-generator-core/* (access modifiers, API versioning, client initialization, hierarchy)\n- azure/encode/duration, azure/example/basic (Response)\n- azure/payload/pageable (AsyncPageable<T>)\n- azure/special-headers/client-request-id (HttpPipeline)\n- azure/versioning/previewVersion/v1, v2 (Response)\n\nReference files:\n- test/e2e/.expected-failures (current failures list)\n- test/e2e/.expected-skips (current skips list)\n- test/e2e/.testignore (Azure data plane comments section, lines 4-51)\n- test/e2e/spector.test.ts (test runner with parseTestResults and analysis logic)",
+          "phase": "phase-20",
+          "status": "pending",
+          "dependencies": [
+            "20.5"
+          ],
+          "files": {
+            "modify": [
+              "test/e2e/.expected-failures",
+              "test/e2e/.expected-skips",
+              "test/e2e/.testignore"
+            ],
+            "reference": [
+              "test/e2e/spector.test.ts"
+            ]
+          },
+          "acceptance_criteria": [
+            "pnpm test:e2e runs to completion without unexpected failures",
+            ".expected-failures is updated with any Azure test failures and explanatory comments",
+            ".expected-skips is updated with any Azure auto-skipped tests",
+            ".testignore Azure data plane section reflects enabled state",
+            "No regressions in existing non-Azure tests"
+          ]
+        },
+        {
+          "id": "20.7",
+          "title": "Add management=true to emit-e2e.ts for ARM specs",
+          "description": "The emit-e2e.ts script discovers ARM specs from @azure-tools/azure-http-specs/specs/azure/resource-manager/ but only passes `flavor=azure`. ARM specs require `management=true` to activate ARM-specific code generation (resource detection, Resource/Collection classes, extensions, etc.).\n\nCurrent code (eng/scripts/emit-e2e.ts lines 311-313):\n```typescript\nif (spec.source === \"azure\") {\n  args.push(\"--option\", \"http-client-csharp.flavor=azure\");\n}\n```\n\nRequired change: detect ARM specs and add management options:\n```typescript\nif (spec.source === \"azure\") {\n  args.push(\"--option\", \"http-client-csharp.flavor=azure\");\n  const specDir = spec.outputDir ?? dirname(spec.relativePath);\n  if (specDir.startsWith(\"azure/resource-manager/\")) {\n    args.push(\"--option\", \"http-client-csharp.management=true\");\n    args.push(\"--option\", \"http-client-csharp.enable-wire-path-attribute=true\");\n  }\n}\n```\n\nAlso update VERSIONED_SPECS if any ARM specs need versioned compilation, and add any needed ALIAS_OVERRIDES for ARM spec disambiguation.\n\nAfter this change, run `pnpm emit:e2e --filter azure/resource-manager/common-properties` to verify ARM spec generation works.\n\nReference files:\n- eng/scripts/emit-e2e.ts (compileSpec function ~line 280, VERSIONED_SPECS ~line 130)\n- eng/scripts/emit-mgmt.ts (management plane emit script \u2014 shows correct management options)\n- src/options.ts (management option definition)\n- src/emitter.tsx (how management=true triggers ARM resource detection and code generation)",
+          "phase": "phase-20",
+          "status": "pending",
+          "dependencies": [
+            "19.2c"
+          ],
+          "files": {
+            "modify": [
+              "eng/scripts/emit-e2e.ts"
+            ],
+            "reference": [
+              "eng/scripts/emit-mgmt.ts",
+              "src/options.ts",
+              "src/emitter.tsx"
+            ]
+          },
+          "acceptance_criteria": [
+            "ARM specs (azure/resource-manager/*) are compiled with management=true and enable-wire-path-attribute=true",
+            "Non-ARM Azure specs are unchanged (no management option)",
+            "pnpm emit:e2e --filter azure/resource-manager/common-properties generates ARM client code",
+            "Generated ARM output includes Resource, Collection, Extensions files"
+          ]
+        },
+        {
+          "id": "20.8",
+          "title": "Remove ARM specs from .testignore",
+          "description": "Remove the 9 ARM resource-manager entries from test/e2e/.testignore so they're included in e2e generation and compilation.\n\nEntries to remove (lines 62-79):\n- azure/resource-manager/common-properties\n- azure/resource-manager/large-header\n- azure/resource-manager/multi-service\n- azure/resource-manager/multi-service-older-versions\n- azure/resource-manager/multi-service-shared-models\n- azure/resource-manager/non-resource\n- azure/resource-manager/method-subscription-id\n- azure/resource-manager/operation-templates\n- azure/resource-manager/resources\n\nAlso remove the comment block (lines 53-60) explaining ARM exclusion.\n\nNote: Do NOT remove these until task 20.7 is done and ARM specs generate with management=true, otherwise they'll generate without ARM support.\n\nReference files:\n- test/e2e/.testignore (lines 53-79 \u2014 ARM section)",
+          "phase": "phase-20",
+          "status": "pending",
+          "dependencies": [
+            "20.7"
+          ],
+          "files": {
+            "modify": [
+              "test/e2e/.testignore"
+            ],
+            "reference": []
+          },
+          "acceptance_criteria": [
+            "All 9 ARM resource-manager entries are removed from .testignore",
+            "ARM comment block is removed",
+            "pnpm emit:e2e includes ARM specs in generation",
+            "emit-e2e report shows ARM specs as succeeded or identifies specific failures"
+          ]
+        },
+        {
+          "id": "20.9",
+          "title": "Fix CS0103 \u2014 Argument helper not found in extensible enum structs",
+          "description": "ARM-generated extensible enum structs reference an `Argument` validation helper class (e.g., `Argument.AssertNotNull(value, nameof(value))`) that's not in scope. This is an Azure.Core internal shared source type.\n\nThe Argument class is defined in Azure.Core/src/Shared/Argument.cs and is used for parameter validation in generated code. For the generated ARM projects to compile, they need access to this type.\n\nThis is related to task 20.4 (ClientDiagnostics accessibility) \u2014 both are shared source types from Azure.Core. The fix for both may be the same: include Azure.Core shared source files in generated projects.\n\nIf task 20.4 already resolves this by including shared source files, verify that Argument.cs is in the set. If not, add it.\n\nTo reproduce: after task 20.8 removes ARM from .testignore, run:\n```bash\npnpm emit:e2e --filter azure/resource-manager/common-properties\ndotnet build temp/e2e/Spector/http/azure/resource-manager/common-properties/src/*.csproj\n```\n\nReference files:\n- submodules/azure-sdk-for-net/sdk/core/Azure.Core/src/Shared/Argument.cs (the shared source file)\n- src/builtins/azure.ts (AzureCore.Argument builtin declaration)\n- Generated extensible enum files in temp/e2e/Spector/http/azure/resource-manager/*/src/Generated/Models/",
+          "phase": "phase-20",
+          "status": "pending",
+          "dependencies": [
+            "20.8",
+            "20.4"
+          ],
+          "files": {
+            "modify": [
+              "src/components/infrastructure/ProjectFile.tsx"
+            ],
+            "reference": [
+              "submodules/azure-sdk-for-net/sdk/core/Azure.Core/src/Shared/Argument.cs",
+              "src/builtins/azure.ts"
+            ]
+          },
+          "acceptance_criteria": [
+            "Argument helper class is accessible in generated ARM projects",
+            "Extensible enum structs compile without CS0103 errors",
+            "dotnet build on azure/resource-manager/common-properties succeeds for this error class"
+          ]
+        },
+        {
+          "id": "20.10",
+          "title": "Fix CS0191 \u2014 readonly field assignment in model deserialization",
+          "description": "ARM-generated model deserialization code assigns to readonly fields outside of constructors, producing CS0191 errors. This typically occurs in JsonModelSerialization or similar deserialization components where property setters try to assign to backing fields declared as `readonly`.\n\nTo reproduce: after task 20.8, build an ARM spec and look for CS0191 errors:\n```bash\ndotnet build temp/e2e/Spector/http/azure/resource-manager/common-properties/src/*.csproj 2>&1 | grep CS0191\n```\n\nPossible fixes:\n1. Remove the `readonly` modifier from fields that need deserialization assignment\n2. Use constructor-based initialization for deserialized values\n3. Generate writable backing fields with readonly public properties\n\nThe fix is likely in the model property or serialization component that decides whether fields are readonly.\n\nReference files:\n- src/components/models/ (model property generation)\n- src/components/serialization/ (deserialization code generation)\n- Generated ARM model files in temp/e2e/Spector/http/azure/resource-manager/*/src/Generated/Models/",
+          "phase": "phase-20",
+          "status": "pending",
+          "dependencies": [
+            "20.8"
+          ],
+          "files": {
+            "modify": [],
+            "reference": [
+              "src/components/models/",
+              "src/components/serialization/"
+            ]
+          },
+          "acceptance_criteria": [
+            "Model deserialization does not assign to readonly fields",
+            "Generated ARM models compile without CS0191 errors",
+            "Model immutability semantics are preserved where appropriate"
+          ]
+        },
+        {
+          "id": "20.11",
+          "title": "Fix CS1983 \u2014 async paging methods with non-Task return types",
+          "description": "ARM-generated paging methods are marked `async` but return `AsyncPageable<T>` instead of `Task<AsyncPageable<T>>` or an async-iterator return type. Methods marked `async` must return Task, Task<T>, ValueTask, ValueTask<T>, IAsyncEnumerable<T>, or void. Returning `AsyncPageable<T>` directly from an `async` method is invalid.\n\nThis occurs in ARM Collection files (CollectionFile.tsx) and possibly Operation templates.\n\nFix: Either remove the `async` keyword and construct the AsyncPageable<T> synchronously (wrapping the async iteration logic), or change the return type to an appropriate async-compatible type.\n\nSpecs affected: method-subscription-id, operation-templates, resources (the three that list CS1983 in .testignore).\n\nTo reproduce:\n```bash\ndotnet build temp/e2e/Spector/http/azure/resource-manager/resources/src/*.csproj 2>&1 | grep CS1983\n```\n\nReference files:\n- src/components/arm/CollectionFile.tsx (ARM collection generation with GetAll/GetAllAsync paging)\n- src/components/clients/PagingMethods.tsx (paging method generation)\n- src/builtins/azure.ts (Azure.AsyncPageable, Azure.Pageable declarations)",
+          "phase": "phase-20",
+          "status": "pending",
+          "dependencies": [
+            "20.8"
+          ],
+          "files": {
+            "modify": [
+              "src/components/arm/CollectionFile.tsx",
+              "src/components/clients/PagingMethods.tsx"
+            ],
+            "reference": [
+              "src/builtins/azure.ts"
+            ]
+          },
+          "acceptance_criteria": [
+            "ARM paging methods compile without CS1983 errors",
+            "Methods returning AsyncPageable<T>/Pageable<T> are not marked async",
+            "Paging iteration logic still works correctly",
+            "dotnet build on azure/resource-manager/resources succeeds for this error class"
+          ]
+        },
+        {
+          "id": "20.12",
+          "title": "Fix CS0118 \u2014 namespace/type name collision in ARM specs",
+          "description": "The method-subscription-id ARM spec produces CS0118 errors where generated C# type names collide with namespace names. Specifically, types like MixedSubscriptionPlacement and TwoSubscriptionResourcesMethodLevel are used as both type names and (sub-)namespace segments.\n\nThis is a namespace resolution issue in the generated code. When a type name matches a namespace prefix, C# resolves the ambiguous reference as a namespace instead of a type.\n\nPossible fixes:\n1. Use fully-qualified type references where ambiguity exists\n2. Add `global::` prefix to disambiguate\n3. Adjust namespace naming to avoid collisions with type names\n4. Use `using TypeAlias = Fully.Qualified.TypeName;` aliases\n\nOnly the method-subscription-id spec is affected by this error.\n\nTo reproduce:\n```bash\npnpm emit:e2e --filter azure/resource-manager/method-subscription-id\ndotnet build temp/e2e/Spector/http/azure/resource-manager/method-subscription-id/src/*.csproj 2>&1 | grep CS0118\n```\n\nReference files:\n- src/components/ (namespace generation, type reference resolution)\n- src/utils/namespace-brace-style.ts (namespace utilities)\n- node_modules/@azure-tools/azure-http-specs/specs/azure/resource-manager/method-subscription-id/ (the spec definition)",
+          "phase": "phase-20",
+          "status": "pending",
+          "dependencies": [
+            "20.8"
+          ],
+          "files": {
+            "modify": [],
+            "reference": [
+              "src/components/",
+              "src/utils/namespace-brace-style.ts",
+              "node_modules/@azure-tools/azure-http-specs/specs/azure/resource-manager/method-subscription-id/"
+            ]
+          },
+          "acceptance_criteria": [
+            "Generated ARM code does not have namespace/type name collisions",
+            "method-subscription-id spec compiles without CS0118 errors",
+            "Fix does not break other ARM or Azure specs"
+          ]
+        },
+        {
+          "id": "20.13",
+          "title": "Run and triage ARM e2e tests",
+          "description": "After fixing ARM compilation errors (20.9-20.12), run the full e2e suite and triage ARM results.\n\nSteps:\n1. Run `pnpm emit:e2e` to generate all specs including ARM with management=true\n2. Run `pnpm test:e2e` to execute the full test suite\n3. Triage ARM results:\n   - ARM specs that compile and pass: done\n   - ARM specs that compile but tests fail: add to .expected-failures\n   - ARM specs that still fail compilation: may need to go back to .testignore with updated comments\n   - ARM tests auto-skipped (no test .cs files exist): add to .expected-skips if unexpected\n4. Update .testignore and .expected-failures/.expected-skips\n\nNote: ARM test .cs files do NOT currently exist in the azure-sdk-for-net submodule (the directories are empty). This means SpectorTestAttribute will auto-skip ARM tests because it won't find client files to validate. The primary value of this task is confirming ARM code COMPILES, not that tests PASS.\n\nReference files:\n- test/e2e/.expected-failures\n- test/e2e/.expected-skips\n- test/e2e/.testignore\n- test/e2e/spector.test.ts (test runner)\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/Azure/ResourceManager/ (empty \u2014 no ARM test files)",
+          "phase": "phase-20",
+          "status": "pending",
+          "dependencies": [
+            "20.9",
+            "20.10",
+            "20.11",
+            "20.12"
+          ],
+          "files": {
+            "modify": [
+              "test/e2e/.expected-failures",
+              "test/e2e/.expected-skips",
+              "test/e2e/.testignore"
+            ],
+            "reference": [
+              "test/e2e/spector.test.ts"
+            ]
+          },
+          "acceptance_criteria": [
+            "pnpm test:e2e runs to completion without unexpected failures",
+            "All 9 ARM specs compile successfully (zero dotnet build errors)",
+            ".expected-failures and .expected-skips updated for ARM test results",
+            "No regressions in non-ARM tests"
           ]
         }
       ]

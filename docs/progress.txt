@@ -6377,3 +6377,21 @@ Implemented tag manipulation methods for ARM resources that support tags. Each t
 - The PRD has no more pending tasks — only 1 blocked task (13.26) remains
 - Tag methods use `modelRef` which resolves to the TCGC model name (e.g., `Models.Foo`) not `FooData` — this matches the existing operation generation pattern
 - For PATCH resources, the secondary path creates a new patch object and copies existing tags before modifying
+
+## Task 20.2 — Fix ErrorResult<T> missing GetRawResponse() for Azure flavor — 2026-03-07
+
+**Problem**: Azure flavor's `ErrorResult<T>` extends `Response<T>`, which inherits from `NullableResponse<T>` with an abstract `GetRawResponse()` method. The generated class was missing this override, causing CS0534 compilation errors.
+
+**Fix**: Added a conditional `GetRawResponse()` override in `ErrorResultFile.tsx` that emits `public override Response GetRawResponse() => _response;` only when flavor is "azure". Unbranded flavor's `ClientResult<T>` already provides a concrete implementation, so no override is needed there.
+
+**Files changed**:
+- `src/components/infrastructure/ErrorResultFile.tsx` — Added isAzure conditional block for GetRawResponse override
+- `test/azure-cascade-types.test.ts` — Added assertion for GetRawResponse presence (Azure) and absence (unbranded)
+
+**Validation**:
+- ✅ Build passes
+- ✅ 1668 unit tests pass (0 failures)
+- ✅ E2E: CS0534 ErrorResult error no longer appears
+- ⚠️ Pre-existing E2E failures remain: CS0122 ClientDiagnostics (task 20.4), CS0246 ModelReaderWriterContext (task 20.3)
+
+**Pattern**: Conditional code generation using `isAzure ? code\`...\` : undefined` inside ClassDeclaration children. This is the idiomatic Alloy pattern for flavor-specific member generation.

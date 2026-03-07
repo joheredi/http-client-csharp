@@ -45,12 +45,15 @@ export interface ErrorResultFileProps {
  *     private readonly RequestFailedException _exception;
  *     public ErrorResult(Response response, RequestFailedException exception) : base(default, response) { ... }
  *     public override T Value => throw _exception;
+ *     public override Response GetRawResponse() => _response;
  * }
  * ```
  */
 export function ErrorResultFile(props: ErrorResultFileProps) {
   const header = getLicenseHeader(props.options);
-  const pipelineTypes = getPipelineTypes(props.options.flavor ?? "unbranded");
+  const flavor = props.options.flavor ?? "unbranded";
+  const pipelineTypes = getPipelineTypes(flavor);
+  const isAzure = flavor === "azure";
 
   return (
     <SourceFile path="src/Generated/Internal/ErrorResult.cs">
@@ -77,6 +80,12 @@ export function ErrorResultFile(props: ErrorResultFileProps) {
             /// <summary> Gets the Value. </summary>
             public override T Value => throw _exception;
           `}
+          {isAzure
+            ? code`
+            /// <summary> Gets the raw response. </summary>
+            public override ${pipelineTypes.response} GetRawResponse() => _response;
+          `
+            : undefined}
         </ClassDeclaration>
       </Namespace>
     </SourceFile>

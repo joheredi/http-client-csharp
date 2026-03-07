@@ -240,6 +240,12 @@ describe("Azure pipeline types - Infrastructure files", () => {
       "private readonly RequestFailedException _exception;",
     );
 
+    // Azure requires GetRawResponse() override because Response<T> inherits
+    // from NullableResponse<T> which declares it abstract (CS0534 without it)
+    expect(errorFile).toContain(
+      "public override Response GetRawResponse() => _response;",
+    );
+
     // Should NOT contain unbranded types
     expect(errorFile).not.toContain("ClientResult<T>");
     expect(errorFile).not.toContain("PipelineResponse");
@@ -268,6 +274,10 @@ describe("Azure pipeline types - Infrastructure files", () => {
     expect(errorFile).toContain("PipelineResponse");
     expect(errorFile).toContain("ClientResultException");
     expect(errorFile).not.toContain("private readonly Response _response;");
+
+    // Unbranded does NOT need GetRawResponse() — ClientResult<T> provides
+    // a concrete implementation inherited from ClientResult
+    expect(errorFile).not.toContain("GetRawResponse");
   });
 });
 
