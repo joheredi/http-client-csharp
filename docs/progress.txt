@@ -6133,3 +6133,14 @@ Approach: Flat options with `management` master switch (chosen over `"azure-mgmt
 
 ### Pre-existing failures
 E2E tests have pre-existing failures (CS0122 ClientDiagnostics, CS0534 ErrorResult, CS0246 ModelReaderWriterContext) — not related to this task.
+
+## Task 19.2 — Split into sub-tasks (2026-03-07)
+- **Action:** Split task 19.2 "Implement CRUD client generation for ARM resources" into 3 sub-tasks
+- **Reason:** Original task covered ~7600+ lines of generated output across Resource classes, Collection classes, Extensions, and Mockable providers. Too large for a single iteration.
+- **Sub-tasks created:**
+  - **19.2a** - ARM Resource class generation ({Resource}Resource.cs) — extends ArmResource, CRUD instance ops, child accessors, ~681 lines per resource
+  - **19.2b** - ARM Collection class generation ({Resource}Collection.cs) — extends ArmCollection, Create/Get/List/Exists, IEnumerable, ~580 lines per resource
+  - **19.2c** - ARM Extensions, Mockable providers, emitter integration — extension methods on ArmClient/ResourceGroup/Subscription, MockableXxx classes, wiring into emitter output
+- **Dependencies:** 19.2a and 19.2b depend on 19.1 (done), can be worked in parallel. 19.2c depends on both 19.2a and 19.2b. Updated 19.5 to depend on 19.2c.
+- **Key finding:** ARM data classes (e.g., BazData.cs) are already handled by the existing model pipeline via TCGC baseModel resolution — no special ARM data class generation needed.
+- **Ground truth:** BazResource.cs (681 lines) and BazCollection.cs (580 lines) in Mgmt-TypeSpec test project are the definitive reference for generated output.

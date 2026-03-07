@@ -3980,3 +3980,25 @@ When `onClient` is set to `false`, the `correspondingMethodParams` property on t
 - AFTER `createSdkContext()` (needs TCGC data)
 - BEFORE `getAllClients()` / `applyUnreferencedTypeHandling()` / component rendering
 - Currently placed right after `const clients = sdkContext.sdkPackage.clients` in emitter.tsx
+
+## ARM Resource Data Classes Are Already Handled (2026-03-07)
+**Context:** Task 19.2 investigation
+**Finding:** ARM data classes (e.g., BazData.cs inheriting TrackedResourceData) do NOT need special ARM-specific generation. The existing model pipeline handles them automatically because:
+1. TCGC resolves `TrackedResource<Props>`, `ProxyResource<Props>`, `ExtensionResource<Props>` to their corresponding `SdkModelType.baseModel`
+2. `ModelFile.tsx` renders any baseModel via `efCsharpRefkey()`, which outputs the correct ARM base class name
+3. Constructor generation inherits properly (e.g., `: base(location)` for TrackedResourceData)
+**Implication:** No new component needed for ARM data classes. Focus generation effort on Resource and Collection classes.
+
+## ARM Resource/Collection Cross-References (2026-03-07)
+**Context:** Task 19.2 split design
+**Finding:** BazResource references BazCollection (child resource accessors), and BazCollection references BazResource (return types, wrapping data). They are mutually dependent. In Alloy, this is handled cleanly via refkeys — both classes can be generated independently and Alloy resolves circular references automatically. Tasks 19.2a and 19.2b can be implemented independently.
+
+## Design Decisions
+### Task 19.2 Split Strategy (2026-03-07)
+**Chosen approach:** Split by class type (Resource → Collection → Extensions/Mockable)
+- 19.2a: Resource class (~681 lines per resource, all instance operations)
+- 19.2b: Collection class (~580 lines per resource, all collection operations)  
+- 19.2c: Extensions + Mockable + Integration (~7600 lines combined)
+**Why:** Each class is a self-contained unit with clear boundaries. Resource and Collection can be developed in parallel (refkeys handle cross-references). Extensions/Mockable layer depends on both being complete.
+**Rejected:** Split by operation type (CRUD vs List vs LRO) — this would create artificial boundaries within a single class, making testing harder and requiring partial class files.
+**Rejected:** Single task — too large (~7600+ lines of generated output, multiple file types, multiple patterns) for reliable single-iteration completion.

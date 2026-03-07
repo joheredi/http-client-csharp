@@ -1717,9 +1717,9 @@
           ]
         },
         {
-          "id": "19.2",
-          "title": "Implement CRUD client generation for ARM resources",
-          "description": "Generate specialized client classes for ARM resources. The mgmt generator creates several types of clients:\n\n1. ResourceClientProvider: Client class for individual resource operations (Get, Update, Delete, action methods). Each resource type gets its own client class.\n2. ResourceCollectionClientProvider: Collection-level operations (CreateOrUpdate, Get, List). Scoped to the parent resource.\n3. MockableResourceProvider: Mockable wrapper for testing. Allows unit testing without real HTTP calls.\n4. MockableArmClientProvider: Mockable ARM client extension.\n5. ExtensionProvider: Extension methods that add resource operations to ArmClient/ResourceGroup/etc.\n\nThe mgmt generator uses 10 visitors applied in sequence (see ManagementClientGenerator.Configure):\n1. NameVisitor \u2192 2. SerializationVisitor \u2192 3. RestClientVisitor \u2192 4. ResourceVisitor \u2192 5. InheritableSystemObjectModelVisitor \u2192 6. FlattenPropertyVisitor \u2192 7. TypeFilterVisitor \u2192 8. PaginationVisitor \u2192 9. ModelFactoryVisitor \u2192 10. WirePathVisitor (optional)\n\nReference files:\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/Azure.Generator.Management/src/ManagementClientGenerator.cs (visitor registration order)\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/Azure.Generator.Management/src/Providers/ (17 provider files including ResourceClientProvider, ResourceCollectionClientProvider, MockableResourceProvider)",
+          "id": "19.2a",
+          "title": "ARM Resource class generation ({Resource}Resource.cs)",
+          "description": "Generate the {Resource}Resource class for each detected ARM resource. Each class extends ArmResource and contains:\n\n1. Static ResourceType field\n2. HasData/Data properties with lazy load guard\n3. Two constructors: data + identifier\n4. Static CreateResourceIdentifier factory method\n5. CRUD instance operations: Get, Update, Delete (async/sync pairs)\n6. Action methods\n7. Child resource accessors\n8. Diagnostic scoping pattern for all operations\n9. Resource.Serialization.cs partial class\n\nGround truth: BazResource.cs (681 lines) in Mgmt-TypeSpec test project.",
           "phase": "phase-19",
           "status": "pending",
           "dependencies": [
@@ -1727,20 +1727,79 @@
           ],
           "files": {
             "create": [
-              "src/components/arm/ResourceClient.tsx",
-              "src/components/arm/ResourceCollectionClient.tsx"
+              "src/components/arm/ResourceFile.tsx"
             ],
-            "modify": [],
+            "modify": [
+              "src/components/HttpClientCSharpOutput.tsx"
+            ],
             "reference": [
-              "submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/Azure.Generator.Management/src/ManagementClientGenerator.cs",
-              "submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/Azure.Generator.Management/src/Providers/"
+              "submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/TestProjects/Local/Mgmt-TypeSpec/src/Generated/BazResource.cs",
+              "submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/Azure.Generator.Management/src/Providers/ResourceClientProvider.cs"
             ]
           },
           "acceptance_criteria": [
-            "Resource client classes are generated for each ARM resource type",
-            "Collection client classes are generated for resource collections",
-            "CRUD methods (Create, Read, Update, Delete, List) are correctly generated",
-            "At least one mgmt TypeSpec test file produces compilable output"
+            "Resource classes generated for each ARM resource with ArmResource base class",
+            "ResourceType static field matches ARM resource type string",
+            "HasData/Data properties implement lazy load pattern",
+            "Get/Update/Delete operations with diagnostic scope and async/sync pairs",
+            "Unit tests validate output against BazResource.cs ground truth"
+          ]
+        },
+        {
+          "id": "19.2b",
+          "title": "ARM Collection class generation ({Resource}Collection.cs)",
+          "description": "Generate the {Resource}Collection class for each ARM resource. Each class extends ArmCollection and contains:\n\n1. CreateOrUpdate with LRO support (WaitUntil, ArmOperation<Resource>)\n2. Get by name\n3. GetAll with paging (AsyncPageable/Pageable)\n4. Exists and GetIfExists\n5. IEnumerable<Resource> and IAsyncEnumerable<Resource>\n6. Diagnostic scoping for all operations\n\nGround truth: BazCollection.cs (580 lines) in Mgmt-TypeSpec test project.",
+          "phase": "phase-19",
+          "status": "pending",
+          "dependencies": [
+            "19.1"
+          ],
+          "files": {
+            "create": [
+              "src/components/arm/CollectionFile.tsx"
+            ],
+            "modify": [],
+            "reference": [
+              "submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/TestProjects/Local/Mgmt-TypeSpec/src/Generated/BazCollection.cs",
+              "submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/Azure.Generator.Management/src/Providers/ResourceCollectionClientProvider.cs"
+            ]
+          },
+          "acceptance_criteria": [
+            "Collection classes generated with ArmCollection base class",
+            "CreateOrUpdate supports LRO with WaitUntil",
+            "GetAll uses AsyncPageable/Pageable",
+            "Exists and GetIfExists implemented",
+            "IEnumerable/IAsyncEnumerable interfaces implemented",
+            "Unit tests validate output against BazCollection.cs ground truth"
+          ]
+        },
+        {
+          "id": "19.2c",
+          "title": "ARM Extensions, Mockable providers, and emitter integration",
+          "description": "Generate extension methods and mockable wrapper classes:\n\n1. Extension class with methods on ArmClient, ResourceGroupResource, SubscriptionResource, etc.\n2. Mockable classes for each scope (ArmClient, ResourceGroup, Subscription, Tenant, ManagementGroup)\n3. Wire ARM components into emitter output in HttpClientCSharpOutput.tsx\n\nGround truth: Extensions/ directory in Mgmt-TypeSpec Generated output (~7600 lines combined).",
+          "phase": "phase-19",
+          "status": "pending",
+          "dependencies": [
+            "19.2a",
+            "19.2b"
+          ],
+          "files": {
+            "create": [
+              "src/components/arm/ExtensionsFile.tsx",
+              "src/components/arm/MockableProviderFile.tsx"
+            ],
+            "modify": [
+              "src/components/HttpClientCSharpOutput.tsx"
+            ],
+            "reference": [
+              "submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/TestProjects/Local/Mgmt-TypeSpec/src/Generated/Extensions/"
+            ]
+          },
+          "acceptance_criteria": [
+            "Extension methods generated for each scope",
+            "Mockable wrapper classes generated",
+            "ARM files rendered in correct directory structure",
+            "At least one mgmt TypeSpec test produces complete ARM output"
           ]
         },
         {
@@ -1796,7 +1855,7 @@
           "phase": "phase-19",
           "status": "pending",
           "dependencies": [
-            "19.2"
+            "19.2c"
           ],
           "files": {
             "modify": [],
