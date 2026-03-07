@@ -6494,3 +6494,15 @@ Fixed CS0305, CS0508, CS0534, CS0115 compilation errors in Azure-flavored paging
 - `test/e2e/.testignore` — updated Azure data plane comments section with accurate triage state
 - `docs/knowledge.md` — documented net8.0 build error patterns and triage findings
 - `docs/progress.txt` — this entry
+
+## Task 20.7 — Add management=true to emit-e2e.ts for ARM specs (2026-03-07)
+
+- Modified `eng/scripts/emit-e2e.ts` compileSpec function (lines 311-323) to detect ARM specs
+- When `spec.source === "azure"` and the spec directory starts with `azure/resource-manager/`, now adds:
+  - `--option http-client-csharp.management=true`
+  - `--option http-client-csharp.enable-wire-path-attribute=true`
+- These options match what `emit-mgmt.ts` uses for management plane compilation
+- Path detection uses `spec.outputDir ?? dirname(spec.relativePath)` to handle both normal and versioned specs
+- ARM specs are still in `.testignore` so this change alone won't affect e2e test results
+- Build passes, all 89 unit test files pass (1670 tests), no regressions
+- Next: Task 20.8 will remove ARM specs from .testignore to activate ARM e2e generation
