@@ -5867,3 +5867,15 @@ catch (Exception e) { scope.Failed(e); throw; }
 
 **Key design decision:**
 - Approach 1 (mutate model namespaces at emitter level) chosen over Approach 2 (thread option through components) because mutation-in-place is already the established pattern and downstream components just use `props.type.namespace`
+
+## Loop — 2026-03-07 — Pre-existing test failures detected
+
+**Task attempted:** 17.9 (Generate metadata.json)
+**Outcome:** Blocked by pre-existing test failures from task 17.8 (model sub-namespace)
+
+Three tests fail because task 17.8 added `Models.` prefix to Azure model types but test assertions in `azure-cascade-types.test.ts` and `azure-lro-methods.test.ts` were not updated:
+1. `azure-cascade-types.test.ts:172` — expects `Response<Widget>`, gets `Response<Models.Widget>`
+2. `azure-lro-methods.test.ts:119` — expects `Operation<Job>`, gets `Operation<Models.Job>`
+3. `azure-lro-methods.test.ts:190` — regex expects `Operation<Widget>`, gets `Operation<Models.Widget>`
+
+Created task 17.8.1 to track the fix. The generated code is correct — only test expectations need updating.
