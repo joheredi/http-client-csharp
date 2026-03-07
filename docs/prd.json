@@ -1661,7 +1661,7 @@
           "title": "Implement property flattening (@flatten support)",
           "description": "Support the @flatten decorator for ARM models. Property flattening unwraps nested model properties into the parent model, which is a common ARM pattern.\n\nThe mgmt generator's FlattenPropertyVisitor is the largest visitor at 46KB. It:\n1. Detects properties with the @flatten decorator\n2. Promotes nested property members to the parent model level\n3. Adjusts serialization to maintain wire-format compatibility\n4. Handles deeply nested flattening (multiple levels)\n5. Deals with naming conflicts from promoted properties\n\nThe mgmt emitter also sets flatten metadata via decorators in the setFlattenProperty function.\n\nReference files:\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/Azure.Generator.Management/src/Visitors/FlattenPropertyVisitor.cs (46KB, most complex visitor)\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/emitter/src/emitter.ts (setFlattenProperty function)\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/TestProjects/Local/Mgmt-TypeSpec/flatten-with-customized-property.tsp (test fixture)",
           "phase": "phase-19",
-          "status": "pending",
+          "status": "done",
           "dependencies": ["19.1"],
           "files": {
             "modify": [],

@@ -6233,3 +6233,32 @@ E2E tests have pre-existing failures (CS0122 ClientDiagnostics, CS0534 ErrorResu
 - Non-resource operations in mockable providers (LRO actions, subscription-level list operations with REST client, etc.)
 - Extension resource patterns (scope parameter on ArmClient for extension resources)
 - Singleton resource patterns in Extensions class need testing with actual singleton TypeSpec fixtures
+
+## Task 19.3 — Implement property flattening (@flatten support) (2026-03-07)
+
+**What was done:**
+- Created `src/utils/flatten.ts` — utility functions for detecting and collecting flattened properties
+- Created `src/components/models/FlattenedProperty.tsx` — JSX component that renders computed getter/setter properties
+- Modified `src/components/models/ModelFile.tsx` — detects `property.flatten === true` and renders backing properties as internal + adds FlattenedProperty components
+- Modified `src/components/models/ModelProperty.tsx` — added `forceInternal` prop for flattened backing properties
+- Created `test/flatten.test.ts` — 9 unit tests covering all flatten behaviors
+
+**How it works:**
+- TCGC sets `property.flatten = true` when `@flattenProperty` (from `Azure.ClientGenerator.Core.Legacy`) is applied
+- The `collectFlattenedProperties()` utility walks model properties, finds flatten=true ones, and collects inner model public properties as FlattenedPropertyInfo descriptors
+- ModelFile renders the backing property with `forceInternal=true` (making it `internal`) and adds computed properties after
+- FlattenedProperty renders getter/setter delegating to the internal backing property with null-safe patterns
+- Safe-flatten (single public property inner model): setter creates new instance `Inner = new InnerModel(value)`
+- Regular flatten: setter lazy-inits backing property, then assigns inner property
+
+**Key design decisions:**
+- **Serialization unchanged** — flatten only affects model class API surface, not JSON wire format
+- **Component-level handling** — no pre-processing transformation layer, flatten detected during rendering
+- **Explicit indentation via string children** — `code` template strips leading whitespace, so FlattenedProperty uses plain string children for indentation and `code` only for refkey interpolation
+- **WirePath deferred to task 19.5** — [WirePath] attributes are metadata-only and can be added separately
+
+**Patterns for next tasks:**
+- The `@flattenProperty` decorator is in `Azure.ClientGenerator.Core.Legacy` namespace (NOT the main namespace)
+- Use `using Azure.ClientGenerator.Core.Legacy;` in TypeSpec tests
+- TCGC does NOT auto-set flatten on ARM `TrackedResource.properties` — it requires explicit `@@flattenProperty` in the ARM library definition
+- For nullable value types (bool?, int?), the setter uses `value.Value` to unwrap

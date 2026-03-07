@@ -27,7 +27,12 @@ import {
   renderAdditionalPropertiesValueType,
 } from "../../utils/additional-properties.js";
 import { efCsharpRefkey } from "../../utils/refkey.js";
+import {
+  collectFlattenedProperties,
+  isFlattenedProperty,
+} from "../../utils/flatten.js";
 import { DynamicModelMembers, isDynamicModel } from "./DynamicModel.js";
+import { FlattenedProperty } from "./FlattenedProperty.js";
 import {
   isBaseDiscriminatorOverride,
   isDerivedDiscriminatedModel,
@@ -120,6 +125,14 @@ export function ModelFile(props: ModelFileProps) {
     });
   }
 
+  // Collect flattened property metadata. Properties with `flatten: true`
+  // become internal backing fields, and their inner model's public properties
+  // get promoted as computed getter/setter properties on this model.
+  const flattenedInfos = collectFlattenedProperties(props.type);
+  const flattenedBackingSet = new Set(
+    flattenedInfos.map((fi) => fi.backingProperty),
+  );
+
   // When custom code declares a partial class in a different namespace
   // (e.g., [CodeGenType("Friend")] in SampleTypeSpec.Models.Custom),
   // the generated model must adopt that namespace so both partials merge.
@@ -169,9 +182,20 @@ export function ModelFile(props: ModelFileProps) {
             property={p}
             modelUsage={props.type.usage}
             modelName={props.type.name}
+            forceInternal={flattenedBackingSet.has(p)}
           />
         )}
       </For>
+      {flattenedInfos.length > 0 && (
+        <>
+          {renderProperties.length > 0 ? "\n\n" : "\n\n"}
+          <For each={flattenedInfos} hardline>
+            {(fi) => (
+              <FlattenedProperty info={fi} modelName={props.type.name} />
+            )}
+          </For>
+        </>
+      )}
       {hasTypedAdditionalProps && (
         <>
           {renderProperties.length > 0 ? "\n\n" : "\n\n"}

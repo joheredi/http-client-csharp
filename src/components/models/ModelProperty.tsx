@@ -45,6 +45,12 @@ export interface ModelPropertyProps {
   modelUsage: UsageFlags;
   /** The raw TCGC name of the enclosing model, used for CS0542 collision detection. */
   modelName: string;
+  /**
+   * When true, forces the property to render with `internal` access modifier
+   * regardless of its normal access level. Used for flattened backing properties
+   * whose public API is provided by computed FlattenedProperty components.
+   */
+  forceInternal?: boolean;
 }
 
 /**
@@ -136,7 +142,7 @@ export function isDiscriminatorProperty(
  * ```
  */
 export function ModelProperty(props: ModelPropertyProps) {
-  const { property, modelUsage, modelName } = props;
+  const { property, modelUsage, modelName, forceInternal = false } = props;
   let nullable = isPropertyNullable(property);
   const type = unwrapNullableType(property.type);
   const isDiscriminator = isDiscriminatorProperty(property);
@@ -188,14 +194,19 @@ export function ModelProperty(props: ModelPropertyProps) {
   // members returning a fixed value (e.g., `public bool Property => true;`).
   const initializer = getPropertyInitializer(property, modelUsage);
 
+  // When forceInternal is true, the property is a flattened backing field
+  // (its public API is provided by computed FlattenedProperty components).
+  // Override the access modifier to internal and always include a setter.
+  const isInternal = isDiscriminator || forceInternal;
+
   return (
     <Property
-      public={!isDiscriminator}
-      internal={isDiscriminator}
+      public={!isInternal}
+      internal={isInternal}
       name={effectiveName}
       type={typeExpr}
       get
-      set={hasSetter}
+      set={forceInternal ? true : hasSetter}
       nullable={nullable}
       doc={formattedDoc}
       initializer={initializer}

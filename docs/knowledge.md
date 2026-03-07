@@ -4118,3 +4118,47 @@ Resources are categorized into mockable scopes by `categorizeResourcesByScope()`
 ### Design Decision: Extensions Architecture
 
 Chose two-component approach (MockableProviderFile + ExtensionsFile) over a single monolithic component. This mirrors the pattern of ResourceFile.tsx + CollectionFile.tsx and keeps each file's concerns isolated. The `categorizeResourcesByScope()` utility is shared between both components.
+
+## Design Decisions — Property Flattening (Task 19.3)
+
+**Approach chosen: Component-level handling in ModelFile.tsx**
+
+- ModelFile detects `property.flatten === true` via `collectFlattenedProperties()` utility
+- Backing property rendered with `forceInternal=true` (new prop on ModelProperty)
+- FlattenedProperty component renders computed getter/setter
+- Serialization unchanged — backing model serializes/deserializes normally
+
+**Rejected: Pre-processing transformation**
+
+- Would create virtual property descriptors before rendering — unnecessary complexity
+
+**Key gotcha: `code` template indentation with refkeys**
+
+- Multi-line `code` templates strip leading whitespace, breaking indentation when mixed with Alloy's class body indentation
+- Solution: use plain string children for indentation (`{"        "}`) and `code` only for refkey interpolation
+- Alternative: use JSX fragment children with explicit `\n` for newlines
+
+**Key gotcha: @flattenProperty namespace**
+
+- The decorator is in `Azure.ClientGenerator.Core.Legacy` (NOT the main `Azure.ClientGenerator.Core` namespace)
+- In TypeSpec tests, use `using Azure.ClientGenerator.Core.Legacy;` to access it
+- Without this import, you get `invalid-ref: Unknown decorator @flattenProperty`
+
+**Key gotcha: TCGC flatten flag on ARM resources**
+
+- TCGC does NOT automatically set `flatten: true` on ARM `TrackedResource.properties` or `ProxyResource.properties`
+- The ARM library (`@azure-tools/typespec-azure-resource-manager`) applies `@@flattenProperty(TrackedResource.properties)` explicitly
+- In tests, the flatten flag only appears when `@flattenProperty` is explicitly applied or the ARM library decorators propagate it
+
+**Safe-flatten vs explicit flatten**
+
+- Explicit flatten: property has `flatten: true` from TCGC (via `@flattenProperty` decorator)
+- Safe flatten: C# generator concept — inner model with exactly 1 public property gets auto-flattened
+- Safe flatten is NOT set by TCGC — detected by `isSafeFlattenCandidate()` in `src/utils/flatten.ts`
+- Both patterns are handled by FlattenedProperty component
+
+**Pre-existing e2e test failure**
+
+- `pnpm test:e2e` has a pre-existing failure in `should build the test project` (Spector E2E)
+- Failures include: ClientDiagnostics inaccessible, ModelReaderWriterContext not found, ErrorResult<T> abstract member not implemented
+- These are infrastructure issues unrelated to any specific task — existed before flatten changes
