@@ -23,7 +23,12 @@
  * @module
  */
 
-import type { Program, Model, Operation, DecoratorApplication } from "@typespec/compiler";
+import type {
+  Program,
+  Model,
+  Operation,
+  DecoratorApplication,
+} from "@typespec/compiler";
 import { getNamespaceFullName } from "@typespec/compiler";
 import type {
   SdkClientType,
@@ -163,7 +168,11 @@ function resolveArmResourcesNewMode(
   // Assign list operations to the correct resources using prefix matching.
   // The ARM library may assign lists to the wrong resource when the same
   // model has multiple resources with different path segments.
-  assignListOperationsToResources(sdkContext, resources, schemaToResolvedResource);
+  assignListOperationsToResources(
+    sdkContext,
+    resources,
+    schemaToResolvedResource,
+  );
 
   // Build parent lookup context
   const nonResourceMethods: NonResourceMethod[] = [];
@@ -206,7 +215,10 @@ function resolveArmResourcesNewMode(
   // Add provider operations as non-resource methods
   if (provider.providerOperations) {
     for (const operation of provider.providerOperations) {
-      const methodId = getMethodIdFromOperation(sdkContext, operation.operation);
+      const methodId = getMethodIdFromOperation(
+        sdkContext,
+        operation.operation,
+      );
       if (!methodId) continue;
 
       nonResourceMethods.push({
@@ -273,10 +285,7 @@ function convertResolvedResourceToMetadata(
 
     if (lifecycle.read) {
       for (const readOp of lifecycle.read) {
-        const methodId = getMethodIdFromOperation(
-          sdkContext,
-          readOp.operation,
-        );
+        const methodId = getMethodIdFromOperation(sdkContext, readOp.operation);
         if (methodId) {
           methods.push({
             methodId,
@@ -362,10 +371,7 @@ function convertResolvedResourceToMetadata(
   // Convert action operations
   if (resolvedResource.operations.actions) {
     for (const actionOp of resolvedResource.operations.actions) {
-      const methodId = getMethodIdFromOperation(
-        sdkContext,
-        actionOp.operation,
-      );
+      const methodId = getMethodIdFromOperation(sdkContext, actionOp.operation);
       if (methodId) {
         methods.push({
           methodId,
@@ -506,10 +512,7 @@ function assignListOperationsToResources(
     const resourcesForModel = resourcesByModelId.get(modelId) ?? [];
 
     for (const listOp of resolvedResource.operations.lists) {
-      const methodId = getMethodIdFromOperation(
-        sdkContext,
-        listOp.operation,
-      );
+      const methodId = getMethodIdFromOperation(sdkContext, listOp.operation);
       if (!methodId) continue;
 
       let targetResource: ArmResourceSchema | undefined;
@@ -573,8 +576,7 @@ const CUSTOM_AZURE_RESOURCE =
 const SINGLETON_DECORATOR = "Azure.ResourceManager.@singleton";
 const TENANT_RESOURCE = "Azure.ResourceManager.@tenantResource";
 const SUBSCRIPTION_RESOURCE = "Azure.ResourceManager.@subscriptionResource";
-const RESOURCE_GROUP_RESOURCE =
-  "Azure.ResourceManager.@resourceGroupResource";
+const RESOURCE_GROUP_RESOURCE = "Azure.ResourceManager.@resourceGroupResource";
 const PARENT_RESOURCE = "TypeSpec.Rest.@parentResource";
 
 /** Decorator names for classifying resource operations. */
@@ -586,8 +588,7 @@ const ARM_RESOURCE_LIST = "@armResourceList";
 const ARM_RESOURCE_ACTION = "@armResourceAction";
 const READS_RESOURCE = "@readsResource";
 const EXTENSION_RESOURCE_OPERATION = "@extensionResourceOperation";
-const LEGACY_EXTENSION_RESOURCE_OPERATION =
-  "@legacyExtensionResourceOperation";
+const LEGACY_EXTENSION_RESOURCE_OPERATION = "@legacyExtensionResourceOperation";
 const LEGACY_RESOURCE_OPERATION = "@legacyResourceOperation";
 const BUILTIN_RESOURCE_OPERATION = "@builtInResourceOperation";
 
@@ -652,9 +653,7 @@ function buildArmProviderSchemaLegacy(
     clientName: string,
     method: SdkServiceMethod<SdkHttpOperation>,
   ) => {
-    const serviceMethod = serviceMethods.get(
-      method.crossLanguageDefinitionId,
-    );
+    const serviceMethod = serviceMethods.get(method.crossLanguageDefinitionId);
     const { kind, modelId } = parseResourceOperation(serviceMethod, sdkContext);
 
     if (modelId && kind && resourceModelIds.has(modelId)) {
@@ -837,10 +836,7 @@ function buildArmProviderSchemaLegacy(
   for (const [metadataKey] of resourcePathToMetadataMap) {
     const modelId = metadataKey.split("|")[0];
     const model = sdkModels.get(modelId);
-    const parentModelId = getParentResourceModelId(
-      sdkContext,
-      model,
-    );
+    const parentModelId = getParentResourceModelId(sdkContext, model);
     const metadata = resourcePathToMetadataMap.get(metadataKey)!;
     if (parentModelId) {
       metadata.parentResourceModelId = parentModelId;
@@ -1150,10 +1146,7 @@ function getResourceModelIdFromDecorator(
   decorator: any,
 ): string | undefined {
   if (!decorator?.args?.[0]?.value) return undefined;
-  return getResourceModelIdCore(
-    sdkContext,
-    decorator.args[0].value as Model,
-  );
+  return getResourceModelIdCore(sdkContext, decorator.args[0].value as Model);
 }
 
 /**
@@ -1209,8 +1202,7 @@ function getParentResourceModelId(
 function getSingletonResource(decorator: any): string | undefined {
   if (!decorator) return undefined;
   // The singleton decorator argument may be in different positions depending on the decorator format
-  const keyValue =
-    decorator.args?.[0]?.jsValue ?? decorator.args?.[0]?.value;
+  const keyValue = decorator.args?.[0]?.jsValue ?? decorator.args?.[0]?.value;
   if (typeof keyValue === "string" && keyValue.length > 0) {
     return keyValue;
   }

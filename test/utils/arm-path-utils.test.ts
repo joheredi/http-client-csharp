@@ -105,12 +105,9 @@ describe("isPrefix", () => {
   });
 
   it("returns false when segments don't match", () => {
-    expect(
-      isPrefix(
-        "/subscriptions/{id}/foo",
-        "/subscriptions/{id}/bar",
-      ),
-    ).toBe(false);
+    expect(isPrefix("/subscriptions/{id}/foo", "/subscriptions/{id}/bar")).toBe(
+      false,
+    );
   });
 });
 
@@ -135,11 +132,7 @@ describe("findLongestPrefixMatch", () => {
   });
 
   it("returns undefined when no candidates match", () => {
-    const match = findLongestPrefixMatch(
-      "/foo/bar",
-      ["/baz/qux"],
-      (c) => c,
-    );
+    const match = findLongestPrefixMatch("/foo/bar", ["/baz/qux"], (c) => c);
     expect(match).toBeUndefined();
   });
 
@@ -283,9 +276,7 @@ describe("getOperationScopeFromPath", () => {
 
   it("defaults to Tenant scope", () => {
     expect(
-      getOperationScopeFromPath(
-        "/providers/Microsoft.Foo/bars/{barName}",
-      ),
+      getOperationScopeFromPath("/providers/Microsoft.Foo/bars/{barName}"),
     ).toBe(ResourceScope.Tenant);
   });
 });

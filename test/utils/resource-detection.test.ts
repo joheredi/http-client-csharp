@@ -166,5 +166,3 @@ describe("ARM resource detection (emitter integration)", () => {
     expect(Object.keys(outputs).length).toBeGreaterThan(0);
   });
 });
-
-

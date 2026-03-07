@@ -140,8 +140,7 @@ describe("postProcessArmResources", () => {
           {
             methodId: "list-by-sub",
             kind: ResourceOperationKind.List,
-            operationPath:
-              "/subscriptions/{id}/providers/Microsoft.Foo/bars",
+            operationPath: "/subscriptions/{id}/providers/Microsoft.Foo/bars",
             operationScope: ResourceScope.Subscription,
           },
         ],
@@ -326,8 +325,7 @@ describe("assignNonResourceMethodsToResources", () => {
     const nonResourceMethods: NonResourceMethod[] = [
       {
         methodId: "list-by-sub",
-        operationPath:
-          "/subscriptions/{id}/providers/Microsoft.Foo/bars",
+        operationPath: "/subscriptions/{id}/providers/Microsoft.Foo/bars",
         operationScope: ResourceScope.Subscription,
         resourceModelId: "model-1",
       },
@@ -337,9 +335,7 @@ describe("assignNonResourceMethodsToResources", () => {
 
     expect(nonResourceMethods).toHaveLength(0);
     expect(resource.metadata.methods).toHaveLength(1);
-    expect(resource.metadata.methods[0].kind).toBe(
-      ResourceOperationKind.List,
-    );
+    expect(resource.metadata.methods[0].kind).toBe(ResourceOperationKind.List);
   });
 
   /**
@@ -373,8 +369,6 @@ describe("assignNonResourceMethodsToResources", () => {
 
     expect(nonResourceMethods).toHaveLength(0);
     expect(resource.metadata.methods).toHaveLength(1);
-    expect(resource.metadata.methods[0].kind).toBe(
-      ResourceOperationKind.List,
-    );
+    expect(resource.metadata.methods[0].kind).toBe(ResourceOperationKind.List);
   });
 });

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { AzureHttpTester, ApiTester, HttpTester, MgmtTester } from "./test-host.js";
+import {
+  AzureHttpTester,
+  ApiTester,
+  HttpTester,
+  MgmtTester,
+} from "./test-host.js";
 
 const HttpTesterDisableXmlDocs = ApiTester.emit("http-client-csharp", {
   "disable-xml-docs": true,

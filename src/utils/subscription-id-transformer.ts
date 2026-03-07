@@ -150,9 +150,6 @@ function removeSubscriptionIdFromClient(
   client.clientInitialization.parameters =
     client.clientInitialization.parameters.filter(
       (p) =>
-        !(
-          p.kind === "method" &&
-          p.name === SUBSCRIPTION_ID_SERIALIZED_NAME
-        ),
+        !(p.kind === "method" && p.name === SUBSCRIPTION_ID_SERIALIZED_NAME),
     );
 }

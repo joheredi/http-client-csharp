@@ -3910,47 +3910,59 @@ The conditional header validation (ArgumentException for unsupported properties)
 ## SystemTextJsonConverter Pattern (Task 17.10)
 
 ### GOTCHA: TCGC additionalDecorators Required
+
 The `@useSystemTextJsonConverter` decorator only appears in `model.decorators` when `additionalDecorators` is configured in `createSdkContext` options. Without `additionalDecorators: ["Azure\\.ClientGenerator\\.Core\\.@useSystemTextJsonConverter"]`, the decorator is silently filtered out by TCGC and `model.decorators` will be an empty array. This is because TCGC has an allowlist for decorators — only explicitly registered ones are included.
 
 ### GOTCHA: Nested Class Refkeys Resolve Fully-Qualified
+
 When using a refkey in `typeof()` to reference a nested class declared via `<ClassDeclaration refkey={...}>` inside another class, Alloy resolves the refkey to the fully-qualified name (e.g., `FooProperties.FooPropertiesConverter`). The legacy emitter uses the short name `FooPropertiesConverter` (valid since the attribute is on the containing class). Solution: use a plain string `typeof(${converterName})` instead of a refkey for nested class references in the same scope.
 
 ### Design Decision: Plain String vs Refkey for Nested Class typeof()
+
 Approach chosen: Plain string `typeof(${modelName}Converter)` for the `[JsonConverter]` attribute argument.
-Approach rejected: Refkey-based `code\`typeof(${converterRefkey})\`` which would auto-resolve but produces `typeof(OuterClass.NestedClass)` format that doesn't match legacy output.
+Approach rejected: Refkey-based `code\`typeof(${converterRefkey})\``which would auto-resolve but produces`typeof(OuterClass.NestedClass)` format that doesn't match legacy output.
 Reason: The converter is always a nested class in the same serialization partial class — no cross-file resolution is needed, and the short name is correct C#.
 
 ## Design Decisions — Task 18.1: Mgmt Test Infrastructure
 
 ### Azure.ResourceManager NuGet Version Compatibility
+
 When `management: true`, the generated .csproj needs both `Azure.Core` and `Azure.ResourceManager` as PackageReferences. Azure.ResourceManager 1.14.0 requires Azure.Core >= 1.51.1, so management projects use Azure.Core 1.51.1 instead of the default 1.44.1 used by data-plane Azure projects. This prevents NuGet error NU1605 (package version downgrade).
 
 ### MgmtTester Library Registration
+
 The `MgmtTester` in `test-host.ts` registers these additional libraries beyond the IntegrationTester:
+
 - `@azure-tools/typespec-azure-resource-manager` — ARM resource decorators and models
 - `@typespec/openapi` — used by several mgmt .tsp test files
 
 ### Mgmt Smoke Test Scope
+
 The mgmt smoke test validates the emitter pipeline (TypeSpec → C# output) but does NOT validate `dotnet build`. The generated ARM code has compilation errors because ARM-specific code generation features (CRUD clients, resource detection, property flattening) are not yet implemented (phase 19). Once phase 19 is complete, the smoke test should be extended to validate `dotnet build`.
 
 ### emit-mgmt.ts Script
+
 The `eng/scripts/emit-mgmt.ts` script compiles the full 31-file mgmt suite from `submodules/azure-sdk-for-net/.../Mgmt-TypeSpec/main.tsp` using `tsp compile` with management options. It outputs to `temp/mgmt/`. Invoke with `pnpm emit:mgmt`.
 
 ### Pre-existing E2E Failures (as of 2026-03-07)
+
 E2E tests fail with errors unrelated to management:
+
 - CS0122: `ClientDiagnostics` inaccessible due to protection level
 - CS0534: `ErrorResult<T>` doesn't implement `GetRawResponse()`
 - CS0246: `ModelReaderWriterContext` and `ModelReaderWriterBuildable` not found
-These affect `azure/client-generator-core/client-location` and `azure/client-generator-core/client-initialization` specs.
+  These affect `azure/client-generator-core/client-location` and `azure/client-generator-core/client-initialization` specs.
 
 ## ARM Resource Detection (Task 19.1)
 
 ### Design Decisions
+
 - **Both detection modes implemented**: The `use-legacy-resource-detection` option (default: true) supports both the new `resolveArmResources` API and the legacy heuristic-based detection. The legacy mode was adapted from CodeModel types to SdkPackage types.
 - **Three-file organization**: `arm-path-utils.ts` (pure path utilities), `resource-metadata.ts` (types + shared post-processing), `resource-detection.ts` (entry point + both modes). Mirrors the reference implementation's separation.
 - **EmitterContext integration**: `armProviderSchema` field added to EmitterContextType. Populated in `$onEmit` when management=true. Downstream components use `useEmitterContext().armProviderSchema`.
 
 ### Gotchas
+
 - **resolveArmResources only works during $onEmit**: The ARM library's state map (from `@armProviderNamespace` decorator processing) is only available during the emitter's execution phase. Calling `resolveArmResources(program)` after `compileAndDiagnose()` returns `{}` because the state has been cleaned up.
 - **Scope detection order matters**: `getOperationScopeFromPath` must check ManagementGroup BEFORE multi-provider extension, because ManagementGroup paths like `/providers/Microsoft.Management/managementGroups/{id}/providers/Microsoft.Foo/bars` have multiple `/providers/` segments.
 - **DecoratorApplication type**: The TypeSpec compiler's `DecoratorApplication.decorator.namespace` is a plain `string | undefined`, while `DecoratorApplication.definition.namespace` is a `Namespace` object. Use `getNamespaceFullName()` from `@typespec/compiler` to build fully qualified decorator names.
@@ -3960,12 +3972,15 @@ These affect `azure/client-generator-core/client-location` and `azure/client-gen
 ## Subscription ID Transformation (Task 19.4)
 
 ### Design Decision: Centralized TCGC mutation vs component-level
+
 - **Chosen:** Mutate TCGC data in `$onEmit` by setting `onClient = false` on subscriptionId operation path params and removing from `clientInitialization.parameters`
 - **Why:** All downstream components already check `p.onClient` flag — setting it to `false` makes subscriptionId appear in method signatures without any component changes
 - **Rejected:** Component-level checks for `management === true` — too scattered (4+ files), error-prone
 
 ### Gotcha: `onClient` is the universal parameter scope switch
+
 The `onClient` boolean on `SdkPathParameter`, `SdkQueryParameter`, and `SdkHeaderParameter` controls:
+
 1. Whether the param appears in method signatures (skipped when `true`)
 2. Whether path building uses a field reference (`_paramName`) or method parameter
 3. Whether `getOnClientFieldName` / `correspondingMethodParams` are used for alias resolution
@@ -3973,32 +3988,73 @@ The `onClient` boolean on `SdkPathParameter`, `SdkQueryParameter`, and `SdkHeade
 Setting `onClient = false` and removing from `clientInitialization.parameters` is sufficient to move any parameter from client scope to method scope. No component-level changes needed.
 
 ### Gotcha: `correspondingMethodParams` not affected
+
 When `onClient` is set to `false`, the `correspondingMethodParams` property on the operation parameter is never accessed by downstream code — `getOnClientFieldName()` is only called when `onClient === true`. Safe to leave as-is.
 
 ### Gotcha: Transformation ordering in $onEmit
+
 `transformSubscriptionIdParameters(clients)` must be called:
+
 - AFTER `createSdkContext()` (needs TCGC data)
 - BEFORE `getAllClients()` / `applyUnreferencedTypeHandling()` / component rendering
 - Currently placed right after `const clients = sdkContext.sdkPackage.clients` in emitter.tsx
 
 ## ARM Resource Data Classes Are Already Handled (2026-03-07)
+
 **Context:** Task 19.2 investigation
 **Finding:** ARM data classes (e.g., BazData.cs inheriting TrackedResourceData) do NOT need special ARM-specific generation. The existing model pipeline handles them automatically because:
+
 1. TCGC resolves `TrackedResource<Props>`, `ProxyResource<Props>`, `ExtensionResource<Props>` to their corresponding `SdkModelType.baseModel`
 2. `ModelFile.tsx` renders any baseModel via `efCsharpRefkey()`, which outputs the correct ARM base class name
 3. Constructor generation inherits properly (e.g., `: base(location)` for TrackedResourceData)
-**Implication:** No new component needed for ARM data classes. Focus generation effort on Resource and Collection classes.
+   **Implication:** No new component needed for ARM data classes. Focus generation effort on Resource and Collection classes.
 
 ## ARM Resource/Collection Cross-References (2026-03-07)
+
 **Context:** Task 19.2 split design
 **Finding:** BazResource references BazCollection (child resource accessors), and BazCollection references BazResource (return types, wrapping data). They are mutually dependent. In Alloy, this is handled cleanly via refkeys — both classes can be generated independently and Alloy resolves circular references automatically. Tasks 19.2a and 19.2b can be implemented independently.
 
 ## Design Decisions
+
 ### Task 19.2 Split Strategy (2026-03-07)
+
 **Chosen approach:** Split by class type (Resource → Collection → Extensions/Mockable)
+
 - 19.2a: Resource class (~681 lines per resource, all instance operations)
-- 19.2b: Collection class (~580 lines per resource, all collection operations)  
+- 19.2b: Collection class (~580 lines per resource, all collection operations)
 - 19.2c: Extensions + Mockable + Integration (~7600 lines combined)
-**Why:** Each class is a self-contained unit with clear boundaries. Resource and Collection can be developed in parallel (refkeys handle cross-references). Extensions/Mockable layer depends on both being complete.
-**Rejected:** Split by operation type (CRUD vs List vs LRO) — this would create artificial boundaries within a single class, making testing harder and requiring partial class files.
-**Rejected:** Single task — too large (~7600+ lines of generated output, multiple file types, multiple patterns) for reliable single-iteration completion.
+  **Why:** Each class is a self-contained unit with clear boundaries. Resource and Collection can be developed in parallel (refkeys handle cross-references). Extensions/Mockable layer depends on both being complete.
+  **Rejected:** Split by operation type (CRUD vs List vs LRO) — this would create artificial boundaries within a single class, making testing harder and requiring partial class files.
+  **Rejected:** Single task — too large (~7600+ lines of generated output, multiple file types, multiple patterns) for reliable single-iteration completion.
+
+### ARM Resource class generation (task 19.2a)
+
+**Design Decision:** Single `ResourceFile.tsx` component generates entire `{Resource}Resource.cs` file using `code` templates for method bodies and Alloy library refs for type references. Rejected splitting into sub-components (ResourceOperation, ResourceConstructors) — the ground truth is a single class and the output is well-defined.
+
+**Pattern: Mapping ARM methods to TCGC operations**
+
+- Build a `Map<string, SdkServiceMethod>` from ALL TCGC clients, keyed by `crossLanguageDefinitionId`
+- ARM `ResourceMethod.methodId` IS the `crossLanguageDefinitionId` (set in resource-detection.ts)
+- Lookup: `methodLookup.get(resourceMethod.methodId)` → full TCGC method with operation details
+- Check `tcgcMethod.kind` for LRO detection: `"lro"` = LRO, `"basic"` = standard
+
+**Pattern: REST client reference in Resource class**
+
+- Resource class references the TCGC client via `refkey(client)` — resolves to whatever ClientFile generates
+- Field naming: `_${toLowerCamel(clientName)}RestClient` (e.g., `_bazsRestClient`)
+- Diagnostics field: `_${toLowerCamel(clientName)}ClientDiagnostics` (e.g., `_bazsClientDiagnostics`)
+
+**Pattern: Resource ID accessor expressions**
+
+- `subscriptionId` → `Guid.Parse(Id.SubscriptionId)`
+- `resourceGroupName` → `Id.ResourceGroupName`
+- Last variable segment → `Id.Name`
+- Child resource parents → `Id.Parent.Name`, `Id.Parent.Parent.Name`, etc.
+
+**Gotcha: Legacy resource detection doesn't find LRO operations**
+The default `use-legacy-resource-detection=true` only detects operations registered with decorators like `@armResourceRead`, `@armResourceCreateOrUpdate`, etc. TypeSpec ARM LRO templates (`ArmResourcePatchAsync`, `ArmResourceDeleteWithoutOkAsync`) ARE decorated correctly, but the legacy detection in resource-detection.ts only maps methods with `kind === "basic"` in its serviceMethods map (line ~621). LRO methods have `kind === "lro"` and are excluded. The new mode (`use-legacy-resource-detection=false`) likely handles these correctly.
+
+**Gotcha: ARM model naming**
+TCGC names ARM models as their TypeSpec name (e.g., `Baz`), placed in `Models` sub-namespace. The legacy emitter renames them to `{Name}Data` (e.g., `BazData`) via a NameVisitor. The current emitter does not apply this renaming yet.
+
+**Refkey for ARM resource classes:** `armResourceRefkey(resourceModelId)` using `Symbol.for("arm-resource")` prefix. Exported from ResourceFile.tsx for Collection and Extension components to reference.

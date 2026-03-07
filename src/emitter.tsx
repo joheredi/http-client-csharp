@@ -107,6 +107,7 @@ import { reorderAllFileHeaders } from "./utils/reorder-header.js";
 import { SYSTEM_TEXT_JSON_CONVERTER_DECORATOR_PATTERN } from "./utils/system-text-json-converter.js";
 import { detectArmResources } from "./utils/resource-detection.js";
 import { transformSubscriptionIdParameters } from "./utils/subscription-id-transformer.js";
+import { ResourceFile } from "./components/arm/ResourceFile.js";
 
 /**
  * TypeSpec emitter entry point for the C# HTTP client generator.
@@ -327,6 +328,9 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
         ))}
         {allClients.map((c) => (
           <CollectionResultFiles client={c} options={options} />
+        ))}
+        {armProviderSchema?.resources.map((r) => (
+          <ResourceFile resource={r} />
         ))}
         {fixedEnums.map((e) => (
           <FixedEnumFile type={e} options={options} />

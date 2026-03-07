@@ -161,18 +161,15 @@ describe(
     it("emits a management plane ARM resource", async () => {
       const testDir = join(SMOKE_DIR, "mgmt-resource");
 
-      const [{ outputs }, diagnostics] =
-        await MgmtTester.compileAndDiagnose(
-          readFixture("mgmt-resource.tsp"),
-        );
+      const [{ outputs }, diagnostics] = await MgmtTester.compileAndDiagnose(
+        readFixture("mgmt-resource.tsp"),
+      );
 
       // Emitter processes ARM TypeSpec without errors
       expect(diagnostics).toHaveLength(0);
 
       // Verify .csproj references Azure.ResourceManager
-      const csprojKey = Object.keys(outputs).find((k) =>
-        k.endsWith(".csproj"),
-      );
+      const csprojKey = Object.keys(outputs).find((k) => k.endsWith(".csproj"));
       expect(csprojKey).toBeDefined();
       const csproj = outputs[csprojKey!];
       expect(csproj).toContain(

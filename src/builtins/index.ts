@@ -28,4 +28,11 @@ export {
   SystemClientModel,
   SystemClientModelPrimitives,
 } from "./system-client-model.js";
-export { SystemDiagnosticsCodeAnalysis } from "./system-diagnostics.js";
+export {
+  SystemDiagnostics,
+  SystemDiagnosticsCodeAnalysis,
+} from "./system-diagnostics.js";
+export {
+  AzureResourceManager,
+  AzureResourceManagerResources,
+} from "./azure-arm.js";

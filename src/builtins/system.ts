@@ -117,4 +117,26 @@ export const System = createLibrary("System", {
       OrdinalIgnoreCase: { kind: "field" },
     },
   },
+
+  /**
+   * Exception thrown when a method call is invalid for the object's current state.
+   * Used in ARM Resource `Data` property guard when `HasData` is false.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/system.invalidoperationexception
+   */
+  InvalidOperationException: {
+    kind: "class",
+    members: {},
+  },
+
+  /**
+   * Exception thrown when an argument provided to a method is not valid.
+   * Used in ARM Resource `ValidateResourceId` when the resource type does not match.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/system.argumentexception
+   */
+  ArgumentException: {
+    kind: "class",
+    members: {},
+  },
 });

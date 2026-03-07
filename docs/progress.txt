@@ -6144,3 +6144,27 @@ E2E tests have pre-existing failures (CS0122 ClientDiagnostics, CS0534 ErrorResu
 - **Dependencies:** 19.2a and 19.2b depend on 19.1 (done), can be worked in parallel. 19.2c depends on both 19.2a and 19.2b. Updated 19.5 to depend on 19.2c.
 - **Key finding:** ARM data classes (e.g., BazData.cs) are already handled by the existing model pipeline via TCGC baseModel resolution — no special ARM data class generation needed.
 - **Ground truth:** BazResource.cs (681 lines) and BazCollection.cs (580 lines) in Mgmt-TypeSpec test project are the definitive reference for generated output.
+
+## Task 19.2a — ARM Resource class generation (2026-03-07)
+- **What was done:** Implemented `ResourceFile.tsx` component that generates `{Resource}Resource.cs` for each detected ARM resource.
+- **Files created:**
+  - `src/builtins/azure-arm.ts` — Azure.ResourceManager library definitions (ArmResource, ArmClient, ResourceType, ArmOperation, ArmCollection, ResourceGroupResource, SubscriptionResource, etc.)
+  - `src/components/arm/ResourceFile.tsx` — Main resource class component (~600 lines)
+  - `test/arm/resource-file.test.ts` — 14 unit tests validating structure against BazResource.cs ground truth
+- **Files modified:**
+  - `src/builtins/system.ts` — Added InvalidOperationException, ArgumentException
+  - `src/builtins/system-diagnostics.ts` — Added SystemDiagnostics library with ConditionalAttribute
+  - `src/builtins/index.ts` — Exported new builtins
+  - `src/emitter.tsx` — Wired ResourceFile into output tree for ARM resources
+- **Key patterns:**
+  - Uses `code` templates from @alloy-js/core for complex C# method bodies
+  - Maps ARM ResourceMethod.methodId → TCGC SdkServiceMethod via crossLanguageDefinitionId
+  - Uses `efCsharpRefkey(model.__raw!)` for TCGC model references, `refkey(client)` for client references
+  - ARM library types from azure-arm.ts auto-generate correct `using Azure.ResourceManager;` directives
+  - Same-namespace types (ArmOperation wrappers, OperationSource) emitted as literal strings — no refkey needed
+- **Gotchas discovered:**
+  - Legacy ARM resource detection (`use-legacy-resource-detection=true`, the default) does NOT detect LRO operations (ArmResourcePatchAsync, ArmResourceDeleteWithoutOkAsync). Only sync variants (ArmResourcePatchSync, ArmResourceDeleteSync) are detected. LRO operations require `use-legacy-resource-detection=false` (new mode).
+  - TCGC model name for ARM resources is `Baz` (not `BazData`). The "Data" suffix is applied by the legacy emitter's NameVisitor. Current emitter uses `Models.Baz`.
+  - `ArmResourceDeleteAsync` is deprecated in current ARM TypeSpec; use `ArmResourceDeleteWithoutOkAsync`.
+  - `SdkClientType.methods` includes `clientaccessor` kind; TypeScript type narrowing requires `"crossLanguageDefinitionId" in method` check instead of `method.kind !== "clientaccessor"`.
+- **What's next:** Task 19.2b (Collection class) or 19.3 (property flattening). Future work should also add LRO operation support once resource detection handles async ARM operations.

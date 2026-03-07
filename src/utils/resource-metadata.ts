@@ -141,9 +141,7 @@ export interface ParentResourceLookupContext {
   /**
    * Returns the parent resource for a given resource, or `undefined` if none.
    */
-  getParentResource(
-    resource: ArmResourceSchema,
-  ): ArmResourceSchema | undefined;
+  getParentResource(resource: ArmResourceSchema): ArmResourceSchema | undefined;
 }
 
 // ─── Sorting ─────────────────────────────────────────────────────────────────
