@@ -94,6 +94,7 @@ import {
   ensureModelNamespaces,
   cleanAllNamespaces,
   applyModelSubNamespace,
+  redirectArmSdkNamespaceConflicts,
 } from "./utils/package-name.js";
 import { applyUnreferencedTypeHandling } from "./utils/unreferenced-types.js";
 import { isMultipartOnlyModel } from "./utils/model.js";
@@ -197,6 +198,14 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
   // models (from spread operations with mixed HTTP decorators) get empty
   // namespaces. Derive from crossLanguageDefinitionId or fall back to root.
   ensureModelNamespaces(models, rootNamespace);
+
+  // Redirect models/enums whose namespace is the ARM SDK root ("Azure.ResourceManager")
+  // to the package root namespace. Without this, applyModelSubNamespace would place
+  // them in "Azure.ResourceManager.Models" — the same namespace as SDK types
+  // (SystemData, CreatedByType), causing CS0104 ambiguous reference errors.
+  if (options.management) {
+    redirectArmSdkNamespaceConflicts(models, enums, rootNamespace);
+  }
 
   // Clean namespace segments that conflict with client class names or C#
   // reserved words (Type, Array, Enum). Adds underscore prefix to conflicting

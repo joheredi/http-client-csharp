@@ -17,6 +17,7 @@ import {
   cleanAllNamespaces,
   isSystemTypeNameCollision,
   applyModelSubNamespace,
+  redirectArmSdkNamespaceConflicts,
 } from "../src/utils/package-name.js";
 
 /**
@@ -954,5 +955,169 @@ describe("applyModelSubNamespace", () => {
 
     // Should not throw
     applyModelSubNamespace(models, enums);
+  });
+});
+
+/**
+ * Tests for redirectArmSdkNamespaceConflicts() (task 20.12b).
+ *
+ * When TCGC assigns models/enums the `Azure.ResourceManager` namespace (the ARM SDK
+ * root), applyModelSubNamespace would place them in `Azure.ResourceManager.Models` —
+ * the same namespace as SDK-provided types like SystemData and CreatedByType. This
+ * causes CS0104 ambiguous reference errors in generated code that imports both
+ * `Azure.ResourceManager.CommonTypes.Models` and `Azure.ResourceManager.Models`.
+ *
+ * These tests verify that redirectArmSdkNamespaceConflicts correctly moves types
+ * with the ARM SDK root namespace to the package root namespace, preventing the
+ * collision after `.Models` is applied.
+ */
+describe("redirectArmSdkNamespaceConflicts", () => {
+  /**
+   * Core case: models with namespace "Azure.ResourceManager" should be redirected
+   * to the package root namespace. Without this, applyModelSubNamespace would put
+   * them in "Azure.ResourceManager.Models" which collides with SDK types.
+   */
+  it("redirects models with Azure.ResourceManager namespace to root", () => {
+    const models = [
+      createMockModel(
+        "ResourceProvisioningState",
+        "Azure.ResourceManager",
+        "Azure.ResourceManager.ResourceProvisioningState",
+      ),
+    ];
+    const enums: SdkEnumType[] = [];
+
+    redirectArmSdkNamespaceConflicts(
+      models,
+      enums,
+      "Azure.ResourceManager.MethodSubscriptionId",
+    );
+
+    expect(models[0].namespace).toBe(
+      "Azure.ResourceManager.MethodSubscriptionId",
+    );
+  });
+
+  /**
+   * ListResult types that TCGC puts in the ARM SDK root namespace should also
+   * be redirected. This occurs in specs like "resources" where types like
+   * ExtensionsResourceListResult end up in "Azure.ResourceManager".
+   */
+  it("redirects multiple models in Azure.ResourceManager namespace", () => {
+    const models = [
+      createMockModel(
+        "ExtensionsResourceListResult",
+        "Azure.ResourceManager",
+        "Azure.ResourceManager.ExtensionsResourceListResult",
+      ),
+      createMockModel(
+        "TopLevelTrackedResourceListResult",
+        "Azure.ResourceManager",
+        "Azure.ResourceManager.TopLevelTrackedResourceListResult",
+      ),
+    ];
+    const enums: SdkEnumType[] = [];
+
+    redirectArmSdkNamespaceConflicts(
+      models,
+      enums,
+      "Azure.ResourceManager.Resources",
+    );
+
+    expect(models[0].namespace).toBe("Azure.ResourceManager.Resources");
+    expect(models[1].namespace).toBe("Azure.ResourceManager.Resources");
+  });
+
+  /**
+   * Enums with namespace "Azure.ResourceManager" should also be redirected.
+   */
+  it("redirects enums with Azure.ResourceManager namespace", () => {
+    const models: SdkModelType[] = [];
+    const enums = [createMockEnum("SomeArmEnum", "Azure.ResourceManager")];
+
+    redirectArmSdkNamespaceConflicts(
+      models,
+      enums,
+      "Azure.ResourceManager.MyService",
+    );
+
+    expect(enums[0].namespace).toBe("Azure.ResourceManager.MyService");
+  });
+
+  /**
+   * Models/enums with namespaces that are NOT the ARM SDK root should be left
+   * untouched. Only the exact "Azure.ResourceManager" namespace causes the
+   * collision; sub-namespaces like "Azure.ResourceManager.CommonTypes" are safe.
+   */
+  it("does not redirect models with other namespaces", () => {
+    const models = [
+      createMockModel(
+        "SystemData",
+        "Azure.ResourceManager.CommonTypes",
+        "Azure.ResourceManager.CommonTypes.SystemData",
+      ),
+      createMockModel(
+        "SubscriptionResource",
+        "Azure.ResourceManager.MethodSubscriptionId._MixedSubscriptionPlacement",
+        "Azure.ResourceManager.MethodSubscriptionId.SubscriptionResource",
+      ),
+    ];
+    const enums: SdkEnumType[] = [];
+
+    redirectArmSdkNamespaceConflicts(
+      models,
+      enums,
+      "Azure.ResourceManager.MethodSubscriptionId",
+    );
+
+    expect(models[0].namespace).toBe("Azure.ResourceManager.CommonTypes");
+    expect(models[1].namespace).toBe(
+      "Azure.ResourceManager.MethodSubscriptionId._MixedSubscriptionPlacement",
+    );
+  });
+
+  /**
+   * Empty arrays should not cause errors.
+   */
+  it("handles empty arrays gracefully", () => {
+    const models: SdkModelType[] = [];
+    const enums: SdkEnumType[] = [];
+
+    // Should not throw
+    redirectArmSdkNamespaceConflicts(models, enums, "Azure.ResourceManager.MyService");
+  });
+
+  /**
+   * Verifies the full pipeline: ensureModelNamespaces → redirectArmSdkNamespaceConflicts →
+   * applyModelSubNamespace. A model that starts with Azure.ResourceManager namespace should
+   * end up in "{package}.Models" (NOT "Azure.ResourceManager.Models").
+   */
+  it("works correctly in the full namespace pipeline", () => {
+    const models = [
+      createMockModel(
+        "ResourceProvisioningState",
+        "Azure.ResourceManager",
+        "Azure.ResourceManager.ResourceProvisioningState",
+      ),
+      createMockModel(
+        "SystemData",
+        "Azure.ResourceManager.CommonTypes",
+        "Azure.ResourceManager.CommonTypes.SystemData",
+      ),
+    ];
+    const enums: SdkEnumType[] = [];
+    const rootNamespace = "Azure.ResourceManager.MyService";
+
+    // Step 1: redirect ARM SDK namespace conflicts
+    redirectArmSdkNamespaceConflicts(models, enums, rootNamespace);
+    // Step 2: apply .Models sub-namespace
+    applyModelSubNamespace(models, enums);
+
+    // ResourceProvisioningState should be in the package's Models namespace
+    expect(models[0].namespace).toBe("Azure.ResourceManager.MyService.Models");
+    // SystemData should remain in CommonTypes.Models (no redirect needed)
+    expect(models[1].namespace).toBe(
+      "Azure.ResourceManager.CommonTypes.Models",
+    );
   });
 });

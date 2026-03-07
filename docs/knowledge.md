@@ -4407,3 +4407,20 @@ Azure.Core's `RequestHeaders` uses `.SetValue(name, value)` while System.ClientM
 ### Gotcha: Azure CreateMessage takes (context, classifier) not (uri, method, classifier)
 
 Azure.Core's `HttpPipeline.CreateMessage()` takes `(RequestContext, ResponseClassifier)` and requires setting `request.Uri` and `request.Method` separately. System.ClientModel's `ClientPipeline.CreateMessage()` takes `(Uri, string, PipelineMessageClassifier)`.
+
+## ARM SDK Namespace Collision (CS0104) — Design Decision
+
+### Problem
+TCGC assigns some types the `Azure.ResourceManager` namespace. After `applyModelSubNamespace` adds `.Models`, these types land in `Azure.ResourceManager.Models` — the Azure.ResourceManager NuGet package's namespace for types like `SystemData`, `CreatedByType`. Files that import both `Azure.ResourceManager.CommonTypes.Models` and `Azure.ResourceManager.Models` get CS0104.
+
+### Approach Chosen: Namespace Redirect
+Redirect models/enums with namespace `Azure.ResourceManager` to the package root namespace. This is done in `redirectArmSdkNamespaceConflicts()` called before `applyModelSubNamespace`.
+
+### Approach Rejected: Suppress generation of SDK types
+Adding SystemData/CreatedByType as builtins and filtering them from generation was considered but rejected because:
+1. The refkey system (`efCsharpRefkey(rawType)`) creates refkeys from TCGC model objects. Filtering a model means TypeExpression references to it would produce unresolved symbols.
+2. No existing mechanism for aliasing TCGC model refkeys to builtin library refkeys.
+3. The namespace redirect is simpler and addresses the root cause (generated types in SDK namespace) without requiring changes to the refkey resolution pipeline.
+
+### Key Pattern: FQN for SDK Type Collisions in Collections
+When a spec defines a model with the same name as an SDK parent scope type (e.g., spec-defined `SubscriptionResource` vs SDK's `Azure.ResourceManager.Resources.SubscriptionResource`), use `global::` FQN for the SDK type reference in `ValidateResourceId`. This avoids CS0104 without affecting Alloy's reference system for the model type.

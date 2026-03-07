@@ -6613,3 +6613,20 @@ Fixed Azure-flavored generated code to use Azure.Core API patterns instead of Sy
 **Notes for next iteration**:
 - ProtocolOperationHelpers.cs cannot be included as shared source without VoidValue.cs, OperationFinalStateVia.cs, ProtocolOperation.cs, and ~10 more files. This is a deep dependency chain that needs careful handling (potentially conditional inclusion only for LRO specs).
 - The `ProcessMessage` static call syntax (`HttpPipelineExtensions.ProcessMessage(Pipeline, ...)`) is functionally equivalent to extension method syntax but differs from legacy style. If alignment with legacy is needed later, a different mechanism for adding `using Azure.Core;` will be required.
+
+---
+Task 20.12b — Fix CS0104 ambiguous references (2026-03-07)
+
+**Problem**: Generated ARM code had CS0104 ambiguous reference errors for SystemData, CreatedByType, SubscriptionResource, and ResourceGroupResource.
+
+**Root cause 1 (SystemData/CreatedByType)**: TCGC assigns some types (e.g., ResourceProvisioningState, *ListResult) the `Azure.ResourceManager` namespace. After `applyModelSubNamespace` adds `.Models`, these land in `Azure.ResourceManager.Models` — the same namespace as the Azure.ResourceManager NuGet's SDK types (SystemData, CreatedByType). Files importing both `Azure.ResourceManager.CommonTypes.Models` (our generated types) and `Azure.ResourceManager.Models` get CS0104.
+
+**Fix 1**: Added `redirectArmSdkNamespaceConflicts()` in `package-name.ts`. For management-plane specs, redirects models/enums with namespace `Azure.ResourceManager` to the package root namespace (e.g., `Azure.ResourceManager.MethodSubscriptionId`). After `.Models`, they land in `{package}.Models` instead of the conflicting `Azure.ResourceManager.Models`.
+
+**Root cause 2 (SubscriptionResource/ResourceGroupResource)**: Collection files reference both the SDK's `Azure.ResourceManager.Resources.SubscriptionResource` (for parent ID validation) AND the spec-defined model `SubscriptionResource` (as method parameter). Both share the same short name.
+
+**Fix 2**: Modified `CollectionFile.tsx` to detect when the model name matches the parent scope SDK type name. When collision detected, uses `global::Azure.ResourceManager.Resources.SubscriptionResource` FQN in `ValidateResourceId` instead of Alloy's short-name reference.
+
+**Files modified**: `src/utils/package-name.ts`, `src/emitter.tsx`, `src/components/arm/CollectionFile.tsx`
+**Tests added**: 6 unit tests in `test/package-name.test.ts` for `redirectArmSdkNamespaceConflicts()`
+**Test status**: 89 files pass (1676 tests), 0 CS0104 errors in e2e

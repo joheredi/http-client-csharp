@@ -426,3 +426,57 @@ function appendModelsSegment(ns: string): string {
   }
   return `${ns}.${MODELS_NAMESPACE_SEGMENT}`;
 }
+
+/**
+ * The Azure.ResourceManager SDK namespace. Types in this namespace come from the
+ * Azure.ResourceManager NuGet package. If generated types end up here (via TCGC
+ * namespace assignment + `.Models` suffix), they share the `Azure.ResourceManager.Models`
+ * namespace with SDK types like `SystemData` and `CreatedByType`, causing CS0104
+ * ambiguous reference errors in files that import both this namespace and
+ * `Azure.ResourceManager.CommonTypes.Models`.
+ */
+const ARM_SDK_ROOT_NAMESPACE = "Azure.ResourceManager";
+
+/**
+ * Redirects models and enums whose namespace equals the ARM SDK root namespace
+ * (`Azure.ResourceManager`) to the package's root namespace.
+ *
+ * **Why this is needed**: TCGC sometimes assigns the `Azure.ResourceManager`
+ * namespace to types like `ResourceProvisioningState` and various `*ListResult`
+ * types. After {@link applyModelSubNamespace} adds `.Models`, these types end up
+ * in `Azure.ResourceManager.Models` — the same namespace as SDK-provided types
+ * (`SystemData`, `CreatedByType`). Files that reference both generated CommonTypes
+ * (in `Azure.ResourceManager.CommonTypes.Models`) and types in
+ * `Azure.ResourceManager.Models` trigger CS0104 ambiguous reference errors because
+ * the SDK NuGet package also exposes `SystemData`/`CreatedByType` in
+ * `Azure.ResourceManager.Models`.
+ *
+ * The fix: redirect these types to the package root namespace (e.g.,
+ * `Azure.ResourceManager.MethodSubscriptionId`). After `.Models` is applied,
+ * they land in `{package}.Models` (e.g., `Azure.ResourceManager.MethodSubscriptionId.Models`)
+ * instead of the conflicting `Azure.ResourceManager.Models`.
+ *
+ * Must be called after {@link ensureModelNamespaces} and before
+ * {@link cleanAllNamespaces} / {@link applyModelSubNamespace}.
+ *
+ * @param models - All model types from the SDK package (mutated in place).
+ * @param enums - All enum types from the SDK package (mutated in place).
+ * @param rootNamespace - The package's root namespace to redirect to.
+ */
+export function redirectArmSdkNamespaceConflicts(
+  models: SdkModelType[],
+  enums: SdkEnumType[],
+  rootNamespace: string,
+): void {
+  for (const model of models) {
+    if (model.namespace === ARM_SDK_ROOT_NAMESPACE) {
+      model.namespace = rootNamespace;
+    }
+  }
+
+  for (const enumType of enums) {
+    if (enumType.namespace === ARM_SDK_ROOT_NAMESPACE) {
+      enumType.namespace = rootNamespace;
+    }
+  }
+}

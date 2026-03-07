@@ -171,6 +171,17 @@ export function CollectionFile(props: CollectionFileProps) {
   const parentScopeTypeRef = getParentScopeTypeRef(metadata.resourceScope);
   const parentScopeDesc = getParentScopeDescription(metadata.resourceScope);
 
+  // Detect when the model's name collides with the parent scope SDK type name
+  // (e.g., spec-defined "SubscriptionResource" model vs SDK's SubscriptionResource).
+  // When this happens, ValidateResourceId must use a fully-qualified name to avoid
+  // CS0104 ambiguous reference errors.
+  const parentScopeTypeName = getParentScopeTypeName(metadata.resourceScope);
+  const hasScopeTypeCollision =
+    parentScopeTypeName !== undefined && model.name === parentScopeTypeName;
+  const parentScopeTypeFQN = hasScopeTypeCollision
+    ? getParentScopeTypeFQN(metadata.resourceScope)
+    : undefined;
+
   // ── Operation ID prefix (rest client name) ────────────────────────────────
 
   const operationIdPrefix = clientSimpleName;
@@ -230,7 +241,7 @@ export function CollectionFile(props: CollectionFileProps) {
   );
 
   const validateBlock = parentScopeTypeRef
-    ? buildCollectionValidateResourceId(parentScopeTypeRef)
+    ? buildCollectionValidateResourceId(parentScopeTypeRef, parentScopeTypeFQN)
     : null;
 
   // ── Build operation blocks ────────────────────────────────────────────────
@@ -401,6 +412,44 @@ function getParentScopeTypeRef(scope: ResourceScope): Children | undefined {
   }
 }
 
+/**
+ * Returns the short type name of the parent scope SDK type for collision detection.
+ */
+function getParentScopeTypeName(scope: ResourceScope): string | undefined {
+  switch (scope) {
+    case ResourceScope.ResourceGroup:
+      return "ResourceGroupResource";
+    case ResourceScope.Subscription:
+      return "SubscriptionResource";
+    case ResourceScope.Tenant:
+      return "TenantResource";
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Returns the fully-qualified parent scope type as a raw string (with `global::` prefix).
+ *
+ * Used instead of the Alloy library reference when the generated model has the same
+ * short name as the SDK parent scope type (e.g., spec-defined `SubscriptionResource`
+ * model vs SDK's `Azure.ResourceManager.Resources.SubscriptionResource`). Using FQN
+ * avoids CS0104 ambiguous reference errors because C# resolves the `global::` prefix
+ * without relying on `using` directives.
+ */
+function getParentScopeTypeFQN(scope: ResourceScope): string | undefined {
+  switch (scope) {
+    case ResourceScope.ResourceGroup:
+      return "global::Azure.ResourceManager.Resources.ResourceGroupResource";
+    case ResourceScope.Subscription:
+      return "global::Azure.ResourceManager.Resources.SubscriptionResource";
+    case ResourceScope.Tenant:
+      return "global::Azure.ResourceManager.Resources.TenantResource";
+    default:
+      return undefined;
+  }
+}
+
 // ─── Helper: Parent scope description for XML doc ────────────────────────────
 
 /**
@@ -506,19 +555,29 @@ internal ${className}(${AzureResourceManager.ArmClient} client, ${AzureCore.Reso
 /**
  * Generates the debug-only ValidateResourceId method that checks the
  * parent resource identifier matches the expected parent scope type.
+ *
+ * @param parentScopeTypeRef - Alloy library reference for the scope type.
+ * @param parentScopeTypeFQN - Optional fully-qualified name override. When provided,
+ *   uses a raw FQN string (e.g., `global::Azure.ResourceManager.Resources.SubscriptionResource`)
+ *   instead of the Alloy reference to avoid CS0104 ambiguity when the generated model
+ *   shares the same short name as the parent scope SDK type.
  */
 function buildCollectionValidateResourceId(
   parentScopeTypeRef: Children,
+  parentScopeTypeFQN?: string,
 ): Children {
+  // Use FQN when there's a name collision between the model and the SDK type
+  const scopeTypeExpr = parentScopeTypeFQN ?? parentScopeTypeRef;
+
   return code`
 
 /// <param name="id"></param>
 [${SystemDiagnostics.ConditionalAttribute}("DEBUG")]
 internal static void ValidateResourceId(${AzureCore.ResourceIdentifier} id)
 {
-    if (id.ResourceType != ${parentScopeTypeRef}.ResourceType)
+    if (id.ResourceType != ${scopeTypeExpr}.ResourceType)
     {
-        throw new ${System.ArgumentException}(string.Format("Invalid resource type {0} expected {1}", id.ResourceType, ${parentScopeTypeRef}.ResourceType), id);
+        throw new ${System.ArgumentException}(string.Format("Invalid resource type {0} expected {1}", id.ResourceType, ${scopeTypeExpr}.ResourceType), id);
     }
 }`;
 }
