@@ -1575,7 +1575,7 @@
           "title": "Fix test assertions for model sub-namespace (Models. prefix)",
           "description": "Task 17.8 (model sub-namespace conventions) added Models. prefix to model types in Azure flavor but did not update test assertions in azure-cascade-types.test.ts and azure-lro-methods.test.ts. Three tests fail:\n\n1. azure-cascade-types.test.ts:172 - expects Response<Widget> but gets Response<Models.Widget>\n2. azure-lro-methods.test.ts:119 - expects Operation<Job> but gets Operation<Models.Job>\n3. azure-lro-methods.test.ts:190 - regex expects Operation<Widget> but gets Operation<Models.Widget>\n\nThe generated code is correct \u2014 only the test expectations need updating to include the Models. prefix.",
           "phase": "phase-17",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

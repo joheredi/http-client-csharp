@@ -3801,3 +3801,19 @@ The `ModelReaderWriterContextFile` generates to `src/Generated/Models/` (file pa
 ### model-namespace call ordering
 
 `applyModelSubNamespace()` must be called after `cleanAllNamespaces()` so base namespaces are clean, and before `collectLiteralTypes()` so literal type wrappers inherit the `.Models` namespace from their declaring model.
+
+## Alloy Qualified Name Line Wrapping (Task 17.8.1)
+
+**Gotcha:** When Alloy renders a qualified name like `Models.Job` in a `code` template (e.g., `code\`(${typeRef})response\``), the renderer may split the namespace and type across lines:
+```csharp
+response => (Models
+    .Job)response
+```
+instead of keeping it on one line:
+```csharp
+response => (Models.Job)response
+```
+
+**Impact:** Test assertions using `toContain("Models.Job")` will fail because the dot is on the next line. Use regex with `\s*` to handle this: `toMatch(/Models\s*\.Job/)`.
+
+**When this happens:** Only for qualified names inside expressions in `code` templates where the line exceeds the formatter's line width. Simple type references in generic parameters (e.g., `Operation<Models.Job>`) stay on one line.

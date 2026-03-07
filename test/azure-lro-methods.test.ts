@@ -115,10 +115,10 @@ describe("Azure LRO Methods", () => {
     const clientFile = outputs["src/Generated/TestServiceClient.cs"];
     expect(clientFile).toBeDefined();
 
-    // Sync convenience method: Operation<Job>
-    expect(clientFile).toContain("public virtual Operation<Job> CreateJob(");
+    // Sync convenience method: Operation<Job> (Models. prefix from model-namespace)
+    expect(clientFile).toContain("public virtual Operation<Models.Job> CreateJob(");
     expect(clientFile).toContain("WaitUntil waitUntil,");
-    expect(clientFile).toContain("Job body,");
+    expect(clientFile).toContain("Models.Job body,");
     expect(clientFile).toContain(
       "CancellationToken cancellationToken = default",
     );
@@ -128,14 +128,15 @@ describe("Azure LRO Methods", () => {
       "Operation<BinaryData> operation = CreateJob(waitUntil,",
     );
     expect(clientFile).toContain("ProtocolOperationHelpers.Convert(operation,");
-    expect(clientFile).toContain("response => (Job)response");
+    // Alloy may line-wrap qualified name across lines: (Models\n    .Job)
+    expect(clientFile).toMatch(/response => \(Models\s*\.Job\)response/);
     expect(clientFile).toContain(
       'ClientDiagnostics, "TestServiceClient.CreateJob"',
     );
 
     // Async convenience method
     expect(clientFile).toContain(
-      "public virtual async Task<Operation<Job>> CreateJobAsync(",
+      "public virtual async Task<Operation<Models.Job>> CreateJobAsync(",
     );
     expect(clientFile).toContain(
       "Operation<BinaryData> operation = await CreateJobAsync(waitUntil,",
@@ -184,8 +185,9 @@ describe("Azure LRO Methods", () => {
     expect(protocolMethodMatch).not.toBeNull();
 
     // Convenience: WaitUntil first, then path, then typed body, then CT
+    // Models. prefix from model-namespace (Azure default)
     const convenienceMethodMatch = clientFile.match(
-      /Operation<Widget> CreateWidget\(\s*WaitUntil waitUntil,\s*string id,\s*Widget body,/s,
+      /Operation<Models\.Widget> CreateWidget\(\s*WaitUntil waitUntil,\s*string id,\s*Models\.Widget body,/s,
     );
     expect(convenienceMethodMatch).not.toBeNull();
   });

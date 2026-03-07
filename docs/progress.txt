@@ -5879,3 +5879,23 @@ Three tests fail because task 17.8 added `Models.` prefix to Azure model types b
 3. `azure-lro-methods.test.ts:190` — regex expects `Operation<Widget>`, gets `Operation<Models.Widget>`
 
 Created task 17.8.1 to track the fix. The generated code is correct — only test expectations need updating.
+
+---
+## Task 17.8.1 — Fix test assertions for model sub-namespace (Models. prefix)
+**Date:** 2026-03-07
+**Status:** Done
+
+**What was done:**
+- Updated 3 test assertions in `test/azure-cascade-types.test.ts` and `test/azure-lro-methods.test.ts` to include `Models.` prefix for model types referenced from client files (root namespace referencing `.Models` sub-namespace).
+- Changes in `azure-cascade-types.test.ts`: `Response<Widget>` → `Response<Models.Widget>` (lines 172-173 convenience methods)
+- Changes in `azure-lro-methods.test.ts`: `Operation<Job>` → `Operation<Models.Job>`, `Job body` → `Models.Job body`, `Task<Operation<Job>>` → `Task<Operation<Models.Job>>`, regex for `Widget` updated.
+- The cast expression `response => (Models.Job)response` is rendered by Alloy across two lines (`Models\n    .Job`), so used `toMatch(/regex/)` instead of `toContain()`.
+
+**Gotcha discovered:**
+- Alloy's qualified name rendering may split `Namespace.Type` across lines (e.g., `Models\n    .Job`). When asserting on qualified names in `code` templates, use regex with `\s*` between segments instead of `toContain()`.
+
+**Pre-existing e2e failures (not caused by this task):**
+- CS0122: ClientDiagnostics accessibility in Azure client-initialization specs
+- CS0534: ErrorResult<T> missing GetRawResponse() override
+- CS0246: Missing ModelReaderWriterContext/BuildableAttribute types
+These existed before task 17.8.1 and are tracked separately.
