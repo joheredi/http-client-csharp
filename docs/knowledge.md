@@ -4162,3 +4162,23 @@ Chose two-component approach (MockableProviderFile + ExtensionsFile) over a sing
 - `pnpm test:e2e` has a pre-existing failure in `should build the test project` (Spector E2E)
 - Failures include: ClientDiagnostics inaccessible, ModelReaderWriterContext not found, ErrorResult<T> abstract member not implemented
 - These are infrastructure issues unrelated to any specific task — existed before flatten changes
+
+## WirePath Attribute Generation
+
+### Alloy Attribute Name Resolution in Attribute Context
+
+When `<Attribute name={refkey}>` is used, Alloy wraps the refkey in `ReferenceContext.Provider value="attribute"`. This triggers automatic stripping of the "Attribute" suffix from class names. So `WirePathAttribute` renders as `[WirePath("...")]` — matching C# conventions exactly. No workarounds needed.
+
+**Source:** `submodules/alloy/packages/csharp/src/components/attributes/attributes.tsx` line 104 and `submodules/alloy/packages/csharp/src/contexts/reference-context.ts` line 5.
+
+### Wire Path Data Already Computed in flatten.ts
+
+The `FlattenedPropertyInfo.wirePath` field (array of strings) is already populated during `collectFlattenedProperties()`. No need to compute wire paths manually — just `info.wirePath.join(".")` for the dot-notation path. For regular (non-flattened) properties, use `property.serializedName` directly.
+
+### WirePathAttribute is Per-Project (Not from NuGet)
+
+The WirePathAttribute class is generated in each project's `src/Generated/Internal/` directory, NOT imported from Azure.ResourceManager or any NuGet package. Each project gets its own copy. This matches the legacy emitter's `WirePathAttributeDefinition.cs`.
+
+### Property Component Supports attributes Prop
+
+The `<Property>` component from `@alloy-js/csharp` has an `attributes` prop that accepts `Array<string | AttributeProps | Children>`. Use `attributes={[<Attribute name={refkey} args={[...]} />]}` to add attributes before the property declaration. No need for manual string rendering.

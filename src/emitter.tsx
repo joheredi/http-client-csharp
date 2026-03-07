@@ -115,6 +115,7 @@ import {
   categorizeResourcesByScope,
 } from "./components/arm/MockableProviderFile.js";
 import { ExtensionsFile } from "./components/arm/ExtensionsFile.js";
+import { WirePathAttributeFile } from "./components/infrastructure/WirePathAttributeFile.js";
 
 /**
  * TypeSpec emitter entry point for the C# HTTP client generator.
@@ -323,6 +324,9 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
       />
       <BinaryContentHelperFile packageName={rootNamespace} options={options} />
       <CodeGenAttributeFiles options={options} />
+      {options["enable-wire-path-attribute"] && (
+        <WirePathAttributeFile packageName={rootNamespace} options={options} />
+      )}
       <CSharpScalarOverrides flavor={options.flavor}>
         {clients.map((c) => (
           <ClientOptionsFile client={c} options={options} />

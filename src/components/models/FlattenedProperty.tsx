@@ -31,7 +31,7 @@
  * @module
  */
 
-import { useCSharpNamePolicy } from "@alloy-js/csharp";
+import { Attribute, useCSharpNamePolicy } from "@alloy-js/csharp";
 import type { Children } from "@alloy-js/core";
 import { code } from "@alloy-js/core";
 import type { SdkModelType } from "@azure-tools/typespec-client-generator-core";
@@ -49,6 +49,7 @@ import { efCsharpRefkey } from "../../utils/refkey.js";
 import { renderCollectionPropertyType } from "../../utils/collection-type-expression.js";
 import { isCollectionType } from "../../utils/nullable.js";
 import { ensureTrailingPeriod } from "../../utils/doc.js";
+import { wirePathAttributeRefkey } from "../infrastructure/WirePathAttributeFile.js";
 
 /**
  * Props for the {@link FlattenedProperty} component.
@@ -58,6 +59,12 @@ export interface FlattenedPropertyProps {
   info: FlattenedPropertyInfo;
   /** The raw TCGC name of the enclosing model, used for name collision detection. */
   modelName: string;
+  /**
+   * When true, emits a `[WirePath("dotted.path")]` attribute on the property
+   * using the dot-joined wire path segments from the flattened property info.
+   * Only used when the `enable-wire-path-attribute` emitter option is true.
+   */
+  enableWirePath?: boolean;
 }
 
 /**
@@ -88,7 +95,7 @@ export interface FlattenedPropertyProps {
  * ```
  */
 export function FlattenedProperty(props: FlattenedPropertyProps): Children {
-  const { info, modelName } = props;
+  const { info, modelName, enableWirePath } = props;
   const { innerProperty, backingProperty, namePrefix, isSafeFlatten } = info;
   const namePolicy = useCSharpNamePolicy();
 
@@ -154,6 +161,18 @@ export function FlattenedProperty(props: FlattenedPropertyProps): Children {
   const needsValueAccessor =
     innerIsNullable && !isCollection && !isReferenceKind(unwrappedType.kind);
 
+  // Build the [WirePath("dotted.path")] attribute when enabled.
+  // Flattened properties use dot notation (e.g., "properties.sku").
+  const wirePathAttr = enableWirePath ? (
+    <>
+      <Attribute
+        name={wirePathAttributeRefkey}
+        args={[`"${info.wirePath.join(".")}"`]}
+      />
+      {"\n"}
+    </>
+  ) : null;
+
   if (isSafeFlatten) {
     return renderSafeFlattenProperty({
       propName,
@@ -162,6 +181,7 @@ export function FlattenedProperty(props: FlattenedPropertyProps): Children {
       typeWithNullable,
       formattedDoc,
       backingModelRefkey,
+      wirePathAttr,
     });
   }
 
@@ -174,6 +194,7 @@ export function FlattenedProperty(props: FlattenedPropertyProps): Children {
     backingModelRefkey,
     needsValueAccessor,
     isCollection,
+    wirePathAttr,
   });
 }
 
@@ -190,6 +211,7 @@ function renderSafeFlattenProperty(opts: {
   typeWithNullable: Children;
   formattedDoc: string;
   backingModelRefkey: Children | undefined;
+  wirePathAttr: Children | null;
 }): Children {
   const {
     propName,
@@ -198,14 +220,14 @@ function renderSafeFlattenProperty(opts: {
     typeWithNullable,
     formattedDoc,
     backingModelRefkey,
+    wirePathAttr,
   } = opts;
 
-  // Build lines explicitly to maintain correct indentation.
-  // Use plain strings for structure and `code` only for refkey interpolation.
   return (
     <>
       {formattedDoc}
       {"\n"}
+      {wirePathAttr}
       {code`public ${typeWithNullable} ${propName}`}
       {"\n"}
       {"{\n"}
@@ -247,6 +269,7 @@ function renderRegularFlattenProperty(opts: {
   backingModelRefkey: Children | undefined;
   needsValueAccessor: boolean;
   isCollection: boolean;
+  wirePathAttr: Children | null;
 }): Children {
   const {
     propName,
@@ -257,6 +280,7 @@ function renderRegularFlattenProperty(opts: {
     backingModelRefkey,
     needsValueAccessor,
     isCollection,
+    wirePathAttr,
   } = opts;
 
   const getterBlock = (
@@ -280,6 +304,7 @@ function renderRegularFlattenProperty(opts: {
       <>
         {formattedDoc}
         {"\n"}
+        {wirePathAttr}
         {code`public ${typeWithNullable} ${propName}`}
         {"\n"}
         {"{\n"}
@@ -296,6 +321,7 @@ function renderRegularFlattenProperty(opts: {
     <>
       {formattedDoc}
       {"\n"}
+      {wirePathAttr}
       {code`public ${typeWithNullable} ${propName}`}
       {"\n"}
       {"{\n"}

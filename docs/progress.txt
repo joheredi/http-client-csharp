@@ -6280,3 +6280,29 @@ E2E tests have pre-existing failures (CS0122 ClientDiagnostics, CS0534 ErrorResu
 2. 19.5c (Extension Resources) — needs MockableProvider and Collection changes
 3. 19.5d (Non-Resource Methods) — needs rendering pipeline for collected metadata
 4. 19.5e (Tag Operations) — most complex, ~570 lines of legacy reference code
+
+## Task 19.5b — Wire Path Attributes (2026-03-07)
+
+**What was done:**
+- Implemented `[WirePath("...")]` attribute generation on model properties when `enable-wire-path-attribute` emitter option is true
+- Created `WirePathAttributeFile.tsx` — generates `src/Generated/Internal/WirePathAttribute.cs` internal attribute class with a refkey for cross-file references
+- Modified `ModelProperty.tsx` — added `wirePathValue` prop that emits `[WirePath("serializedName")]` via the `<Property attributes>` API
+- Modified `FlattenedProperty.tsx` — added `enableWirePath` prop that emits `[WirePath("dotted.path")]` (e.g., "properties.sku") using `<Attribute>` component
+- Modified `ModelFile.tsx` — passes wire path data from `options["enable-wire-path-attribute"]` to child components
+- Modified `emitter.tsx` — conditionally renders `<WirePathAttributeFile>` when the option is enabled
+- Created comprehensive test file `test/wire-path.test.ts` with 7 tests covering enabled/disabled states, regular properties, flattened properties, and no unresolved symbols
+
+**Patterns used:**
+- Alloy `<Attribute>` component with refkey for cross-file attribute references — Alloy automatically strips "Attribute" suffix via `ReferenceContext("attribute")` and adds `using` directives
+- `<Property attributes={[...]}` prop for adding attributes to model properties
+- Separate tester (`WirePathTester`) with `enable-wire-path-attribute: true` for opt-in feature testing
+- `FlattenedPropertyInfo.wirePath` array (already computed in `flatten.ts`) joined with dots for flattened property paths
+
+**Design decision:**
+- Used prop-passing (not context) to flow wire path option from ModelFile → ModelProperty/FlattenedProperty, matching existing option flow patterns
+- WirePathAttribute is a generated per-project internal class (not from a NuGet package), matching legacy emitter's WirePathAttributeDefinition output
+
+**Next tasks:**
+- 19.5c: Extension resource support (scope parameter, generic parent)
+- 19.5d: Non-resource method code generation
+- 19.5e: Tag operations (most complex)

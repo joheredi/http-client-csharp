@@ -9,9 +9,10 @@
  * @module
  */
 
-import { Property, useCSharpNamePolicy } from "@alloy-js/csharp";
+import { Attribute, Property, useCSharpNamePolicy } from "@alloy-js/csharp";
 import type { Children } from "@alloy-js/core";
 import { code } from "@alloy-js/core";
+import { wirePathAttributeRefkey } from "../infrastructure/WirePathAttributeFile.js";
 import type {
   SdkConstantType,
   SdkEnumValueType,
@@ -51,6 +52,12 @@ export interface ModelPropertyProps {
    * whose public API is provided by computed FlattenedProperty components.
    */
   forceInternal?: boolean;
+  /**
+   * When set, emits a `[WirePath("...")]` attribute on this property with the
+   * given value as the wire path string. Only used when the
+   * `enable-wire-path-attribute` emitter option is true.
+   */
+  wirePathValue?: string;
 }
 
 /**
@@ -142,7 +149,13 @@ export function isDiscriminatorProperty(
  * ```
  */
 export function ModelProperty(props: ModelPropertyProps) {
-  const { property, modelUsage, modelName, forceInternal = false } = props;
+  const {
+    property,
+    modelUsage,
+    modelName,
+    forceInternal = false,
+    wirePathValue,
+  } = props;
   let nullable = isPropertyNullable(property);
   const type = unwrapNullableType(property.type);
   const isDiscriminator = isDiscriminatorProperty(property);
@@ -194,6 +207,18 @@ export function ModelProperty(props: ModelPropertyProps) {
   // members returning a fixed value (e.g., `public bool Property => true;`).
   const initializer = getPropertyInitializer(property, modelUsage);
 
+  // Build the [WirePath("...")] attribute when enabled.
+  // This annotates the property with its HTTP wire-format path for ARM SDKs
+  // that reflect on model properties at runtime.
+  const wirePathAttr = wirePathValue
+    ? [
+        <Attribute
+          name={wirePathAttributeRefkey}
+          args={[`"${wirePathValue}"`]}
+        />,
+      ]
+    : undefined;
+
   // When forceInternal is true, the property is a flattened backing field
   // (its public API is provided by computed FlattenedProperty components).
   // Override the access modifier to internal and always include a setter.
@@ -210,6 +235,7 @@ export function ModelProperty(props: ModelPropertyProps) {
       nullable={nullable}
       doc={formattedDoc}
       initializer={initializer}
+      attributes={wirePathAttr}
     />
   );
 }

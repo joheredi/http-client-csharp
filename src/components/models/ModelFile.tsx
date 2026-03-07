@@ -183,6 +183,11 @@ export function ModelFile(props: ModelFileProps) {
             modelUsage={props.type.usage}
             modelName={props.type.name}
             forceInternal={flattenedBackingSet.has(p)}
+            wirePathValue={
+              props.options["enable-wire-path-attribute"]
+                ? p.serializedName
+                : undefined
+            }
           />
         )}
       </For>
@@ -191,7 +196,11 @@ export function ModelFile(props: ModelFileProps) {
           {renderProperties.length > 0 ? "\n\n" : "\n\n"}
           <For each={flattenedInfos} hardline>
             {(fi) => (
-              <FlattenedProperty info={fi} modelName={props.type.name} />
+              <FlattenedProperty
+                info={fi}
+                modelName={props.type.name}
+                enableWirePath={props.options["enable-wire-path-attribute"]}
+              />
             )}
           </For>
         </>

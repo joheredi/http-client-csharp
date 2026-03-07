@@ -1870,7 +1870,7 @@
           "title": "Implement Wire Path attributes ([WirePath] on model properties)",
           "description": "When enable-wire-path-attribute=true emitter option is set, add [WirePath(\"path\")] attributes to model properties indicating their HTTP wire format path.\n\nImplementation:\n1. In ModelProperty.tsx, check the emitter option and emit [WirePath(serializedName)] attribute\n2. In FlattenedProperty.tsx, emit [WirePath(dotted.path)] for flattened property hierarchies\n3. The WirePath attribute type needs to be defined in builtins/azure-arm.ts or similar\n4. For flattened properties, build dot-notation paths from the flatten hierarchy\n\nReference:\n- Legacy: WirePathVisitor.cs visits all ModelProvider properties with WireInfo\n- Option: src/options.ts:131 (enable-wire-path-attribute, default false)\n- Flatten utility: src/utils/flatten.ts:60-63 already computes wirePath arrays\n\nGround truth: Check legacy test output for [WirePath] attribute patterns on model properties.",
           "phase": "phase-19",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "19.2c"
           ],
