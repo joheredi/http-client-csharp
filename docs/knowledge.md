@@ -4320,3 +4320,31 @@ The `pnpm test:e2e` build test was failing before task 20.5 due to 10 non-Azure 
 **Chosen**: Pass doc comment content via `doc` prop on `<ClassDeclaration>`, returning plain XML without `///` prefixes.
 **Rejected**: Rendering `code` template with `///` prefixes as a child before `<ClassDeclaration>` — this caused missing newline between doc comment and class declaration because Alloy concatenates adjacent children.
 **Reason**: The `doc` prop is the idiomatic Alloy pattern (used by ModelFile.tsx) and handles `///` prefix insertion and newline management automatically.
+
+## ARM Compilation Error Analysis (Task 20.12 Split)
+
+### AzureLocation Namespace Discovery
+- **GOTCHA**: `AzureLocation` is in `Azure.Core` namespace, NOT `Azure`. Verified via NuGet XML docs: `<member name="T:Azure.Core.AzureLocation">`.
+- The builtin in `src/builtins/azure.ts` defines it under `createLibrary("Azure", { AzureLocation: ... })` which generates `using Azure;` — wrong!
+- Note: `ETag` IS in `Azure` namespace (confirmed), so not all Azure.Core package types are in `Azure.Core` namespace.
+- Fix: Move `AzureLocation` entry from `Azure` library to `AzureCore` library in `src/builtins/azure.ts`.
+
+### ARM Type Ambiguity Patterns (CS0104)
+- The emitter generates `SystemData`, `CreatedByType` as models in `Azure.ResourceManager.CommonTypes.Models`
+- The `Azure.ResourceManager` NuGet package already provides these in `Azure.ResourceManager.Models`
+- When both namespaces are imported (via Alloy auto-using), CS0104 occurs
+- The `method-subscription-id` spec defines models literally named `SubscriptionResource`, `ResourceGroupResource` — these are REAL spec types, not mistakes
+- Fix options: (a) suppress generation of well-known ARM types, (b) use fully qualified names, (c) using aliases
+
+### Namespace/Type Collision Pattern (CS0118)
+- When a model name matches the last segment of its namespace (e.g., `NonResource` in `Azure.ResourceManager.NonResource`), C# resolves it as the namespace
+- Existing code has patterns: `isSystemTypeNameCollision()` in ClientFile.tsx, `collectInvalidNamespaceSegments()` in package-name.ts
+- Fix: Use `global::Fully.Qualified.Name` when collision detected
+
+### Infrastructure API Issues (CS0122)
+- `ProtocolOperationHelpers` is a shared source internal type in Azure.Core — not a public API
+- `RequestContext.Parse()` does not exist as a public method
+- `HttpPipeline.CreateMessage()` has different overloads than expected
+- `RequestHeaders.Set()` / `HttpMessage.Apply()` not public
+- These indicate the emitter is targeting Azure.Core internal/shared source APIs rather than the public surface
+- Affects non-ARM-resource operations in ARM specs (e.g., LargeHeaders sub-client)

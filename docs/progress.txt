@@ -6533,3 +6533,16 @@ Fixed CS0305, CS0508, CS0534, CS0115 compilation errors in Azure-flavored paging
 - E2E "should build" failure is pre-existing (NestedFlattenModel, ClientDefaultValue issues)
 - **Pattern**: When adding new `SourceFile` components, always include `{"\n\n"}` between `{header}` and `<Namespace>`. Use `doc` prop for class-level XML doc comments instead of rendering as children.
 - Next: Task 20.12 — fix remaining ARM semantic errors (CS0246 AzureLocation, CS0104/CS0118 namespace collisions)
+
+---
+Task 20.12 — SPLIT into 5 sub-tasks (2026-03-07)
+- Investigated all 1268 ARM compilation errors across 9 specs
+- Identified 5 distinct root causes requiring different fixes:
+  1. **AzureLocation CS0246** (~240 errors): `AzureLocation` is in `Azure.Core` namespace per NuGet XML docs (`T:Azure.Core.AzureLocation`), but builtin maps it to `Azure` namespace. Fix: move to `AzureCore` library in `src/builtins/azure.ts`.
+  2. **CS0104 ambiguous** (~192 errors): `SystemData`, `CreatedByType` exist in both generated `Azure.ResourceManager.CommonTypes.Models` AND SDK's `Azure.ResourceManager.Models`. Also `SubscriptionResource`/`ResourceGroupResource` are spec-defined models that collide with SDK types.
+  3. **CS0118 namespace/type collision** (28 errors): Model `NonResource` collides with namespace `Azure.ResourceManager.NonResource`. Codebase already has patterns for this (`isSystemTypeNameCollision` in ClientFile.tsx, `collectInvalidNamespaceSegments` in package-name.ts).
+  4. **CS0122 infrastructure API** (~216 errors): Generated code uses internal Azure.Core APIs (ProtocolOperationHelpers, RequestContext.Parse, CreateMessage with wrong args). Affects large-header and operation-templates.
+  5. **Operation-templates complex** (~640 errors): CS1503, CS0029/0030, CS0117, CS1744, CS7036, etc. Needs deep investigation after other fixes.
+- Error breakdown by spec: common-properties(40), large-header(48), method-subscription-id(56), multi-service(68), multi-service-older(68), multi-service-shared(68), non-resource(28), operation-templates(840), resources(52)
+- Created sub-tasks 20.12a through 20.12e in PRD
+- **Next**: 20.12a (AzureLocation fix) is the simplest — one line in builtins, ~240 error reduction

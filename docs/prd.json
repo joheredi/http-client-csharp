@@ -2275,10 +2275,10 @@
         },
         {
           "id": "20.12",
-          "title": "Fix remaining ARM compilation errors (CS0104, CS0118, CS0246, etc.)",
+          "title": "Fix remaining ARM compilation errors (CS0104, CS0118, CS0246, etc.) [SPLIT into 20.12a-e]",
           "description": "After the rendering fix (20.9), remaining ARM compilation errors are real semantic issues:\n\n- common-properties: 40 CS0246 (AzureLocation type not found)\n- large-header: 24 CS0122 + 16 CS1061 + 4 CS1729 + 4 CS1501\n- method-subscription-id: 56 CS0104 (ambiguous references)\n- multi-service/multi-service-older-versions/multi-service-shared-models: CS0246 + CS0104\n- non-resource: 28 CS0118 (namespace/type collision)\n- operation-templates: 752 errors (most complex spec, many error types)\n- resources: 52 CS0104\n\nKey error categories:\n1. CS0246 (AzureLocation) \u2014 type mapping issue, AzureLocation not recognized\n2. CS0104/CS0118 \u2014 namespace/type name collisions in multi-namespace ARM specs\n3. CS0122 \u2014 inaccessible Azure.Core internal types\n4. Various in operation-templates \u2014 LRO, paging, and complex ARM patterns",
           "phase": "phase-20",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "20.9"
           ],
@@ -2303,10 +2303,11 @@
           "phase": "phase-20",
           "status": "pending",
           "dependencies": [
-            "20.9",
-            "20.10",
-            "20.11",
-            "20.12"
+            "20.12a",
+            "20.12b",
+            "20.12c",
+            "20.12d",
+            "20.12e"
           ],
           "files": {
             "modify": [
@@ -2323,6 +2324,111 @@
             "All 9 ARM specs compile successfully (zero dotnet build errors)",
             ".expected-failures and .expected-skips updated for ARM test results",
             "No regressions in non-ARM tests"
+          ]
+        },
+        {
+          "id": "20.12a",
+          "title": "Fix AzureLocation CS0246: Move AzureLocation to Azure.Core namespace in builtins",
+          "description": "AzureLocation is defined in the `Azure` library (namespace `Azure`) in `src/builtins/azure.ts`, but the actual C# type lives in `Azure.Core` namespace (confirmed via NuGet XML docs: `T:Azure.Core.AzureLocation`). This causes CS0246 errors because `using Azure;` is generated instead of `using Azure.Core;`.\n\nFix: Move AzureLocation from the `Azure` library to the `AzureCore` library in `src/builtins/azure.ts`. This will cause Alloy to generate `using Azure.Core;` instead of `using Azure;`, resolving the type.\n\nAffected specs: common-properties (40 errors), multi-service/multi-service-older/multi-service-shared (~120 errors), operation-templates (~80 errors). Total: ~240 errors fixed.\n\nThis is a one-line change in builtins \u2014 move `AzureLocation: { kind: 'struct', members: {} }` from the `Azure` object to the `AzureCore` object.",
+          "phase": "phase-20",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "src/builtins/azure.ts"
+            ],
+            "reference": [
+              "temp/e2e/Spector/http/azure/resource-manager/common-properties/src/Generated/Models/TrackedResource.cs"
+            ]
+          },
+          "acceptance_criteria": [
+            "Generated TrackedResource.cs has `using Azure.Core;` and AzureLocation resolves",
+            "common-properties spec compiles without CS0246 AzureLocation errors",
+            "Existing unit tests still pass"
+          ]
+        },
+        {
+          "id": "20.12b",
+          "title": "Fix CS0104 ambiguous references: SystemData, CreatedByType, SubscriptionResource, ResourceGroupResource",
+          "description": "Generated ARM code imports both `Azure.ResourceManager.CommonTypes.Models` (generated models) and `Azure.ResourceManager.Models` (SDK types). Both namespaces contain `SystemData` and `CreatedByType`, causing CS0104 ambiguity.\n\nAdditionally, the method-subscription-id spec generates models named `SubscriptionResource` and `ResourceGroupResource` which collide with SDK types in `Azure.ResourceManager.Resources`.\n\nRoot cause investigation:\n- Our emitter generates SystemData, CreatedByType as models in Azure.ResourceManager.CommonTypes.Models\n- The Azure.ResourceManager NuGet package already has these types in Azure.ResourceManager.Models\n- The correct fix is likely: suppress generation of these well-known ARM types and reference the SDK versions, OR use fully qualified names in ModelFactory and other files that import both namespaces\n- For SubscriptionResource/ResourceGroupResource: these are ACTUAL spec-defined models that happen to share names with SDK types. Need disambiguation via fully qualified names.\n\nAffected specs: method-subscription-id (56 errors), resources (52 errors), multi-service variants (~84 errors). Total: ~192 errors.",
+          "phase": "phase-20",
+          "status": "pending",
+          "dependencies": [
+            "20.12a"
+          ],
+          "files": {
+            "modify": [],
+            "reference": [
+              "temp/e2e/Spector/http/azure/resource-manager/method-subscription-id/src/Generated/",
+              "temp/e2e/Spector/http/azure/resource-manager/resources/src/Generated/"
+            ]
+          },
+          "acceptance_criteria": [
+            "method-subscription-id and resources specs compile without CS0104 errors",
+            "Generated code uses unambiguous type references for SystemData, CreatedByType, SubscriptionResource, ResourceGroupResource"
+          ]
+        },
+        {
+          "id": "20.12c",
+          "title": "Fix CS0118 namespace/type collision: NonResource model vs namespace",
+          "description": "The non-resource spec generates a model type `NonResource` in namespace `Azure.ResourceManager.NonResource.Models`. When referenced from the `Azure.ResourceManager.NonResource` namespace (parent), C# resolves `NonResource` as the namespace, not the type (CS0118).\n\nThe codebase already has patterns for this (see ClientFile.tsx `isSystemTypeNameCollision` and CollectionResultFile.tsx `ContinuationToken` handling). Need to detect when a model name collides with the last segment of its containing namespace and use fully qualified name (e.g., `global::Azure.ResourceManager.NonResource.Models.NonResource`).\n\nAlso see `src/utils/package-name.ts` `collectInvalidNamespaceSegments()` which already detects CS0118 conditions.\n\nAffected specs: non-resource (28 errors). This is an isolated fix that requires namespace collision detection in the type expression or model reference system.",
+          "phase": "phase-20",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [],
+            "reference": [
+              "src/components/ClientFile.tsx",
+              "src/utils/package-name.ts",
+              "temp/e2e/Spector/http/azure/resource-manager/non-resource/src/Generated/"
+            ]
+          },
+          "acceptance_criteria": [
+            "non-resource spec compiles without CS0118 errors",
+            "Model types that share names with their namespace segments are fully qualified in generated code"
+          ]
+        },
+        {
+          "id": "20.12d",
+          "title": "Fix CS0122 infrastructure API issues: ProtocolOperationHelpers, RequestContext.Parse, CreateMessage",
+          "description": "ARM specs that use non-ARM client patterns (large-header) generate code using Azure.Core internal APIs that are inaccessible:\n- CS0122: `ProtocolOperationHelpers` is inaccessible (internal type in Azure.Core shared sources)\n- CS0122: `OperationFinalStateVia` is inaccessible (Azure.Core namespace, not public in some contexts)\n- CS1061: `RequestContext.Parse()` does not exist as a public method\n- CS1501: `CreateMessage` takes wrong number of arguments\n- CS1061: `RequestHeaders.Set` does not exist\n- CS1729: `Response<T>` wrong constructor args\n- CS1061: `HttpMessage.Apply` does not exist\n\nThese are all in the non-ARM-resource client code path (LargeHeaders sub-client). The emitter is generating Azure-flavored non-ARM client code but using internal Azure.Core APIs instead of the public API surface.\n\nThis requires investigating how the legacy emitter generates LRO operations for non-resource ARM clients and aligning the generated code with the public Azure SDK API.\n\nAffected specs: large-header (48 errors), operation-templates (~168 errors with same patterns). Total: ~216 errors.",
+          "phase": "phase-20",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [],
+            "reference": [
+              "src/components/",
+              "src/builtins/azure.ts",
+              "temp/e2e/Spector/http/azure/resource-manager/large-header/src/Generated/"
+            ]
+          },
+          "acceptance_criteria": [
+            "large-header spec compiles without CS0122/CS1061/CS1501/CS1729 errors",
+            "Generated code uses public Azure SDK APIs, not internal shared source types"
+          ]
+        },
+        {
+          "id": "20.12e",
+          "title": "Fix remaining operation-templates ARM compilation errors",
+          "description": "After fixing 20.12a-d, operation-templates will still have ~400+ errors from complex ARM patterns:\n- CS1503 (188): Argument type mismatches in LRO/paging operations\n- CS0029/CS0030 (104): Type conversion errors\n- CS0117 (72): Type does not contain member\n- CS1744 (24): Named argument specifies wrong parameter\n- CS7036 (16): Required formal parameter missing\n- CS0128 (12): Local variable already defined\n- CS0103 (12): Name does not exist in context\n- CS0144 (4): Cannot create instance of abstract type\n\nThese require deep investigation of the operation-templates spec to understand what ARM patterns are being generated incorrectly. Likely involves LRO operations, paging, resource CRUD, and extension methods.\n\nNote: Some of these may cascade from 20.12a-d fixes. Re-count after those are done.",
+          "phase": "phase-20",
+          "status": "pending",
+          "dependencies": [
+            "20.12a",
+            "20.12b",
+            "20.12c",
+            "20.12d"
+          ],
+          "files": {
+            "modify": [],
+            "reference": [
+              "temp/e2e/Spector/http/azure/resource-manager/operation-templates/src/Generated/"
+            ]
+          },
+          "acceptance_criteria": [
+            "operation-templates spec compiles without errors",
+            "All 9 ARM specs build successfully"
           ]
         }
       ]
