@@ -6059,3 +6059,22 @@ Approach: Flat options with `management` master switch (chosen over `"azure-mgmt
 **Key Pattern:** The `@useSystemTextJsonConverter` decorator is from TCGC but ONLY appears in `model.decorators` when `additionalDecorators` is configured in `createSdkContext` options. Without this configuration, the decorator is silently filtered out by TCGC.
 
 **Pre-existing failures:** E2E spector test fails (ClientDiagnostics accessibility, ModelReaderWriterBuildableAttribute not found) — confirmed pre-existing, not caused by this change. Lint errors in csharpexamples.ts and package-name.test.ts also pre-existing.
+
+## Task 18.1 — Link mgmt test files and configure test project (2026-03-07)
+
+**What was done:**
+- Modified `src/components/infrastructure/ProjectFile.tsx` to add `Azure.ResourceManager` 1.14.0 NuGet reference when `management: true`, and bumps `Azure.Core` to 1.51.1 (minimum required by Azure.ResourceManager)
+- Added `MgmtTester` to `test/test-host.ts` — registers `@azure-tools/typespec-azure-resource-manager` library alongside all integration libraries, configured with `flavor: "azure"` and `management: true`
+- Created `test/fixtures/smoke/mgmt-resource.tsp` — minimal ARM singleton extension resource (based on hcivm.tsp) for smoke testing
+- Added mgmt smoke test to `test/smoke.test.ts` — validates emitter processes ARM TypeSpec without errors, generates .csproj with Azure.ResourceManager reference, and produces C# output files
+- Added 3 unit tests to `test/project-scaffolding.test.ts` — Azure.ResourceManager reference for mgmt, no ARM reference for non-mgmt Azure, and version compatibility
+- Created `eng/scripts/emit-mgmt.ts` — script to compile all 31 mgmt .tsp files from submodule via `tsp compile` with management options
+- Added `pnpm emit:mgmt` script to package.json
+
+**Key Design Decisions:**
+- Smoke test validates emitter pipeline (TypeSpec → C# output) but skips `dotnet build` — generated ARM code won't compile until CRUD client generation (phase 19) is complete
+- Azure.Core version is 1.51.1 for management projects (up from 1.44.1) because Azure.ResourceManager 1.14.0 requires it
+- MgmtTester includes `@typespec/openapi` since several mgmt .tsp files import it
+
+**Pre-existing issues:**
+- E2E tests (`pnpm test:e2e`) fail with CS0122 (ClientDiagnostics protection level), CS0534 (ErrorResult<T> missing GetRawResponse), CS0246 (ModelReaderWriterContext not found) — unrelated to this task

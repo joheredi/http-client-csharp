@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { describe, expect, it, beforeAll } from "vitest";
-import { HttpTester } from "./test-host.js";
+import { HttpTester, MgmtTester } from "./test-host.js";
 
 /**
  * Root directory for smoke test output.
@@ -143,6 +143,51 @@ describe(
 
       const result = dotnetBuild(join(testDir, "src"));
       expect(result).toContain("Build succeeded");
+    });
+
+    /**
+     * Validates that the emitter can process an Azure Resource Manager (ARM)
+     * TypeSpec definition and produce C# output with the correct project
+     * structure. This verifies:
+     * - ARM TypeSpec compiles through the emitter without diagnostics
+     * - Generated .csproj references Azure.ResourceManager NuGet
+     * - Output includes expected C# source files
+     *
+     * Note: `dotnet build` is not validated here because ARM-specific code
+     * generation (CRUD clients, resource detection, property flattening) is
+     * implemented in phase 19. Once that phase is complete, this test should
+     * be extended to also validate `dotnet build` succeeds.
+     */
+    it("emits a management plane ARM resource", async () => {
+      const testDir = join(SMOKE_DIR, "mgmt-resource");
+
+      const [{ outputs }, diagnostics] =
+        await MgmtTester.compileAndDiagnose(
+          readFixture("mgmt-resource.tsp"),
+        );
+
+      // Emitter processes ARM TypeSpec without errors
+      expect(diagnostics).toHaveLength(0);
+
+      // Verify .csproj references Azure.ResourceManager
+      const csprojKey = Object.keys(outputs).find((k) =>
+        k.endsWith(".csproj"),
+      );
+      expect(csprojKey).toBeDefined();
+      const csproj = outputs[csprojKey!];
+      expect(csproj).toContain(
+        '<PackageReference Include="Azure.ResourceManager" Version="1.14.0" />',
+      );
+      expect(csproj).toContain(
+        '<PackageReference Include="Azure.Core" Version="1.51.1" />',
+      );
+
+      // Verify output includes C# source files
+      const csFiles = Object.keys(outputs).filter((k) => k.endsWith(".cs"));
+      expect(csFiles.length).toBeGreaterThan(0);
+
+      // Write to disk for manual inspection / future dotnet build validation
+      writeOutputsToDisk(outputs, testDir);
     });
   },
 );

@@ -49,3 +49,32 @@ export const IntegrationApiTester = createTester(
 );
 export const IntegrationTester =
   IntegrationApiTester.emit("http-client-csharp").importLibraries();
+
+/**
+ * Tester for Azure management plane (ARM) tests.
+ *
+ * Registers the Azure Resource Manager library in addition to all
+ * integration libraries, and configures the emitter with `flavor: "azure"`
+ * and `management: true`. Use this when testing ARM-specific code
+ * generation (TrackedResource, ExtensionResource, CRUD operations, etc.).
+ */
+export const MgmtApiTester = createTester(
+  resolvePath(import.meta.dirname, ".."),
+  {
+    libraries: [
+      "http-client-csharp",
+      "@typespec/http",
+      "@typespec/rest",
+      "@typespec/versioning",
+      "@typespec/openapi",
+      "@azure-tools/typespec-client-generator-core",
+      "@azure-tools/typespec-azure-core",
+      "@azure-tools/typespec-azure-resource-manager",
+    ],
+  },
+);
+
+export const MgmtTester = MgmtApiTester.emit("http-client-csharp", {
+  flavor: "azure",
+  management: true,
+}).importLibraries();

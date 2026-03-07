@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AzureHttpTester, ApiTester, HttpTester } from "./test-host.js";
+import { AzureHttpTester, ApiTester, HttpTester, MgmtTester } from "./test-host.js";
 
 const HttpTesterDisableXmlDocs = ApiTester.emit("http-client-csharp", {
   "disable-xml-docs": true,
@@ -125,6 +125,51 @@ describe("ProjectFile", () => {
       '<PackageReference Include="System.ClientModel" Version="1.9.0" />',
     );
     expect(csproj).not.toContain("Azure.Core");
+  });
+
+  /**
+   * Validates that management plane projects include the Azure.ResourceManager
+   * NuGet reference alongside Azure.Core. ARM generated code depends on types
+   * from both packages (e.g., TrackedResource, ResourceIdentifier, ArmClient).
+   * Without this reference, `dotnet build` would fail for any mgmt output.
+   */
+  it("references Azure.ResourceManager package when management is true", async () => {
+    const [{ outputs }] = await MgmtTester.compileAndDiagnose(`
+      @service
+      namespace MgmtService;
+    `);
+
+    const csprojKey = Object.keys(outputs).find((k) => k.endsWith(".csproj"));
+    expect(csprojKey).toBeDefined();
+
+    const csproj = outputs[csprojKey!];
+    // Management projects use Azure.Core 1.51.1 (minimum required by Azure.ResourceManager 1.14.0)
+    expect(csproj).toContain(
+      '<PackageReference Include="Azure.Core" Version="1.51.1" />',
+    );
+    expect(csproj).toContain(
+      '<PackageReference Include="Azure.ResourceManager" Version="1.14.0" />',
+    );
+  });
+
+  /**
+   * Ensures that non-management Azure projects do NOT include the
+   * Azure.ResourceManager reference. Only management=true should add it.
+   */
+  it("does not reference Azure.ResourceManager when management is false", async () => {
+    const [{ outputs }] = await AzureHttpTester.compileAndDiagnose(`
+      @service
+      namespace AzureDataPlane;
+    `);
+
+    const csprojKey = Object.keys(outputs).find((k) => k.endsWith(".csproj"));
+    expect(csprojKey).toBeDefined();
+
+    const csproj = outputs[csprojKey!];
+    expect(csproj).toContain(
+      '<PackageReference Include="Azure.Core" Version="1.44.1" />',
+    );
+    expect(csproj).not.toContain("Azure.ResourceManager");
   });
 });
 

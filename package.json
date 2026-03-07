@@ -57,6 +57,7 @@
     "test:e2e": "pnpm emit:e2e && vitest run --config vitest.config.e2e.ts",
     "check:coverage": "npx tsx eng/scripts/check-coverage.ts",
     "emit:e2e": "npx tsx eng/scripts/emit-e2e.ts",
+    "emit:mgmt": "npx tsx eng/scripts/emit-mgmt.ts",
     "test:watch": "vitest -w",
     "watch": "alloy build --watch",
     "lint": "eslint src/ test/ --report-unused-disable-directives --max-warnings=0",

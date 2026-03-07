@@ -3919,3 +3919,26 @@ When using a refkey in `typeof()` to reference a nested class declared via `<Cla
 Approach chosen: Plain string `typeof(${modelName}Converter)` for the `[JsonConverter]` attribute argument.
 Approach rejected: Refkey-based `code\`typeof(${converterRefkey})\`` which would auto-resolve but produces `typeof(OuterClass.NestedClass)` format that doesn't match legacy output.
 Reason: The converter is always a nested class in the same serialization partial class — no cross-file resolution is needed, and the short name is correct C#.
+
+## Design Decisions — Task 18.1: Mgmt Test Infrastructure
+
+### Azure.ResourceManager NuGet Version Compatibility
+When `management: true`, the generated .csproj needs both `Azure.Core` and `Azure.ResourceManager` as PackageReferences. Azure.ResourceManager 1.14.0 requires Azure.Core >= 1.51.1, so management projects use Azure.Core 1.51.1 instead of the default 1.44.1 used by data-plane Azure projects. This prevents NuGet error NU1605 (package version downgrade).
+
+### MgmtTester Library Registration
+The `MgmtTester` in `test-host.ts` registers these additional libraries beyond the IntegrationTester:
+- `@azure-tools/typespec-azure-resource-manager` — ARM resource decorators and models
+- `@typespec/openapi` — used by several mgmt .tsp test files
+
+### Mgmt Smoke Test Scope
+The mgmt smoke test validates the emitter pipeline (TypeSpec → C# output) but does NOT validate `dotnet build`. The generated ARM code has compilation errors because ARM-specific code generation features (CRUD clients, resource detection, property flattening) are not yet implemented (phase 19). Once phase 19 is complete, the smoke test should be extended to validate `dotnet build`.
+
+### emit-mgmt.ts Script
+The `eng/scripts/emit-mgmt.ts` script compiles the full 31-file mgmt suite from `submodules/azure-sdk-for-net/.../Mgmt-TypeSpec/main.tsp` using `tsp compile` with management options. It outputs to `temp/mgmt/`. Invoke with `pnpm emit:mgmt`.
+
+### Pre-existing E2E Failures (as of 2026-03-07)
+E2E tests fail with errors unrelated to management:
+- CS0122: `ClientDiagnostics` inaccessible due to protection level
+- CS0534: `ErrorResult<T>` doesn't implement `GetRawResponse()`
+- CS0246: `ModelReaderWriterContext` and `ModelReaderWriterBuildable` not found
+These affect `azure/client-generator-core/client-location` and `azure/client-generator-core/client-initialization` specs.

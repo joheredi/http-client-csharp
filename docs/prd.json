@@ -1636,7 +1636,7 @@
           "title": "Link mgmt test files and configure test project",
           "description": "Set up the test infrastructure for Azure management plane tests. The mgmt submodule has a different test structure than the data plane \u2014 it uses Local test projects with 31 TypeSpec test files rather than Spector-based tests.\n\nSteps:\n1. Determine how to integrate mgmt tests: either extend the existing Spector.Tests project or create a separate test project\n2. Add Azure.ResourceManager NuGet reference\n3. Link or reference the 31 .tsp test files from the mgmt submodule\n4. Configure the tspconfig.yaml equivalent for mgmt compilation\n\nThe mgmt test fixtures cover: foo, bar, baz, zoo, joo resources, testcertificate, quota, hcivm, chaos, networkaction, extensionresources, redisenterprise, playwright, scheduledaction, vmgroup, sharedmodel, selfhelp, multiplepaths, resourcedata, databox, workload, propertyoverride, sitemanager, endpoint, PrivateEndpointConnection, extensionresourcename, trafficmanager, flatten-with-customized-property, singleton, routes.\n\nReference files:\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/TestProjects/Local/Mgmt-TypeSpec/ (31 .tsp files)\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/TestProjects/Local/Mgmt-TypeSpec/tspconfig.yaml (emitter config: namespace Azure.Generator.MgmtTypeSpec.Tests, enable-wire-path-attribute: true)\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp-mgmt/generator/TestProjects/Directory.Build.props",
           "phase": "phase-18",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "17.3",
             "17.4",

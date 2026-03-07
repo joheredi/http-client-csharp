@@ -34,11 +34,17 @@ export interface ProjectFileProps {
  * Package reference is flavor-aware:
  * - `flavor="unbranded"` → `System.ClientModel` 1.9.0
  * - `flavor="azure"` → `Azure.Core` 1.44.1 (transitively includes System.ClientModel)
+ * - `management=true` → additionally references `Azure.ResourceManager` 1.14.0
+ *   and bumps `Azure.Core` to 1.51.1 (minimum required by Azure.ResourceManager)
  */
 export function ProjectFile(props: ProjectFileProps) {
   const { packageName } = props;
   const disableXmlDocs = props.options["disable-xml-docs"];
   const isAzure = props.options.flavor === "azure";
+  const isManagement = props.options.management === true;
+
+  // Azure.ResourceManager 1.14.0 requires Azure.Core >= 1.51.1
+  const azureCoreVersion = isManagement ? "1.51.1" : "1.44.1";
 
   return (
     <CsprojFile path={`src/${packageName}.csproj`}>
@@ -58,10 +64,13 @@ export function ProjectFile(props: ProjectFileProps) {
       {"\n"}
       <ItemGroup>
         {isAzure ? (
-          <PackageReference Include="Azure.Core" Version="1.44.1" />
+          <PackageReference Include="Azure.Core" Version={azureCoreVersion} />
         ) : (
           <PackageReference Include="System.ClientModel" Version="1.9.0" />
         )}
+        {isManagement ? (
+          <PackageReference Include="Azure.ResourceManager" Version="1.14.0" />
+        ) : undefined}
       </ItemGroup>
     </CsprojFile>
   );
