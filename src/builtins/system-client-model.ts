@@ -387,7 +387,10 @@ export const SystemClientModelPrimitives = createLibrary(
       kind: "class" as const,
       members: {
         /** Returns the continuation token for the given page, or null if no more pages. */
-        GetContinuationToken: { kind: "method" as const, methodKind: "ordinary" as const },
+        GetContinuationToken: {
+          kind: "method" as const,
+          methodKind: "ordinary" as const,
+        },
       },
     },
 
@@ -405,7 +408,10 @@ export const SystemClientModelPrimitives = createLibrary(
       kind: "class" as const,
       members: {
         /** Returns the continuation token for the given page, or null if no more pages. */
-        GetContinuationToken: { kind: "method" as const, methodKind: "ordinary" as const },
+        GetContinuationToken: {
+          kind: "method" as const,
+          methodKind: "ordinary" as const,
+        },
       },
     },
 

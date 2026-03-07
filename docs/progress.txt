@@ -6564,3 +6564,16 @@ The .NET SDK defines `AzureLocation` as `Azure.Core.AzureLocation` (struct in `n
 
 ### Pattern
 Simple namespace correction in Alloy library definitions. When a type's `using` directive doesn't match, move it to the correct `createLibrary()` declaration.
+
+## Task 20.12c — Fix CS0118 namespace/type collision: NonResource model vs namespace (2026-03-07)
+
+**Problem**: Model `NonResource` in namespace `Azure.ResourceManager.NonResource.Models` caused CS0118 when referenced from files in the parent namespace `Azure.ResourceManager.NonResource`. C# resolved `NonResource` as the namespace segment, not the type.
+
+**Root cause**: `collectInvalidNamespaceSegments()` only checked client names against namespace segments, not model or enum names. The model `NonResource` had namespace `Azure.ResourceManager.NonResource` (before `applyModelSubNamespace`), and its name matched the last segment — but this wasn't detected.
+
+**Fix**: Extended `collectInvalidNamespaceSegments()` in `src/utils/package-name.ts` to also iterate over models and enums, checking `model.name === lastSegment(model.namespace)`. Updated `cleanAllNamespaces()` to pass models and enums to the function. This adds the conflicting segment to the invalid set, causing namespace cleaning to prefix it with `_` (e.g., `Azure.ResourceManager._NonResource`), which avoids the CS0118 collision.
+
+**Pattern**: The `_` prefix approach is consistent with existing client-namespace collision handling. When extending collision detection, always check all type kinds (clients, models, enums) — not just clients.
+
+**Files changed**: `src/utils/package-name.ts`, `test/package-name.test.ts`
+**Tests**: 3 new unit tests added (model collision, enum collision, non-conflicting names). All 1670+ unit tests pass. E2e: 0 unexpected failures.

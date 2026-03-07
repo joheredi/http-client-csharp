@@ -4250,6 +4250,7 @@ The fix: `buildIdAccessorExpressions()` now accepts an optional `ResourceScope` 
 ## Design Decisions
 
 ### Azure.Core Version for Data Plane Projects (Task 20.3)
+
 **Decision**: Use Azure.Core 1.51.1 for ALL Azure flavors (data plane and management), not just management.
 **Why**: Azure.Core 1.44.1 doesn't transitively include System.ClientModel with ModelReaderWriterContext/ModelReaderWriterBuildable support. The legacy emitter uses 1.51.1 for all Azure projects via central package management.
 **Rejected**: Adding explicit System.ClientModel PackageReference alongside Azure.Core — the legacy emitter doesn't do this, and it would add a redundant dependency.
@@ -4269,18 +4270,23 @@ The fix: `buildIdAccessorExpressions()` now accepts an optional `ResourceScope` 
 **MSBuild variable**: `$(AzureCoreSharedSources)` is the standard Azure SDK variable (defined in `Directory.Build.Common.props` in real Azure SDK builds). For e2e tests, it's defined in a generated `Directory.Build.props` in `temp/e2e/Spector/http/`.
 
 ### Non-generic CollectionResult lives in System.ClientModel.Primitives
+
 The non-generic `CollectionResult` and `AsyncCollectionResult` types are in `System.ClientModel.Primitives`, NOT `System.ClientModel`. The generic `CollectionResult<T>` and `AsyncCollectionResult<T>` are in `System.ClientModel`. Use `SystemClientModelPrimitives.CollectionResult` for protocol-level (non-generic) base types and `SystemClientModel.CollectionResult` for convenience-level (generic) base types with `code` template: `code\`${SystemClientModel.CollectionResult}<${itemType}>\``.
 
 ### Override methods must use ClientResult regardless of flavor
+
 Base class `CollectionResult` abstract methods use `ClientResult` for parameters (`GetContinuationToken(ClientResult page)`, `GetValuesFromPage(ClientResult page)`) and return generic types (`IEnumerable<ClientResult>`). Override methods MUST use the exact same types — using `Response` (Azure) causes CS0508/CS0115/CS0534. Method BODIES can use flavor-specific types for local variables (e.g., `Response result = Pipeline.ProcessMessage(...)`) since `Response : ClientResult`.
 
 ### Azure model explicit operators accept Response, not ClientResult
+
 Azure model types define `explicit operator ModelType(Response result)`, while unbranded use `explicit operator ModelType(ClientResult result)`. When casting a `ClientResult page` parameter to a model type in Azure-flavored code, an intermediate downcast is needed: `((ModelType)(Response)page)`. This works because `page` is `ClientResult` at compile-time but `Response` at runtime.
 
 ## E2E Triage: net8.0 Build Errors Across ALL Generated Projects (task 20.6)
 
 ### All 42 generated e2e projects with net8.0 errors share the same root cause
+
 Generated projects multi-target `netstandard2.0;net8.0`. Under net8.0, 42 projects (32 Azure + 10 non-Azure) have identical build errors in their infrastructure files. The errors are all in generated code that uses wrong API surface for the net8.0 build:
+
 - `HttpMessage` type (should be `PipelineMessage` from System.ClientModel.Primitives)
 - `CreateMessage(Uri, string, Classifier)` — wrong overload signature
 - `RequestHeaders.Set()` / `HttpMessage.Apply()` — methods don't exist
@@ -4292,12 +4298,15 @@ Generated projects multi-target `netstandard2.0;net8.0`. Under net8.0, 42 projec
 These all build fine under `netstandard2.0`. The Spector.Tests project (net10.0) references netstandard2.0 assemblies.
 
 ### Azure data plane tests don't actually run
+
 Even though task 20.5 enabled 27 Azure test files, SpectorTestAttribute silently skips all Azure tests at runtime. They don't appear in passed/failed/skipped counts at all. The 622 total tests are all from non-Azure specs.
 
 ### The "should build" test failure is pre-existing
+
 The `pnpm test:e2e` build test was failing before task 20.5 due to 10 non-Azure specs (client/namespace, client/naming, client/naming/enum-conflict, client/overload, client/structure/default, client/structure/multi-client, client/structure/renamed-operation, client/structure/two-operation-group, resiliency/srv-driven/v1, resiliency/srv-driven/v2) having the same net8.0 build errors. Adding Azure specs didn't change the pass/fail outcome — it was already failing.
 
 ### Non-Azure specs generating Azure-flavored code
+
 10 non-Azure specs generate code using Azure.Core types (HttpMessage, RequestContext, RequestContent) under net8.0. This suggests the net8.0 conditional compilation in generated infrastructure files applies Azure-flavor APIs incorrectly. Root cause investigation needed.
 
 ## ARM Component Rendering Pattern (Task 20.9)
@@ -4305,6 +4314,7 @@ The `pnpm test:e2e` build test was failing before task 20.5 due to 10 non-Azure 
 **Gotcha**: ARM component files (CollectionFile.tsx, ResourceFile.tsx, PageableWrapperFiles.tsx) were missing `{"\n\n"}` between `{header}` and `<Namespace>`, causing `#nullable disablenamespace ...` in generated output. This produced ~2500 cascading syntax errors.
 
 **Rule**: Every `<SourceFile>` component MUST include `{"\n\n"}` between `{header}` and `<Namespace>`:
+
 ```tsx
 <SourceFile path="...">
   {header}
@@ -4317,6 +4327,7 @@ The `pnpm test:e2e` build test was failing before task 20.5 due to 10 non-Azure 
 ## Design Decisions
 
 ### ARM doc comment approach (Task 20.9)
+
 **Chosen**: Pass doc comment content via `doc` prop on `<ClassDeclaration>`, returning plain XML without `///` prefixes.
 **Rejected**: Rendering `code` template with `///` prefixes as a child before `<ClassDeclaration>` — this caused missing newline between doc comment and class declaration because Alloy concatenates adjacent children.
 **Reason**: The `doc` prop is the idiomatic Alloy pattern (used by ModelFile.tsx) and handles `///` prefix insertion and newline management automatically.
@@ -4324,12 +4335,14 @@ The `pnpm test:e2e` build test was failing before task 20.5 due to 10 non-Azure 
 ## ARM Compilation Error Analysis (Task 20.12 Split)
 
 ### AzureLocation Namespace Discovery
+
 - **GOTCHA**: `AzureLocation` is in `Azure.Core` namespace, NOT `Azure`. Verified via NuGet XML docs: `<member name="T:Azure.Core.AzureLocation">`.
 - The builtin in `src/builtins/azure.ts` defines it under `createLibrary("Azure", { AzureLocation: ... })` which generates `using Azure;` — wrong!
 - Note: `ETag` IS in `Azure` namespace (confirmed), so not all Azure.Core package types are in `Azure.Core` namespace.
 - Fix: Move `AzureLocation` entry from `Azure` library to `AzureCore` library in `src/builtins/azure.ts`.
 
 ### ARM Type Ambiguity Patterns (CS0104)
+
 - The emitter generates `SystemData`, `CreatedByType` as models in `Azure.ResourceManager.CommonTypes.Models`
 - The `Azure.ResourceManager` NuGet package already provides these in `Azure.ResourceManager.Models`
 - When both namespaces are imported (via Alloy auto-using), CS0104 occurs
@@ -4337,14 +4350,28 @@ The `pnpm test:e2e` build test was failing before task 20.5 due to 10 non-Azure 
 - Fix options: (a) suppress generation of well-known ARM types, (b) use fully qualified names, (c) using aliases
 
 ### Namespace/Type Collision Pattern (CS0118)
+
 - When a model name matches the last segment of its namespace (e.g., `NonResource` in `Azure.ResourceManager.NonResource`), C# resolves it as the namespace
 - Existing code has patterns: `isSystemTypeNameCollision()` in ClientFile.tsx, `collectInvalidNamespaceSegments()` in package-name.ts
 - Fix: Use `global::Fully.Qualified.Name` when collision detected
 
 ### Infrastructure API Issues (CS0122)
+
 - `ProtocolOperationHelpers` is a shared source internal type in Azure.Core — not a public API
 - `RequestContext.Parse()` does not exist as a public method
 - `HttpPipeline.CreateMessage()` has different overloads than expected
 - `RequestHeaders.Set()` / `HttpMessage.Apply()` not public
 - These indicate the emitter is targeting Azure.Core internal/shared source APIs rather than the public surface
 - Affects non-ARM-resource operations in ARM specs (e.g., LargeHeaders sub-client)
+
+## Design Decisions
+
+### Task 20.12c: CS0118 Model/Namespace Collision Fix
+
+**Approach chosen**: Extend `collectInvalidNamespaceSegments` to check models and enums (namespace `_` prefix approach).
+
+**Why**: Uses existing infrastructure, minimal code change, consistent with client-namespace collision handling, and comprehensively fixes ALL references (no risk of missing a reference site).
+
+**Rejected**: FQN/`global::` approach — would require detecting collisions at every type-reference generation site across many components, much more error-prone and complex.
+
+**Key insight**: The `_` prefix approach works because `cleanAllNamespaces` runs BEFORE `applyModelSubNamespace`. At cleaning time, model namespace is `Azure.ResourceManager.NonResource` (last segment matches model name). After cleaning, it becomes `Azure.ResourceManager._NonResource`. After `applyModelSubNamespace`, models get `Azure.ResourceManager._NonResource.Models`. Within `_NonResource` namespace, `NonResource` resolves unambiguously to the type.

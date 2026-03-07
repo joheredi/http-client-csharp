@@ -233,22 +233,33 @@ function deriveNamespaceFromCrossLanguageId(
  * Collects namespace segments that must be prefixed with `_` to avoid C# naming conflicts.
  *
  * In C#, a type cannot share its name with a containing namespace segment (CS0118).
- * When a sub-client's name matches the last segment of its namespace (e.g., client
- * "Model" in namespace "Parameters.Spread.Model"), the segment is invalid and must
+ * When a client, model, or enum name matches the last segment of its namespace
+ * (e.g., client "Model" in namespace "Parameters.Spread.Model", or model "NonResource"
+ * in namespace "Azure.ResourceManager.NonResource"), the segment is invalid and must
  * be prefixed.
  *
  * This combines:
  * 1. Static reserved words ("Type", "Array", "Enum") that always conflict
- * 2. Dynamic client names where `lastSegment(client.namespace) === client.name`
+ * 2. Dynamic names where `lastSegment(type.namespace) === type.name` for clients,
+ *    models, and enums
+ *
+ * Model and enum collisions are critical for ARM specs where a model name may match
+ * the service namespace segment (e.g., `NonResource` model in `Azure.ResourceManager.NonResource`).
+ * Without this check, files in the parent namespace that reference the model type get
+ * CS0118 because C# resolves the identifier as the namespace, not the type.
  *
  * Mirrors the legacy emitter's `TypeSpecSerialization.AddInvalidNamespaceSegment`
  * + `InputNamespace._knownInvalidNamespaceSegments` logic.
  *
  * @param allClients - All clients (root + sub-clients) from the SDK package.
+ * @param models - All model types from the SDK package (optional).
+ * @param enums - All enum types from the SDK package (optional).
  * @returns A set of segment strings that must be prefixed with `_` in namespaces.
  */
 export function collectInvalidNamespaceSegments(
   allClients: SdkClientType<SdkHttpOperation>[],
+  models?: SdkModelType[],
+  enums?: SdkEnumType[],
 ): Set<string> {
   const invalid = new Set(INVALID_NAMESPACE_SEGMENTS);
   for (const client of allClients) {
@@ -258,6 +269,27 @@ export function collectInvalidNamespaceSegments(
       invalid.add(lastSegment);
     }
   }
+
+  if (models) {
+    for (const model of models) {
+      if (!model.namespace) continue;
+      const lastSegment = model.namespace.split(".").pop();
+      if (lastSegment && lastSegment === model.name) {
+        invalid.add(lastSegment);
+      }
+    }
+  }
+
+  if (enums) {
+    for (const enumType of enums) {
+      if (!enumType.namespace) continue;
+      const lastSegment = enumType.namespace.split(".").pop();
+      if (lastSegment && lastSegment === enumType.name) {
+        invalid.add(lastSegment);
+      }
+    }
+  }
+
   return invalid;
 }
 
@@ -307,7 +339,11 @@ export function cleanAllNamespaces(
   models: SdkModelType[],
   enums: SdkEnumType[],
 ): void {
-  const invalidSegments = collectInvalidNamespaceSegments(allClients);
+  const invalidSegments = collectInvalidNamespaceSegments(
+    allClients,
+    models,
+    enums,
+  );
 
   // Only apply if there are dynamic conflicts beyond the static reserved words.
   // Static reserved words (Type, Array, Enum) are always in the set, but if

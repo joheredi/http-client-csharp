@@ -476,6 +476,65 @@ describe("collectInvalidNamespaceSegments", () => {
     // Should only contain static reserved words (Type, Array, Enum, File)
     expect(invalid.size).toBe(4);
   });
+
+  /**
+   * When a model's name matches the last segment of its namespace, the segment
+   * must be collected. This is the CS0118 fix for ARM specs like non-resource
+   * where model "NonResource" lives in namespace "Azure.ResourceManager.NonResource".
+   * Without this, files in the parent namespace that reference the model type get
+   * CS0118 because C# resolves the identifier as the namespace, not the type.
+   */
+  it("detects model name matching last namespace segment", () => {
+    const clients = [
+      createMockClient(
+        "NonResourceClient",
+        "Azure.ResourceManager.NonResource",
+      ),
+    ];
+    const models = [
+      createMockModel(
+        "NonResource",
+        "Azure.ResourceManager.NonResource",
+        "Azure.ResourceManager.NonResource.NonResource",
+      ),
+    ];
+
+    const invalid = collectInvalidNamespaceSegments(clients, models);
+
+    expect(invalid.has("NonResource")).toBe(true);
+  });
+
+  /**
+   * When an enum's name matches the last segment of its namespace, the segment
+   * must be collected to prevent CS0118. This covers the same pattern as model
+   * collisions but for enum types.
+   */
+  it("detects enum name matching last namespace segment", () => {
+    const clients = [createMockClient("MyClient", "My.Service.Status")];
+    const enums = [createMockEnum("Status", "My.Service.Status")];
+
+    const invalid = collectInvalidNamespaceSegments(clients, [], enums);
+
+    expect(invalid.has("Status")).toBe(true);
+  });
+
+  /**
+   * Models and enums whose names do NOT match the last namespace segment should
+   * not pollute the invalid set. Only exact matches trigger the prefix.
+   */
+  it("does not flag non-conflicting model or enum names", () => {
+    const clients = [createMockClient("MyClient", "Azure.ResourceManager.Foo")];
+    const models = [
+      createMockModel("Bar", "Azure.ResourceManager.Foo", "Foo.Bar"),
+    ];
+    const enums = [createMockEnum("Baz", "Azure.ResourceManager.Foo")];
+
+    const invalid = collectInvalidNamespaceSegments(clients, models, enums);
+
+    expect(invalid.has("Bar")).toBe(false);
+    expect(invalid.has("Baz")).toBe(false);
+    expect(invalid.has("Foo")).toBe(false);
+  });
 });
 
 describe("cleanNamespace", () => {
@@ -636,6 +695,36 @@ describe("cleanAllNamespaces", () => {
     expect(clients[1].namespace).toBe("_Type._File._Body");
     // Model namespace TypeSpec.Http has no invalid segments — unchanged
     expect(models[0].namespace).toBe("TypeSpec.Http");
+  });
+
+  /**
+   * When a model's name matches the last segment of its namespace, ALL namespaces
+   * containing that segment must be cleaned. This is the end-to-end fix for CS0118
+   * in ARM specs like non-resource where model "NonResource" lives in namespace
+   * "Azure.ResourceManager.NonResource". After cleaning, both the client namespace
+   * and model namespace should have the `_` prefix on the conflicting segment.
+   */
+  it("cleans namespaces when model name matches last namespace segment", () => {
+    const clients = [
+      createMockClient(
+        "NonResourceClient",
+        "Azure.ResourceManager.NonResource",
+      ),
+    ];
+    const models = [
+      createMockModel(
+        "NonResource",
+        "Azure.ResourceManager.NonResource",
+        "Azure.ResourceManager.NonResource.NonResource",
+      ),
+    ];
+    const enums: SdkEnumType[] = [];
+
+    cleanAllNamespaces(clients, models, enums);
+
+    // Both client and model namespaces should have _NonResource
+    expect(clients[0].namespace).toBe("Azure.ResourceManager._NonResource");
+    expect(models[0].namespace).toBe("Azure.ResourceManager._NonResource");
   });
 });
 
