@@ -4579,3 +4579,18 @@ In unit tests, `@@client(Combined, { service: [ServiceA, ServiceB] })` augment d
 **Key Gotcha — Multi-line constructor formatting**: Alloy's `<OverloadConstructor>` formats constructor parameters across multiple lines when there are 3+ parameters. Test assertions should use partial `toContain` checks (e.g., `"Uri endpoint,"` separately from `"TestServiceClientOptions options"`) rather than matching the entire signature on one line.
 
 **Pattern — `getDefaultEndpointUrl()`**: Returns the default endpoint URL from `resolveEndpointType(endpointParam.type).templateArguments.find(a => a.type.kind === "url").clientDefaultValue`. Returns `undefined` when no default exists (e.g., plain `@service` without `@server`).
+
+## Versioning/Removed Namespace Differences (Task 21.14)
+
+**Problem**: Legacy emitter generates version-specific Context and ModelFactory classes in sub-namespaces (`Versioning.Removed.V1`, `Versioning.Removed.V2`, etc.). New emitter generates a unified `VersioningRemovedContext` in the flat `Versioning.Removed` namespace for all versions.
+
+**Solution**: Copy legacy test files locally and remove the version-specific `using` directives (`using RemovedV1::Versioning.Removed.V1;`). The tests don't actually use types from those sub-namespaces directly — all model/client types are in the base `Versioning.Removed` namespace.
+
+**Gotcha**: When creating local adapted test files to replace legacy ones, you must KEEP the `Compile Remove` entry for the legacy path. Otherwise both the legacy and local files compile, causing duplicate class definitions. The pattern is: exclude legacy → include local replacement.
+
+## Design Decisions
+
+### Versioning/Removed: Adapt tests vs fix emitter namespace generation
+- **Chosen**: Adapt test files locally by removing version-specific using directives
+- **Rejected**: Fixing the emitter to generate V1/V2/V2Preview sub-namespaces for Context/ModelFactory
+- **Reason**: The sub-namespaces only contain Context and ModelFactory — no tests reference these types directly. Adapting tests is simpler, lower risk, and the functional behavior is identical.

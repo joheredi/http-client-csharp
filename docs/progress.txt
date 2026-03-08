@@ -6818,3 +6818,17 @@ Fixed 12 Encode_Array_Property e2e test failures. When a model property has `@en
   - The `renderCtorDocs` helper DRYs up doc comment generation across 3 constructor tiers
   - JSX comments (`{/* ... */}`) cause null tagName errors in Alloy's babel plugin — use JS comments instead
 - Result: **1701 unit tests passing**, **684 e2e tests passing (was 652, +32 new) with 0 unexpected failures**
+
+## Task 21.14 — Enable versioning/removed e2e test coverage (2026-03-08)
+
+- Created local adapted test files in `test/e2e/Spector.Tests/Http/Versioning/Removed/{V1,V2,V2Preview}/`
+- Key fix: Removed `using RemovedV1::Versioning.Removed.V1;` and `using RemovedV2::Versioning.Removed.V2;` directives
+  - These namespaces don't exist in the new emitter output (it uses unified `Versioning.Removed` namespace)
+  - Legacy emitter generates version-specific Context/ModelFactory in sub-namespaces (V1, V2, V2Preview)
+  - New emitter generates `VersioningRemovedContext` in flat `Versioning.Removed` namespace for all versions
+- Kept the `Compile Remove` entry for legacy test files to prevent duplicate class definitions
+- Updated the Compile Remove comment to explain that local adapted files are used instead
+- V2Preview test needed no changes (it only used `Versioning.Removed` namespace)
+- All 3 versioning/removed projects build and pass: v1, v2, v2preview
+- Key insight: When adapting legacy test files, keep the Compile Remove for legacy path and create local replacements. Removing the Compile Remove causes duplicate definitions.
+- Result: **690 unit tests passing**, **e2e tests all passing with 0 unexpected failures**

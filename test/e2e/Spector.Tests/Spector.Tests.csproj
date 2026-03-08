@@ -143,9 +143,9 @@
     <Compile Remove="$(LegacyTestRoot)Http/_Type/Property/Optionality/**/*.cs" />
 
     <!--
-      Namespace differences between legacy and new emitter for Versioning/Removed.
-      Legacy generates VersioningRemovedV1Context in Versioning.Removed.V1 namespace;
-      new emitter generates VersioningRemovedContext in Versioning.Removed namespace.
+      Versioning/Removed: Legacy test files excluded because they reference
+      Versioning.Removed.V1/V2 namespaces that don't exist in the new emitter output.
+      Local adapted test files in test/e2e/Spector.Tests/Http/Versioning/Removed/ are used instead.
     -->
     <Compile Remove="$(LegacyTestRoot)Http/Versioning/Removed/**/*.cs" />
 
