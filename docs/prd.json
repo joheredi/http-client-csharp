@@ -2654,7 +2654,7 @@
           "title": "Enable optionality property e2e test coverage",
           "description": "64 Type_Property_Optional scenarios show as not-implemented. The test files are excluded (Compile Remove for Http/_Type/Property/Optionality/**/*.cs) due to literal type serialization errors.\n\nFix: Fix the literal type serialization issue in the emitter or copy test files locally with API adaptations. Remove the Compile Remove entry.",
           "phase": "phase-21",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

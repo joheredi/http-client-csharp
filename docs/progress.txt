@@ -6843,3 +6843,13 @@ Fixed 12 Encode_Array_Property e2e test failures. When a model property has `@en
 - Added unit tests: uuid path param `.ToString()` and uuid query param `.ToString()`
 - Key learning: uuid is NOT a TypeSpec intrinsic scalar — it's defined in Azure.Core as `@format("uuid") scalar uuid extends string`
 - Result: **1703 unit tests passing**, **e2e tests all passing with 0 unexpected failures**
+
+---
+Task 21.11 (2026-03-08) — Enable optionality property e2e test coverage:
+- Created local adapted test file at test/e2e/Spector.Tests/Http/_Type/Property/Optionality/OptionalityTests.cs
+- Legacy test file excluded via Compile Remove (API shapes don't match new emitter)
+- Key API differences from legacy test: sub-client casing (GetPlainDateClient vs GetPlaindateClient), model types (CollectionsModelProperty uses IList<StringProperty> not CollectionsModel), literal values updated per current spec (int=1 not 42, union values use second variant), enum member names (_125, _2 vs OnePointTwoFive, FortyTwo)
+- Fixed collection GetDefault assertions: new emitter returns empty ChangeTrackingList for absent collections (Azure SDK convention), not null
+- Fixed literal PutDefault tests: explicitly set Property=null since generated models initialize literal defaults (bool?=true, etc.) which would serialize the value instead of omitting it
+- Spec values derived from TypeSpec scenarioDoc annotations in @typespec/http-specs
+- Result: **All 64 optionality scenarios passing**, 726 unit tests passing, all e2e tests passing

@@ -4613,3 +4613,17 @@ In unit tests, `@@client(Combined, { service: [ServiceA, ServiceB] })` augment d
 - **Why**: The `SdkBuiltInType.name` property reliably distinguishes Azure.Core's uuid ("uuid") from plain strings ("string"). No need to thread flavor through function signatures.
 - **Rejected**: (1) Adding "uuid" to SdkBuiltInKinds — it's not a valid TCGC kind. (2) Checking `crossLanguageDefinitionId` — too fragile. (3) Passing flavor parameter — adds unnecessary complexity since `name === "uuid"` is sufficient.
 - **Risk**: A user-defined `scalar uuid extends string` in non-Azure context would also get Guid mapping. This is acceptable because (a) it's extremely unlikely, (b) the user likely expects Guid, and (c) `.ToString()` on string is harmless.
+
+## Task 21.11 — Optionality E2E Test Adaptation
+
+### Gotcha: Legacy test files may reference outdated spec values
+The TypeSpec HTTP specs evolve independently of the test files in the legacy emitter. The optionality test referenced int literal value 42 (now 1), enum members like `FortyTwo` and `OnePointTwoFive` (now `_2` and `_2375`), and collection model types that changed from `CollectionsModel` to `StringProperty`. Always check the current TypeSpec spec's `@scenarioDoc` annotations for expected request/response values.
+
+### Gotcha: Literal type default initialization vs putDefault
+Generated models for literal types initialize the optional property to the literal value (e.g., `bool? Property = true`, `StringLiteralPropertyProperty? Property = "hello"`). This means `new BooleanLiteralProperty()` serializes as `{"property": true}` instead of `{}`. For putDefault tests, explicitly set `Property = null` to simulate an absent property. This is an emitter design choice that could be revisited.
+
+### Gotcha: Collection properties return empty ChangeTrackingList, not null
+When a collection property is absent from JSON during deserialization, the new emitter returns an empty `ChangeTrackingList<T>` instead of null. Assert with `Assert.AreEqual(0, property.Count)` not `Assert.AreEqual(null, property)`.
+
+### Pattern: Local adapted test files
+When legacy test files don't compile against the new emitter's API surface, create local adapted copies at `test/e2e/Spector.Tests/Http/{path}/`. Keep the same namespace and method names so Spector scenario mapping works. Update the csproj comment to explain why the legacy file is excluded. See also: Versioning/Removed tests for the same pattern.

@@ -139,7 +139,11 @@
     <Compile Remove="$(LegacyTestRoot)Http/Payload/Multipart/**/*.cs" />
 
 
-    <!-- .testignore: type/property/optionality (literal type serialization errors) -->
+    <!--
+      type/property/optionality: Legacy test file excluded because it references
+      API names that don't match the new emitter output (sub-client casing, enum member names,
+      model type mismatches). Local adapted test files are used instead.
+    -->
     <Compile Remove="$(LegacyTestRoot)Http/_Type/Property/Optionality/**/*.cs" />
 
     <!--
