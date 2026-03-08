@@ -6694,3 +6694,20 @@ Removed 3 stale resiliency/srv-driven/v1 entries from .expected-failures.
 **Result**: flatten-property spec removed from .testignore, builds successfully in e2e (107 specs compiled, 0 unexpected failures). All 1,680 unit tests pass.
 
 **Key pattern**: Model-level property flattening is ARM-only (gated on `management` option). Non-ARM specs with `@flattenProperty` keep properties public on models. The `@flattenProperty` decorator from `Azure.ClientGenerator.Core.Legacy` only affects client method parameter flattening for non-ARM specs, not model structure.
+
+### Task 21.2 — Fix dictionary PUT body serialization in convenience methods (2026-03-08)
+
+**Problem**: 11 Type_Dictionary PUT tests failed because `BinaryContentHelper.FromObject()` calls `WriteObjectValue<object>()` which doesn't handle `Dictionary<string, T>`, causing runtime NotSupportedException.
+
+**Root cause**: `getBodyProtocolCallArg()` in ConvenienceMethod.tsx had no special case for dictionary types — they fell through to the generic `FromObject()` path. Arrays already had their own `FromEnumerable()` path but dictionaries were missing.
+
+**Fix**: Added a `"dict"` kind check in `getBodyProtocolCallArg()` that uses `BinaryContentHelper.FromDictionary(body)` instead of `FromObject(body)`. `FromDictionary` iterates key-value pairs and serializes them as JSON object properties via `WriteStartObject/WritePropertyName/WriteObjectValue/WriteEndObject`.
+
+**Files modified**:
+- `src/components/clients/ConvenienceMethod.tsx` — added dict case + updated JSDoc
+- `test/convenience-method.test.ts` — added unit test for FromDictionary usage
+- `test/e2e/.expected-failures` — removed 11 now-passing dictionary PUT tests
+
+**Tests**: 680 unit tests pass (0 unexpected failures), 5 e2e tests pass.
+
+**Key pattern**: Body serialization in convenience methods dispatches by TCGC type kind: model→implicit operator, enum→ToString/cast, array→FromEnumerable, dict→FromDictionary, other→FromObject.

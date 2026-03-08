@@ -1042,6 +1042,38 @@ describe("ConvenienceMethod", () => {
   });
 
   /**
+   * Verifies that dictionary body parameters use BinaryContentHelper.FromDictionary()
+   * instead of FromObject() when calling the protocol method.
+   *
+   * Why this test matters:
+   * - FromObject() delegates to WriteObjectValue<object>() which doesn't handle
+   *   Dictionary<string, T>, causing runtime NotSupportedException on PUT operations.
+   * - FromDictionary() iterates key-value pairs and serializes them as JSON properties
+   *   via WriteStartObject/WritePropertyName/WriteObjectValue/WriteEndObject.
+   * - This fix resolves 11 Type_Dictionary PUT test failures (BooleanPut, StringPut,
+   *   Int32ValuePut, ModelValuePut, etc.).
+   */
+  it("uses FromDictionary for dictionary body params in protocol call", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/items")
+      @put op putItems(@body body: Record<int32>): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Convenience method should use FromDictionary, not FromObject
+    expect(clientFile).toContain("BinaryContentHelper.FromDictionary(body)");
+    expect(clientFile).not.toContain("BinaryContentHelper.FromObject(body)");
+  });
+
+  /**
    * Verifies that convenience methods with dict path parameters correctly
    * call the protocol method, which also accepts IDictionary<string, T>.
    *

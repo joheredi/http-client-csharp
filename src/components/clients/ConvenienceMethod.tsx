@@ -1260,6 +1260,7 @@ function hasImplicitBinaryContentOperator(type: SdkModelType): boolean {
  * - **Enum (string-backed)**: `BinaryContentHelper.FromObject(body.ToString())`
  * - **Enum (int-backed)**: `BinaryContentHelper.FromObject((int)body)`
  * - **Array**: `BinaryContentHelper.FromEnumerable(body)`
+ * - **Dictionary**: `BinaryContentHelper.FromDictionary(body)`
  * - **Model without Input flag**: `BinaryContentHelper.FromObject(body)` (uses IPersistableModel)
  * - **Other (string, BinaryData, scalar)**: `BinaryContentHelper.FromObject(body)`
  *
@@ -1297,7 +1298,14 @@ function getBodyProtocolCallArg(name: string, type: SdkType): string {
     return `BinaryContentHelper.FromEnumerable(${escaped})`;
   }
 
-  // All other types (string, BinaryData, model without Input, scalar, dict, etc.):
+  // Dictionary types: use FromDictionary for proper JSON object serialization.
+  // FromObject delegates to WriteObjectValue which doesn't handle Dictionary<string, T>;
+  // FromDictionary iterates key-value pairs and writes them as JSON properties.
+  if (unwrapped.kind === "dict") {
+    return `BinaryContentHelper.FromDictionary(${escaped})`;
+  }
+
+  // All other types (string, BinaryData, model without Input, scalar, etc.):
   // use FromObject which delegates to WriteObjectValue for correct serialization.
   return `BinaryContentHelper.FromObject(${escaped})`;
 }

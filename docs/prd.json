@@ -2465,7 +2465,7 @@
           "title": "Fix dictionary PUT body serialization in convenience methods",
           "description": "11 Type_Dictionary PUT tests fail because BinaryContentHelper.FromObject() calls WriteObjectValue<T>() which doesn't handle Dictionary<string, T>. The convenience method wraps dict body params with BinaryContentHelper.FromObject(body) but WriteObjectValue falls through to the default NotSupportedException case for dictionaries.\n\nFailing tests: BooleanPut, DatetimeValuePut, DurationValuePut, Float32ValuePut, Int32ValuePut, Int64ValuePut, ModelValuePut, NullableFloatValuePut, RecursiveModelValuePut, StringPut, UnknownValuePut.\n\nFix: Update ConvenienceMethod.tsx to use BinaryContentHelper.FromDictionary() for dictionary body parameters instead of FromObject(), or use BinaryContent.Create(BinaryData.FromObjectAsJson(body)).",
           "phase": "phase-21",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [
