@@ -2301,7 +2301,7 @@
           "title": "Run and triage ARM e2e tests",
           "description": "After fixing ARM compilation errors (20.9-20.12), run the full e2e suite and triage ARM results.\n\nSteps:\n1. Run `pnpm emit:e2e` to generate all specs including ARM with management=true\n2. Run `pnpm test:e2e` to execute the full test suite\n3. Triage ARM results:\n   - ARM specs that compile and pass: done\n   - ARM specs that compile but tests fail: add to .expected-failures\n   - ARM specs that still fail compilation: may need to go back to .testignore with updated comments\n   - ARM tests auto-skipped (no test .cs files exist): add to .expected-skips if unexpected\n4. Update .testignore and .expected-failures/.expected-skips\n\nNote: ARM test .cs files do NOT currently exist in the azure-sdk-for-net submodule (the directories are empty). This means SpectorTestAttribute will auto-skip ARM tests because it won't find client files to validate. The primary value of this task is confirming ARM code COMPILES, not that tests PASS.\n\nReference files:\n- test/e2e/.expected-failures\n- test/e2e/.expected-skips\n- test/e2e/.testignore\n- test/e2e/spector.test.ts (test runner)\n- submodules/azure-sdk-for-net/eng/packages/http-client-csharp/generator/TestProjects/Spector.Tests/Http/Azure/ResourceManager/ (empty \u2014 no ARM test files)",
           "phase": "phase-20",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "20.12a",
             "20.12b",

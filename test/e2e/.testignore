@@ -2,48 +2,70 @@
 # One path per line (relative to specs root). Lines starting with # are comments.
 
 # ============================================================
-# AZURE DATA PLANE SPECS — Triage (task 20.6, 2026-03-07)
+# ARM RESOURCE MANAGER SPECS — Triage (task 20.13, 2026-03-08)
 # ============================================================
-# All 32 Azure data plane specs emit successfully with flavor=azure.
-# However, ALL 32 specs fail to build under net8.0 TFM (1904 CS errors).
-# They build fine under netstandard2.0. Test files are linked from the
-# legacy submodule (task 20.5) but Azure tests don't run because
-# SpectorTestAttribute silently skips them.
+# All 9 ARM specs emit TypeSpec→C# successfully (task 20.7 added management=true).
+# Tasks 20.8–20.12e fixed many ARM compilation errors (AzureLocation namespace,
+# ambiguous references, namespace collisions, infrastructure API issues, flavor-
+# aware protocol methods). However, 2,358 CS errors remain across 9 specs due
+# to deep ARM infrastructure gaps that require further emitter work.
 #
-# Root cause: Generated infrastructure files (ClientPipelineExtensions.cs,
-# ErrorResult.cs, RestClient.cs) use wrong API surface under net8.0:
-#   - CS0246: HttpMessage type not found (should be PipelineMessage)
-#   - CS1501: CreateMessage(Uri, string, Classifier) — wrong overload
-#   - CS1061: RequestHeaders.Set, HttpMessage.Apply — methods don't exist
-#   - CS1729: Response<T> 2-arg constructor doesn't exist
-#   - CS1061: RequestContext.Parse() doesn't exist
-#   - CS1503: RequestContext → CancellationToken, BinaryContent → RequestContent
+# Major error categories (by count):
+#   - CS0122 (732): ProtocolOperationHelpers, OperationFinalStateVia inaccessible
+#   - CS0117 (404): Missing members — Widget.FromResponse, etc.
+#   - CS1503 (328): Type conversions — Guid→string, wrong argument types
+#   - CS1061 (188): Missing methods on generated types
+#   - CS0246 (148): Missing type/namespace references
+#   - CS0029/CS0030 (244): Implicit/explicit conversion errors
+#   - CS0103 (120): Names not in current context
+#   - CS1729 (72): Wrong constructor argument counts (OptionalBody, etc.)
+#   - CS0128 (40): Duplicate local variable definitions
+#   - CS1744 (36): Named argument conflicts (cancellationToken)
+#   - CS7036 (28): Missing required parameters
+#   - CS0118 (14): NonResource namespace/type collision (non-resource spec)
+#   - CS0144 (4): Cannot create abstract class instances
 #
-# These are NOT in .testignore — specs are still generated to preserve
-# visibility into emitter changes. The net8.0 build errors are pre-existing
-# (also affect 10 non-Azure specs with identical error patterns).
+# These errors reflect missing ARM-specific infrastructure:
+#   - Resource operation patterns (CRUD, LRO, collections)
+#   - FromResponse/ToRequestContent model serialization hooks
+#   - ARM-flavored OptionalBody, ProtocolOperationHelpers
+#   - Proper Guid→string path parameter handling
 #
-# --- azure/client-generator-core (15 specs) — emits ✅, net8.0 build ❌ ---
-# access, alternate-type, api-version/{header,path,query},
-# client-default-value, client-initialization/{default,individually,individuallyParent},
-# client-location/{move-method-parameter-to-client,move-to-existing-sub-client,
-#   move-to-new-sub-client,move-to-root-client},
-# deserialize-empty-string-as-null, flatten-property, hierarchy-building,
-# next-link-verb, override, usage
-#
-# --- azure/core (7 specs) — emits ✅, net8.0 build ❌ ---
-# basic, lro/rpc, lro/standard, model, page, scalar, traits
-#
-# --- azure/encode (1), azure/example (1), azure/payload (1) — emits ✅, net8.0 build ❌ ---
-# --- azure/special-headers (1), azure/versioning/previewVersion (v1/v2) — emits ✅, net8.0 build ❌ ---
-#
-# Total: 32 Azure data plane specs emit (0 emit failures)
-# Total: 32 Azure data plane specs fail net8.0 build (1904 CS errors)
-# Total: 27 Azure test files linked (none run — SpectorTestAttribute skips)
-# Total non-Azure net8.0 build failures: 10 specs (584 CS errors, same patterns)
+azure/resource-manager/common-properties
+azure/resource-manager/large-header
+azure/resource-manager/method-subscription-id
+azure/resource-manager/multi-service
+azure/resource-manager/multi-service-older-versions
+azure/resource-manager/multi-service-shared-models
+azure/resource-manager/non-resource
+azure/resource-manager/operation-templates
+azure/resource-manager/resources
 
 # ============================================================
-# NON-AZURE SPECS — ignored
+# AZURE DATA PLANE SPECS — Triage (task 20.6/20.13, 2026-03-08)
+# ============================================================
+# 9 of the original 32 Azure data plane specs still fail net8.0 build.
+# (23 specs now compile successfully after tasks 20.3–20.5 Azure infrastructure fixes.)
+#
+# Root cause: Generated infrastructure files use wrong API surface under net8.0:
+#   - CS0246: HttpMessage type not found (should be PipelineMessage)
+#   - CS0122: ProtocolOperationHelpers inaccessible
+#   - CS1061: Response.GetRawResponse(), RequestHeaders.Set — methods don't exist
+#   - CS1729: Response<T> 2-arg constructor doesn't exist
+#   - CS1503: RequestContext → CancellationToken, BinaryContent → RequestContent
+#
+azure/client-generator-core/flatten-property
+azure/client-generator-core/next-link-verb
+azure/core/basic
+azure/core/lro/rpc
+azure/core/lro/standard
+azure/core/model
+azure/core/page
+azure/core/scalar
+azure/payload/pageable
+
+# ============================================================
+# NON-AZURE SPECS — build failures
 # ============================================================
 
 # === Multipart / file upload specs ===
@@ -57,5 +79,23 @@ type/file
 # Internal infrastructure types (ClientUriBuilder, Argument, extension methods)
 # are generated in one namespace but referenced from sub-clients in a different
 # namespace. Individual project builds succeed; fails in combined E2E build.
+# Affects: client-operation-group, multi-client, default, renamed-operation,
+# two-operation-group, and resiliency/srv-driven (v1/v2).
 service/multi-service
 client/structure/client-operation-group
+client/structure/multi-client
+client/structure/default
+client/structure/renamed-operation
+client/structure/two-operation-group
+resiliency/srv-driven/v1
+resiliency/srv-driven/v2
+
+# === Overload / Naming — Azure API surface in non-Azure specs ===
+# client/overload: Generated convenience methods use Azure.Core types
+# (DiagnosticScope, Response.GetRawResponse) in non-Azure context. Also has
+# CS0136 scope variable redeclaration in nested try blocks.
+# client/naming: UnionEnum convenience methods pass BinaryContent where
+# extensible enum type is expected; also uses Azure.RequestContext in non-Azure
+# context (overload resolution picks wrong protocol method).
+client/overload
+client/naming

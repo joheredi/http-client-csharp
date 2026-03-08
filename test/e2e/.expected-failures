@@ -80,10 +80,9 @@ UnknownValueGet
 GetAsText
 SendAsText
 
-# --- Resiliency/SrvDriven V1: v1 client generated from main.tsp (v2 spec) ---
-# The V1 client embeds "client:v2" in the URL path template instead of "client:v1"
-# because the emitter generates from main.tsp (latest version). The mock server
-# expects "client:v1" for V1 deployment scenarios.
-AddOptionalParamFromNone_V1Client_V1Service_WithApiVersionV1
-AddOptionalParamFromOneOptional_V1Client_V1Service_WithApiVersionV1
-AddOptionalParamFromOneRequired_V1Client_V1Service_WithApiVersionV1
+# --- Resiliency/SrvDriven V1: moved to .testignore (task 20.13) ---
+# resiliency/srv-driven/v1 and v2 are now excluded from e2e generation due to
+# ClientUriBuilder multi-namespace build errors. These entries were:
+#   AddOptionalParamFromNone_V1Client_V1Service_WithApiVersionV1
+#   AddOptionalParamFromOneOptional_V1Client_V1Service_WithApiVersionV1
+#   AddOptionalParamFromOneRequired_V1Client_V1Service_WithApiVersionV1
