@@ -50,7 +50,7 @@ import {
 import { extractVariableSegments } from "./ResourceFile.js";
 import { useEmitterContext } from "../../contexts/emitter-context.js";
 import { getLicenseHeader } from "../../utils/header.js";
-import { efCsharpRefkey } from "../../utils/refkey.js";
+import { argumentRefkey, efCsharpRefkey } from "../../utils/refkey.js";
 import { getAllClients, getSimpleClientName } from "../../utils/clients.js";
 
 // ─── Well-known refkey prefix for mockable provider classes ──────────────────
@@ -408,7 +408,7 @@ public virtual ${collectionRef} Get${pluralize(resourceName)}(${AzureCore.Resour
 [${AzureResourceManager.ForwardsClientCalls}]
 public virtual ${code`Response<${resourceRef}>`} Get${resourceName}(${AzureCore.ResourceIdentifier} scope, string ${resourceNameParam}, CancellationToken cancellationToken = default)
 {
-    ${AzureCore.Argument}.AssertNotNullOrEmpty(${resourceNameParam}, nameof(${resourceNameParam}));
+    ${argumentRefkey()}.AssertNotNullOrEmpty(${resourceNameParam}, nameof(${resourceNameParam}));
 
     return Get${pluralize(resourceName)}(scope).Get(${resourceNameParam}, cancellationToken);
 }
@@ -425,7 +425,7 @@ public virtual ${code`Response<${resourceRef}>`} Get${resourceName}(${AzureCore.
 [${AzureResourceManager.ForwardsClientCalls}]
 public virtual async Task<${code`Response<${resourceRef}>`}> Get${resourceName}Async(${AzureCore.ResourceIdentifier} scope, string ${resourceNameParam}, CancellationToken cancellationToken = default)
 {
-    ${AzureCore.Argument}.AssertNotNullOrEmpty(${resourceNameParam}, nameof(${resourceNameParam}));
+    ${argumentRefkey()}.AssertNotNullOrEmpty(${resourceNameParam}, nameof(${resourceNameParam}));
 
     return await Get${pluralize(resourceName)}(scope).GetAsync(${resourceNameParam}, cancellationToken).ConfigureAwait(false);
 }
@@ -543,7 +543,7 @@ public virtual ${collectionRef} Get${pluralize(resourceName)}()
 [${AzureResourceManager.ForwardsClientCalls}]
 public virtual async Task<${code`Response<${resourceRef}>`}> Get${resourceName}Async(string ${resourceNameParam}, CancellationToken cancellationToken = default)
 {
-    ${AzureCore.Argument}.AssertNotNullOrEmpty(${resourceNameParam}, nameof(${resourceNameParam}));
+    ${argumentRefkey()}.AssertNotNullOrEmpty(${resourceNameParam}, nameof(${resourceNameParam}));
 
     return await Get${pluralize(resourceName)}().GetAsync(${resourceNameParam}, cancellationToken).ConfigureAwait(false);
 }
@@ -571,7 +571,7 @@ public virtual async Task<${code`Response<${resourceRef}>`}> Get${resourceName}A
 [${AzureResourceManager.ForwardsClientCalls}]
 public virtual ${code`Response<${resourceRef}>`} Get${resourceName}(string ${resourceNameParam}, CancellationToken cancellationToken = default)
 {
-    ${AzureCore.Argument}.AssertNotNullOrEmpty(${resourceNameParam}, nameof(${resourceNameParam}));
+    ${argumentRefkey()}.AssertNotNullOrEmpty(${resourceNameParam}, nameof(${resourceNameParam}));
 
     return Get${pluralize(resourceName)}().Get(${resourceNameParam}, cancellationToken);
 }

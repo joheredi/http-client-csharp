@@ -83,6 +83,10 @@ import { XmlDeserialize } from "./components/serialization/XmlDeserialize.js";
 import { XmlModelWriteCore } from "./components/serialization/XmlModelWriteCore.js";
 import { XmlWriteXml } from "./components/serialization/XmlWriteXml.js";
 import { ToBinaryContent } from "./components/serialization/ToBinaryContent.js";
+import {
+  ArmFromResponse,
+  ArmToRequestContent,
+} from "./components/serialization/ArmModelBridgeMethods.js";
 import { $lib } from "./lib.js";
 import { type CSharpEmitterOptions, resolveOptions } from "./options.js";
 import { getAllClients } from "./utils/clients.js";
@@ -493,6 +497,14 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
               {supportsXml && <XmlDeserialize type={m} />}
               {isDynamicModel(m) && "\n\n"}
               {isDynamicModel(m) && <DynamicModelPropagators type={m} />}
+              {options.management && supportsJson && "\n\n"}
+              {options.management && supportsJson && (
+                <ArmFromResponse type={m} />
+              )}
+              {options.management && supportsJson && "\n\n"}
+              {options.management && supportsJson && (
+                <ArmToRequestContent type={m} />
+              )}
             </ModelSerializationFile>
           );
         })}

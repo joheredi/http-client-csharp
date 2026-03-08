@@ -47,7 +47,7 @@ import {
 import { extractVariableSegments } from "./ResourceFile.js";
 import { useEmitterContext } from "../../contexts/emitter-context.js";
 import { getLicenseHeader } from "../../utils/header.js";
-import { efCsharpRefkey } from "../../utils/refkey.js";
+import { argumentRefkey, efCsharpRefkey } from "../../utils/refkey.js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -210,7 +210,7 @@ function buildArmClientExtensions(
 /// <returns> Returns a <see cref="${resourceClassName}"/> object. </returns>
 public static ${resourceRef} Get${resourceClassName}(this ${AzureResourceManager.ArmClient} client, ${AzureCore.ResourceIdentifier} id)
 {
-    ${AzureCore.Argument}.AssertNotNull(client, nameof(client));
+    ${argumentRefkey()}.AssertNotNull(client, nameof(client));
 
     return Get${mockableClassName}(client).Get${resourceClassName}(id);
 }
@@ -234,7 +234,7 @@ public static ${resourceRef} Get${resourceClassName}(this ${AzureResourceManager
 /// <returns> Returns a <see cref="${resourceClassName}"/> object. </returns>
 public static ${resourceRef} Get${resourceName}(this ${AzureResourceManager.ArmClient} client, ${AzureCore.ResourceIdentifier} scope)
 {
-    ${AzureCore.Argument}.AssertNotNull(client, nameof(client));
+    ${argumentRefkey()}.AssertNotNull(client, nameof(client));
 
     return Get${mockableClassName}(client).Get${resourceName}(scope);
 }
@@ -266,7 +266,7 @@ public static ${resourceRef} Get${resourceName}(this ${AzureResourceManager.ArmC
 /// <returns> Returns a collection of <see cref="${resourceClassName}"/> objects. </returns>
 public static ${collectionRef} Get${pluralize(resourceName)}(this ${AzureResourceManager.ArmClient} client, ${AzureCore.ResourceIdentifier} scope)
 {
-    ${AzureCore.Argument}.AssertNotNull(client, nameof(client));
+    ${argumentRefkey()}.AssertNotNull(client, nameof(client));
 
     return Get${mockableClassName}(client).Get${pluralize(resourceName)}(scope);
 }
@@ -291,7 +291,7 @@ public static ${collectionRef} Get${pluralize(resourceName)}(this ${AzureResourc
 [${AzureResourceManager.ForwardsClientCalls}]
 public static ${code`Response<${resourceRef}>`} Get${resourceName}(this ${AzureResourceManager.ArmClient} client, ${AzureCore.ResourceIdentifier} scope, string ${resourceNameParam}, CancellationToken cancellationToken = default)
 {
-    ${AzureCore.Argument}.AssertNotNull(client, nameof(client));
+    ${argumentRefkey()}.AssertNotNull(client, nameof(client));
 
     return Get${mockableClassName}(client).Get${resourceName}(scope, ${resourceNameParam}, cancellationToken);
 }
@@ -314,7 +314,7 @@ public static ${code`Response<${resourceRef}>`} Get${resourceName}(this ${AzureR
 [${AzureResourceManager.ForwardsClientCalls}]
 public static async Task<${code`Response<${resourceRef}>`}> Get${resourceName}Async(this ${AzureResourceManager.ArmClient} client, ${AzureCore.ResourceIdentifier} scope, string ${resourceNameParam}, CancellationToken cancellationToken = default)
 {
-    ${AzureCore.Argument}.AssertNotNull(client, nameof(client));
+    ${argumentRefkey()}.AssertNotNull(client, nameof(client));
 
     return await Get${mockableClassName}(client).Get${resourceName}Async(scope, ${resourceNameParam}, cancellationToken).ConfigureAwait(false);
 }
@@ -384,7 +384,7 @@ function buildScopeExtensions(
 /// <returns> Returns a <see cref="${resourceClassName}"/> object. </returns>
 public static ${resourceRef} Get${resourceName}(this ${scopeTypeRef} ${paramName})
 {
-    ${AzureCore.Argument}.AssertNotNull(${paramName}, nameof(${paramName}));
+    ${argumentRefkey()}.AssertNotNull(${paramName}, nameof(${paramName}));
 
     return Get${mockableClassName}(${paramName}).Get${resourceName}();
 }
@@ -413,7 +413,7 @@ public static ${resourceRef} Get${resourceName}(this ${scopeTypeRef} ${paramName
 /// <returns> An object representing collection of ${pluralize(resourceName)} and their operations over a ${resourceClassName}. </returns>
 public static ${collectionRef} Get${pluralize(resourceName)}(this ${scopeTypeRef} ${paramName})
 {
-    ${AzureCore.Argument}.AssertNotNull(${paramName}, nameof(${paramName}));
+    ${argumentRefkey()}.AssertNotNull(${paramName}, nameof(${paramName}));
 
     return Get${mockableClassName}(${paramName}).Get${pluralize(resourceName)}();
 }
@@ -437,7 +437,7 @@ public static ${collectionRef} Get${pluralize(resourceName)}(this ${scopeTypeRef
 [${AzureResourceManager.ForwardsClientCalls}]
 public static async Task<${code`Response<${resourceRef}>`}> Get${resourceName}Async(this ${scopeTypeRef} ${paramName}, string ${resourceNameParam}, CancellationToken cancellationToken = default)
 {
-    ${AzureCore.Argument}.AssertNotNull(${paramName}, nameof(${paramName}));
+    ${argumentRefkey()}.AssertNotNull(${paramName}, nameof(${paramName}));
 
     return await Get${mockableClassName}(${paramName}).Get${resourceName}Async(${resourceNameParam}, cancellationToken).ConfigureAwait(false);
 }
@@ -459,7 +459,7 @@ public static async Task<${code`Response<${resourceRef}>`}> Get${resourceName}As
 [${AzureResourceManager.ForwardsClientCalls}]
 public static ${code`Response<${resourceRef}>`} Get${resourceName}(this ${scopeTypeRef} ${paramName}, string ${resourceNameParam}, CancellationToken cancellationToken = default)
 {
-    ${AzureCore.Argument}.AssertNotNull(${paramName}, nameof(${paramName}));
+    ${argumentRefkey()}.AssertNotNull(${paramName}, nameof(${paramName}));
 
     return Get${mockableClassName}(${paramName}).Get${resourceName}(${resourceNameParam}, cancellationToken);
 }
@@ -595,7 +595,7 @@ function buildNonResourceExtensions(
 /// <exception cref="ArgumentNullException"> <paramref name="${paramName}"/> is null. </exception>
 public static async ${SystemThreadingTasks.Task}<${code`${Azure.Response}<${responseModelRef}>`}> ${methodName}Async(this ${scopeTypeRef} ${paramName}, ${extParamDecls}${SystemThreading.CancellationToken} cancellationToken = default)
 {
-    ${AzureCore.Argument}.AssertNotNull(${paramName}, nameof(${paramName}));
+    ${argumentRefkey()}.AssertNotNull(${paramName}, nameof(${paramName}));
 
     return await Get${mockableClassName}(${paramName}).${methodName}Async(${fwdArgs}cancellationToken).ConfigureAwait(false);
 }
@@ -615,7 +615,7 @@ public static async ${SystemThreadingTasks.Task}<${code`${Azure.Response}<${resp
 /// <exception cref="ArgumentNullException"> <paramref name="${paramName}"/> is null. </exception>
 public static ${code`${Azure.Response}<${responseModelRef}>`} ${methodName}(this ${scopeTypeRef} ${paramName}, ${extParamDecls}${SystemThreading.CancellationToken} cancellationToken = default)
 {
-    ${AzureCore.Argument}.AssertNotNull(${paramName}, nameof(${paramName}));
+    ${argumentRefkey()}.AssertNotNull(${paramName}, nameof(${paramName}));
 
     return Get${mockableClassName}(${paramName}).${methodName}(${fwdArgs}cancellationToken);
 }
@@ -635,7 +635,7 @@ public static ${code`${Azure.Response}<${responseModelRef}>`} ${methodName}(this
 /// <exception cref="ArgumentNullException"> <paramref name="${paramName}"/> is null. </exception>
 public static async ${SystemThreadingTasks.Task}<${Azure.Response}> ${methodName}Async(this ${scopeTypeRef} ${paramName}, ${extParamDecls}${SystemThreading.CancellationToken} cancellationToken = default)
 {
-    ${AzureCore.Argument}.AssertNotNull(${paramName}, nameof(${paramName}));
+    ${argumentRefkey()}.AssertNotNull(${paramName}, nameof(${paramName}));
 
     return await Get${mockableClassName}(${paramName}).${methodName}Async(${fwdArgs}cancellationToken).ConfigureAwait(false);
 }
@@ -654,7 +654,7 @@ public static async ${SystemThreadingTasks.Task}<${Azure.Response}> ${methodName
 /// <exception cref="ArgumentNullException"> <paramref name="${paramName}"/> is null. </exception>
 public static ${Azure.Response} ${methodName}(this ${scopeTypeRef} ${paramName}, ${extParamDecls}${SystemThreading.CancellationToken} cancellationToken = default)
 {
-    ${AzureCore.Argument}.AssertNotNull(${paramName}, nameof(${paramName}));
+    ${argumentRefkey()}.AssertNotNull(${paramName}, nameof(${paramName}));
 
     return Get${mockableClassName}(${paramName}).${methodName}(${fwdArgs}cancellationToken);
 }

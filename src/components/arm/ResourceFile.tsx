@@ -41,7 +41,7 @@ import {
 } from "../../utils/resource-metadata.js";
 import { useEmitterContext } from "../../contexts/emitter-context.js";
 import { getLicenseHeader } from "../../utils/header.js";
-import { efCsharpRefkey } from "../../utils/refkey.js";
+import { argumentRefkey, efCsharpRefkey } from "../../utils/refkey.js";
 import { getAllClients, getSimpleClientName } from "../../utils/clients.js";
 import { isVariableSegment } from "../../utils/arm-path-utils.js";
 import {
@@ -416,7 +416,7 @@ export function buildIdAccessorExpressions(
     }
 
     if (name === "subscriptionId" || name.toLowerCase() === "subscriptionid") {
-      return "Guid.Parse(Id.SubscriptionId)";
+      return "Id.SubscriptionId";
     }
     if (
       name === "resourceGroupName" ||
@@ -839,7 +839,7 @@ function buildLroOperation(
     ? `\n/// <param name="data"> The resource properties to be updated. </param>`
     : "";
   const bodyParamAssertion = hasBody
-    ? code`\n    ${AzureCore.Argument}.AssertNotNull(data, nameof(data));`
+    ? code`\n    ${argumentRefkey()}.AssertNotNull(data, nameof(data));`
     : code``;
   const bodyParamException = hasBody
     ? `\n/// <exception cref="ArgumentNullException"> <paramref name="data"/> is null. </exception>`

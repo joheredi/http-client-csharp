@@ -53,7 +53,6 @@ const AZURE_SHARED_SOURCE_FILES = [
  * `Directory.Build.Common.targets` for management libraries.
  */
 const ARM_SHARED_SOURCE_FILES = [
-  "Argument.cs",
   "AsyncLockWithValue.cs",
   "FixedDelayWithNoJitterStrategy.cs",
   "ForwardsClientCallsAttribute.cs",

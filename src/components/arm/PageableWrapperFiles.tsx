@@ -26,11 +26,14 @@ import { getLicenseHeader } from "../../utils/header.js";
  */
 export function PageableWrapperFiles() {
   const ctx = useEmitterContext();
-  const { options, packageName } = ctx;
+  const { options, packageName, sdkPackage } = ctx;
   const header = getLicenseHeader(options);
 
-  // Use the root namespace from the REST client
-  const ns = packageName;
+  // Use the cleaned root namespace from the first client rather than the raw
+  // packageName. cleanAllNamespaces() may have prefixed segments with `_` to
+  // avoid CS0118 namespace/type collisions (e.g., "NonResource" →
+  // "_NonResource"). The SDK client namespaces reflect the cleaned value.
+  const ns = sdkPackage.clients[0]?.namespace ?? packageName;
 
   return (
     <>

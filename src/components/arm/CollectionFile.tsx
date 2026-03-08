@@ -44,7 +44,7 @@ import {
 } from "../../utils/resource-metadata.js";
 import { useEmitterContext } from "../../contexts/emitter-context.js";
 import { getLicenseHeader } from "../../utils/header.js";
-import { efCsharpRefkey } from "../../utils/refkey.js";
+import { argumentRefkey, efCsharpRefkey } from "../../utils/refkey.js";
 import { getSimpleClientName } from "../../utils/clients.js";
 import {
   armResourceRefkey,
@@ -664,8 +664,8 @@ ${waitUntilDoc}
 /// <exception cref="ArgumentException"> <paramref name="${resourceNameParam}"/> is an empty string, and was expected to be non-empty. </exception>
 public virtual async ${SystemThreadingTasks.Task}<${AzureResourceManager.ArmOperation}<${resourceClassName}>> ${methodName}Async(${Azure.WaitUntil} waitUntil, string ${resourceNameParam}, ${modelRef} data, ${SystemThreading.CancellationToken} cancellationToken = default)
 {
-    ${AzureCore.Argument}.AssertNotNullOrEmpty(${resourceNameParam}, nameof(${resourceNameParam}));
-    ${AzureCore.Argument}.AssertNotNull(data, nameof(data));
+    ${argumentRefkey()}.AssertNotNullOrEmpty(${resourceNameParam}, nameof(${resourceNameParam}));
+    ${argumentRefkey()}.AssertNotNull(data, nameof(data));
 
     using ${AzureCorePipeline.DiagnosticScope} scope = ${diagnosticsFieldName}.CreateScope("${scopeName}");
     scope.Start();
@@ -708,8 +708,8 @@ ${waitUntilDoc}
 /// <exception cref="ArgumentException"> <paramref name="${resourceNameParam}"/> is an empty string, and was expected to be non-empty. </exception>
 public virtual ${AzureResourceManager.ArmOperation}<${resourceClassName}> ${methodName}(${Azure.WaitUntil} waitUntil, string ${resourceNameParam}, ${modelRef} data, ${SystemThreading.CancellationToken} cancellationToken = default)
 {
-    ${AzureCore.Argument}.AssertNotNullOrEmpty(${resourceNameParam}, nameof(${resourceNameParam}));
-    ${AzureCore.Argument}.AssertNotNull(data, nameof(data));
+    ${argumentRefkey()}.AssertNotNullOrEmpty(${resourceNameParam}, nameof(${resourceNameParam}));
+    ${argumentRefkey()}.AssertNotNull(data, nameof(data));
 
     using ${AzureCorePipeline.DiagnosticScope} scope = ${diagnosticsFieldName}.CreateScope("${scopeName}");
     scope.Start();
@@ -787,7 +787,7 @@ ${xmlDoc}
 /// <exception cref="ArgumentException"> <paramref name="${resourceNameParam}"/> is an empty string, and was expected to be non-empty. </exception>
 public virtual async ${SystemThreadingTasks.Task}<${Azure.Response}<${resourceClassName}>> ${methodName}Async(string ${resourceNameParam}, ${SystemThreading.CancellationToken} cancellationToken = default)
 {
-    ${AzureCore.Argument}.AssertNotNullOrEmpty(${resourceNameParam}, nameof(${resourceNameParam}));
+    ${argumentRefkey()}.AssertNotNullOrEmpty(${resourceNameParam}, nameof(${resourceNameParam}));
 
     using ${AzureCorePipeline.DiagnosticScope} scope = ${diagnosticsFieldName}.CreateScope("${scopeName}");
     scope.Start();
@@ -822,7 +822,7 @@ ${xmlDoc}
 /// <exception cref="ArgumentException"> <paramref name="${resourceNameParam}"/> is an empty string, and was expected to be non-empty. </exception>
 public virtual ${Azure.Response}<${resourceClassName}> ${methodName}(string ${resourceNameParam}, ${SystemThreading.CancellationToken} cancellationToken = default)
 {
-    ${AzureCore.Argument}.AssertNotNullOrEmpty(${resourceNameParam}, nameof(${resourceNameParam}));
+    ${argumentRefkey()}.AssertNotNullOrEmpty(${resourceNameParam}, nameof(${resourceNameParam}));
 
     using ${AzureCorePipeline.DiagnosticScope} scope = ${diagnosticsFieldName}.CreateScope("${scopeName}");
     scope.Start();
@@ -961,7 +961,7 @@ ${xmlDoc}
 /// <exception cref="ArgumentException"> <paramref name="${resourceNameParam}"/> is an empty string, and was expected to be non-empty. </exception>
 public virtual async ${SystemThreadingTasks.Task}<${Azure.Response}<bool>> ExistsAsync(string ${resourceNameParam}, ${SystemThreading.CancellationToken} cancellationToken = default)
 {
-    ${AzureCore.Argument}.AssertNotNullOrEmpty(${resourceNameParam}, nameof(${resourceNameParam}));
+    ${argumentRefkey()}.AssertNotNullOrEmpty(${resourceNameParam}, nameof(${resourceNameParam}));
 
     using ${AzureCorePipeline.DiagnosticScope} scope = ${diagnosticsFieldName}.CreateScope("${collectionClassName}.Exists");
     scope.Start();
@@ -1004,7 +1004,7 @@ ${xmlDoc}
 /// <exception cref="ArgumentException"> <paramref name="${resourceNameParam}"/> is an empty string, and was expected to be non-empty. </exception>
 public virtual ${Azure.Response}<bool> Exists(string ${resourceNameParam}, ${SystemThreading.CancellationToken} cancellationToken = default)
 {
-    ${AzureCore.Argument}.AssertNotNullOrEmpty(${resourceNameParam}, nameof(${resourceNameParam}));
+    ${argumentRefkey()}.AssertNotNullOrEmpty(${resourceNameParam}, nameof(${resourceNameParam}));
 
     using ${AzureCorePipeline.DiagnosticScope} scope = ${diagnosticsFieldName}.CreateScope("${collectionClassName}.Exists");
     scope.Start();
@@ -1082,7 +1082,7 @@ ${xmlDoc}
 /// <exception cref="ArgumentException"> <paramref name="${resourceNameParam}"/> is an empty string, and was expected to be non-empty. </exception>
 public virtual async ${SystemThreadingTasks.Task}<${Azure.NullableResponse}<${resourceClassName}>> GetIfExistsAsync(string ${resourceNameParam}, ${SystemThreading.CancellationToken} cancellationToken = default)
 {
-    ${AzureCore.Argument}.AssertNotNullOrEmpty(${resourceNameParam}, nameof(${resourceNameParam}));
+    ${argumentRefkey()}.AssertNotNullOrEmpty(${resourceNameParam}, nameof(${resourceNameParam}));
 
     using ${AzureCorePipeline.DiagnosticScope} scope = ${diagnosticsFieldName}.CreateScope("${collectionClassName}.GetIfExists");
     scope.Start();
@@ -1129,7 +1129,7 @@ ${xmlDoc}
 /// <exception cref="ArgumentException"> <paramref name="${resourceNameParam}"/> is an empty string, and was expected to be non-empty. </exception>
 public virtual ${Azure.NullableResponse}<${resourceClassName}> GetIfExists(string ${resourceNameParam}, ${SystemThreading.CancellationToken} cancellationToken = default)
 {
-    ${AzureCore.Argument}.AssertNotNullOrEmpty(${resourceNameParam}, nameof(${resourceNameParam}));
+    ${argumentRefkey()}.AssertNotNullOrEmpty(${resourceNameParam}, nameof(${resourceNameParam}));
 
     using ${AzureCorePipeline.DiagnosticScope} scope = ${diagnosticsFieldName}.CreateScope("${collectionClassName}.GetIfExists");
     scope.Start();

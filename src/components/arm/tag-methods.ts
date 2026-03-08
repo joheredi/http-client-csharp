@@ -34,7 +34,7 @@ import { SystemThreading } from "../../builtins/system-threading.js";
 import { SystemThreadingTasks } from "../../builtins/system-threading.js";
 import type { ResourceMetadata } from "../../utils/resource-metadata.js";
 import { ResourceOperationKind } from "../../utils/resource-metadata.js";
-import { efCsharpRefkey } from "../../utils/refkey.js";
+import { argumentRefkey, efCsharpRefkey } from "../../utils/refkey.js";
 import { unwrapNullableType } from "../../utils/nullable.js";
 import { getOperationMethodName } from "./ResourceFile.js";
 
@@ -224,8 +224,8 @@ function buildAddTagMethod(
 /// <param name="cancellationToken"> The cancellation token to use. </param>
 public virtual async ${SystemThreadingTasks.Task}<${Azure.Response}<${className}>> AddTagAsync(string key, string value, ${SystemThreading.CancellationToken} cancellationToken = default)
 {
-    ${AzureCore.Argument}.AssertNotNull(key, nameof(key));
-    ${AzureCore.Argument}.AssertNotNull(value, nameof(value));
+    ${argumentRefkey()}.AssertNotNull(key, nameof(key));
+    ${argumentRefkey()}.AssertNotNull(value, nameof(value));
 
     using ${AzureCorePipeline.DiagnosticScope} scope = ${diagnosticsFieldName}.CreateScope("${className}.AddTag");
     scope.Start();
@@ -268,8 +268,8 @@ ${secondary}
 /// <param name="cancellationToken"> The cancellation token to use. </param>
 public virtual ${Azure.Response}<${className}> AddTag(string key, string value, ${SystemThreading.CancellationToken} cancellationToken = default)
 {
-    ${AzureCore.Argument}.AssertNotNull(key, nameof(key));
-    ${AzureCore.Argument}.AssertNotNull(value, nameof(value));
+    ${argumentRefkey()}.AssertNotNull(key, nameof(key));
+    ${argumentRefkey()}.AssertNotNull(value, nameof(value));
 
     using ${AzureCorePipeline.DiagnosticScope} scope = ${diagnosticsFieldName}.CreateScope("${className}.AddTag");
     scope.Start();
@@ -338,7 +338,7 @@ function buildSetTagsMethod(
 /// <param name="cancellationToken"> The cancellation token to use. </param>
 public virtual async ${SystemThreadingTasks.Task}<${Azure.Response}<${className}>> SetTagsAsync(${SystemCollectionsGeneric.IDictionary}<string, string> tags, ${SystemThreading.CancellationToken} cancellationToken = default)
 {
-    ${AzureCore.Argument}.AssertNotNull(tags, nameof(tags));
+    ${argumentRefkey()}.AssertNotNull(tags, nameof(tags));
 
     using ${AzureCorePipeline.DiagnosticScope} scope = ${diagnosticsFieldName}.CreateScope("${className}.SetTags");
     scope.Start();
@@ -381,7 +381,7 @@ ${secondary}
 /// <param name="cancellationToken"> The cancellation token to use. </param>
 public virtual ${Azure.Response}<${className}> SetTags(${SystemCollectionsGeneric.IDictionary}<string, string> tags, ${SystemThreading.CancellationToken} cancellationToken = default)
 {
-    ${AzureCore.Argument}.AssertNotNull(tags, nameof(tags));
+    ${argumentRefkey()}.AssertNotNull(tags, nameof(tags));
 
     using ${AzureCorePipeline.DiagnosticScope} scope = ${diagnosticsFieldName}.CreateScope("${className}.SetTags");
     scope.Start();
@@ -450,7 +450,7 @@ function buildRemoveTagMethod(
 /// <param name="cancellationToken"> The cancellation token to use. </param>
 public virtual async ${SystemThreadingTasks.Task}<${Azure.Response}<${className}>> RemoveTagAsync(string key, ${SystemThreading.CancellationToken} cancellationToken = default)
 {
-    ${AzureCore.Argument}.AssertNotNull(key, nameof(key));
+    ${argumentRefkey()}.AssertNotNull(key, nameof(key));
 
     using ${AzureCorePipeline.DiagnosticScope} scope = ${diagnosticsFieldName}.CreateScope("${className}.RemoveTag");
     scope.Start();
@@ -492,7 +492,7 @@ ${secondary}
 /// <param name="cancellationToken"> The cancellation token to use. </param>
 public virtual ${Azure.Response}<${className}> RemoveTag(string key, ${SystemThreading.CancellationToken} cancellationToken = default)
 {
-    ${AzureCore.Argument}.AssertNotNull(key, nameof(key));
+    ${argumentRefkey()}.AssertNotNull(key, nameof(key));
 
     using ${AzureCorePipeline.DiagnosticScope} scope = ${diagnosticsFieldName}.CreateScope("${className}.RemoveTag");
     scope.Start();

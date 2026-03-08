@@ -4,15 +4,14 @@
 # ============================================================
 # ARM RESOURCE MANAGER SPECS
 # ============================================================
-# Deep ARM infrastructure gaps: inaccessible ProtocolOperationHelpers,
-# missing FromResponse/ToRequestContent, Guid→string conversion, etc.
+# Remaining ARM specs have deep infrastructure gaps: missing ArmOperation
+# wrapper types, Response/ClientResult mismatches, constructor argument
+# count mismatches, duplicate variable definitions, etc.
 azure/resource-manager/common-properties
-azure/resource-manager/large-header
 azure/resource-manager/method-subscription-id
 azure/resource-manager/multi-service
 azure/resource-manager/multi-service-older-versions
 azure/resource-manager/multi-service-shared-models
-azure/resource-manager/non-resource
 azure/resource-manager/operation-templates
 azure/resource-manager/resources
 
