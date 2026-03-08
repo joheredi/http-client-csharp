@@ -2546,7 +2546,7 @@
           "title": "Implement Azure Pageable<T>/AsyncPageable<T> for paging specs",
           "description": "4 Azure specs are in .testignore because the paging infrastructure uses CollectionResult (System.ClientModel) which requires ClientResult returns, but Azure pipeline returns Response. Need Azure-specific Pageable<T>/AsyncPageable<T> base classes.\n\nBlocked specs: azure/core/basic, azure/core/page, azure/client-generator-core/next-link-verb, azure/payload/pageable.\n\nFix: Generate Azure-flavored paging methods that return Pageable<T>/AsyncPageable<T> from Azure.Core instead of CollectionResult<T> from System.ClientModel. Update PagingMethods.tsx and CollectionResultFile.tsx to handle Azure flavor.",
           "phase": "phase-21",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [
@@ -2816,6 +2816,14 @@
             "At least 3 of 9 ARM specs removed from .testignore",
             "ARM specs compile with significantly fewer CS errors"
           ]
+        },
+        {
+          "id": "21.19",
+          "title": "Fix Azure.ETag serialization in generated models",
+          "description": "azure/core/basic and azure/core/page specs fail to compile because User.Serialization.cs has type conversion errors: Azure.ETag cannot convert to System.DateTime (CS1503) and string cannot convert to Azure.ETag (CS0029). The serialization code generator does not handle Azure.ETag type correctly.",
+          "status": "pending",
+          "phase": "phase-21",
+          "dependencies": []
         }
       ]
     }

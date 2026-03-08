@@ -6878,3 +6878,30 @@ Task 21.11 (2026-03-08) — Enable optionality property e2e test coverage:
 - **Files changed**: `src/components/infrastructure/ProjectFile.tsx`, `src/emitter.tsx`, `src/utils/model.ts`, `test/project-scaffolding.test.ts`, `test/e2e/.testignore`, `test/e2e/Spector.Tests/Spector.Tests.csproj`, `test/e2e/Spector.Tests/Http/Azure/Core/Lro/Rpc/LroRpcTests.cs`, `test/e2e/Spector.Tests/Http/Azure/Core/Lro/Standard/LroStandardTests.cs`
 
 - **Tests**: 1705 unit tests pass (+2 new ProjectFile LRO tests), 731 e2e tests pass (+5 new LRO tests), 0 unexpected failures.
+
+## Task 21.6 — Implement Azure Pageable<T>/AsyncPageable<T> for paging specs (2026-03-08)
+
+- **Problem**: 4 Azure paging specs were in `.testignore` because the emitter used System.ClientModel's `CollectionResult`/`AsyncCollectionResult` for all flavors. Azure pipeline returns `Response` (not `ClientResult`), and Azure SDK consumers expect `Pageable<T>`/`AsyncPageable<T>` from Azure.Core.
+
+- **Root cause**: The paging implementation was flavor-agnostic — it always generated `CollectionResult` subclasses with `GetRawPages()`, `GetContinuationToken()`, and `GetValuesFromPage()`. Azure specs need fundamentally different base classes (`Pageable<T>` with `AsPages()`) that yield `Page<T>` objects.
+
+- **Fix (new component)**: Created `src/components/collection-results/AzurePageableFile.tsx` — a parallel component to `CollectionResultFile.tsx` that generates Azure-specific paging classes:
+  - Extends `Pageable<BinaryData>`/`AsyncPageable<BinaryData>` (protocol) and `Pageable<T>`/`AsyncPageable<T>` (convenience)
+  - Implements `AsPages(string continuationToken, int? pageSizeHint)` with `yield return Page<T>.FromValues()`
+  - Private `GetNextResponse`/`GetNextResponseAsync` with `DiagnosticScope` for distributed tracing
+  - Constructor chains to base with `context?.CancellationToken ?? default`
+  - Supports all 3 paging strategies: next-link, continuation-token, single-page
+
+- **Fix (PagingMethods.tsx)**: For Azure flavor, client methods now return `Pageable<BinaryData>`/`AsyncPageable<BinaryData>` (protocol) and `Pageable<T>`/`AsyncPageable<T>` (convenience) instead of `CollectionResult`/`AsyncCollectionResult`.
+
+- **Fix (emitter.tsx)**: Conditionally uses `AzurePageableFiles` for Azure flavor, `CollectionResultFiles` for unbranded. Also fixed model filtering to exempt paging response models (Azure.Core page wrappers) from the Azure.Core framework type filter — these models are needed for casting Response to extract items/next-links.
+
+- **Fix (builtins)**: Added `Page<T>` (with `FromValues` method) to Azure builtins, `ValueTask<T>` to SystemThreadingTasks builtins.
+
+- **Remaining**: azure/core/basic and azure/core/page still blocked by unrelated ETag serialization bug (tracked as task 21.19). azure/payload/pageable and azure/client-generator-core/next-link-verb now pass e2e.
+
+- **Also marked 21.17 as done**: Task 21.7 already added all required ARM shared source files (ProtocolOperationHelpers, OperationFinalStateVia, VoidValue) — 21.17 was fully addressed.
+
+- **Files changed**: `src/components/collection-results/AzurePageableFile.tsx` (new), `src/components/clients/PagingMethods.tsx`, `src/emitter.tsx`, `src/builtins/azure.ts`, `src/builtins/system-threading.ts`, `test/azure-pageable.test.ts` (new), `test/e2e/.testignore`
+
+- **Tests**: 1,709 unit tests pass (+4 new Azure pageable tests), e2e tests pass (2 new Azure paging specs enabled), 0 unexpected failures.

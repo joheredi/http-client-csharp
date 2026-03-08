@@ -22,6 +22,8 @@ type PagingLikeMethod<
     import("@azure-tools/typespec-client-generator-core").SdkServiceOperation,
 > = SdkPagingServiceMethod<T> | SdkLroPagingServiceMethod<T>;
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
+import { System } from "../../builtins/system.js";
+import { Azure } from "../../builtins/azure.js";
 import {
   SystemClientModel,
   SystemClientModelPrimitives,
@@ -256,6 +258,16 @@ function renderProtocolPagingMethods(
   const asyncClassName = `${classNameBase}AsyncCollectionResult`;
   const asyncBody = `return new ${asyncClassName}(${constructorArgs});`;
 
+  // Azure uses Pageable<BinaryData>/AsyncPageable<BinaryData> from Azure.Core;
+  // Unbranded uses CollectionResult/AsyncCollectionResult from System.ClientModel.Primitives.
+  const isAzure = flavor === "azure";
+  const syncReturn = isAzure
+    ? code`${Azure.Pageable}<${System.BinaryData}>`
+    : (SystemClientModelPrimitives.CollectionResult as Children);
+  const asyncReturn = isAzure
+    ? code`${Azure.AsyncPageable}<${System.BinaryData}>`
+    : (SystemClientModelPrimitives.AsyncCollectionResult as Children);
+
   return [
     "\n\n",
     ...xmlDoc,
@@ -264,7 +276,7 @@ function renderProtocolPagingMethods(
       {...accessProps}
       virtual
       name={namekey(methodName, { ignoreNameConflict: true })}
-      returns={SystemClientModelPrimitives.CollectionResult}
+      returns={syncReturn}
       parameters={methodParams}
     >
       {syncBody}
@@ -276,7 +288,7 @@ function renderProtocolPagingMethods(
       {...accessProps}
       virtual
       name={namekey(`${methodName}Async`, { ignoreNameConflict: true })}
-      returns={SystemClientModelPrimitives.AsyncCollectionResult}
+      returns={asyncReturn}
       parameters={methodParams}
     >
       {asyncBody}
@@ -334,9 +346,15 @@ function renderConveniencePagingMethods(
 
   const xmlDoc = buildConvenienceXmlDoc(description, reorderedParams, []);
 
-  // Return types with generic item type
-  const syncReturn = code`${SystemClientModel.CollectionResult}<${itemTypeExpr}>`;
-  const asyncReturn = code`${SystemClientModel.AsyncCollectionResult}<${itemTypeExpr}>`;
+  // Azure uses Pageable<T>/AsyncPageable<T> from Azure.Core;
+  // Unbranded uses CollectionResult<T>/AsyncCollectionResult<T> from System.ClientModel.
+  const isAzure = flavor === "azure";
+  const syncReturn = isAzure
+    ? code`${Azure.Pageable}<${itemTypeExpr}>`
+    : code`${SystemClientModel.CollectionResult}<${itemTypeExpr}>`;
+  const asyncReturn = isAzure
+    ? code`${Azure.AsyncPageable}<${itemTypeExpr}>`
+    : code`${SystemClientModel.AsyncCollectionResult}<${itemTypeExpr}>`;
 
   // Sync convenience method
   const syncClassName = `${classNameBase}CollectionResultOfT`;

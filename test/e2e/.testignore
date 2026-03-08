@@ -18,11 +18,9 @@ azure/resource-manager/resources
 # ============================================================
 # AZURE DATA PLANE SPECS — Remaining failures
 # ============================================================
-# Paging: CollectionResult requires ClientResult but Azure returns Response.
-azure/client-generator-core/next-link-verb
+# ETag serialization: Azure.ETag ↔ DateTime/string type mismatch in User.Serialization.cs
 azure/core/basic
 azure/core/page
-azure/payload/pageable
 
 # ============================================================
 # NON-AZURE SPECS — remaining build failures

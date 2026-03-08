@@ -70,4 +70,16 @@ export const SystemThreadingTasks = createLibrary("System.Threading.Tasks", {
     kind: "class",
     members: {},
   },
+
+  /**
+   * Represents an asynchronous operation that provides a value with less
+   * overhead than Task{T}. Used as the return type for private async helpers
+   * like GetNextResponseAsync in Azure paging implementations.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/system.threading.tasks.valuetask-1
+   */
+  ValueTask: {
+    kind: "struct",
+    members: {},
+  },
 });

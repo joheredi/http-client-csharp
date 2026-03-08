@@ -17,6 +17,7 @@ import { ClientOptionsFile } from "./components/client-options/ClientOptionsFile
 import { ClientFile } from "./components/clients/ClientFile.js";
 import { RestClientFile } from "./components/clients/RestClientFile.js";
 import { CollectionResultFiles } from "./components/collection-results/CollectionResultFile.js";
+import { AzurePageableFiles } from "./components/collection-results/AzurePageableFile.js";
 import { CSharpScalarOverrides } from "./components/CSharpTypeExpression.js";
 import { ExtensibleEnumFile } from "./components/enums/ExtensibleEnumFile.js";
 import { ExtensibleEnumSerializationFile } from "./components/enums/ExtensibleEnumSerializationFile.js";
@@ -192,9 +193,36 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
   // or shared source files. Generating them causes CS0053 conflicts with internal
   // types from shared sources (e.g., `internal struct OperationState` in
   // OperationInternal.cs vs generated `public struct OperationState`).
+  //
+  // Exception: paging response models (e.g., Azure.Core.Foundations.CustomPage)
+  // must NOT be filtered — they are needed by collection result classes to cast
+  // Response objects and extract items/next-links.
   const isAzure = options.flavor === "azure";
+  const allClients = getAllClients(clients);
+
+  // Collect crossLanguageDefinitionIds of models used as paging responses.
+  // These must be kept even when they have Azure.Core.* IDs.
+  const pagingResponseModelIds = new Set<string>();
+  if (isAzure) {
+    for (const client of allClients) {
+      for (const method of client.methods) {
+        if (method.kind === "paging" || method.kind === "lropaging") {
+          for (const resp of method.operation.responses) {
+            if (resp.type?.kind === "model") {
+              pagingResponseModelIds.add(resp.type.crossLanguageDefinitionId);
+            }
+          }
+        }
+      }
+    }
+  }
+
   const models = isAzure
-    ? allModels.filter((m) => !isAzureCoreFrameworkModel(m))
+    ? allModels.filter(
+        (m) =>
+          !isAzureCoreFrameworkModel(m) ||
+          pagingResponseModelIds.has(m.crossLanguageDefinitionId),
+      )
     : allModels;
   const enums = isAzure
     ? allEnums.filter((e) => !isAzureCoreFrameworkEnum(e))
@@ -202,7 +230,6 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
 
   const fixedEnums = enums.filter((e) => e.isFixed);
   const extensibleEnums = enums.filter((e) => !e.isFixed);
-  const allClients = getAllClients(clients);
 
   // Detect whether any client has LRO (Long Running Operation) methods.
   // This determines whether the generated .csproj needs LRO shared source files
@@ -396,9 +423,13 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
             rootNamespace={rootNamespace}
           />
         ))}
-        {allClients.map((c) => (
-          <CollectionResultFiles client={c} options={options} />
-        ))}
+        {allClients.map((c) =>
+          isAzure ? (
+            <AzurePageableFiles client={c} options={options} />
+          ) : (
+            <CollectionResultFiles client={c} options={options} />
+          ),
+        )}
         {armProviderSchema?.resources.map((r) => (
           <ResourceFile resource={r} />
         ))}

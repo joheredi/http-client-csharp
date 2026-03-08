@@ -167,8 +167,8 @@ export const Azure = createLibrary("Azure", {
 
   /**
    * Represents an async sequence of pages containing typed results.
-   * Used as the return type for async listing operations on ARM collections.
-   * Consumed as `AsyncPageable<TResource>` in GetAllAsync methods.
+   * Used as the return type for async listing operations on Azure clients.
+   * Consumed as `AsyncPageable<T>` in async paging methods.
    *
    * @see https://learn.microsoft.com/en-us/dotnet/api/azure.asyncpageable-1
    */
@@ -179,14 +179,32 @@ export const Azure = createLibrary("Azure", {
 
   /**
    * Represents a synchronous sequence of pages containing typed results.
-   * Used as the return type for sync listing operations on ARM collections.
-   * Consumed as `Pageable<TResource>` in GetAll methods.
+   * Used as the return type for sync listing operations on Azure clients.
+   * Consumed as `Pageable<T>` in sync paging methods.
    *
    * @see https://learn.microsoft.com/en-us/dotnet/api/azure.pageable-1
    */
   Pageable: {
     kind: "class",
     members: {},
+  },
+
+  /**
+   * Represents a single page of values from a pageable collection.
+   * Contains the items (`Values`), an optional continuation token,
+   * and access to the raw `Response`.
+   *
+   * Used with `Page<T>.FromValues(items, continuationToken, response)`
+   * to construct pages in `Pageable<T>.AsPages()` implementations.
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/azure.page-1
+   */
+  Page: {
+    kind: "class",
+    members: {
+      /** Creates a Page<T> from a list of values, optional continuation token, and raw response. */
+      FromValues: { kind: "method" },
+    },
   },
 
   /**

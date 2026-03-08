@@ -4651,3 +4651,35 @@ The legacy emitter never generates Azure.Core framework types.
 **Chosen**: Filter by `crossLanguageDefinitionId.startsWith("Azure.Core.")` in emitter.tsx  
 **Why**: CLID is the most reliable identifier — set by TCGC from TypeSpec source namespace.  
 **Rejected**: (1) Filter by namespace — namespace can be modified by model-namespace option. (2) Filter by specific type names — fragile, would miss future Azure.Core types.
+
+## Design Decisions
+
+### Task 21.6: Azure Pageable — Separate component vs extending CollectionResultFile
+
+**Chosen**: New `AzurePageableFile.tsx` component parallel to `CollectionResultFile.tsx`
+**Rejected**: Modifying CollectionResultFile.tsx to handle both flavors
+
+**Why**: The Azure paging pattern is fundamentally different from unbranded:
+- Different base classes: `Pageable<T>` / `AsyncPageable<T>` vs `CollectionResult` / `AsyncCollectionResult`
+- Different abstract methods: `AsPages()` returns `IEnumerable<Page<T>>` vs `GetRawPages()` returns `IEnumerable<ClientResult>`
+- Azure uses `DiagnosticScope` for tracing in `GetNextResponse`
+- Azure uses `Page<T>.FromValues(items, continuationToken, response)` to create pages
+- Azure uses `RequestContext` (not `RequestOptions`)
+- Protocol returns `Pageable<BinaryData>` (not `CollectionResult`)
+
+Mixing both in one file would make the already 1075-line CollectionResultFile.tsx unmaintainable.
+
+### Task 21.6: Paging response model filtering
+
+Azure.Core page wrapper models (e.g., `Azure.Core.Foundations.CustomPage`) have `crossLanguageDefinitionId` starting with `Azure.Core.` and were being filtered by `isAzureCoreFrameworkModel()`. But these models are NEEDED for paging (to cast Response and extract items/next-links). Fixed by collecting paging response model IDs from all clients and exempting them from the filter.
+
+## Gotchas
+
+### Azure.ETag serialization is broken (tracked as task 21.19)
+azure/core/basic and azure/core/page specs have User models with `eTag` property of type `Azure.Core.eTag`. The serialization code generator produces incorrect type conversions: `Azure.ETag` → `System.DateTime` (CS1503) and `string` → `Azure.ETag` (CS0029). This is a pre-existing bug unrelated to paging.
+
+### OverloadConstructor needed for `: base(...)` chaining
+The standard `<Constructor>` from `@alloy-js/csharp` doesn't support `baseArgs` / `baseInitializer`. Use `OverloadConstructor` from `src/components/models/ModelConstructors.tsx` which supports `baseInitializer` prop for `: base(...)` constructor chaining.
+
+### Pageable<T> return types use Models namespace prefix
+When testing Azure paging, convenience method return types include the Models sub-namespace prefix (e.g., `Pageable<Models.Item>` not `Pageable<Item>`). Tests should use partial matching or account for the namespace prefix.
