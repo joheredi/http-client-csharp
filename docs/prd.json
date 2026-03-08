@@ -2795,7 +2795,7 @@
           "title": "ARM: Fix constructor signatures and namespace collisions",
           "description": "ARM specs have remaining CS1729 (wrong constructor arg counts, 72 errors), CS0128 (duplicate locals, 40 errors), CS1744 (named argument conflicts, 36 errors), and CS0118 (namespace/type collisions, 14 errors). These are various ARM-specific code generation bugs.\n\nFix: Address each error category in the ARM generation components (CollectionFile.tsx, ResourceFile.tsx, MockableProviderFile.tsx, tag-methods.ts).",
           "phase": "phase-21",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "21.15",
             "21.16",

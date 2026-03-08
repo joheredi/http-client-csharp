@@ -268,6 +268,7 @@ export function ResourceFile(props: ResourceFileProps) {
           )}
         >
           {fieldsBlock}
+          {"\n"}
           {resourceTypeField}
           {constructorsBlock}
           {propertiesBlock}
@@ -530,7 +531,7 @@ protected ${className}()
 /// <summary> Initializes a new instance of <see cref="${className}"/> class. </summary>
 /// <param name="client"> The client parameters to use in these operations. </param>
 /// <param name="data"> The resource that is the target of operations. </param>
-internal ${className}(${AzureResourceManager.ArmClient} client, ${modelRef} data) : this(client, data.Id)
+internal ${className}(${AzureResourceManager.ArmClient} client, ${modelRef} data) : this(client, new ${AzureCore.ResourceIdentifier}(data.Id))
 {
     HasData = true;
     _data = data;

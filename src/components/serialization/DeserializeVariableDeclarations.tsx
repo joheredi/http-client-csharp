@@ -113,8 +113,21 @@ export type VariableInfo =
 export function computeVariableInfos(model: SdkModelType): VariableInfo[] {
   if (model.baseModel) {
     const baseInfos = computeVariableInfos(model.baseModel);
+    // Collect base property names to filter out own properties that shadow
+    // base properties (e.g., ARM TrackedResource inherits `name` from Resource,
+    // and the derived model may also declare `name`). Without this filter,
+    // deserialization emits duplicate variable declarations causing CS0128.
+    const basePropertyNames = new Set(
+      baseInfos
+        .filter(
+          (info): info is Extract<VariableInfo, { kind: "property" }> =>
+            info.kind === "property",
+        )
+        .map((info) => info.property.name),
+    );
     const ownProps = model.properties.filter(
-      (p) => !isBaseDiscriminatorOverride(p),
+      (p) =>
+        !isBaseDiscriminatorOverride(p) && !basePropertyNames.has(p.name),
     );
     return [
       ...baseInfos,

@@ -363,6 +363,12 @@ export function ClientFile(props: ClientFileProps) {
               {`/// <param name="pipeline"> The HTTP pipeline for sending and receiving REST requests and responses. </param>`}
               {"\n"}
               {`/// <param name="endpoint"> Service endpoint. </param>`}
+              {apiVersionParams.length > 0 && (
+                <>
+                  {"\n"}
+                  {`/// <param name="apiVersion"> The API version to use for this operation. </param>`}
+                </>
+              )}
               {"\n"}
               <OverloadConstructor
                 internal
@@ -376,9 +382,16 @@ export function ClientFile(props: ClientFileProps) {
                     type: pipelineTypes.pipeline,
                   },
                   { name: "endpoint", type: System.Uri },
+                  ...apiVersionParams.map((p) => ({
+                    name: p.name,
+                    type: "string",
+                  })),
                 ]}
               >
                 {`ClientDiagnostics = clientDiagnostics;\n_endpoint = endpoint;\nPipeline = pipeline;`}
+                {apiVersionParams.map(
+                  (p) => `\n_${p.name} = ${p.name};`,
+                )}
               </OverloadConstructor>
             </>
           )}
@@ -1140,8 +1153,18 @@ function SubClientFactoryMethods(props: SubClientFactoryMethodsProps) {
 
         // Azure sub-clients receive (ClientDiagnostics, Pipeline, _endpoint);
         // unbranded sub-clients receive (Pipeline, _endpoint).
+        // If the child has apiVersion params, pass them through as well.
+        const childMethodParams = getClientMethodParameters(child);
+        const childApiVersionParams = childMethodParams.filter(
+          (p) => p.isApiVersionParam,
+        );
+        const apiVersionArgs = childApiVersionParams
+          .map((p) => `_${p.name}`)
+          .join(", ");
         const ctorArgs = isAzure
-          ? `ClientDiagnostics, Pipeline, _endpoint`
+          ? apiVersionArgs
+            ? `ClientDiagnostics, Pipeline, _endpoint, ${apiVersionArgs}`
+            : `ClientDiagnostics, Pipeline, _endpoint`
           : `Pipeline, _endpoint`;
 
         return (

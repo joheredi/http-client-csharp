@@ -146,9 +146,11 @@ describe("ARM Resource class generation", () => {
     // Mocking constructor
     expect(content).toContain("protected BazResource()");
 
-    // Data constructor - model may be Baz or BazData depending on naming
+    // Data constructor - model may be Baz or BazData depending on naming.
+    // Wraps data.Id in new ResourceIdentifier() since the generated model's Id
+    // property is string, not ResourceIdentifier.
     expect(content).toMatch(
-      /internal BazResource\(ArmClient client, .+Baz data\) : this\(client, data\.Id\)/,
+      /internal BazResource\(ArmClient client, .+Baz data\) : this\(client, new ResourceIdentifier\(data\.Id\)\)/,
     );
     expect(content).toContain("HasData = true;");
     expect(content).toContain("_data = data;");

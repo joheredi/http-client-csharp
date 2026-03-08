@@ -347,7 +347,19 @@ export function CollectionFile(props: CollectionFileProps) {
     }
   }
 
-  const enumeratorsBlock = buildCollectionEnumerators(resourceClassName);
+  // Only generate enumerators if GetAll is present — without it, the
+  // IEnumerable/IAsyncEnumerable delegates would reference undefined methods.
+  const enumeratorsBlock = getAllBlock
+    ? buildCollectionEnumerators(resourceClassName)
+    : null;
+
+  // Only declare IEnumerable/IAsyncEnumerable interfaces when GetAll exists.
+  const interfaceTypes = getAllBlock
+    ? [
+        code`${SystemCollectionsGeneric.IEnumerable}<${resourceClassRef}>`,
+        code`${SystemCollectionsGeneric.IAsyncEnumerable}<${resourceClassRef}>`,
+      ]
+    : [];
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -372,10 +384,7 @@ export function CollectionFile(props: CollectionFileProps) {
             parentScopeDesc,
             clientSimpleName,
           )}
-          interfaceTypes={[
-            code`${SystemCollectionsGeneric.IEnumerable}<${resourceClassRef}>`,
-            code`${SystemCollectionsGeneric.IAsyncEnumerable}<${resourceClassRef}>`,
-          ]}
+          interfaceTypes={interfaceTypes}
         >
           {fieldsBlock}
           {constructorsBlock}

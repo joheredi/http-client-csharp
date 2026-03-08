@@ -4739,3 +4739,19 @@ The new emitter generates `IDictionary<string, BinaryData[]>` for model array ad
 
 ### Multi-spread Record<T> collapses to single dictionary
 When a TypeSpec model spreads multiple `Record<T>` types (e.g., `...Record<string>` and `...Record<float32>`), the new emitter collapses them into a single `IDictionary<string, BinaryData>` property. The legacy emitter generates separate `AdditionalProperties` and `AdditionalSingleProperties` dictionaries with distinct typed values.
+
+### ARM base property shadowing in serialization (2026-03-08)
+
+**Gotcha**: ARM TrackedResource models re-declare inherited properties (e.g., `name` from Resource). TCGC creates separate property objects for both, causing duplicate variable declarations (CS0128), duplicate constructor parameters, and duplicate property matching cases. The fix is to filter out own properties whose `name` matches any base model property. This filter must be applied consistently across: `computeVariableInfos`, `computeSerializationCtorParams`, `computeMatchablePropertyInfos`, `DerivedModelConstructors.ownProperties`, `computeSerializationProperties`, and `computeSerializationPropertyInfos`.
+
+### ARM subclient apiVersion constructor pattern (2026-03-08)
+
+**Pattern**: Azure subclient REST clients (e.g., VirtualMachines) need `_apiVersion` set in their constructor. The `ClientFile.tsx` subclient constructor now conditionally includes apiVersion parameters when `apiVersionParams.length > 0`. The `SubClientFactoryMethods` component also passes `_apiVersion` to the subclient constructor via `getClientMethodParameters(child)`.
+
+### ARM Resource data constructor needs ResourceIdentifier wrapping (2026-03-08)
+
+**Gotcha**: The ARM ResourceFile data constructor chains `this(client, data.Id)`, but the generated model's `Id` property is `string?` (not `ResourceIdentifier`). Must wrap with `new ResourceIdentifier(data.Id)` for the chain to the `(ArmClient, ResourceIdentifier)` constructor to work.
+
+### ARM Collection enumerator conditional (2026-03-08)
+
+**Pattern**: `CollectionFile.tsx` now makes IEnumerable/IAsyncEnumerable implementations conditional on `getAllBlock` being non-null. Without a List operation, GetAll/GetAllAsync methods aren't generated, so the enumerator delegates would reference undefined methods. The `interfaceTypes` array is also conditionally populated.

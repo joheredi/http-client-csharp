@@ -842,8 +842,13 @@ export function computeSerializationCtorParams(
       model.baseModel,
       namePolicy,
     );
+    // Collect base property names to exclude own properties that shadow them.
+    // ARM TrackedResource models re-declare inherited `name` from Resource;
+    // without filtering, the constructor would have duplicate parameters.
+    const basePropertyNames = collectAllBasePropertyNames(model.baseModel);
     const ownProps = model.properties.filter(
-      (p) => !isBaseDiscriminatorOverride(p),
+      (p) =>
+        !isBaseDiscriminatorOverride(p) && !basePropertyNames.has(p.name),
     );
     const ownParams = buildPropertyTypeParameters(
       ownProps,
@@ -859,6 +864,23 @@ export function computeSerializationCtorParams(
     model.name,
     model,
   );
+}
+
+/**
+ * Collects all property names from a model and its entire base model chain.
+ * Used to detect shadowed properties in derived models that would produce
+ * duplicate constructor parameters or variable declarations.
+ */
+function collectAllBasePropertyNames(model: SdkModelType): Set<string> {
+  const names = new Set<string>();
+  let current: SdkModelType | undefined = model;
+  while (current) {
+    for (const prop of current.properties) {
+      names.add(prop.name);
+    }
+    current = current.baseModel;
+  }
+  return names;
 }
 
 /**
@@ -1010,8 +1032,10 @@ function collectSerializationParamDocs(
 ): ParamDocInfo[] {
   if (model.baseModel) {
     const baseDocs = collectSerializationParamDocs(model.baseModel, namePolicy);
+    const basePropertyNames = collectAllBasePropertyNames(model.baseModel);
     const ownProps = model.properties.filter(
-      (p) => !isBaseDiscriminatorOverride(p),
+      (p) =>
+        !isBaseDiscriminatorOverride(p) && !basePropertyNames.has(p.name),
     );
     return [...baseDocs, ...toParamDocInfos(ownProps, namePolicy, model.name)];
   }
@@ -1244,8 +1268,13 @@ function DerivedModelConstructors(props: {
   // Keep the model's own discriminator property (like Shark's sharktype: string).
   // For non-discriminated models, isBaseDiscriminatorOverride is always false, so
   // all properties are kept.
+  // Also filter out properties that shadow base model properties (e.g., ARM
+  // TrackedResource re-declares `name` from Resource). The base model's
+  // constructor already handles the inherited property.
+  const basePropertyNames = collectAllBasePropertyNames(baseModel);
   const ownProperties = type.properties.filter(
-    (p) => !isBaseDiscriminatorOverride(p),
+    (p) =>
+      !isBaseDiscriminatorOverride(p) && !basePropertyNames.has(p.name),
   );
 
   // === Public initialization constructor ===

@@ -117,8 +117,12 @@ function computeSerializationProperties(
 ): SdkModelPropertyType[] {
   if (model.baseModel) {
     const baseProps = computeSerializationProperties(model.baseModel);
+    // Filter out own properties that shadow base properties (e.g., ARM
+    // TrackedResource re-declares inherited `name` from Resource).
+    const basePropertyNames = new Set(baseProps.map((p) => p.name));
     const ownProps = model.properties.filter(
-      (p) => !isBaseDiscriminatorOverride(p),
+      (p) =>
+        !isBaseDiscriminatorOverride(p) && !basePropertyNames.has(p.name),
     );
     return [...baseProps, ...ownProps];
   }
@@ -142,8 +146,12 @@ function computeSerializationPropertyInfos(
 ): SerializationPropertyInfo[] {
   if (model.baseModel) {
     const baseInfos = computeSerializationPropertyInfos(model.baseModel);
+    const basePropertyNames = new Set(
+      baseInfos.map((i) => i.property.name),
+    );
     const ownProps = model.properties.filter(
-      (p) => !isBaseDiscriminatorOverride(p),
+      (p) =>
+        !isBaseDiscriminatorOverride(p) && !basePropertyNames.has(p.name),
     );
     return [
       ...baseInfos,

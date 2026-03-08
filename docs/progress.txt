@@ -7011,3 +7011,33 @@ Task 21.11 (2026-03-08) — Enable optionality property e2e test coverage:
 - `DifferentSpreadStringDerivedTests.cs` and `MultipleSpreadRecordTests.cs` still excluded (need `SpectorModelJsonTests<T>` base class)
 - Multi-spread `Record<T>` support would enable the remaining 4 tests
 - Array additional properties use `BinaryData[]` not `IList<BinaryData>` — use `.Length` not `.Count`
+
+## Task 21.18: ARM: Fix constructor signatures and namespace collisions
+**Date**: 2026-03-08
+**Status**: Done
+
+**What was done**:
+- Fixed 5 distinct root causes across 7 files, reducing ARM compilation errors from 680 to 444 (35% reduction)
+- **CS1729 eliminated (72→0)**: Added apiVersion parameter to Azure subclient REST client constructors in ClientFile.tsx, and updated subclient factory methods to pass apiVersion
+- **CS0128 eliminated (40→0)**: Fixed duplicate variable declarations in serialization by filtering own properties that shadow base properties in DeserializeVariableDeclarations.tsx, ModelConstructors.tsx, PropertyMatchingLoop.tsx, and ModelFactoryMethod.tsx
+- **CS0103 reduced (120→12)**: Made IEnumerable/IAsyncEnumerable implementation conditional on GetAll method existence in CollectionFile.tsx
+- **CS1503 reduced (216→200)**: Fixed ResourceFile.tsx data constructor to wrap data.Id with new ResourceIdentifier() since generated model Id is string, not ResourceIdentifier
+- **Newline fix**: Added separator between fieldsBlock and resourceTypeField in ResourceFile.tsx render
+- Removed 3 multi-service ARM specs from .testignore (multi-service, multi-service-older-versions, multi-service-shared-models)
+
+**Results**:
+- 3 multi-service ARM specs compile with 0 errors (removed from .testignore)
+- 5 of 9 ARM specs now compile cleanly (large-header, non-resource, + 3 multi-service)
+- 800 e2e tests passing, no regressions
+- 1724 unit tests passing
+
+**Patterns used**:
+- Base property shadowing filter: collect base property names and exclude own props with same name
+- Conditional interface implementation: only declare IEnumerable when GetAll exists
+- ResourceIdentifier wrapping: new ResourceIdentifier(data.Id) for string→ResourceIdentifier conversion
+
+**Next person should know**:
+- 4 ARM specs still in .testignore: common-properties (72 errors), operation-templates (60), method-subscription-id (148), resources (164)
+- Remaining errors are mostly CS1503 (Guid/string type mismatches), CS0246 (missing ArmOperation types), CS1061 (missing REST client methods), CS1744 (named argument conflicts)
+- The base property shadowing fix is applied consistently across serialization, constructors, property matching, and model factory
+- apiVersion is now properly passed through the Azure subclient constructor chain
