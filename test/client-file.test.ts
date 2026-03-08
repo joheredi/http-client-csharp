@@ -921,6 +921,143 @@ describe("ClientFile", () => {
   });
 
   /**
+   * Verifies that when a service has a default server URL (via @server), the emitter
+   * generates convenience constructors that omit the endpoint parameter and chain to
+   * the primary constructor with `new Uri("defaultUrl")`.
+   *
+   * The legacy emitter generates three constructor tiers when a default endpoint exists:
+   * 1. (credential) → this(new Uri("default"), credential, new Options())
+   * 2. (credential, options) → this(new Uri("default"), credential, options)
+   * 3. (endpoint, credential, options) → full constructor body
+   *
+   * This pattern allows consumers to instantiate clients without specifying the endpoint
+   * when the service has a well-known default URL. Without @server, the endpoint is
+   * always required in the convenience constructor.
+   *
+   * This is critical for e2e test compatibility — the Spector test files use single-arg
+   * constructors like `new OAuth2Client(tokenProvider)` which require this pattern.
+   */
+  it("generates no-endpoint convenience constructors when server has default URL", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @server("http://localhost:3000", "Default endpoint")
+      @useAuth(OAuth2Auth<[{
+        type: OAuth2FlowType.implicit,
+        authorizationUrl: "https://login.example.com/authorize",
+        scopes: ["read"]
+      }]>)
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op testOp(): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Convenience 1: (tokenProvider) → this(new Uri("default"), tokenProvider, new Options())
+    expect(clientFile).toContain(
+      ': this(new Uri("http://localhost:3000"), tokenProvider, new TestServiceClientOptions())',
+    );
+
+    // Convenience 2: (tokenProvider, options) → this(new Uri("default"), tokenProvider, options)
+    expect(clientFile).toContain(
+      ': this(new Uri("http://localhost:3000"), tokenProvider, options)',
+    );
+
+    // Primary constructor with endpoint + tokenProvider + options
+    // Parameters may be on separate lines due to line length formatting
+    expect(clientFile).toContain("Uri endpoint,");
+    expect(clientFile).toContain("AuthenticationTokenProvider tokenProvider,");
+    expect(clientFile).toContain("TestServiceClientOptions options");
+    // Primary constructor body validates endpoint
+    expect(clientFile).toContain(
+      "Argument.AssertNotNull(endpoint, nameof(endpoint));",
+    );
+
+    // Convenience constructors should NOT include endpoint parameter
+    expect(clientFile).not.toContain(
+      ": this(endpoint, tokenProvider, new TestServiceClientOptions())",
+    );
+
+    // Convenience 1 doc should NOT include endpoint param doc
+    // Find the first convenience constructor and check its doc
+    const conv1Start = clientFile.indexOf(
+      ': this(new Uri("http://localhost:3000"), tokenProvider, new TestServiceClientOptions())',
+    );
+    const conv1DocSection = clientFile.substring(
+      Math.max(0, conv1Start - 500),
+      conv1Start,
+    );
+    // The convenience constructor's doc block should not have endpoint param
+    const lastSummaryBeforeConv1 = conv1DocSection.lastIndexOf("/// <summary>");
+    const conv1Doc = conv1DocSection.substring(lastSummaryBeforeConv1);
+    expect(conv1Doc).not.toContain('/// <param name="endpoint">');
+    expect(conv1Doc).toContain('/// <param name="tokenProvider">');
+  });
+
+  /**
+   * Verifies that when a service has a default server URL and union auth,
+   * ALL auth schemes get no-endpoint convenience constructors (not just the first).
+   *
+   * The legacy emitter generates (credential), (credential, options), (endpoint, credential, options)
+   * for EACH auth scheme when a default URL exists. This allows consumers to pick
+   * whichever auth scheme they have without specifying the endpoint.
+   */
+  it("generates no-endpoint convenience constructors for all auth schemes in union auth", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @server("http://localhost:3000", "Default endpoint")
+      @useAuth(ApiKeyAuth<ApiKeyLocation.header, "x-api-key"> | OAuth2Auth<[{
+        type: OAuth2FlowType.implicit,
+        authorizationUrl: "https://login.example.com/authorize",
+        scopes: ["read"]
+      }]>)
+      @service
+      namespace TestService;
+
+      @route("/test")
+      @get op testOp(): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // API Key scheme convenience constructors (no endpoint)
+    expect(clientFile).toContain(
+      ': this(new Uri("http://localhost:3000"), credential, new TestServiceClientOptions())',
+    );
+    expect(clientFile).toContain(
+      ': this(new Uri("http://localhost:3000"), credential, options)',
+    );
+
+    // OAuth2 scheme convenience constructors (no endpoint)
+    expect(clientFile).toContain(
+      ': this(new Uri("http://localhost:3000"), tokenProvider, new TestServiceClientOptions())',
+    );
+    expect(clientFile).toContain(
+      ': this(new Uri("http://localhost:3000"), tokenProvider, options)',
+    );
+
+    // Primary constructors with endpoint (params may be on separate lines)
+    expect(clientFile).toContain("ApiKeyCredential credential,");
+    expect(clientFile).toContain("AuthenticationTokenProvider tokenProvider,");
+
+    // No with-endpoint convenience constructors (they should be replaced by no-endpoint ones)
+    expect(clientFile).not.toContain(
+      ": this(endpoint, credential, new TestServiceClientOptions())",
+    );
+    expect(clientFile).not.toContain(
+      ": this(endpoint, tokenProvider, new TestServiceClientOptions())",
+    );
+  });
+
+  /**
    * Verifies empty constructors use multiline brace style (Allman style) instead
    * of single-line `{ }` or `{}`. The golden files always use multiline empty
    * bodies for constructors:

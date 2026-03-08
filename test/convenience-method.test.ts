@@ -664,9 +664,7 @@ describe("ConvenienceMethod", () => {
     expect(clientFile).toBeDefined();
 
     // Text/plain string response uses .ToString() for raw text deserialization
-    expect(clientFile).toContain(
-      "result.GetRawResponse().Content.ToString()",
-    );
+    expect(clientFile).toContain("result.GetRawResponse().Content.ToString()");
     // Must NOT use ToObjectFromJson which expects JSON-encoded strings
     expect(clientFile).not.toContain("ToObjectFromJson<string>()");
   });
@@ -857,9 +855,7 @@ describe("ConvenienceMethod", () => {
     expect(clientFile).toContain(
       "Item.DeserializeItem(property.Value, ModelSerializationExtensions.WireOptions)",
     );
-    expect(clientFile).toContain(
-      "(IReadOnlyDictionary<string, Item>)items",
-    );
+    expect(clientFile).toContain("(IReadOnlyDictionary<string, Item>)items");
   });
 
   /**

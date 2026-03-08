@@ -323,7 +323,8 @@ describe("property flattening (non-management / data-plane)", () => {
    * src/Generated/Models/NestedFlattenModel.cs — `Properties` is public.
    */
   it("does not flatten properties when management is false", async () => {
-    const [{ outputs }] = await AzureHttpTester.compileAndDiagnose(nonArmFlattenSpec);
+    const [{ outputs }] =
+      await AzureHttpTester.compileAndDiagnose(nonArmFlattenSpec);
     const nestedFile = findFile(outputs, "NestedFlattenModel.cs");
 
     // Properties should remain public (not internal)
@@ -343,7 +344,8 @@ describe("property flattening (non-management / data-plane)", () => {
    * and promoted `Properties` from ChildFlattenModel.properties collided.
    */
   it("does not produce duplicate Properties members", async () => {
-    const [{ outputs }] = await AzureHttpTester.compileAndDiagnose(nonArmFlattenSpec);
+    const [{ outputs }] =
+      await AzureHttpTester.compileAndDiagnose(nonArmFlattenSpec);
     const nestedFile = findFile(outputs, "NestedFlattenModel.cs");
 
     // Count occurrences of "Properties" as a declared member
@@ -358,7 +360,8 @@ describe("property flattening (non-management / data-plane)", () => {
    * properties public when management is false.
    */
   it("inner models keep properties public", async () => {
-    const [{ outputs }] = await AzureHttpTester.compileAndDiagnose(nonArmFlattenSpec);
+    const [{ outputs }] =
+      await AzureHttpTester.compileAndDiagnose(nonArmFlattenSpec);
     const childFlattenFile = findFile(outputs, "ChildFlattenModel.cs");
 
     // ChildFlattenModel.Properties should be public
@@ -370,7 +373,8 @@ describe("property flattening (non-management / data-plane)", () => {
    * The generated output must never contain unresolved symbol markers.
    */
   it("does not produce unresolved symbols", async () => {
-    const [{ outputs }] = await AzureHttpTester.compileAndDiagnose(nonArmFlattenSpec);
+    const [{ outputs }] =
+      await AzureHttpTester.compileAndDiagnose(nonArmFlattenSpec);
 
     for (const [path, content] of Object.entries(outputs)) {
       expect(content, `Unresolved symbol in ${path}`).not.toContain(

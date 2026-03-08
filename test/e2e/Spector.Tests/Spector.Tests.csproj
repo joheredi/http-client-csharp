@@ -143,14 +143,6 @@
     <Compile Remove="$(LegacyTestRoot)Http/_Type/Property/Optionality/**/*.cs" />
 
     <!--
-      Tests calling single-arg client constructors (e.g., new OAuth2Client(tokenProvider))
-      that the new emitter does not generate. The new emitter requires (endpoint, tokenProvider)
-      as minimum constructor arguments for auth-bearing clients.
-    -->
-    <Compile Remove="$(LegacyTestRoot)Http/Authentication/OAuth2/**/*.cs" />
-    <Compile Remove="$(LegacyTestRoot)Http/Authentication/Union/**/*.cs" />
-
-    <!--
       Namespace differences between legacy and new emitter for Versioning/Removed.
       Legacy generates VersioningRemovedV1Context in Versioning.Removed.V1 namespace;
       new emitter generates VersioningRemovedContext in Versioning.Removed namespace.

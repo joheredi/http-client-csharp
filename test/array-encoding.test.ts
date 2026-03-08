@@ -89,8 +89,7 @@ describe("array encoding with delimiters", () => {
 
     const serFileKey = Object.keys(outputs).find(
       (k) =>
-        k.includes("PipeDelimitedArrayProperty") &&
-        k.includes("Serialization"),
+        k.includes("PipeDelimitedArrayProperty") && k.includes("Serialization"),
     );
     expect(serFileKey).toBeDefined();
     const serFile = outputs[serFileKey!];
@@ -299,8 +298,7 @@ describe("array encoding with delimiters", () => {
     expect(diagnostics).toHaveLength(0);
 
     const serFileKey = Object.keys(outputs).find(
-      (k) =>
-        k.includes("NormalArrayProperty") && k.includes("Serialization"),
+      (k) => k.includes("NormalArrayProperty") && k.includes("Serialization"),
     );
     expect(serFileKey).toBeDefined();
     const serFile = outputs[serFileKey!];

@@ -29,6 +29,7 @@ import {
   type ServerPathSegment,
   getAuthInfo,
   getClientMethodParameters,
+  getDefaultEndpointUrl,
   getFieldTypeForParam,
   getServerPathSegments,
   getServerTemplateConstructorParams,
@@ -629,110 +630,190 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
     );
   }
 
+  // Detect if the endpoint has a known default URL (e.g., from @server or implicit default).
+  // When available, convenience constructors omit the endpoint parameter and chain to
+  // the primary constructor with `new Uri("defaultUrl")` — matching the legacy emitter.
+  const defaultEndpointUrl = getDefaultEndpointUrl(client);
+
+  /**
+   * Renders XML doc comments for a constructor.
+   * @param includeEndpoint - Whether to include the endpoint param doc.
+   * @param includeOptions - Whether to include the options param doc.
+   * @param assertableNames - Parameter names for the exception doc tag.
+   * @param authDocLines - Auth-specific doc lines.
+   */
+  function renderCtorDocs(
+    includeEndpoint: boolean,
+    includeOptions: boolean,
+    assertableNames: string[],
+    authDocLines: string[],
+  ): Children {
+    const exDoc = buildExceptionDoc(assertableNames);
+    return (
+      <>
+        {"\n\n"}
+        {`/// <summary> Initializes a new instance of ${className}. </summary>`}
+        {includeEndpoint && (
+          <>
+            {"\n"}
+            {`/// <param name="endpoint"> Service endpoint. </param>`}
+          </>
+        )}
+        {authDocLines.map((doc) => (
+          <>
+            {"\n"}
+            {doc}
+          </>
+        ))}
+        {templateDocParams.map((doc) => (
+          <>
+            {"\n"}
+            {doc}
+          </>
+        ))}
+        {methodDocParams.map((doc) => (
+          <>
+            {"\n"}
+            {doc}
+          </>
+        ))}
+        {includeOptions && (
+          <>
+            {"\n"}
+            {`/// <param name="options"> The options for configuring the client. </param>`}
+          </>
+        )}
+        {exDoc && (
+          <>
+            {"\n"}
+            {exDoc}
+          </>
+        )}
+        {"\n"}
+      </>
+    );
+  }
+
   return (
     <>
       {authSchemes.map((scheme, index) => {
         const authParams = scheme.authParam ? [scheme.authParam] : [];
         const authDocLines = scheme.authDoc ? [scheme.authDoc] : [];
 
-        const secondaryParams = [
+        // Primary constructor always includes endpoint + all params + options
+        const withEndpointParams = [
           endpointParam,
           ...authParams,
           ...templateCtorParams,
           ...methodCtorParams,
         ];
-        const primaryParams = [...secondaryParams, optionsParam];
+        const primaryParams = [...withEndpointParams, optionsParam];
 
-        const secondaryArgList = secondaryParams.map((p) => p.name).join(", ");
-        const thisInitializer = `${secondaryArgList}, ${optionsDefault}`;
-
-        // Only the first auth scheme gets a secondary (convenience) constructor
-        const isFirst = index === 0;
-
-        // Build exception doc tag listing all AssertNotNull'd parameters
-        const assertableParamNames = [
+        // Exception doc including endpoint (for primary and with-endpoint convenience)
+        const primaryAssertableNames = [
           "endpoint",
           ...(scheme.authParam ? [scheme.authParam.name] : []),
           ...nonApiVersionParams.map((p) => p.name),
         ];
-        const exceptionDoc = buildExceptionDoc(assertableParamNames);
 
-        return (
-          <>
-            {isFirst && (
-              <>
-                {"\n\n"}
-                {`/// <summary> Initializes a new instance of ${className}. </summary>`}
-                {"\n"}
-                {`/// <param name="endpoint"> Service endpoint. </param>`}
-                {authDocLines.map((doc) => (
-                  <>
-                    {"\n"}
-                    {doc}
-                  </>
-                ))}
-                {templateDocParams.map((doc) => (
-                  <>
-                    {"\n"}
-                    {doc}
-                  </>
-                ))}
-                {methodDocParams.map((doc) => (
-                  <>
-                    {"\n"}
-                    {doc}
-                  </>
-                ))}
-                {exceptionDoc && (
-                  <>
-                    {"\n"}
-                    {exceptionDoc}
-                  </>
-                )}
-                {"\n"}
-                <OverloadConstructor
-                  public
-                  parameters={secondaryParams}
-                  thisInitializer={thisInitializer}
-                />
-              </>
-            )}
-            {"\n\n"}
-            {`/// <summary> Initializes a new instance of ${className}. </summary>`}
-            {"\n"}
-            {`/// <param name="endpoint"> Service endpoint. </param>`}
-            {authDocLines.map((doc) => (
-              <>
-                {"\n"}
-                {doc}
-              </>
-            ))}
-            {templateDocParams.map((doc) => (
-              <>
-                {"\n"}
-                {doc}
-              </>
-            ))}
-            {methodDocParams.map((doc) => (
-              <>
-                {"\n"}
-                {doc}
-              </>
-            ))}
-            {"\n"}
-            {`/// <param name="options"> The options for configuring the client. </param>`}
-            {exceptionDoc && (
-              <>
-                {"\n"}
-                {exceptionDoc}
-              </>
-            )}
-            {"\n"}
-            <OverloadConstructor public parameters={primaryParams}>
-              {renderPrimaryBody(scheme)}
-            </OverloadConstructor>
-          </>
-        );
+        // When there's a default endpoint AND an auth param, generate convenience
+        // constructors that omit the endpoint parameter for ALL auth schemes.
+        // This matches the legacy emitter which generates (credential) and (credential, options)
+        // constructors that chain with new Uri("defaultUrl").
+        const omitEndpoint =
+          defaultEndpointUrl !== undefined && scheme.authParam !== undefined;
+
+        if (omitEndpoint) {
+          // Parameters without endpoint for no-endpoint convenience constructors
+          const noEndpointParams = [
+            ...authParams,
+            ...templateCtorParams,
+            ...methodCtorParams,
+          ];
+          const noEndpointWithOptionsParams = [
+            ...noEndpointParams,
+            optionsParam,
+          ];
+
+          // Build this(...) initializer arguments for the no-endpoint constructors
+          const noEndpointArgList = noEndpointParams
+            .map((p) => p.name)
+            .join(", ");
+
+          // Convenience 1 chains: new Uri("default"), auth, ..., new Options()
+          const conv1Init = `new Uri("${defaultEndpointUrl}"), ${noEndpointArgList}, ${optionsDefault}`;
+          // Convenience 2 chains: new Uri("default"), auth, ..., options
+          const conv2Init = `new Uri("${defaultEndpointUrl}"), ${noEndpointArgList}, options`;
+
+          // Exception doc excluding endpoint (for no-endpoint convenience constructors)
+          const noEndpointAssertableNames = [
+            ...(scheme.authParam ? [scheme.authParam.name] : []),
+            ...nonApiVersionParams.map((p) => p.name),
+          ];
+
+          return (
+            <>
+              {renderCtorDocs(
+                false,
+                false,
+                noEndpointAssertableNames,
+                authDocLines,
+              )}
+              <OverloadConstructor
+                public
+                parameters={noEndpointParams}
+                thisInitializer={conv1Init}
+              />
+              {renderCtorDocs(
+                false,
+                true,
+                noEndpointAssertableNames,
+                authDocLines,
+              )}
+              <OverloadConstructor
+                public
+                parameters={noEndpointWithOptionsParams}
+                thisInitializer={conv2Init}
+              />
+              {renderCtorDocs(true, true, primaryAssertableNames, authDocLines)}
+              <OverloadConstructor public parameters={primaryParams}>
+                {renderPrimaryBody(scheme)}
+              </OverloadConstructor>
+            </>
+          );
+        } else {
+          // No default endpoint or no auth: use existing pattern.
+          // Only the first auth scheme gets a convenience constructor.
+          const isFirst = index === 0;
+          const withEndpointArgList = withEndpointParams
+            .map((p) => p.name)
+            .join(", ");
+          const thisInitializer = `${withEndpointArgList}, ${optionsDefault}`;
+
+          return (
+            <>
+              {isFirst && (
+                <>
+                  {renderCtorDocs(
+                    true,
+                    false,
+                    primaryAssertableNames,
+                    authDocLines,
+                  )}
+                  <OverloadConstructor
+                    public
+                    parameters={withEndpointParams}
+                    thisInitializer={thisInitializer}
+                  />
+                </>
+              )}
+              {renderCtorDocs(true, true, primaryAssertableNames, authDocLines)}
+              <OverloadConstructor public parameters={primaryParams}>
+                {renderPrimaryBody(scheme)}
+              </OverloadConstructor>
+            </>
+          );
+        }
       })}
     </>
   );
@@ -774,7 +855,9 @@ function buildEndpointFromTemplate(
 
   for (const segment of segments) {
     if (segment.kind === "literal") {
-      appendLines.push(`\nendpointBuilder.AppendPath("${segment.value}", false);`);
+      appendLines.push(
+        `\nendpointBuilder.AppendPath("${segment.value}", false);`,
+      );
     } else if (segment.param?.isApiVersionParam) {
       appendLines.push(`\nendpointBuilder.AppendPath(options.Version, true);`);
     } else if (segment.param) {

@@ -226,6 +226,37 @@ export function getEndpointParameter(
 }
 
 /**
+ * Returns the default endpoint URL from the client's server configuration, if available.
+ *
+ * When the TypeSpec service has a known default server URL (from `@server` or the implicit
+ * default), the endpoint parameter's primary template argument will have a `clientDefaultValue`.
+ * This allows the emitter to generate convenience constructors that omit the endpoint parameter
+ * and use `new Uri("default")` instead — matching the legacy emitter's constructor pattern.
+ *
+ * @param client - The TCGC SDK client type to inspect.
+ * @returns The default endpoint URL string, or undefined if no default is available.
+ */
+export function getDefaultEndpointUrl(
+  client: SdkClientType<SdkHttpOperation>,
+): string | undefined {
+  const endpointParam = getEndpointParameter(client);
+  if (!endpointParam) return undefined;
+
+  const resolvedEndpoint = resolveEndpointType(endpointParam.type);
+  if (!resolvedEndpoint) return undefined;
+
+  // Find the primary endpoint argument (type "url" or named "endpoint")
+  const primaryArg = resolvedEndpoint.templateArguments.find(
+    (a) => a.type.kind === "url" || a.name === "endpoint",
+  );
+  if (primaryArg?.clientDefaultValue != null) {
+    return String(primaryArg.clientDefaultValue);
+  }
+
+  return undefined;
+}
+
+/**
  * Returns the C# type name for a client method parameter's field declaration.
  *
  * API version parameters always map to `string` regardless of their TCGC type,

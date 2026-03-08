@@ -354,10 +354,18 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
           <ClientOptionsFile client={c} options={options} />
         ))}
         {allClients.map((c) => (
-          <ClientFile client={c} options={options} rootNamespace={rootNamespace} />
+          <ClientFile
+            client={c}
+            options={options}
+            rootNamespace={rootNamespace}
+          />
         ))}
         {allClients.map((c) => (
-          <RestClientFile client={c} options={options} rootNamespace={rootNamespace} />
+          <RestClientFile
+            client={c}
+            options={options}
+            rootNamespace={rootNamespace}
+          />
         ))}
         {allClients.map((c) => (
           <CollectionResultFiles client={c} options={options} />

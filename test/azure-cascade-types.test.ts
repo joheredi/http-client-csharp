@@ -168,7 +168,9 @@ describe("Azure pipeline types - ProtocolMethod", () => {
     );
 
     // Unbranded protocol methods with body param use BinaryContent
-    expect(clientFile).toContain("BinaryContent content, RequestOptions options");
+    expect(clientFile).toContain(
+      "BinaryContent content, RequestOptions options",
+    );
     expect(clientFile).not.toContain("RequestContent content");
   });
 });

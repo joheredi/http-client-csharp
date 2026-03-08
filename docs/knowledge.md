@@ -4411,18 +4411,23 @@ Azure.Core's `HttpPipeline.CreateMessage()` takes `(RequestContext, ResponseClas
 ## ARM SDK Namespace Collision (CS0104) — Design Decision
 
 ### Problem
+
 TCGC assigns some types the `Azure.ResourceManager` namespace. After `applyModelSubNamespace` adds `.Models`, these types land in `Azure.ResourceManager.Models` — the Azure.ResourceManager NuGet package's namespace for types like `SystemData`, `CreatedByType`. Files that import both `Azure.ResourceManager.CommonTypes.Models` and `Azure.ResourceManager.Models` get CS0104.
 
 ### Approach Chosen: Namespace Redirect
+
 Redirect models/enums with namespace `Azure.ResourceManager` to the package root namespace. This is done in `redirectArmSdkNamespaceConflicts()` called before `applyModelSubNamespace`.
 
 ### Approach Rejected: Suppress generation of SDK types
+
 Adding SystemData/CreatedByType as builtins and filtering them from generation was considered but rejected because:
+
 1. The refkey system (`efCsharpRefkey(rawType)`) creates refkeys from TCGC model objects. Filtering a model means TypeExpression references to it would produce unresolved symbols.
 2. No existing mechanism for aliasing TCGC model refkeys to builtin library refkeys.
 3. The namespace redirect is simpler and addresses the root cause (generated types in SDK namespace) without requiring changes to the refkey resolution pipeline.
 
 ### Key Pattern: FQN for SDK Type Collisions in Collections
+
 When a spec defines a model with the same name as an SDK parent scope type (e.g., spec-defined `SubscriptionResource` vs SDK's `Azure.ResourceManager.Resources.SubscriptionResource`), use `global::` FQN for the SDK type reference in `ValidateResourceId`. This avoids CS0104 without affecting Alloy's reference system for the model type.
 
 ## Task 20.12e — Flavor-aware body parameter types in protocol methods
@@ -4442,20 +4447,25 @@ When a spec defines a model with the same name as an SDK parent scope type (e.g.
 **Rejected**: No alternatives considered — this is the obvious fix following the established `pipelineTypes` pattern used throughout the codebase.
 
 #### .testignore requires matching Compile Remove in csproj
+
 When adding a spec to `test/e2e/.testignore`, you MUST also add a corresponding `<Compile Remove>` entry in `test/e2e/Spector.Tests/Spector.Tests.csproj`. The `.testignore` prevents code generation, but test files from the submodule are linked via glob patterns (`Http/**/*.cs`). Without a Compile Remove, the test files still compile and reference types from the missing project, causing CS0234/CS0246 build errors.
 
 #### Azure submodule test files use 'Specs' namespace
+
 Many Azure test files from `submodules/azure-sdk-for-net` reference a root `Specs` namespace (e.g., `using Specs.Azure.ClientGenerator.Core.Access;`) that doesn't exist in the new emitter's generated code. These test files need Compile Remove until the namespace mapping is resolved.
 
 #### Clean bin/obj when debugging e2e build issues
+
 When `dotnet build` fails, `dotnet test --no-build` silently uses stale cached assemblies from a previous build. This causes misleading test results (tests appear to run/skip when they shouldn't). Always `rm -rf test/e2e/Spector.Tests/bin test/e2e/Spector.Tests/obj` before re-running e2e tests after csproj changes.
 
 #### ARM specs have 2,358 remaining build errors
+
 All 9 ARM resource-manager specs emit successfully but fail dotnet build with deep infrastructure gaps: CS0122 (ProtocolOperationHelpers inaccessible: 732), CS0117 (missing members like FromResponse: 404), CS1503 (type conversions: 328), CS1061 (missing methods: 188), CS0246 (missing types: 148), plus conversion errors, constructor mismatches, and variable conflicts. These require further ARM-specific infrastructure work beyond what tasks 20.8–20.12e addressed.
 
 ### Design Decisions
 
 #### E2e triage approach: .testignore + Compile Remove (task 20.13)
+
 **Chosen**: Add all 26 failing specs to .testignore and corresponding Compile Remove entries in csproj.
 **Why**: Making the build pass is essential — the "should build the test project" vitest test gates all subsequent validation. Failing specs can't contribute useful signal.
 **Rejected**: (1) Tolerating build failures — would require modifying the test framework, adds complexity. (2) Fixing all build errors — not feasible; ARM needs deep infrastructure work and Azure data-plane has fundamental API surface mismatches.
@@ -4481,6 +4491,7 @@ All 9 ARM resource-manager specs emit successfully but fail dotnet build with de
 **Gotcha**: Alloy's MSBuild component renderer may wrap long XML attributes across lines (e.g., `<Compile Include="..." \n LinkBase="..."/>`). This is valid XML but breaks `toContain` string checks. Use regex with `\s+` between attributes instead of exact string matching.
 
 ### Array Encoding (Delimiter) Serialization
+
 - **TCGC API**: `SdkModelPropertyTypeBase.encode?: ArrayKnownEncoding` where `ArrayKnownEncoding = "pipeDelimited" | "spaceDelimited" | "commaDelimited" | "newlineDelimited"`. Encoding is on the PROPERTY, not the `SdkArrayType`.
 - **Serialization pattern**: Use `writer.WriteStringValue(string.Join(delimiter, collection))` for string elements. For enum elements, use `.Select(v => v.ToSerialString())` (fixed) or `.Select(v => v.ToString())` (extensible).
 - **Deserialization pattern**: Use `jsonProperty.Value.GetString().Split(char)` for string elements. For enum elements, chain `.Select(v => v.To{EnumName}()).ToArray()` (fixed) or `.Select(v => new {EnumName}(v)).ToArray()` (extensible).
@@ -4488,6 +4499,7 @@ All 9 ARM resource-manager specs emit successfully but fail dotnet build with de
 - **Check order**: The encoding check (`property.encode`) must happen BEFORE the standard array dispatch in both `renderCollectionProperty()` and `PropertyMatchingLoop`.
 
 ## Design Decisions
+
 - **Array encoding handled at dispatch level, not inside `renderArraySerialization`**: The encoding applies at the property level, not at the type level. The existing `renderArraySerialization` and `renderArrayDeserialization` functions are also called from nested contexts (dict values, nested arrays) where property-level encoding doesn't apply. A separate code path at the dispatch level is cleaner.
 
 ### Task 21.3: Bytes body params use spread path, not direct body path
@@ -4503,10 +4515,12 @@ All 9 ARM resource-manager specs emit successfully but fail dotnet build with de
 **How to distinguish explicit vs implicit text/plain**: Check `response.headers` for an explicit content-type header. When `@header contentType: "text/plain"` is annotated, the response has `headers: [{serializedName: "content-type", type: {kind: "constant"}}]`. Without annotation, `headers` is empty.
 
 **Pattern for text/plain detection**:
+
 - Request body: `operation.bodyParam?.contentTypes?.includes("text/plain")` — reliable because body params with `@header contentType: "text/plain"` get text/plain in contentTypes.
 - Response: `r.contentTypes?.includes("text/plain") && r.headers?.some(h => h.serializedName === "content-type")` — requires BOTH text/plain content type AND explicit header to avoid false positives.
 
 **Serialization patterns**:
+
 - text/plain request: `BinaryContent.Create(BinaryData.FromString(param))` (not `BinaryContentHelper.FromObject()`)
 - text/plain response: `content.ToString()` (not `content.ToObjectFromJson<string>()`)
 - application/json string request: `BinaryContentHelper.FromObject(param)` (unchanged)
@@ -4515,6 +4529,7 @@ All 9 ARM resource-manager specs emit successfully but fail dotnet build with de
 ## Design Decisions
 
 ### Task 21.4: Text/plain handling approach
+
 **Chosen**: Pass `isTextPlain` boolean flags through `getBodyProtocolCallArg`, `buildSpreadProtocolCallExpr`, and `buildResponseInfo` functions. Detection via helper functions at call sites where operation context is available.
 **Rejected**: Passing full operation objects to these functions — bigger API change, less explicit about what information is needed.
 **Rejected**: Checking only `contentTypes` without header verification — TCGC defaults string to text/plain even without explicit annotation, causing false positives for implicit string returns.
@@ -4522,27 +4537,45 @@ All 9 ARM resource-manager specs emit successfully but fail dotnet build with de
 ## Task 21.5: Complex Collection Deserialization
 
 ### Problem
+
 `ToObjectFromJson<IReadOnlyList<T>>()` uses `JsonSerializer.Deserialize<T>()` under the hood. This fails for:
+
 - **Model types**: internal parameterless constructor not accessible to JsonSerializer
 - **TimeSpan (duration)**: ISO 8601 duration format not supported by default
 - **BinaryData (bytes/unknown)**: not JSON-serializable
 
 ### Solution
+
 For complex element types in array/dict responses, generate `JsonDocument.Parse()` + per-element foreach loop. Simple types keep using `ToObjectFromJson`.
 
 ### Design Decisions
+
 - **Approach chosen**: JsonDocument.Parse + per-element static Deserialize method (for models) or extension methods (for TimeSpan/BinaryData). This is the same approach the legacy emitter's internal `ScmMethodProviderCollection.BuildCollectionConversionForResult()` uses.
 - **Rejected: ModelReaderWriter.Read<T>** per element — triple-parses JSON (element→string→BinaryData→parse).
 - **Rejected: Custom JsonSerializerOptions with converters** — no public API in System.ClientModel for getting converter-aware options.
 
 ### Gotcha: BinaryData null handling
+
 BinaryData (bytes/unknown) types need **unconditional** null checking in the foreach loop, even when the TCGC type is NOT wrapped in `nullable`. JSON null is always a valid value for unknown types. Without null checking, `BinaryData.FromString("null")` produces a non-null BinaryData instead of C# null.
 
 ### Pattern: preReturnStatements in ResponseInfo
+
 When multi-statement deserialization is needed (complex collections), use the `preReturnStatements` field in `ResponseInfo`. This optional `Children` value is inserted between the protocol call and the return statement in both sync and async method bodies.
 
 ### Multi-service combined client apiVersions is empty
+
 TCGC sets the combined client's `apiVersions` to `[]` when using `@client({ service: [A, B] })`. The children have their own apiVersions. Fix: `getEffectiveApiVersions()` in `ClientOptionsFile.tsx` collects from children. This generates a single `ServiceVersion` enum with the union of all children's versions.
 
 ### TypeSpec test: use @client not @@client for multi-service
+
 In unit tests, `@@client(Combined, { service: [ServiceA, ServiceB] })` augment decorator doesn't create a combined client. Use `@client({ service: [ServiceA, ServiceB] })` directly on the namespace. Also, use block-style namespaces (not blockless) when defining multiple namespaces in a single TypeSpec string.
+
+### Task 21.13: Default Endpoint Convenience Constructors
+
+**Design Decision**: When the TCGC endpoint parameter has a `clientDefaultValue` (from `@server` or `@scenarioService`), generate convenience constructors WITHOUT the endpoint parameter that chain using `new Uri("default")`. This matches the legacy emitter's three-tier constructor pattern: `(credential)`, `(credential, options)`, `(endpoint, credential, options)`.
+
+**Key Gotcha — JSX comments in Alloy**: `{/* JSX comments */}` inside Alloy JSX fragments cause `Cannot read properties of null (reading 'tagName')` build errors. The babel-plugin-jsx-dom-expressions cannot handle null nodes from JSX comments. Use regular JS comments outside JSX instead.
+
+**Key Gotcha — Multi-line constructor formatting**: Alloy's `<OverloadConstructor>` formats constructor parameters across multiple lines when there are 3+ parameters. Test assertions should use partial `toContain` checks (e.g., `"Uri endpoint,"` separately from `"TestServiceClientOptions options"`) rather than matching the entire signature on one line.
+
+**Pattern — `getDefaultEndpointUrl()`**: Returns the default endpoint URL from `resolveEndpointType(endpointParam.type).templateArguments.find(a => a.type.kind === "url").clientDefaultValue`. Returns `undefined` when no default exists (e.g., plain `@service` without `@server`).

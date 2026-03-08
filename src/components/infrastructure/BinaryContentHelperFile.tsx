@@ -52,8 +52,12 @@ export function BinaryContentHelperFile(props: BinaryContentHelperFileProps) {
   // For Azure, use RequestContent (from Azure.Core) and Utf8JsonRequestContent (shared source).
   // For unbranded, use BinaryContent (from System.ClientModel) and Utf8JsonBinaryContent (generated).
   const contentType = isAzure ? "RequestContent" : "BinaryContent";
-  const jsonContentType = isAzure ? "Utf8JsonRequestContent" : "Utf8JsonBinaryContent";
-  const contentCreate = isAzure ? "RequestContent.Create" : "BinaryContent.Create";
+  const jsonContentType = isAzure
+    ? "Utf8JsonRequestContent"
+    : "Utf8JsonBinaryContent";
+  const contentCreate = isAzure
+    ? "RequestContent.Create"
+    : "BinaryContent.Create";
 
   // Methods that use #if preprocessor directives require plain strings
   // (not code blocks) for the conditional sections to avoid Alloy's

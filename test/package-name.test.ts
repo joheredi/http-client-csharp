@@ -1084,7 +1084,11 @@ describe("redirectArmSdkNamespaceConflicts", () => {
     const enums: SdkEnumType[] = [];
 
     // Should not throw
-    redirectArmSdkNamespaceConflicts(models, enums, "Azure.ResourceManager.MyService");
+    redirectArmSdkNamespaceConflicts(
+      models,
+      enums,
+      "Azure.ResourceManager.MyService",
+    );
   });
 
   /**

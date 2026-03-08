@@ -6801,3 +6801,20 @@ Fixed 12 Encode_Array_Property e2e test failures. When a model property has `@en
 - Key insight: `@client({...})` direct decorator works in tests; `@@client` augment decorator didn't create the combined client
 - Key insight: TypeSpec requires block-style namespaces (not blockless) for multiple namespaces in a single file
 - Result: 1699 unit tests passing, 652 e2e tests passing with 0 unexpected failures
+
+## Task 21.13 — Enable authentication OAuth2/Union e2e test coverage (2026-03-08)
+
+- Added `getDefaultEndpointUrl()` utility to `src/utils/client-params.ts` that extracts the default server URL from TCGC endpoint parameter's `clientDefaultValue`
+- Modified `RootClientConstructors` in `ClientFile.tsx` to generate no-endpoint convenience constructors when a default URL exists:
+  - `(credential)` → chains to `(new Uri("default"), credential, new Options())`
+  - `(credential, options)` → chains to `(new Uri("default"), credential, options)`
+  - Generated for ALL auth schemes (not just the first)
+- Without `@server` (plain `@service`), existing behavior preserved: `(endpoint, credential)` convenience for first scheme only
+- Removed Compile Remove entries for OAuth2 and Union auth tests in `Spector.Tests.csproj`
+- Added 2 unit tests: one for single-auth with `@server`, one for union auth with `@server`
+- Key insights:
+  - `@scenarioService()` in Spector specs triggers TCGC to set `clientDefaultValue` on endpoint (resolves to `http://localhost:3000`)
+  - Plain `@service` without `@server` does NOT set clientDefaultValue → no change in behavior
+  - The `renderCtorDocs` helper DRYs up doc comment generation across 3 constructor tiers
+  - JSX comments (`{/* ... */}`) cause null tagName errors in Alloy's babel plugin — use JS comments instead
+- Result: **1701 unit tests passing**, **684 e2e tests passing (was 652, +32 new) with 0 unexpected failures**

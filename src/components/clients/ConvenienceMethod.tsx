@@ -1017,7 +1017,9 @@ function buildResponseInfo(
   if (!responseType) return null;
 
   // For Azure flavor, Response has .Content directly; for unbranded, use .GetRawResponse().Content
-  const contentExpr = isAzure ? "result.Content" : "result.GetRawResponse().Content";
+  const contentExpr = isAzure
+    ? "result.Content"
+    : "result.GetRawResponse().Content";
 
   const unwrapped = unwrapType(responseType);
 
@@ -1211,7 +1213,10 @@ function buildResponseInfo(
  *
  * @param keyword - The C# type keyword (e.g., "int", "string", "decimal").
  */
-function buildScalarResponseInfo(keyword: string, contentExpr: string): ResponseInfo {
+function buildScalarResponseInfo(
+  keyword: string,
+  contentExpr: string,
+): ResponseInfo {
   return {
     typeExpr: keyword,
     deserializeExpr: `${contentExpr}.ToObjectFromJson<${keyword}>()`,
