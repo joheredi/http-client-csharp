@@ -147,8 +147,13 @@ describe("ProjectFile", () => {
     ];
 
     for (const file of expectedSharedFiles) {
-      expect(csproj).toContain(
-        `<Compile Include="$(AzureCoreSharedSources)${file}" LinkBase="Shared/Core" />`,
+      // Use regex to match the Compile element regardless of whitespace between
+      // XML attributes. Alloy's MSBuild renderer may wrap long attributes across
+      // lines, which is valid XML but breaks exact string matching.
+      expect(csproj).toMatch(
+        new RegExp(
+          `<Compile Include="\\$\\(AzureCoreSharedSources\\)${file.replace(".", "\\.")}"\\s+LinkBase="Shared/Core"\\s*/>`,
+        ),
       );
     }
   });

@@ -23,7 +23,7 @@
  * @module
  */
 import { describe, expect, it } from "vitest";
-import { MgmtTester } from "./test-host.js";
+import { AzureHttpTester, MgmtTester } from "./test-host.js";
 
 /**
  * ARM TypeSpec fixture with explicit `@flattenProperty` on an inner model.
@@ -260,5 +260,122 @@ describe("property flattening (@flattenProperty)", () => {
     // Doc comments from InnerProps should appear on promoted properties
     expect(outerFile).toContain("The display name of the widget.");
     expect(outerFile).toContain("Whether the widget is enabled.");
+  });
+});
+
+// ─── Non-management (data-plane) flatten behavior ────────────────────────────
+
+/**
+ * Non-ARM TypeSpec fixture with `@flattenProperty` on a nested model.
+ *
+ * Mirrors the azure/client-generator-core/flatten-property spec.
+ * When `management` is false, model-level flattening should NOT be applied.
+ * Properties should remain public on their models (matching legacy behavior).
+ *
+ * Ground truth: Legacy emitter generates NestedFlattenModel with a PUBLIC
+ * `Properties` property of type `ChildFlattenModel`, NOT internal backing +
+ * promoted computed properties.
+ */
+const nonArmFlattenSpec = `
+  using TypeSpec.Http;
+  using Azure.ClientGenerator.Core;
+  using Azure.ClientGenerator.Core.Legacy;
+
+  @service(#{title: "FlattenPropertyTest"})
+  namespace FlattenPropertyTest;
+
+  model ChildModel {
+    description: string;
+    age: int32;
+  }
+
+  model ChildFlattenModel {
+    summary: string;
+    #suppress "@azure-tools/typespec-azure-core/no-legacy-usage" "Testing backcompat"
+    @flattenProperty
+    properties: ChildModel;
+  }
+
+  model NestedFlattenModel {
+    name: string;
+    #suppress "@azure-tools/typespec-azure-core/no-legacy-usage" "Testing backcompat"
+    @flattenProperty
+    properties: ChildFlattenModel;
+  }
+
+  @route("/nestedFlattenModel")
+  @put op putNestedFlattenModel(@body input: NestedFlattenModel): NestedFlattenModel;
+`;
+
+describe("property flattening (non-management / data-plane)", () => {
+  /**
+   * When management is false, model-level flattening should NOT occur.
+   * Properties with `@flattenProperty` should remain PUBLIC on the model,
+   * not become internal backing fields with promoted computed properties.
+   *
+   * Why this matters: the legacy C# emitter does not apply model-level
+   * flattening for non-ARM specs. The flatten-property spec keeps
+   * `Properties` as a public property. Without this guard, a duplicate
+   * `Properties` member (CS0102) is generated when the inner model also
+   * has a `properties` field.
+   *
+   * Ground truth: submodules/azure-sdk-for-net/.../flatten-property/
+   * src/Generated/Models/NestedFlattenModel.cs — `Properties` is public.
+   */
+  it("does not flatten properties when management is false", async () => {
+    const [{ outputs }] = await AzureHttpTester.compileAndDiagnose(nonArmFlattenSpec);
+    const nestedFile = findFile(outputs, "NestedFlattenModel.cs");
+
+    // Properties should remain public (not internal)
+    expect(nestedFile).toContain("public ChildFlattenModel Properties");
+    expect(nestedFile).not.toMatch(/internal\s+ChildFlattenModel\s+Properties/);
+
+    // Should NOT have promoted computed properties from ChildFlattenModel
+    expect(nestedFile).not.toContain("Properties is null ? default :");
+  });
+
+  /**
+   * Verifies no CS0102 (duplicate member) is possible — when flatten is
+   * not applied, NestedFlattenModel has exactly one `Properties` member.
+   *
+   * Why this matters: this was the original bug (CS0102) that blocked the
+   * flatten-property spec from building. The internal backing `Properties`
+   * and promoted `Properties` from ChildFlattenModel.properties collided.
+   */
+  it("does not produce duplicate Properties members", async () => {
+    const [{ outputs }] = await AzureHttpTester.compileAndDiagnose(nonArmFlattenSpec);
+    const nestedFile = findFile(outputs, "NestedFlattenModel.cs");
+
+    // Count occurrences of "Properties" as a declared member
+    const propertiesDeclarations = nestedFile.match(
+      /(?:public|internal)\s+\w+\s+Properties\s*\{/g,
+    );
+    expect(propertiesDeclarations?.length).toBe(1);
+  });
+
+  /**
+   * Inner models (ChildFlattenModel, ChildModel) should also keep their
+   * properties public when management is false.
+   */
+  it("inner models keep properties public", async () => {
+    const [{ outputs }] = await AzureHttpTester.compileAndDiagnose(nonArmFlattenSpec);
+    const childFlattenFile = findFile(outputs, "ChildFlattenModel.cs");
+
+    // ChildFlattenModel.Properties should be public
+    expect(childFlattenFile).toContain("public ChildModel Properties");
+    expect(childFlattenFile).not.toMatch(/internal\s+ChildModel\s+Properties/);
+  });
+
+  /**
+   * The generated output must never contain unresolved symbol markers.
+   */
+  it("does not produce unresolved symbols", async () => {
+    const [{ outputs }] = await AzureHttpTester.compileAndDiagnose(nonArmFlattenSpec);
+
+    for (const [path, content] of Object.entries(outputs)) {
+      expect(content, `Unresolved symbol in ${path}`).not.toContain(
+        "<Unresolved Symbol:",
+      );
+    }
   });
 });

@@ -2592,7 +2592,7 @@
           "title": "Fix CS0102 duplicate Properties member in flatten-property spec",
           "description": "azure/client-generator-core/flatten-property is in .testignore because NestedFlattenModel generates a duplicate 'Properties' member (CS0102). The flatten logic in the emitter creates a property that conflicts with an existing one.\n\nFix: Update the flatten property handling in src/utils/flatten.ts or the model generation to detect and avoid duplicate property names when flattening nested models.",
           "phase": "phase-21",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

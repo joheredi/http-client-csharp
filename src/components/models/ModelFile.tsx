@@ -128,7 +128,13 @@ export function ModelFile(props: ModelFileProps) {
   // Collect flattened property metadata. Properties with `flatten: true`
   // become internal backing fields, and their inner model's public properties
   // get promoted as computed getter/setter properties on this model.
-  const flattenedInfos = collectFlattenedProperties(props.type);
+  //
+  // Model-level flattening is an ARM-only pattern. Non-management specs
+  // (e.g., azure/client-generator-core/flatten-property) keep `Properties`
+  // as a public property without promoting inner model properties.
+  const flattenedInfos = props.options.management
+    ? collectFlattenedProperties(props.type)
+    : [];
   const flattenedBackingSet = new Set(
     flattenedInfos.map((fi) => fi.backingProperty),
   );

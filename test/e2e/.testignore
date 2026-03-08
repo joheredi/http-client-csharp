@@ -28,9 +28,6 @@ azure/payload/pageable
 azure/core/lro/rpc
 azure/core/lro/standard
 
-# Flatten property: CS0102 duplicate 'Properties' member.
-azure/client-generator-core/flatten-property
-
 # ============================================================
 # NON-AZURE SPECS — remaining build failures
 # ============================================================

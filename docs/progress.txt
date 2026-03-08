@@ -6672,3 +6672,25 @@ Removed 3 stale resiliency/srv-driven/v1 entries from .expected-failures.
 **Key insight**: When adding specs to .testignore, you must ALSO add Compile Remove entries in the csproj for test files that reference types from the removed projects. The chain is: .testignore → emit-e2e skips generation → GeneratedProjectReferences.props omits project → test files can't compile → need Compile Remove.
 
 **Key insight**: When dotnet build fails, `dotnet test --no-build` uses stale cached assemblies. Always clean bin/obj when investigating build issues.
+
+## Task 21.8 — Fix CS0102 duplicate Properties member in flatten-property spec (2026-03-08)
+
+**Problem**: `ModelFile.tsx` unconditionally called `collectFlattenedProperties()` on ALL models regardless of the `management` option. For the non-ARM `azure/client-generator-core/flatten-property` spec, this tried to promote `ChildFlattenModel.properties` into `NestedFlattenModel`, creating a duplicate `Properties` member (CS0102) because the backing property name collided with the promoted property name.
+
+**Root cause**: Model-level property flattening (backing property becomes internal, inner properties promoted as computed getters/setters) is an ARM-only pattern. The legacy emitter does NOT flatten model properties for non-ARM specs — `Properties` stays public. But the new emitter applied flatten unconditionally.
+
+**Fix**: Gated `collectFlattenedProperties()` call in `ModelFile.tsx` on `props.options.management === true`. When `management` is false, the flatten metadata array is empty, so no backing properties become internal and no computed properties are promoted.
+
+**Files modified**: `src/components/models/ModelFile.tsx`, `test/e2e/.testignore`, `test/flatten.test.ts`, `test/project-scaffolding.test.ts`
+
+**Tests added**: 4 new tests in `test/flatten.test.ts` for non-management flatten behavior:
+- `does not flatten properties when management is false` — verifies Properties stays public
+- `does not produce duplicate Properties members` — verifies no CS0102
+- `inner models keep properties public` — verifies ChildFlattenModel.Properties stays public
+- `does not produce unresolved symbols` — safety check
+
+**Also fixed**: Pre-existing test failure in `project-scaffolding.test.ts` where `toContain` check for `<Compile>` elements broke due to Alloy's XML attribute line wrapping. Changed to regex matching with `\s+` for whitespace flexibility.
+
+**Result**: flatten-property spec removed from .testignore, builds successfully in e2e (107 specs compiled, 0 unexpected failures). All 1,680 unit tests pass.
+
+**Key pattern**: Model-level property flattening is ARM-only (gated on `management` option). Non-ARM specs with `@flattenProperty` keep properties public on models. The `@flattenProperty` decorator from `Azure.ClientGenerator.Core.Legacy` only affects client method parameter flattening for non-ARM specs, not model structure.

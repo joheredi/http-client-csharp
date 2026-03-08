@@ -4459,3 +4459,23 @@ All 9 ARM resource-manager specs emit successfully but fail dotnet build with de
 **Chosen**: Add all 26 failing specs to .testignore and corresponding Compile Remove entries in csproj.
 **Why**: Making the build pass is essential — the "should build the test project" vitest test gates all subsequent validation. Failing specs can't contribute useful signal.
 **Rejected**: (1) Tolerating build failures — would require modifying the test framework, adds complexity. (2) Fixing all build errors — not feasible; ARM needs deep infrastructure work and Azure data-plane has fundamental API surface mismatches.
+
+## Model-level flatten is ARM-only (Task 21.8)
+
+**Gotcha**: `collectFlattenedProperties()` must only be called when `management` option is true. The `@flattenProperty` decorator from `Azure.ClientGenerator.Core.Legacy` sets `flatten: true` on TCGC properties for both ARM and non-ARM specs, but model-level flattening (backing property becomes internal, inner properties promoted) is only correct for ARM models.
+
+**Evidence**: Legacy emitter output for `azure/client-generator-core/flatten-property` shows all models with `Properties` as PUBLIC — no model-level flattening. ARM specs (e.g., `Mgmt-TypeSpec`) DO flatten.
+
+**Failure mode**: Without the management gate, `NestedFlattenModel.properties` (backing, type `ChildFlattenModel`) collides with promoted `ChildFlattenModel.properties` → CS0102 duplicate member.
+
+### Design Decision: Gate flatten on management option (Task 21.8)
+
+**Approach chosen**: Check `props.options.management` in `ModelFile.tsx` before calling `collectFlattenedProperties()`.
+
+**Why**: Simplest fix, matches existing ARM gating pattern (other ARM features gated on `options.management`), existing tests use `MgmtTester` which sets `management: true`.
+
+**Rejected**: (1) Name collision detection — still does partial flattening for non-ARM, doesn't match legacy. (2) Recursive flatten — complex, doesn't match legacy behavior where models aren't flattened at all.
+
+## Alloy MSBuild XML attribute wrapping (Task 21.8)
+
+**Gotcha**: Alloy's MSBuild component renderer may wrap long XML attributes across lines (e.g., `<Compile Include="..." \n LinkBase="..."/>`). This is valid XML but breaks `toContain` string checks. Use regex with `\s+` between attributes instead of exact string matching.
