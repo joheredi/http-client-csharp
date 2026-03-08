@@ -189,7 +189,14 @@ export function ClientFile(props: ClientFileProps) {
     additionalUsings.push("System.Collections.Generic");
   }
   if (client.namespace !== rootNamespace) {
-    additionalUsings.push(rootNamespace);
+    // Apply name policy to each segment so the using directive matches the
+    // PascalCase namespace rendered by the <Namespace> component (e.g.,
+    // "client.clientnamespace" → "Client.Clientnamespace").
+    const pascalRoot = rootNamespace
+      .split(".")
+      .map((seg) => namePolicy.getName(seg, "namespace"))
+      .join(".");
+    additionalUsings.push(pascalRoot);
   }
 
   return (

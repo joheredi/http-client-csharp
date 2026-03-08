@@ -2,35 +2,10 @@
 # One path per line (relative to specs root). Lines starting with # are comments.
 
 # ============================================================
-# ARM RESOURCE MANAGER SPECS — Triage (task 20.13, 2026-03-08)
+# ARM RESOURCE MANAGER SPECS
 # ============================================================
-# All 9 ARM specs emit TypeSpec→C# successfully (task 20.7 added management=true).
-# Tasks 20.8–20.12e fixed many ARM compilation errors (AzureLocation namespace,
-# ambiguous references, namespace collisions, infrastructure API issues, flavor-
-# aware protocol methods). However, 2,358 CS errors remain across 9 specs due
-# to deep ARM infrastructure gaps that require further emitter work.
-#
-# Major error categories (by count):
-#   - CS0122 (732): ProtocolOperationHelpers, OperationFinalStateVia inaccessible
-#   - CS0117 (404): Missing members — Widget.FromResponse, etc.
-#   - CS1503 (328): Type conversions — Guid→string, wrong argument types
-#   - CS1061 (188): Missing methods on generated types
-#   - CS0246 (148): Missing type/namespace references
-#   - CS0029/CS0030 (244): Implicit/explicit conversion errors
-#   - CS0103 (120): Names not in current context
-#   - CS1729 (72): Wrong constructor argument counts (OptionalBody, etc.)
-#   - CS0128 (40): Duplicate local variable definitions
-#   - CS1744 (36): Named argument conflicts (cancellationToken)
-#   - CS7036 (28): Missing required parameters
-#   - CS0118 (14): NonResource namespace/type collision (non-resource spec)
-#   - CS0144 (4): Cannot create abstract class instances
-#
-# These errors reflect missing ARM-specific infrastructure:
-#   - Resource operation patterns (CRUD, LRO, collections)
-#   - FromResponse/ToRequestContent model serialization hooks
-#   - ARM-flavored OptionalBody, ProtocolOperationHelpers
-#   - Proper Guid→string path parameter handling
-#
+# Deep ARM infrastructure gaps: inaccessible ProtocolOperationHelpers,
+# missing FromResponse/ToRequestContent, Guid→string conversion, etc.
 azure/resource-manager/common-properties
 azure/resource-manager/large-header
 azure/resource-manager/method-subscription-id
@@ -44,48 +19,22 @@ azure/resource-manager/resources
 # ============================================================
 # AZURE DATA PLANE SPECS — Remaining failures
 # ============================================================
-# Paging specs: CollectionResult base class (System.ClientModel) requires
-# ClientResult returns but Azure pipeline returns Response. Need Azure-specific
-# Pageable<T>/AsyncPageable<T> base classes for paging.
+# Paging: CollectionResult requires ClientResult but Azure returns Response.
 azure/client-generator-core/next-link-verb
 azure/core/basic
 azure/core/page
 azure/payload/pageable
 
-# LRO specs: ProtocolOperationHelpers and OperationFinalStateVia are internal
-# shared-source types that require VoidValue and other dependencies.
+# LRO: ProtocolOperationHelpers shared source dependencies.
 azure/core/lro/rpc
 azure/core/lro/standard
 
-# Flatten property: CS0102 duplicate 'Properties' member in NestedFlattenModel.
+# Flatten property: CS0102 duplicate 'Properties' member.
 azure/client-generator-core/flatten-property
 
 # ============================================================
-# NON-AZURE SPECS — build failures
+# NON-AZURE SPECS — remaining build failures
 # ============================================================
 
-# === Multipart / file upload specs ===
-# type/file: Convenience methods reference File model types via refkeys, but
-# these file models don't have JSON/XML usage and are filtered from generation.
-# File download operations need special handling to return BinaryData/stream
-# instead of model types in convenience methods.
-type/file
-
-# === Multi-namespace scope issues — FIXED ===
-# Fixed by adding rootNamespace using to cross-namespace client files
-# and only setting flavor=azure for azure/* directory paths in emit-e2e.ts.
-
-# === service/multi-service — separate bug ===
-# CombinedOptions class is missing Version property; Generated constructor
-# references options.Version but ClientOptionsFile does not generate it.
+# service/multi-service: CombinedOptions missing Version property.
 service/multi-service
-
-# === Overload / Naming — Azure API surface in non-Azure specs ===
-# client/overload: Generated convenience methods use Azure.Core types
-# (DiagnosticScope, Response.GetRawResponse) in non-Azure context. Also has
-# CS0136 scope variable redeclaration in nested try blocks.
-# client/naming: UnionEnum convenience methods pass BinaryContent where
-# extensible enum type is expected; also uses Azure.RequestContext in non-Azure
-# context (overload resolution picks wrong protocol method).
-client/overload
-client/naming

@@ -43,6 +43,39 @@ const AZURE_SHARED_SOURCE_FILES = [
 ];
 
 /**
+ * Additional Azure.Core shared source files required by ARM (management) projects.
+ *
+ * Management SDKs use LRO infrastructure (ProtocolOperationHelpers, OperationFinalStateVia),
+ * argument validation (Argument), paging helpers (Page, PageableHelpers), and resource
+ * collection patterns (NoValueResponseOfT, ForwardsClientCallsAttribute).
+ *
+ * This list matches the shared source includes from the Azure SDK's
+ * `Directory.Build.Common.targets` for management libraries.
+ */
+const ARM_SHARED_SOURCE_FILES = [
+  "Argument.cs",
+  "AsyncLockWithValue.cs",
+  "FixedDelayWithNoJitterStrategy.cs",
+  "ForwardsClientCallsAttribute.cs",
+  "IOperationSource.cs",
+  "NextLinkOperationImplementation.cs",
+  "NoValueResponseOfT.cs",
+  "OperationFinalStateVia.cs",
+  "OperationHelpers.cs",
+  "OperationInternal.cs",
+  "OperationInternalBase.cs",
+  "OperationInternalOfT.cs",
+  "OperationPoller.cs",
+  "Page.cs",
+  "PageableHelpers.cs",
+  "ProtocolOperation.cs",
+  "ProtocolOperationHelpers.cs",
+  "SequentialDelayStrategy.cs",
+  "TaskExtensions.cs",
+  "VoidValue.cs",
+];
+
+/**
  * Type-safe wrapper for the MSBuild `<Compile>` element with `LinkBase` attribute support.
  *
  * The `@alloy-js/msbuild` Compile component doesn't include `LinkBase` in its typed props,
@@ -121,6 +154,14 @@ export function ProjectFile(props: ProjectFileProps) {
                 LinkBase="Shared/Core"
               />
             ))}
+            {isManagement
+              ? ARM_SHARED_SOURCE_FILES.map((file) => (
+                  <CompileWithLinkBase
+                    Include={`$(AzureCoreSharedSources)${file}`}
+                    LinkBase="Shared/Core"
+                  />
+                ))
+              : undefined}
           </ItemGroup>
           {"\n"}
         </>

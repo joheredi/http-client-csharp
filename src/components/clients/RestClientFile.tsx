@@ -161,8 +161,13 @@ export function RestClientFile(props: RestClientFileProps) {
   // partial declaration with a "_2" suffix.
   const partialName = namekey(className, { ignoreNameConflict: true });
 
+  // Apply name policy so the using directive matches the PascalCase namespace.
+  const pascalRoot = rootNamespace
+    .split(".")
+    .map((seg) => namePolicy.getName(seg, "namespace"))
+    .join(".");
   const additionalUsings =
-    client.namespace !== rootNamespace ? [rootNamespace] : undefined;
+    client.namespace !== rootNamespace ? [pascalRoot] : undefined;
 
   return (
     <SourceFile
