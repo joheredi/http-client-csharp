@@ -1,9 +1,11 @@
 {
-  "csharp": {
-    "command": "csharp-ls",
-    "args": ["--stdio"],
-    "fileExtensions": {
-      ".cs": "csharp"
+  "lspServers": {
+    "csharp": {
+      "command": "csharp-ls",
+      "args": [],
+      "fileExtensions": {
+        ".cs": "csharp"
+      }
     }
   }
 }
