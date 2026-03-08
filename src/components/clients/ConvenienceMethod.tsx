@@ -802,8 +802,15 @@ function getConvenienceTypeInfo(type: SdkType): {
     case "decimal128":
       return { expression: "decimal", needsAssertion: false, isString: false };
 
-    // String — reference type
+    // String — reference type (except uuid which maps to System.Guid, a value type)
     case "string":
+      if (unwrapped.name === "uuid") {
+        return {
+          expression: System.Guid,
+          needsAssertion: false,
+          isString: false,
+        };
+      }
       return { expression: "string", needsAssertion: true, isString: true };
 
     // BCL struct types — value types (no assertion)

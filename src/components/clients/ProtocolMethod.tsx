@@ -632,8 +632,10 @@ function getTypeInfo(type: SdkType): {
   isString: boolean;
 } {
   const unwrapped = unwrapType(type);
+  // uuid scalar (Azure.Core) has TCGC kind "string" but maps to System.Guid —
+  // it is NOT a string type for validation purposes (no AssertNotNullOrEmpty).
   const isString =
-    unwrapped.kind === "string" ||
+    (unwrapped.kind === "string" && unwrapped.name !== "uuid") ||
     (unwrapped.kind === "enum" &&
       unwrapType(unwrapped.valueType).kind === "string") ||
     (unwrapped.kind === "enumvalue" &&
@@ -660,6 +662,11 @@ function getProtocolTypeExpression(type: SdkType): Children {
 
   switch (unwrapped.kind) {
     case "string":
+      // uuid scalar (from Azure.Core) has TCGC kind "string" because uuid extends
+      // string in TypeSpec, but maps to System.Guid in C#.
+      if (unwrapped.name === "uuid") {
+        return System.Guid;
+      }
       return "string";
     case "int32":
       return "int";

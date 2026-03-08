@@ -6832,3 +6832,14 @@ Fixed 12 Encode_Array_Property e2e test failures. When a model property has `@en
 - All 3 versioning/removed projects build and pass: v1, v2, v2preview
 - Key insight: When adapting legacy test files, keep the Compile Remove for legacy path and create local replacements. Removing the Compile Remove causes duplicate definitions.
 - Result: **690 unit tests passing**, **e2e tests all passing with 0 unexpected failures**
+
+**Task 21.16** (2026-03-08) — ARM: Fix Guid to string path parameter conversion:
+- Root cause: Azure.Core's `uuid` scalar has TCGC kind "string" (since uuid extends string) but maps to System.Guid in C#. Three `getProtocolTypeExpression` functions and `getConvenienceTypeInfo` all returned "string" for kind "string" without checking the scalar name.
+- Fixed `getProtocolTypeExpression()` in both RestClientFile.tsx and ProtocolMethod.tsx to check `unwrapped.name === "uuid"` and return `System.Guid` instead of "string"
+- Fixed `getParamValueExpression()` in RestClientFile.tsx to generate `.ToString()` for uuid path/query/header parameters (AppendPath/AppendQuery/Headers.Set expect string arguments)
+- Fixed `getConvenienceTypeInfo()` in ConvenienceMethod.tsx to return `System.Guid` for uuid types
+- Fixed `getTypeInfo()` in ProtocolMethod.tsx to set `isString: false` for uuid (prevents incorrect AssertNotNullOrEmpty validation on Guid)
+- Added `AzureIntegrationTester` to test-host.ts for tests needing Azure.Core + Azure flavor
+- Added unit tests: uuid path param `.ToString()` and uuid query param `.ToString()`
+- Key learning: uuid is NOT a TypeSpec intrinsic scalar — it's defined in Azure.Core as `@format("uuid") scalar uuid extends string`
+- Result: **1703 unit tests passing**, **e2e tests all passing with 0 unexpected failures**

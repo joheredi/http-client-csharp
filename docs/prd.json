@@ -2755,7 +2755,7 @@
           "title": "ARM: Fix Guid to string path parameter conversion",
           "description": "ARM specs use Guid parameters for subscriptionId and resource IDs, but the generated code passes them as Guid where string is expected (CS1503, 328 errors). Need to generate .ToString() conversion for Guid path parameters.\n\nFix: Update RestClientFile.tsx or the path parameter handling to detect Guid types and add .ToString() conversion.",
           "phase": "phase-21",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

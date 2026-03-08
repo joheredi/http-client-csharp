@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HttpTester } from "./test-host.js";
+import { AzureIntegrationTester, HttpTester } from "./test-host.js";
 
 /**
  * Tests for the RestClientFile component (src/components/clients/RestClientFile.tsx).
@@ -236,6 +236,75 @@ describe("RestClientFile", () => {
     // Verify no assertion is generated for the optional path param
     expect(restClient).not.toContain("Argument.AssertNotNullOrEmpty(name");
     expect(restClient).not.toContain("Argument.AssertNotNull(name");
+  });
+
+  /**
+   * Verifies that uuid (Guid) path parameters get .ToString() conversion.
+   *
+   * TypeSpec `uuid` maps to C# `Guid`. Since AppendPath expects a string,
+   * the emitter must generate `.ToString()` on the Guid value. Without this
+   * conversion, ARM specs that use Guid for subscriptionId and resource IDs
+   * fail with CS1503 (cannot convert from Guid to string).
+   *
+   * The legacy emitter calls .ToString() on all non-string path params.
+   */
+  it("generates ToString() conversion for uuid path parameters", async () => {
+    const [{ outputs }, diagnostics] =
+      await AzureIntegrationTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+      using Azure.Core;
+
+      @service
+      namespace TestService;
+
+      @route("/resources/{id}")
+      @get op getResource(@path id: uuid): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const restClient = outputs["src/Generated/TestServiceClient.RestClient.cs"];
+    expect(restClient).toBeDefined();
+
+    // Verify Guid type in method signature
+    expect(restClient).toContain("Guid id");
+
+    // Verify .ToString() conversion is applied before AppendPath
+    expect(restClient).toContain("uri.AppendPath(id.ToString(), true);");
+
+    // Verify it does NOT pass the Guid directly (which would cause CS1503)
+    expect(restClient).not.toMatch(/uri\.AppendPath\(id,/);
+  });
+
+  /**
+   * Verifies that uuid (Guid) query parameters also get .ToString() conversion.
+   *
+   * AppendQuery also expects string arguments. uuid query params must be
+   * converted via .ToString() to avoid CS1503 compilation errors.
+   */
+  it("generates ToString() conversion for uuid query parameters", async () => {
+    const [{ outputs }, diagnostics] =
+      await AzureIntegrationTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+      using Azure.Core;
+
+      @service
+      namespace TestService;
+
+      @route("/search")
+      @get op search(@query resourceId: uuid): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const restClient = outputs["src/Generated/TestServiceClient.RestClient.cs"];
+    expect(restClient).toBeDefined();
+
+    // Verify Guid type in method signature
+    expect(restClient).toContain("Guid resourceId");
+
+    // Verify .ToString() conversion is applied before AppendQuery
+    expect(restClient).toContain(
+      'uri.AppendQuery("resourceId", resourceId.ToString(), true);',
+    );
   });
 
   /**

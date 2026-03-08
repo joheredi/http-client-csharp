@@ -4594,3 +4594,22 @@ In unit tests, `@@client(Combined, { service: [ServiceA, ServiceB] })` augment d
 - **Chosen**: Adapt test files locally by removing version-specific using directives
 - **Rejected**: Fixing the emitter to generate V1/V2/V2Preview sub-namespaces for Context/ModelFactory
 - **Reason**: The sub-namespaces only contain Context and ModelFactory — no tests reference these types directly. Adapting tests is simpler, lower risk, and the functional behavior is identical.
+
+## uuid scalar is Azure.Core, not TypeSpec intrinsic (Task 21.16)
+
+**Gotcha**: The `uuid` scalar is NOT a TypeSpec intrinsic type — it's defined in Azure.Core as `@format("uuid") scalar uuid extends string`. This means:
+- TCGC represents it as `SdkBuiltInType` with `kind: "string"` and `name: "uuid"`
+- It does NOT appear in `IntrinsicScalarName` or `intrinsicNameToCSharpType`
+- The Guid mapping comes from `azureScalarOverrideMap` in `CSharpTypeExpression.tsx`
+- Any `switch(type.kind)` that handles "string" must also check `type.name === "uuid"` to detect Guid types
+- Tests using uuid require `AzureIntegrationTester` (Azure.Core library + Azure flavor), not `HttpTester`
+
+**Pattern**: Three parallel `getProtocolTypeExpression` functions exist (RestClientFile.tsx, ProtocolMethod.tsx) plus `getConvenienceTypeInfo` in ConvenienceMethod.tsx. All must be kept in sync for uuid handling. When adding new scalar type mappings, check ALL FOUR locations.
+
+## Design Decisions
+
+### Guid detection via `type.name` (Task 21.16)
+- **Chosen**: Check `unwrapped.name === "uuid"` inside the `case "string":` branch of type expression functions
+- **Why**: The `SdkBuiltInType.name` property reliably distinguishes Azure.Core's uuid ("uuid") from plain strings ("string"). No need to thread flavor through function signatures.
+- **Rejected**: (1) Adding "uuid" to SdkBuiltInKinds — it's not a valid TCGC kind. (2) Checking `crossLanguageDefinitionId` — too fragile. (3) Passing flavor parameter — adds unnecessary complexity since `name === "uuid"` is sufficient.
+- **Risk**: A user-defined `scalar uuid extends string` in non-Azure context would also get Guid mapping. This is acceptable because (a) it's extremely unlikely, (b) the user likely expects Guid, and (c) `.ToString()` on string is harmless.

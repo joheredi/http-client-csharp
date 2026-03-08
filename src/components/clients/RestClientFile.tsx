@@ -642,6 +642,11 @@ function getProtocolTypeExpression(type: SdkType): Children {
   switch (unwrapped.kind) {
     // C# keyword types — no using directive needed
     case "string":
+      // uuid scalar (from Azure.Core) has TCGC kind "string" because uuid extends
+      // string in TypeSpec, but maps to System.Guid in C#.
+      if (unwrapped.name === "uuid") {
+        return System.Guid;
+      }
       return "string";
     case "int32":
       return "int";
@@ -981,8 +986,15 @@ function getParamValueExpression(
   const type = unwrapType(param.type);
   const name = nameOverride ?? getParamName(param.name);
 
-  // String → use directly
+  // String → use directly, unless the underlying scalar maps to a non-string
+  // C# type. The uuid scalar has TCGC kind "string" (since uuid extends string
+  // in TypeSpec) but maps to System.Guid in C#. Guid requires .ToString() for
+  // URI/header string conversion; without it, CS1503 errors occur because
+  // AppendPath/AppendQuery/Headers.Set all expect string arguments.
   if (type.kind === "string") {
+    if (type.name === "uuid") {
+      return `${name}.ToString()`;
+    }
     return name;
   }
 

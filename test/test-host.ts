@@ -51,6 +51,18 @@ export const IntegrationTester =
   IntegrationApiTester.emit("http-client-csharp").importLibraries();
 
 /**
+ * Azure-flavored integration tester with Azure.Core available.
+ * Use this when testing Azure-specific type mappings (e.g., uuid → Guid)
+ * that require both the Azure.Core library and the Azure flavor.
+ */
+export const AzureIntegrationTester = IntegrationApiTester.emit(
+  "http-client-csharp",
+  {
+    flavor: "azure",
+  },
+).importLibraries();
+
+/**
  * Tester for Azure management plane (ARM) tests.
  *
  * Registers the Azure Resource Manager library in addition to all
