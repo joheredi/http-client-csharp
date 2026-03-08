@@ -2432,6 +2432,392 @@
           ]
         }
       ]
+    },
+    {
+      "id": "phase-21",
+      "title": "E2E Coverage Parity \u2014 Remaining Gaps",
+      "description": "Close the remaining e2e coverage gaps to reach legacy emitter parity. Current baseline: 539/928 scenarios (58.1%). Target: match legacy emitter pass rates across standard, Azure, and ARM. Work is decomposed into tightly scoped tasks ordered by impact and dependency.",
+      "tasks": [
+        {
+          "id": "21.1",
+          "title": "Fix delimiter array encoding in convenience methods",
+          "description": "The 12 Encode_Array_Property tests fail because the generated client sends delimited arrays (comma, pipe, space, newline) in a format the Spector server rejects (HTTP 400). The convenience method body serialization via BinaryContentHelper.FromObject/FromEnumerable doesn't correctly encode array elements with the specified delimiter format.\n\nFailing tests: CommaDelimited, NewlineDelimited, PipeDelimited, SpaceDelimited (x3 for plain, enum, extensible enum = 12 total).\n\nFix: Update the convenience method body serialization in ConvenienceMethod.tsx to detect array body parameters with delimiter encoding and use the correct serialization path.",
+          "phase": "phase-21",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "src/components/clients/ConvenienceMethod.tsx"
+            ],
+            "reference": [
+              "src/components/infrastructure/BinaryContentHelperFile.tsx",
+              "test/e2e/.expected-failures"
+            ]
+          },
+          "acceptance_criteria": [
+            "12 Encode_Array_Property tests removed from .expected-failures",
+            "pnpm test:e2e passes with 0 unexpected failures",
+            "pnpm build and pnpm test pass"
+          ]
+        },
+        {
+          "id": "21.2",
+          "title": "Fix dictionary PUT body serialization in convenience methods",
+          "description": "11 Type_Dictionary PUT tests fail because BinaryContentHelper.FromObject() calls WriteObjectValue<T>() which doesn't handle Dictionary<string, T>. The convenience method wraps dict body params with BinaryContentHelper.FromObject(body) but WriteObjectValue falls through to the default NotSupportedException case for dictionaries.\n\nFailing tests: BooleanPut, DatetimeValuePut, DurationValuePut, Float32ValuePut, Int32ValuePut, Int64ValuePut, ModelValuePut, NullableFloatValuePut, RecursiveModelValuePut, StringPut, UnknownValuePut.\n\nFix: Update ConvenienceMethod.tsx to use BinaryContentHelper.FromDictionary() for dictionary body parameters instead of FromObject(), or use BinaryContent.Create(BinaryData.FromObjectAsJson(body)).",
+          "phase": "phase-21",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "src/components/clients/ConvenienceMethod.tsx"
+            ],
+            "reference": [
+              "src/components/infrastructure/BinaryContentHelperFile.tsx",
+              "test/e2e/.expected-failures"
+            ]
+          },
+          "acceptance_criteria": [
+            "11 dictionary PUT tests removed from .expected-failures",
+            "pnpm test:e2e passes with 0 unexpected failures"
+          ]
+        },
+        {
+          "id": "21.3",
+          "title": "Fix raw binary request body handling (non-JSON content types)",
+          "description": "3 Encode_Bytes_RequestBody tests fail because convenience methods use BinaryContentHelper.FromObject() which JSON-serializes raw binary data (PNG). For non-JSON content types (application/octet-stream, custom types), the convenience method should use BinaryContent.Create() directly.\n\nFailing tests: RequestBodyDefault, RequestBodyOctetStream, RequestBodyCustomContentType.\n\nFix: In ConvenienceMethod.tsx body serialization logic, detect the operation's content type. For non-JSON content types, use BinaryContent.Create(body) instead of BinaryContentHelper.FromObject(body).",
+          "phase": "phase-21",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "src/components/clients/ConvenienceMethod.tsx"
+            ],
+            "reference": [
+              "test/e2e/.expected-failures"
+            ]
+          },
+          "acceptance_criteria": [
+            "3 RequestBody tests removed from .expected-failures",
+            "pnpm test:e2e passes with 0 unexpected failures"
+          ]
+        },
+        {
+          "id": "21.4",
+          "title": "Fix text/plain request and response handling",
+          "description": "2 Payload_MediaType tests fail because convenience methods use BinaryContentHelper.FromObject() for text/plain body params (JSON-serializes string) and ToObjectFromJson<string>() for responses (fails on raw text).\n\nFailing tests: GetAsText, SendAsText.\n\nFix: Detect text/plain content-type in ConvenienceMethod.tsx and use raw BinaryContent for requests and raw string parsing for responses.",
+          "phase": "phase-21",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "src/components/clients/ConvenienceMethod.tsx"
+            ],
+            "reference": [
+              "test/e2e/.expected-failures"
+            ]
+          },
+          "acceptance_criteria": [
+            "GetAsText and SendAsText removed from .expected-failures",
+            "pnpm test:e2e passes with 0 unexpected failures"
+          ]
+        },
+        {
+          "id": "21.5",
+          "title": "Fix complex type deserialization for array and dictionary GET responses",
+          "description": "8 tests fail because ToObjectFromJson<IReadOnlyList<T>>() and ToObjectFromJson<IReadOnlyDictionary<string, T>>() don't support complex element types (TimeSpan, Model, BinaryData, UnknownValue).\n\nFailing tests: DurationValueGet, ModelValueGet, NullableModelValueGet, UnknownValueGet (array), DurationValueGet, ModelValueGet, RecursiveModelValueGet, UnknownValueGet (dictionary).\n\nFix: Use JsonDocument.Parse + element-level deserialization for these types instead of bulk ToObjectFromJson<T>().",
+          "phase": "phase-21",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "src/components/clients/ConvenienceMethod.tsx"
+            ],
+            "reference": [
+              "test/e2e/.expected-failures"
+            ]
+          },
+          "acceptance_criteria": [
+            "8 array/dictionary GET tests removed from .expected-failures",
+            "pnpm test:e2e passes with 0 unexpected failures"
+          ]
+        },
+        {
+          "id": "21.6",
+          "title": "Implement Azure Pageable<T>/AsyncPageable<T> for paging specs",
+          "description": "4 Azure specs are in .testignore because the paging infrastructure uses CollectionResult (System.ClientModel) which requires ClientResult returns, but Azure pipeline returns Response. Need Azure-specific Pageable<T>/AsyncPageable<T> base classes.\n\nBlocked specs: azure/core/basic, azure/core/page, azure/client-generator-core/next-link-verb, azure/payload/pageable.\n\nFix: Generate Azure-flavored paging methods that return Pageable<T>/AsyncPageable<T> from Azure.Core instead of CollectionResult<T> from System.ClientModel. Update PagingMethods.tsx and CollectionResultFile.tsx to handle Azure flavor.",
+          "phase": "phase-21",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "src/components/clients/PagingMethods.tsx",
+              "src/components/collection-results/CollectionResultFile.tsx",
+              "src/builtins/azure.ts"
+            ],
+            "reference": [
+              "src/utils/pipeline-types.ts",
+              "test/e2e/.testignore"
+            ]
+          },
+          "acceptance_criteria": [
+            "azure/core/basic, azure/core/page, azure/client-generator-core/next-link-verb, azure/payload/pageable removed from .testignore",
+            "Azure paging tests compile and pass in e2e",
+            "Existing unbranded paging tests still pass"
+          ]
+        },
+        {
+          "id": "21.7",
+          "title": "Implement Azure ProtocolOperationHelpers for LRO specs",
+          "description": "2 Azure specs are in .testignore because ProtocolOperationHelpers and OperationFinalStateVia are internal shared-source types from Azure.Core that require VoidValue and other dependencies.\n\nBlocked specs: azure/core/lro/rpc, azure/core/lro/standard.\n\nFix: Include the required Azure.Core shared source files (ProtocolOperationHelpers.cs, VoidValue.cs, etc.) in the generated project via ProjectFile.tsx, similar to how Utf8JsonRequestContent.cs is already included.",
+          "phase": "phase-21",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "src/components/infrastructure/ProjectFile.tsx",
+              "src/components/clients/ProtocolMethod.tsx"
+            ],
+            "reference": [
+              "src/builtins/azure.ts",
+              "test/e2e/.testignore"
+            ]
+          },
+          "acceptance_criteria": [
+            "azure/core/lro/rpc and azure/core/lro/standard removed from .testignore",
+            "LRO tests compile and pass in e2e"
+          ]
+        },
+        {
+          "id": "21.8",
+          "title": "Fix CS0102 duplicate Properties member in flatten-property spec",
+          "description": "azure/client-generator-core/flatten-property is in .testignore because NestedFlattenModel generates a duplicate 'Properties' member (CS0102). The flatten logic in the emitter creates a property that conflicts with an existing one.\n\nFix: Update the flatten property handling in src/utils/flatten.ts or the model generation to detect and avoid duplicate property names when flattening nested models.",
+          "phase": "phase-21",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "src/utils/flatten.ts",
+              "src/components/models/FlattenedProperty.tsx"
+            ],
+            "reference": [
+              "test/e2e/.testignore"
+            ]
+          },
+          "acceptance_criteria": [
+            "azure/client-generator-core/flatten-property removed from .testignore",
+            "No CS0102 errors in generated code",
+            "pnpm test:e2e passes"
+          ]
+        },
+        {
+          "id": "21.9",
+          "title": "Fix service/multi-service missing Version property",
+          "description": "service/multi-service is in .testignore because the generated CombinedOptions class is missing a Version property referenced by the client constructor.\n\nFix: Update ClientOptionsFile.tsx to generate a Version property on the options class when the service defines API versions.",
+          "phase": "phase-21",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "src/components/client-options/ClientOptionsFile.tsx"
+            ],
+            "reference": [
+              "test/e2e/.testignore"
+            ]
+          },
+          "acceptance_criteria": [
+            "service/multi-service removed from .testignore",
+            "pnpm test:e2e passes"
+          ]
+        },
+        {
+          "id": "21.10",
+          "title": "Enable multipart form-data e2e test coverage",
+          "description": "17 Payload_MultiPart_FormData scenarios show as not-implemented. The multipart tests are excluded from compilation in the csproj (Compile Remove for Http/Payload/Multipart/**/*.cs). The spec compiles and generates code, but the test files have API surface mismatches with the new emitter.\n\nFix: Copy multipart test files locally with namespace/API fixes, or fix the generated multipart API to match legacy patterns. Remove the Compile Remove entry.",
+          "phase": "phase-21",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
+            "reference": [
+              "src/components/infrastructure/MultiPartFormDataBinaryContentFile.tsx"
+            ]
+          },
+          "acceptance_criteria": [
+            "Multipart test files compile and run in e2e",
+            "At least 10 of 17 multipart scenarios pass"
+          ]
+        },
+        {
+          "id": "21.11",
+          "title": "Enable optionality property e2e test coverage",
+          "description": "64 Type_Property_Optional scenarios show as not-implemented. The test files are excluded (Compile Remove for Http/_Type/Property/Optionality/**/*.cs) due to literal type serialization errors.\n\nFix: Fix the literal type serialization issue in the emitter or copy test files locally with API adaptations. Remove the Compile Remove entry.",
+          "phase": "phase-21",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
+            "reference": [
+              "src/components/serialization/PropertySerializer.tsx"
+            ]
+          },
+          "acceptance_criteria": [
+            "Type_Property_Optionality test files compile and run",
+            "At least 50 of 64 optionality scenarios pass"
+          ]
+        },
+        {
+          "id": "21.12",
+          "title": "Enable additional-properties e2e test coverage",
+          "description": "62 Type_Property_AdditionalProperties scenarios show as not-implemented. Several test files are excluded from compilation due to missing SpectorModelJsonTests<T> base class and multi-spread Record<T> patterns.\n\nFix: Provide the missing test infrastructure or copy test files locally with adaptations.",
+          "phase": "phase-21",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
+            "reference": [
+              "src/components/serialization/AdditionalPropertiesRead.tsx",
+              "src/components/serialization/AdditionalPropertiesWrite.tsx"
+            ]
+          },
+          "acceptance_criteria": [
+            "Additional-properties test files compile and run",
+            "At least 40 of 62 scenarios pass"
+          ]
+        },
+        {
+          "id": "21.13",
+          "title": "Enable authentication OAuth2/Union e2e test coverage",
+          "description": "6 authentication scenarios (OAuth2 invalid/valid, Union validKey/validToken, Noauth Union) show as not-implemented. Tests are excluded because they call single-arg client constructors (e.g., new OAuth2Client(tokenProvider)) that the new emitter doesn't generate (requires endpoint + credential).\n\nFix: Update ClientFile.tsx to generate convenience constructors matching the legacy patterns, or copy test files with constructor adaptations.",
+          "phase": "phase-21",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "src/components/clients/ClientFile.tsx"
+            ],
+            "reference": [
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ]
+          },
+          "acceptance_criteria": [
+            "Authentication test files compile and run",
+            "OAuth2 and Union auth scenarios pass"
+          ]
+        },
+        {
+          "id": "21.14",
+          "title": "Enable versioning/removed e2e test coverage",
+          "description": "6 Versioning_Removed scenarios show as not-implemented. Tests are excluded due to namespace differences between legacy (Versioning.Removed.V1) and new emitter (Versioning.Removed).\n\nFix: Copy test files locally with namespace fixes, or adjust the emitter's versioned namespace generation.",
+          "phase": "phase-21",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "test/e2e/Spector.Tests/Spector.Tests.csproj"
+            ],
+            "reference": []
+          },
+          "acceptance_criteria": [
+            "Versioning/Removed test files compile and run",
+            "At least 4 of 6 scenarios pass"
+          ]
+        },
+        {
+          "id": "21.15",
+          "title": "ARM: Implement FromResponse/ToRequestContent model bridge methods",
+          "description": "ARM specs require FromResponse(Response) and ToRequestContent() methods on generated model types. These are Azure.Core serialization hooks that the legacy ARM generator produces but the new emitter does not. This is the most impactful ARM fix \u2014 it addresses CS0117 (404 errors) across all 9 ARM specs.\n\nFix: Generate static FromResponse() and instance ToRequestContent() methods on ARM model types, using the existing IJsonModel/IPersistableModel serialization infrastructure.",
+          "phase": "phase-21",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "src/components/serialization/ModelSerializationFile.tsx"
+            ],
+            "reference": [
+              "src/components/arm/ResourceFile.tsx",
+              "src/components/arm/CollectionFile.tsx",
+              "src/builtins/azure.ts"
+            ]
+          },
+          "acceptance_criteria": [
+            "Generated ARM models have FromResponse and ToRequestContent methods",
+            "CS0117 errors across ARM specs are eliminated"
+          ]
+        },
+        {
+          "id": "21.16",
+          "title": "ARM: Fix Guid to string path parameter conversion",
+          "description": "ARM specs use Guid parameters for subscriptionId and resource IDs, but the generated code passes them as Guid where string is expected (CS1503, 328 errors). Need to generate .ToString() conversion for Guid path parameters.\n\nFix: Update RestClientFile.tsx or the path parameter handling to detect Guid types and add .ToString() conversion.",
+          "phase": "phase-21",
+          "status": "pending",
+          "dependencies": [],
+          "files": {
+            "modify": [
+              "src/components/clients/RestClientFile.tsx"
+            ],
+            "reference": [
+              "src/components/arm/ResourceFile.tsx"
+            ]
+          },
+          "acceptance_criteria": [
+            "CS1503 Guid\u2192string errors are eliminated across ARM specs"
+          ]
+        },
+        {
+          "id": "21.17",
+          "title": "ARM: Include ProtocolOperationHelpers and OperationFinalStateVia shared sources",
+          "description": "ARM LRO operations reference ProtocolOperationHelpers and OperationFinalStateVia which are internal shared-source types from Azure.Core (CS0122, 732 errors). These need to be included as shared source files in the generated project.\n\nFix: Add the required Azure.Core shared source files to ProjectFile.tsx for ARM projects. Includes ProtocolOperationHelpers.cs, OperationFinalStateVia.cs, VoidValue.cs, and their transitive dependencies.",
+          "phase": "phase-21",
+          "status": "pending",
+          "dependencies": [
+            "21.7"
+          ],
+          "files": {
+            "modify": [
+              "src/components/infrastructure/ProjectFile.tsx"
+            ],
+            "reference": [
+              "src/builtins/azure.ts"
+            ]
+          },
+          "acceptance_criteria": [
+            "CS0122 ProtocolOperationHelpers/OperationFinalStateVia errors eliminated in ARM specs"
+          ]
+        },
+        {
+          "id": "21.18",
+          "title": "ARM: Fix constructor signatures and namespace collisions",
+          "description": "ARM specs have remaining CS1729 (wrong constructor arg counts, 72 errors), CS0128 (duplicate locals, 40 errors), CS1744 (named argument conflicts, 36 errors), and CS0118 (namespace/type collisions, 14 errors). These are various ARM-specific code generation bugs.\n\nFix: Address each error category in the ARM generation components (CollectionFile.tsx, ResourceFile.tsx, MockableProviderFile.tsx, tag-methods.ts).",
+          "phase": "phase-21",
+          "status": "pending",
+          "dependencies": [
+            "21.15",
+            "21.16",
+            "21.17"
+          ],
+          "files": {
+            "modify": [
+              "src/components/arm/CollectionFile.tsx",
+              "src/components/arm/ResourceFile.tsx",
+              "src/components/arm/MockableProviderFile.tsx",
+              "src/components/arm/tag-methods.ts"
+            ],
+            "reference": [
+              "test/e2e/.testignore"
+            ]
+          },
+          "acceptance_criteria": [
+            "At least 3 of 9 ARM specs removed from .testignore",
+            "ARM specs compile with significantly fewer CS errors"
+          ]
+        }
+      ]
     }
   ]
 }
