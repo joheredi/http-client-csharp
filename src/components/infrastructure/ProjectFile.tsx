@@ -39,6 +39,7 @@ const AZURE_SHARED_SOURCE_FILES = [
   "HttpMessageSanitizer.cs",
   "TrimmingAttribute.cs",
   "HttpPipelineExtensions.cs",
+  "Utf8JsonRequestContent.cs",
 ];
 
 /**

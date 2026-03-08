@@ -95,7 +95,7 @@ export function getPipelineTypes(
   if (flavor === "azure") {
     return {
       pipeline: AzureCorePipeline.HttpPipeline,
-      message: AzureCorePipeline.HttpMessage,
+      message: AzureCore.HttpMessage,
       policy: AzureCorePipeline.HttpPipelinePolicy,
       apiKeyCredential: Azure.AzureKeyCredential,
       tokenCredential: AzureCore.TokenCredential,

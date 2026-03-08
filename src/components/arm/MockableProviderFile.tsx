@@ -923,7 +923,7 @@ public virtual async ${SystemThreadingTasks.Task}<${code`${Azure.Response}<${res
         {
             CancellationToken = cancellationToken
         };
-        ${AzureCorePipeline.HttpMessage} message = ${restPropName}.${createRequestMethod}(${requestArgs}context);
+        ${AzureCore.HttpMessage} message = ${restPropName}.${createRequestMethod}(${requestArgs}context);
         ${Azure.Response} result = await Pipeline.ProcessMessageAsync(message, context).ConfigureAwait(false);
         ${Azure.Response}<${responseModelRef}> response = ${Azure.Response}.FromValue(${responseModelRef}.FromResponse(result), result);
         if (response.Value == null)
@@ -954,7 +954,7 @@ public virtual ${code`${Azure.Response}<${responseModelRef}>`} ${methodName}(${p
         {
             CancellationToken = cancellationToken
         };
-        ${AzureCorePipeline.HttpMessage} message = ${restPropName}.${createRequestMethod}(${requestArgs}context);
+        ${AzureCore.HttpMessage} message = ${restPropName}.${createRequestMethod}(${requestArgs}context);
         ${Azure.Response} result = Pipeline.ProcessMessage(message, context);
         ${Azure.Response}<${responseModelRef}> response = ${Azure.Response}.FromValue(${responseModelRef}.FromResponse(result), result);
         if (response.Value == null)
@@ -989,7 +989,7 @@ public virtual async ${SystemThreadingTasks.Task}<${Azure.Response}> ${methodNam
         {
             CancellationToken = cancellationToken
         };
-        ${AzureCorePipeline.HttpMessage} message = ${restPropName}.${createRequestMethod}(${requestArgs}context);
+        ${AzureCore.HttpMessage} message = ${restPropName}.${createRequestMethod}(${requestArgs}context);
         return await Pipeline.ProcessMessageAsync(message, context).ConfigureAwait(false);
     }
     catch (${System.Exception} e)
@@ -1014,7 +1014,7 @@ public virtual ${Azure.Response} ${methodName}(${paramDecls}${SystemThreading.Ca
         {
             CancellationToken = cancellationToken
         };
-        ${AzureCorePipeline.HttpMessage} message = ${restPropName}.${createRequestMethod}(${requestArgs}context);
+        ${AzureCore.HttpMessage} message = ${restPropName}.${createRequestMethod}(${requestArgs}context);
         return Pipeline.ProcessMessage(message, context);
     }
     catch (${System.Exception} e)

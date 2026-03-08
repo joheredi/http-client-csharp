@@ -42,27 +42,23 @@ azure/resource-manager/operation-templates
 azure/resource-manager/resources
 
 # ============================================================
-# AZURE DATA PLANE SPECS — Triage (task 20.6/20.13, 2026-03-08)
+# AZURE DATA PLANE SPECS — Remaining failures
 # ============================================================
-# 9 of the original 32 Azure data plane specs still fail net8.0 build.
-# (23 specs now compile successfully after tasks 20.3–20.5 Azure infrastructure fixes.)
-#
-# Root cause: Generated infrastructure files use wrong API surface under net8.0:
-#   - CS0246: HttpMessage type not found (should be PipelineMessage)
-#   - CS0122: ProtocolOperationHelpers inaccessible
-#   - CS1061: Response.GetRawResponse(), RequestHeaders.Set — methods don't exist
-#   - CS1729: Response<T> 2-arg constructor doesn't exist
-#   - CS1503: RequestContext → CancellationToken, BinaryContent → RequestContent
-#
-azure/client-generator-core/flatten-property
+# Paging specs: CollectionResult base class (System.ClientModel) requires
+# ClientResult returns but Azure pipeline returns Response. Need Azure-specific
+# Pageable<T>/AsyncPageable<T> base classes for paging.
 azure/client-generator-core/next-link-verb
 azure/core/basic
+azure/core/page
+azure/payload/pageable
+
+# LRO specs: ProtocolOperationHelpers and OperationFinalStateVia are internal
+# shared-source types that require VoidValue and other dependencies.
 azure/core/lro/rpc
 azure/core/lro/standard
-azure/core/model
-azure/core/page
-azure/core/scalar
-azure/payload/pageable
+
+# Flatten property: CS0102 duplicate 'Properties' member in NestedFlattenModel.
+azure/client-generator-core/flatten-property
 
 # ============================================================
 # NON-AZURE SPECS — build failures

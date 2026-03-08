@@ -48,6 +48,11 @@ export function Utf8JsonBinaryContentFile(
   props: Utf8JsonBinaryContentFileProps,
 ) {
   const header = getLicenseHeader(props.options);
+  const isAzure = props.options.flavor === "azure";
+
+  // Azure flavor uses Utf8JsonRequestContent from Azure.Core shared source,
+  // which extends RequestContent instead of BinaryContent.
+  if (isAzure) return null;
 
   return (
     <SourceFile

@@ -47,14 +47,21 @@ export interface BinaryContentHelperFileProps {
  */
 export function BinaryContentHelperFile(props: BinaryContentHelperFileProps) {
   const header = getLicenseHeader(props.options);
+  const isAzure = props.options.flavor === "azure";
+
+  // For Azure, use RequestContent (from Azure.Core) and Utf8JsonRequestContent (shared source).
+  // For unbranded, use BinaryContent (from System.ClientModel) and Utf8JsonBinaryContent (generated).
+  const contentType = isAzure ? "RequestContent" : "BinaryContent";
+  const jsonContentType = isAzure ? "Utf8JsonRequestContent" : "Utf8JsonBinaryContent";
+  const contentCreate = isAzure ? "RequestContent.Create" : "BinaryContent.Create";
 
   // Methods that use #if preprocessor directives require plain strings
   // (not code blocks) for the conditional sections to avoid Alloy's
   // indentation engine concatenating lines with directives.
   const fromEnumerableBinaryData = `
-public static BinaryContent FromEnumerable(IEnumerable<BinaryData> enumerable)
+public static ${contentType} FromEnumerable(IEnumerable<BinaryData> enumerable)
 {
-    Utf8JsonBinaryContent content = new Utf8JsonBinaryContent();
+    ${jsonContentType} content = new ${jsonContentType}();
     content.JsonWriter.WriteStartArray();
     foreach (BinaryData item in enumerable)
     {
@@ -80,9 +87,9 @@ public static BinaryContent FromEnumerable(IEnumerable<BinaryData> enumerable)
 }`;
 
   const fromDictionaryBinaryData = `
-public static BinaryContent FromDictionary(IDictionary<string, BinaryData> dictionary)
+public static ${contentType} FromDictionary(IDictionary<string, BinaryData> dictionary)
 {
-    Utf8JsonBinaryContent content = new Utf8JsonBinaryContent();
+    ${jsonContentType} content = new ${jsonContentType}();
     content.JsonWriter.WriteStartObject();
     foreach (var item in dictionary)
     {
@@ -109,9 +116,9 @@ public static BinaryContent FromDictionary(IDictionary<string, BinaryData> dicti
 }`;
 
   const fromObjectBinaryData = `
-public static BinaryContent FromObject(BinaryData value)
+public static ${contentType} FromObject(BinaryData value)
 {
-    Utf8JsonBinaryContent content = new Utf8JsonBinaryContent();
+    ${jsonContentType} content = new ${jsonContentType}();
 #if NET6_0_OR_GREATER
     content.JsonWriter.WriteRawValue(value);
 #else
@@ -123,24 +130,28 @@ public static BinaryContent FromObject(BinaryData value)
     return content;
 }`;
 
-  return (
-    <SourceFile
-      path="src/Generated/Internal/BinaryContentHelper.cs"
-      using={[
+  const usingDirectives = isAzure
+    ? ["System", "Azure.Core", "System.Collections.Generic", "System.Text.Json"]
+    : [
         "System",
         "System.ClientModel",
         "System.Collections.Generic",
         "System.Text.Json",
-      ]}
+      ];
+
+  return (
+    <SourceFile
+      path="src/Generated/Internal/BinaryContentHelper.cs"
+      using={usingDirectives}
     >
       {header}
       {"\n\n"}
       <Namespace name={props.packageName}>
         <ClassDeclaration internal static partial name="BinaryContentHelper">
           {code`
-            public static BinaryContent FromEnumerable<T>(IEnumerable<T> enumerable) where T : notnull
+            public static ${contentType} FromEnumerable<T>(IEnumerable<T> enumerable) where T : notnull
             {
-                Utf8JsonBinaryContent content = new Utf8JsonBinaryContent();
+                ${jsonContentType} content = new ${jsonContentType}();
                 content.JsonWriter.WriteStartArray();
                 foreach (var item in enumerable)
                 {
@@ -155,9 +166,9 @@ public static BinaryContent FromObject(BinaryData value)
           {fromEnumerableBinaryData}
           {"\n\n"}
           {code`
-            public static BinaryContent FromEnumerable<T>(ReadOnlySpan<T> span) where T : notnull
+            public static ${contentType} FromEnumerable<T>(ReadOnlySpan<T> span) where T : notnull
             {
-                Utf8JsonBinaryContent content = new Utf8JsonBinaryContent();
+                ${jsonContentType} content = new ${jsonContentType}();
                 content.JsonWriter.WriteStartArray();
                 int i = 0;
                 for (; i < span.Length; i++)
@@ -171,9 +182,9 @@ public static BinaryContent FromObject(BinaryData value)
           `}
           {"\n\n"}
           {code`
-            public static BinaryContent FromDictionary<T>(IDictionary<string, T> dictionary) where T : notnull
+            public static ${contentType} FromDictionary<T>(IDictionary<string, T> dictionary) where T : notnull
             {
-                Utf8JsonBinaryContent content = new Utf8JsonBinaryContent();
+                ${jsonContentType} content = new ${jsonContentType}();
                 content.JsonWriter.WriteStartObject();
                 foreach (var item in dictionary)
                 {
@@ -189,9 +200,9 @@ public static BinaryContent FromObject(BinaryData value)
           {fromDictionaryBinaryData}
           {"\n\n"}
           {code`
-            public static BinaryContent FromObject(object value)
+            public static ${contentType} FromObject(object value)
             {
-                Utf8JsonBinaryContent content = new Utf8JsonBinaryContent();
+                ${jsonContentType} content = new ${jsonContentType}();
                 content.JsonWriter.WriteObjectValue<object>(value, ModelSerializationExtensions.WireOptions);
                 return content;
             }

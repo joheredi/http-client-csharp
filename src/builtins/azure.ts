@@ -439,6 +439,20 @@ export const AzureCore = createLibrary("Azure.Core", {
       ProcessHeadAsBoolMessage: { kind: "method" },
     },
   },
+
+  /**
+   * Represents an HTTP request/response pair flowing through the Azure pipeline.
+   * Azure equivalent of System.ClientModel.Primitives' `PipelineMessage`.
+   *
+   * NOTE: In Azure.Core v1.51.1+, HttpMessage lives in the Azure.Core namespace
+   * (not Azure.Core.Pipeline as in older versions).
+   *
+   * @see https://learn.microsoft.com/en-us/dotnet/api/azure.core.httpmessage
+   */
+  HttpMessage: {
+    kind: "class",
+    members: {},
+  },
 });
 
 /**
@@ -474,17 +488,6 @@ export const AzureCorePipeline = createLibrary("Azure.Core.Pipeline", {
         kind: "method",
       },
     },
-  },
-
-  /**
-   * Represents an HTTP request/response pair flowing through the Azure pipeline.
-   * Azure equivalent of System.ClientModel.Primitives' `PipelineMessage`.
-   *
-   * @see https://learn.microsoft.com/en-us/dotnet/api/azure.core.httpmessage
-   */
-  HttpMessage: {
-    kind: "class",
-    members: {},
   },
 
   /**

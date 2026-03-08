@@ -28,6 +28,7 @@ import { System } from "../../builtins/system.js";
 import { SystemTextJson } from "../../builtins/system-text-json.js";
 import { isConvenienceParamValueType } from "../../utils/nullable.js";
 import { escapeCSharpKeyword } from "../../utils/csharp-keywords.js";
+import { modelNeedsSerialization } from "../serialization/index.js";
 import {
   buildSiblingNameSet,
   cleanOperationName,
@@ -235,7 +236,7 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
         // Model types use the explicit operator cast. Bytes/unknown types
         // return BinaryData from the raw response content. Scalars, arrays,
         // dicts, and enums use ToObjectFromJson<T>() for typed deserialization.
-        const responseInfo = buildResponseInfo(responseType, namePolicy);
+        const responseInfo = buildResponseInfo(responseType, namePolicy, isAzure);
 
         const xmlDoc = buildConvenienceXmlDoc(
           description,
@@ -824,6 +825,15 @@ function getConvenienceTypeInfo(type: SdkType): {
 
     // Model — reference type (class)
     case "model":
+      // Models without JSON/XML serialization (e.g., file types with binary content types)
+      // are not generated as C# classes. Use BinaryData instead.
+      if (!modelNeedsSerialization(unwrapped as SdkModelType)) {
+        return {
+          expression: System.BinaryData,
+          needsAssertion: true,
+          isString: false,
+        };
+      }
       return {
         expression: <TypeExpression type={unwrapped.__raw!} />,
         needsAssertion: true,
@@ -966,14 +976,26 @@ interface ResponseInfo {
 function buildResponseInfo(
   responseType: SdkType | undefined,
   namePolicy: ReturnType<typeof useCSharpNamePolicy>,
+  isAzure: boolean = false,
 ): ResponseInfo | null {
   if (!responseType) return null;
+
+  // For Azure flavor, Response has .Content directly; for unbranded, use .GetRawResponse().Content
+  const contentExpr = isAzure ? "result.Content" : "result.GetRawResponse().Content";
 
   const unwrapped = unwrapType(responseType);
 
   switch (unwrapped.kind) {
     // Model types: use explicit operator cast (ModelType)result
     case "model":
+      // Models without JSON/XML serialization are not generated as C# classes.
+      // Return BinaryData from response content instead.
+      if (!modelNeedsSerialization(unwrapped as SdkModelType)) {
+        return {
+          typeExpr: System.BinaryData,
+          deserializeExpr: contentExpr,
+        };
+      }
       return {
         typeExpr: <TypeExpression type={unwrapped.__raw!} />,
         deserializeExpr: code`(${(<TypeExpression type={unwrapped.__raw!} />)})result`,
@@ -984,54 +1006,54 @@ function buildResponseInfo(
     case "unknown":
       return {
         typeExpr: System.BinaryData,
-        deserializeExpr: "result.GetRawResponse().Content",
+        deserializeExpr: contentExpr,
       };
 
     // Scalar primitive types: use ToObjectFromJson<T>()
     case "int32":
-      return buildScalarResponseInfo("int");
+      return buildScalarResponseInfo("int", contentExpr);
     case "int64":
-      return buildScalarResponseInfo("long");
+      return buildScalarResponseInfo("long", contentExpr);
     case "float32":
-      return buildScalarResponseInfo("float");
+      return buildScalarResponseInfo("float", contentExpr);
     case "float64":
-      return buildScalarResponseInfo("double");
+      return buildScalarResponseInfo("double", contentExpr);
     case "boolean":
-      return buildScalarResponseInfo("bool");
+      return buildScalarResponseInfo("bool", contentExpr);
     case "int8":
-      return buildScalarResponseInfo("sbyte");
+      return buildScalarResponseInfo("sbyte", contentExpr);
     case "uint8":
-      return buildScalarResponseInfo("byte");
+      return buildScalarResponseInfo("byte", contentExpr);
     case "int16":
-      return buildScalarResponseInfo("short");
+      return buildScalarResponseInfo("short", contentExpr);
     case "uint16":
-      return buildScalarResponseInfo("ushort");
+      return buildScalarResponseInfo("ushort", contentExpr);
     case "uint32":
-      return buildScalarResponseInfo("uint");
+      return buildScalarResponseInfo("uint", contentExpr);
     case "uint64":
-      return buildScalarResponseInfo("ulong");
+      return buildScalarResponseInfo("ulong", contentExpr);
     case "decimal":
     case "decimal128":
-      return buildScalarResponseInfo("decimal");
+      return buildScalarResponseInfo("decimal", contentExpr);
     case "string":
-      return buildScalarResponseInfo("string");
+      return buildScalarResponseInfo("string", contentExpr);
 
     // BCL struct types
     case "utcDateTime":
     case "offsetDateTime":
       return {
         typeExpr: System.DateTimeOffset,
-        deserializeExpr: code`result.GetRawResponse().Content.ToObjectFromJson<${System.DateTimeOffset}>()`,
+        deserializeExpr: code`${contentExpr}.ToObjectFromJson<${System.DateTimeOffset}>()`,
       };
     case "duration":
       return {
         typeExpr: System.TimeSpan,
-        deserializeExpr: code`result.GetRawResponse().Content.ToObjectFromJson<${System.TimeSpan}>()`,
+        deserializeExpr: code`${contentExpr}.ToObjectFromJson<${System.TimeSpan}>()`,
       };
     case "url":
       return {
         typeExpr: System.Uri,
-        deserializeExpr: code`result.GetRawResponse().Content.ToObjectFromJson<${System.Uri}>()`,
+        deserializeExpr: code`${contentExpr}.ToObjectFromJson<${System.Uri}>()`,
       };
 
     // Array: IReadOnlyList<T> with ToObjectFromJson
@@ -1040,7 +1062,7 @@ function buildResponseInfo(
       const elementExpr = getResponseElementTypeExpr(elementType, namePolicy);
       return {
         typeExpr: code`${SystemCollectionsGeneric.IReadOnlyList}<${elementExpr}>`,
-        deserializeExpr: code`result.GetRawResponse().Content.ToObjectFromJson<${SystemCollectionsGeneric.IReadOnlyList}<${elementExpr}>>()`,
+        deserializeExpr: code`${contentExpr}.ToObjectFromJson<${SystemCollectionsGeneric.IReadOnlyList}<${elementExpr}>>()`,
       };
     }
 
@@ -1050,7 +1072,7 @@ function buildResponseInfo(
       const valueExpr = getResponseElementTypeExpr(valueType, namePolicy);
       return {
         typeExpr: code`${SystemCollectionsGeneric.IReadOnlyDictionary}<string, ${valueExpr}>`,
-        deserializeExpr: code`result.GetRawResponse().Content.ToObjectFromJson<${SystemCollectionsGeneric.IReadOnlyDictionary}<string, ${valueExpr}>>()`,
+        deserializeExpr: code`${contentExpr}.ToObjectFromJson<${SystemCollectionsGeneric.IReadOnlyDictionary}<string, ${valueExpr}>>()`,
       };
     }
 
@@ -1063,19 +1085,19 @@ function buildResponseInfo(
         const enumName = namePolicy.getName(enumType.name, "enum");
         return {
           typeExpr: enumExpr,
-          deserializeExpr: code`result.GetRawResponse().Content.ToObjectFromJson<string>().To${enumName}()`,
+          deserializeExpr: code`${contentExpr}.ToObjectFromJson<string>().To${enumName}()`,
         };
       } else {
         // Extensible enum: construct from string
         return {
           typeExpr: enumExpr,
-          deserializeExpr: code`new ${enumExpr}(result.GetRawResponse().Content.ToObjectFromJson<string>())`,
+          deserializeExpr: code`new ${enumExpr}(${contentExpr}.ToObjectFromJson<string>())`,
         };
       }
     }
     case "enumvalue": {
       const parentEnum = unwrapped.enumType;
-      return buildResponseInfo(parentEnum, namePolicy);
+      return buildResponseInfo(parentEnum, namePolicy, isAzure);
     }
 
     default:
@@ -1088,10 +1110,10 @@ function buildResponseInfo(
  *
  * @param keyword - The C# type keyword (e.g., "int", "string", "decimal").
  */
-function buildScalarResponseInfo(keyword: string): ResponseInfo {
+function buildScalarResponseInfo(keyword: string, contentExpr: string): ResponseInfo {
   return {
     typeExpr: keyword,
-    deserializeExpr: `result.GetRawResponse().Content.ToObjectFromJson<${keyword}>()`,
+    deserializeExpr: `${contentExpr}.ToObjectFromJson<${keyword}>()`,
   };
 }
 
@@ -1220,7 +1242,7 @@ function getResponseElementTypeExpr(
  * and need explicit BinaryContent wrapping in convenience method bodies.
  */
 function hasImplicitBinaryContentOperator(type: SdkModelType): boolean {
-  return (type.usage & UsageFlags.Input) !== 0;
+  return (type.usage & UsageFlags.Input) !== 0 && modelNeedsSerialization(type);
 }
 
 /**

@@ -756,7 +756,7 @@ public virtual async ${SystemThreadingTasks.Task}<${Azure.Response}<${className}
         {
             CancellationToken = cancellationToken
         };
-        ${AzureCorePipeline.HttpMessage} message = ${restClientFieldName}.${createRequestMethod}(${requestArgs}, context);
+        ${AzureCore.HttpMessage} message = ${restClientFieldName}.${createRequestMethod}(${requestArgs}, context);
         ${Azure.Response} result = await Pipeline.ProcessMessageAsync(message, context).ConfigureAwait(false);
         ${Azure.Response}<${modelRef}> response = ${Azure.Response}.FromValue(${modelRef}.FromResponse(result), result);
         if (response.Value == null)
@@ -787,7 +787,7 @@ public virtual ${Azure.Response}<${className}> ${methodName}(${SystemThreading.C
         {
             CancellationToken = cancellationToken
         };
-        ${AzureCorePipeline.HttpMessage} message = ${restClientFieldName}.${createRequestMethod}(${requestArgs}, context);
+        ${AzureCore.HttpMessage} message = ${restClientFieldName}.${createRequestMethod}(${requestArgs}, context);
         ${Azure.Response} result = Pipeline.ProcessMessage(message, context);
         ${Azure.Response}<${modelRef}> response = ${Azure.Response}.FromValue(${modelRef}.FromResponse(result), result);
         if (response.Value == null)
@@ -885,7 +885,7 @@ public virtual async ${asyncReturnType} ${methodName}Async(${Azure.WaitUntil} wa
         {
             CancellationToken = cancellationToken
         };
-        ${AzureCorePipeline.HttpMessage} message = ${restClientFieldName}.${createRequestMethod}(${requestArgs}${bodyArg}, context);
+        ${AzureCore.HttpMessage} message = ${restClientFieldName}.${createRequestMethod}(${requestArgs}${bodyArg}, context);
         ${Azure.Response} response = await Pipeline.ProcessMessageAsync(message, context).ConfigureAwait(false);
         ${operationConstruction}
         if (waitUntil == ${Azure.WaitUntil}.Completed)
@@ -928,7 +928,7 @@ public virtual ${returnType} ${methodName}(${Azure.WaitUntil} waitUntil${bodyPar
         {
             CancellationToken = cancellationToken
         };
-        ${AzureCorePipeline.HttpMessage} message = ${restClientFieldName}.${createRequestMethod}(${requestArgs}${bodyArg}, context);
+        ${AzureCore.HttpMessage} message = ${restClientFieldName}.${createRequestMethod}(${requestArgs}${bodyArg}, context);
         ${Azure.Response} response = Pipeline.ProcessMessage(message, context);
         ${syncOperationConstruction}
         if (waitUntil == ${Azure.WaitUntil}.Completed)

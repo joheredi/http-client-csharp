@@ -675,7 +675,7 @@ public virtual async ${SystemThreadingTasks.Task}<${AzureResourceManager.ArmOper
         {
             CancellationToken = cancellationToken
         };
-        ${AzureCorePipeline.HttpMessage} message = ${restClientFieldName}.${createRequestMethod}(${instanceRequestArgs}, ${modelRef}.ToRequestContent(data), context);
+        ${AzureCore.HttpMessage} message = ${restClientFieldName}.${createRequestMethod}(${instanceRequestArgs}, ${modelRef}.ToRequestContent(data), context);
         ${Azure.Response} response = await Pipeline.ProcessMessageAsync(message, context).ConfigureAwait(false);
         ${armOperationName}<${resourceClassName}> operation = new ${armOperationName}<${resourceClassName}>(
                     new ${operationSourceName}(Client),
@@ -719,7 +719,7 @@ public virtual ${AzureResourceManager.ArmOperation}<${resourceClassName}> ${meth
         {
             CancellationToken = cancellationToken
         };
-        ${AzureCorePipeline.HttpMessage} message = ${restClientFieldName}.${createRequestMethod}(${instanceRequestArgs}, ${modelRef}.ToRequestContent(data), context);
+        ${AzureCore.HttpMessage} message = ${restClientFieldName}.${createRequestMethod}(${instanceRequestArgs}, ${modelRef}.ToRequestContent(data), context);
         ${Azure.Response} response = Pipeline.ProcessMessage(message, context);
         ${armOperationName}<${resourceClassName}> operation = new ${armOperationName}<${resourceClassName}>(
                     new ${operationSourceName}(Client),
@@ -797,7 +797,7 @@ public virtual async ${SystemThreadingTasks.Task}<${Azure.Response}<${resourceCl
         {
             CancellationToken = cancellationToken
         };
-        ${AzureCorePipeline.HttpMessage} message = ${restClientFieldName}.${createRequestMethod}(${instanceRequestArgs}, context);
+        ${AzureCore.HttpMessage} message = ${restClientFieldName}.${createRequestMethod}(${instanceRequestArgs}, context);
         ${Azure.Response} result = await Pipeline.ProcessMessageAsync(message, context).ConfigureAwait(false);
         ${Azure.Response}<${modelRef}> response = ${Azure.Response}.FromValue(${modelRef}.FromResponse(result), result);
         if (response.Value == null)
@@ -832,7 +832,7 @@ public virtual ${Azure.Response}<${resourceClassName}> ${methodName}(string ${re
         {
             CancellationToken = cancellationToken
         };
-        ${AzureCorePipeline.HttpMessage} message = ${restClientFieldName}.${createRequestMethod}(${instanceRequestArgs}, context);
+        ${AzureCore.HttpMessage} message = ${restClientFieldName}.${createRequestMethod}(${instanceRequestArgs}, context);
         ${Azure.Response} result = Pipeline.ProcessMessage(message, context);
         ${Azure.Response}<${modelRef}> response = ${Azure.Response}.FromValue(${modelRef}.FromResponse(result), result);
         if (response.Value == null)
@@ -971,7 +971,7 @@ public virtual async ${SystemThreadingTasks.Task}<${Azure.Response}<bool>> Exist
         {
             CancellationToken = cancellationToken
         };
-        ${AzureCorePipeline.HttpMessage} message = ${restClientFieldName}.${createRequestMethod}(${instanceRequestArgs}, context);
+        ${AzureCore.HttpMessage} message = ${restClientFieldName}.${createRequestMethod}(${instanceRequestArgs}, context);
         await Pipeline.SendAsync(message, context.CancellationToken).ConfigureAwait(false);
         ${Azure.Response} result = message.Response;
         ${Azure.Response}<${modelRef}> response = default;
@@ -1014,7 +1014,7 @@ public virtual ${Azure.Response}<bool> Exists(string ${resourceNameParam}, ${Sys
         {
             CancellationToken = cancellationToken
         };
-        ${AzureCorePipeline.HttpMessage} message = ${restClientFieldName}.${createRequestMethod}(${instanceRequestArgs}, context);
+        ${AzureCore.HttpMessage} message = ${restClientFieldName}.${createRequestMethod}(${instanceRequestArgs}, context);
         Pipeline.Send(message, context.CancellationToken);
         ${Azure.Response} result = message.Response;
         ${Azure.Response}<${modelRef}> response = default;
@@ -1092,7 +1092,7 @@ public virtual async ${SystemThreadingTasks.Task}<${Azure.NullableResponse}<${re
         {
             CancellationToken = cancellationToken
         };
-        ${AzureCorePipeline.HttpMessage} message = ${restClientFieldName}.${createRequestMethod}(${instanceRequestArgs}, context);
+        ${AzureCore.HttpMessage} message = ${restClientFieldName}.${createRequestMethod}(${instanceRequestArgs}, context);
         await Pipeline.SendAsync(message, context.CancellationToken).ConfigureAwait(false);
         ${Azure.Response} result = message.Response;
         ${Azure.Response}<${modelRef}> response = default;
@@ -1139,7 +1139,7 @@ public virtual ${Azure.NullableResponse}<${resourceClassName}> GetIfExists(strin
         {
             CancellationToken = cancellationToken
         };
-        ${AzureCorePipeline.HttpMessage} message = ${restClientFieldName}.${createRequestMethod}(${instanceRequestArgs}, context);
+        ${AzureCore.HttpMessage} message = ${restClientFieldName}.${createRequestMethod}(${instanceRequestArgs}, context);
         Pipeline.Send(message, context.CancellationToken);
         ${Azure.Response} result = message.Response;
         ${Azure.Response}<${modelRef}> response = default;

@@ -240,7 +240,7 @@ public virtual async ${SystemThreadingTasks.Task}<${Azure.Response}<${className}
             {
                 CancellationToken = cancellationToken
             };
-            ${AzureCorePipeline.HttpMessage} message = ${restClientFieldName}.CreateGetRequest(${requestArgs}, context);
+            ${AzureCore.HttpMessage} message = ${restClientFieldName}.CreateGetRequest(${requestArgs}, context);
             ${Azure.Response} result = await Pipeline.ProcessMessageAsync(message, context).ConfigureAwait(false);
             ${Azure.Response}<${modelRef}> response = ${Azure.Response}.FromValue(${modelRef}.FromResponse(result), result);
             return ${Azure.Response}.FromValue(new ${className}(Client, response.Value), response.GetRawResponse());
@@ -284,7 +284,7 @@ public virtual ${Azure.Response}<${className}> AddTag(string key, string value, 
             {
                 CancellationToken = cancellationToken
             };
-            ${AzureCorePipeline.HttpMessage} message = ${restClientFieldName}.CreateGetRequest(${requestArgs}, context);
+            ${AzureCore.HttpMessage} message = ${restClientFieldName}.CreateGetRequest(${requestArgs}, context);
             ${Azure.Response} result = Pipeline.ProcessMessage(message, context);
             ${Azure.Response}<${modelRef}> response = ${Azure.Response}.FromValue(${modelRef}.FromResponse(result), result);
             return ${Azure.Response}.FromValue(new ${className}(Client, response.Value), response.GetRawResponse());
@@ -354,7 +354,7 @@ public virtual async ${SystemThreadingTasks.Task}<${Azure.Response}<${className}
             {
                 CancellationToken = cancellationToken
             };
-            ${AzureCorePipeline.HttpMessage} message = ${restClientFieldName}.CreateGetRequest(${requestArgs}, context);
+            ${AzureCore.HttpMessage} message = ${restClientFieldName}.CreateGetRequest(${requestArgs}, context);
             ${Azure.Response} result = await Pipeline.ProcessMessageAsync(message, context).ConfigureAwait(false);
             ${Azure.Response}<${modelRef}> response = ${Azure.Response}.FromValue(${modelRef}.FromResponse(result), result);
             return ${Azure.Response}.FromValue(new ${className}(Client, response.Value), response.GetRawResponse());
@@ -397,7 +397,7 @@ public virtual ${Azure.Response}<${className}> SetTags(${SystemCollectionsGeneri
             {
                 CancellationToken = cancellationToken
             };
-            ${AzureCorePipeline.HttpMessage} message = ${restClientFieldName}.CreateGetRequest(${requestArgs}, context);
+            ${AzureCore.HttpMessage} message = ${restClientFieldName}.CreateGetRequest(${requestArgs}, context);
             ${Azure.Response} result = Pipeline.ProcessMessage(message, context);
             ${Azure.Response}<${modelRef}> response = ${Azure.Response}.FromValue(${modelRef}.FromResponse(result), result);
             return ${Azure.Response}.FromValue(new ${className}(Client, response.Value), response.GetRawResponse());
@@ -465,7 +465,7 @@ public virtual async ${SystemThreadingTasks.Task}<${Azure.Response}<${className}
             {
                 CancellationToken = cancellationToken
             };
-            ${AzureCorePipeline.HttpMessage} message = ${restClientFieldName}.CreateGetRequest(${requestArgs}, context);
+            ${AzureCore.HttpMessage} message = ${restClientFieldName}.CreateGetRequest(${requestArgs}, context);
             ${Azure.Response} result = await Pipeline.ProcessMessageAsync(message, context).ConfigureAwait(false);
             ${Azure.Response}<${modelRef}> response = ${Azure.Response}.FromValue(${modelRef}.FromResponse(result), result);
             return ${Azure.Response}.FromValue(new ${className}(Client, response.Value), response.GetRawResponse());
@@ -507,7 +507,7 @@ public virtual ${Azure.Response}<${className}> RemoveTag(string key, ${SystemThr
             {
                 CancellationToken = cancellationToken
             };
-            ${AzureCorePipeline.HttpMessage} message = ${restClientFieldName}.CreateGetRequest(${requestArgs}, context);
+            ${AzureCore.HttpMessage} message = ${restClientFieldName}.CreateGetRequest(${requestArgs}, context);
             ${Azure.Response} result = Pipeline.ProcessMessage(message, context);
             ${Azure.Response}<${modelRef}> response = ${Azure.Response}.FromValue(${modelRef}.FromResponse(result), result);
             return ${Azure.Response}.FromValue(new ${className}(Client, response.Value), response.GetRawResponse());
