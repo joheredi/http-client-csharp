@@ -6955,3 +6955,13 @@ Task 21.11 (2026-03-08) — Enable optionality property e2e test coverage:
 **Results:**
 - ✅ 1,724 unit tests pass (+8 new)
 - ✅ e2e tests pass: 114 specs compile, 731 NUnit tests pass (0 unexpected failures)
+
+## Task 21.17 — ARM: Include ProtocolOperationHelpers and OperationFinalStateVia shared sources (2026-03-08)
+
+**Status:** Already implemented — marked as done.
+
+**Finding:** This task was fully completed as part of task 21.7 (commit b4b0aff). The `AZURE_LRO_SHARED_SOURCE_FILES` array in `ProjectFile.tsx` already includes all 14 LRO shared source files (ProtocolOperationHelpers.cs, OperationFinalStateVia.cs, VoidValue.cs, and 11 transitive dependencies). ARM projects automatically get `needsLro = true` because `isManagement === true`, which triggers inclusion of all LRO shared sources.
+
+**Verification:** Build passes, 731 unit tests pass (13 expected failures), 5 e2e tests pass (0 unexpected failures).
+
+**Next:** Task 21.18 (ARM: Fix constructor signatures and namespace collisions) is now unblocked — its dependencies (21.15, 21.16, 21.17) are all done. Tasks 21.10 and 21.12 (multipart/additional-properties e2e coverage) also remain pending with no dependencies.

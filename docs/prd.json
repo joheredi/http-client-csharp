@@ -2774,7 +2774,7 @@
           "title": "ARM: Include ProtocolOperationHelpers and OperationFinalStateVia shared sources",
           "description": "ARM LRO operations reference ProtocolOperationHelpers and OperationFinalStateVia which are internal shared-source types from Azure.Core (CS0122, 732 errors). These need to be included as shared source files in the generated project.\n\nFix: Add the required Azure.Core shared source files to ProjectFile.tsx for ARM projects. Includes ProtocolOperationHelpers.cs, OperationFinalStateVia.cs, VoidValue.cs, and their transitive dependencies.",
           "phase": "phase-21",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "21.7"
           ],
