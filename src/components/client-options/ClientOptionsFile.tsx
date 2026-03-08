@@ -90,7 +90,7 @@ export interface ClientOptionsFileProps {
  */
 export function ClientOptionsFile(props: ClientOptionsFileProps) {
   const { client, options } = props;
-  const apiVersions = client.apiVersions;
+  const apiVersions = getEffectiveApiVersions(client);
 
   const header = getLicenseHeader(options);
   const namePolicy = useCSharpNamePolicy();
@@ -196,4 +196,37 @@ export function ClientOptionsFile(props: ClientOptionsFileProps) {
       </Namespace>
     </SourceFile>
   );
+}
+
+/**
+ * Returns the effective API versions for a client.
+ *
+ * For single-service clients, this is simply `client.apiVersions`.
+ * For multi-service clients (e.g., `@client({ service: [A, B] })`), the
+ * combined client's `apiVersions` is typically empty because TCGC does not
+ * merge children's versions onto the parent. In that case, we collect all
+ * unique API versions from the client's direct children so the generated
+ * options class includes a `ServiceVersion` enum and `Version` property.
+ *
+ * Without this, the root client constructor would reference `options.Version`
+ * on an empty options class, causing a C# compilation error.
+ */
+function getEffectiveApiVersions(
+  client: SdkClientType<SdkHttpOperation>,
+): string[] {
+  if (client.apiVersions.length > 0) {
+    return client.apiVersions;
+  }
+
+  // Multi-service: collect unique apiVersions from direct children.
+  const childVersions: string[] = [];
+  for (const child of client.children ?? []) {
+    for (const v of child.apiVersions) {
+      if (!childVersions.includes(v)) {
+        childVersions.push(v);
+      }
+    }
+  }
+
+  return childVersions;
 }

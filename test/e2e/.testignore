@@ -31,6 +31,3 @@ azure/core/lro/standard
 # ============================================================
 # NON-AZURE SPECS — remaining build failures
 # ============================================================
-
-# service/multi-service: CombinedOptions missing Version property.
-service/multi-service

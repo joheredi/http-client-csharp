@@ -6790,3 +6790,14 @@ Fixed 12 Encode_Array_Property e2e test failures. When a model property has `@en
 
 **Files changed**: `src/components/clients/ConvenienceMethod.tsx`, `test/convenience-method.test.ts`, `test/e2e/.expected-failures`
 **Tests**: 1692 unit tests pass, e2e: 652 pass, 0 unexpected failures. 8 tests removed from .expected-failures.
+
+## Task 21.9 — Fix service/multi-service missing Version property (2026-03-08)
+- Fixed CombinedOptions missing Version property for multi-service clients
+- Root cause: TCGC sets combined client's `apiVersions` to `[]` (empty) even when children have versions
+- Fix: Added `getEffectiveApiVersions()` helper in `ClientOptionsFile.tsx` that collects apiVersions from `client.children` when the client's own is empty
+- Generated CombinedOptions now has ServiceVersion enum (union of all children's versions) and internal Version property
+- Added unit test for multi-service TypeSpec with `@client({ service: [ServiceA, ServiceB] })` decorator
+- Removed `service/multi-service` from `.testignore`
+- Key insight: `@client({...})` direct decorator works in tests; `@@client` augment decorator didn't create the combined client
+- Key insight: TypeSpec requires block-style namespaces (not blockless) for multiple namespaces in a single file
+- Result: 1699 unit tests passing, 652 e2e tests passing with 0 unexpected failures

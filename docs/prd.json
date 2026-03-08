@@ -2614,7 +2614,7 @@
           "title": "Fix service/multi-service missing Version property",
           "description": "service/multi-service is in .testignore because the generated CombinedOptions class is missing a Version property referenced by the client constructor.\n\nFix: Update ClientOptionsFile.tsx to generate a Version property on the options class when the service defines API versions.",
           "phase": "phase-21",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

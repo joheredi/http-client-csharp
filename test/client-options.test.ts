@@ -359,4 +359,98 @@ describe("ClientOptionsFile", () => {
     expect(optionsFile).not.toContain("ServiceVersion");
     expect(optionsFile).not.toContain("LatestVersion");
   });
+
+  /**
+   * Verifies that multi-service clients (using @client({ service: [...] }))
+   * generate a valid ClientOptions class with version infrastructure.
+   *
+   * Multi-service clients wrap multiple versioned services into a single
+   * combined client. TCGC sets the combined client's apiVersions to []
+   * (empty), but the client constructor still references options.Version.
+   * The fix collects apiVersions from child clients to generate a
+   * ServiceVersion enum and Version property on the combined options class.
+   *
+   * Without this, the generated CombinedOptions class would be empty,
+   * causing a C# compilation error when the client tries to read
+   * options.Version.
+   *
+   * Ground truth: submodules/typespec/packages/http-client-csharp/generator/
+   *   TestProjects/Spector/http/service/multi-service/src/Generated/
+   *   CombinedClientOptions.cs
+   */
+  it("generates client options with versions for multi-service client", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+      using TypeSpec.Versioning;
+      using Azure.ClientGenerator.Core;
+
+      namespace MultiService {
+        @versioned(VersionsA)
+        @service
+        @server("http://localhost:3000", "")
+        namespace ServiceA {
+          enum VersionsA { av1, av2 }
+
+          @route("/service-a/foo")
+          interface Foo {
+            @route("/test") test(@query("api-version") apiVersion: VersionsA): void;
+          }
+        }
+
+        @versioned(VersionsB)
+        @service
+        @server("http://localhost:3000", "")
+        namespace ServiceB {
+          enum VersionsB { bv1, bv2 }
+
+          @route("/service-b/bar")
+          interface Bar {
+            @route("/test") test(@query("api-version") apiVersion: VersionsB): void;
+          }
+        }
+
+        @client({
+          service: [ServiceA, ServiceB]
+        })
+        namespace Combined {}
+      }
+    `);
+
+    expect(diagnostics.filter((d) => d.severity === "error")).toHaveLength(0);
+
+    // Find the combined options file
+    const optionsKey = Object.keys(outputs).find((k) =>
+      k.includes("CombinedOptions"),
+    );
+    expect(optionsKey).toBeDefined();
+
+    const optionsFile = outputs[optionsKey!];
+
+    // Verify the combined options class has version infrastructure
+    // even though the combined client's own apiVersions is empty —
+    // versions are collected from children (ServiceA: av1/av2, ServiceB: bv1/bv2)
+    expect(optionsFile).toContain("public partial class");
+    expect(optionsFile).toContain("CombinedOptions : ClientPipelineOptions");
+
+    // ServiceVersion enum contains all children's versions
+    expect(optionsFile).toContain("public enum ServiceVersion");
+    expect(optionsFile).toContain("Vav1 = 1");
+    expect(optionsFile).toContain("Vav2 = 2");
+    expect(optionsFile).toContain("Vbv1 = 3");
+    expect(optionsFile).toContain("Vbv2 = 4");
+
+    // LatestVersion points to the last version in the combined list
+    expect(optionsFile).toContain(
+      "private const ServiceVersion LatestVersion = ServiceVersion.Vbv2",
+    );
+
+    // Constructor maps all version enum values to their string values
+    expect(optionsFile).toContain('ServiceVersion.Vav1 => "av1"');
+    expect(optionsFile).toContain('ServiceVersion.Vav2 => "av2"');
+    expect(optionsFile).toContain('ServiceVersion.Vbv1 => "bv1"');
+    expect(optionsFile).toContain('ServiceVersion.Vbv2 => "bv2"');
+
+    // Internal Version property is present (referenced by client constructor)
+    expect(optionsFile).toContain("internal string Version { get; }");
+  });
 });

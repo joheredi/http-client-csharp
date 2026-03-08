@@ -4540,3 +4540,9 @@ BinaryData (bytes/unknown) types need **unconditional** null checking in the for
 
 ### Pattern: preReturnStatements in ResponseInfo
 When multi-statement deserialization is needed (complex collections), use the `preReturnStatements` field in `ResponseInfo`. This optional `Children` value is inserted between the protocol call and the return statement in both sync and async method bodies.
+
+### Multi-service combined client apiVersions is empty
+TCGC sets the combined client's `apiVersions` to `[]` when using `@client({ service: [A, B] })`. The children have their own apiVersions. Fix: `getEffectiveApiVersions()` in `ClientOptionsFile.tsx` collects from children. This generates a single `ServiceVersion` enum with the union of all children's versions.
+
+### TypeSpec test: use @client not @@client for multi-service
+In unit tests, `@@client(Combined, { service: [ServiceA, ServiceB] })` augment decorator doesn't create a combined client. Use `@client({ service: [ServiceA, ServiceB] })` directly on the namespace. Also, use block-style namespaces (not blockless) when defining multiple namespaces in a single TypeSpec string.
