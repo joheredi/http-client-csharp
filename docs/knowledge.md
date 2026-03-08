@@ -4733,3 +4733,9 @@ The legacy emitter generates `AssemblyInfo.cs` files with `[assembly: InternalsV
 **Critical gotcha:** InternalsVisibleTo must be scoped to non-Azure projects using `Condition="!$(MSBuildProjectDirectory.Contains('/azure/'))"`. Azure-flavored projects each compile Azure.Core shared source files (e.g., `RequestHeaderExtensions.cs`) as internal types. With blanket InternalsVisibleTo, these duplicate internal extension methods become visible from multiple assemblies simultaneously, causing CS0121 "ambiguous call" compilation errors.
 
 **Pattern:** When adding new internal types that tests need to access, they will automatically be accessible for non-Azure specs. For Azure specs, tests must use only public API surface.
+
+### Array additional properties use BinaryData[] not IList<BinaryData>
+The new emitter generates `IDictionary<string, BinaryData[]>` for model array additional properties. Use `.Length` not `.Count` when asserting on array size. The legacy emitter used `IList<BinaryData>` which has `.Count`.
+
+### Multi-spread Record<T> collapses to single dictionary
+When a TypeSpec model spreads multiple `Record<T>` types (e.g., `...Record<string>` and `...Record<float32>`), the new emitter collapses them into a single `IDictionary<string, BinaryData>` property. The legacy emitter generates separate `AdditionalProperties` and `AdditionalSingleProperties` dictionaries with distinct typed values.

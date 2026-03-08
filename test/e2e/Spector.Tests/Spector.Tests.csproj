@@ -160,12 +160,10 @@
     <Compile Remove="$(LegacyTestRoot)Http/_Type/Property/AdditionalProperties/DifferentSpreadStringDerivedTests.cs" />
     <Compile Remove="$(LegacyTestRoot)Http/_Type/Property/AdditionalProperties/MultipleSpreadRecordTests.cs" />
 
-    <!-- Task 15.14: Re-enabled — API surface now aligns with legacy emitter -->
     <!--
-      AdditionalPropertiesTests.cs contains tests for MultipleSpreadRecord which
-      requires AdditionalSingleProperties (multi-spread Record<T>) — not yet supported.
-      The generated models/serialization code compiles correctly; only the test file
-      is excluded due to unsupported patterns in specific test methods.
+      type/property/additional-properties: Legacy test file excluded because it references
+      AdditionalSingleProperties (multi-spread Record<T>) which the new emitter doesn't support.
+      Local adapted test file is used instead with incompatible tests marked [Ignore].
     -->
     <Compile Remove="$(LegacyTestRoot)Http/_Type/Property/AdditionalProperties/AdditionalPropertiesTests.cs" />
   </ItemGroup>

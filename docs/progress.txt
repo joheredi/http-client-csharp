@@ -6983,3 +6983,31 @@ Task 21.11 (2026-03-08) — Enable optionality property e2e test coverage:
 - **Files changed**: `eng/scripts/emit-e2e.ts`, `test/e2e/Spector.Tests/Spector.Tests.csproj`
 
 - **Tests**: 1,724 unit tests pass (0 new), 772 e2e tests total (744 passed, 13 expected failures, 15 expected skips, 0 unexpected). Previously 731 NUnit tests passed; now 744 pass (+13 multipart tests enabled).
+
+## Task 21.12: Enable additional-properties e2e test coverage
+**Date**: 2026-03-08
+**Status**: Done
+
+**What was done**:
+- Created local adapted copy of `AdditionalPropertiesTests.cs` at `test/e2e/Spector.Tests/Http/_Type/Property/AdditionalProperties/`
+- Followed the established local test override pattern (same as Optionality, ClientOperationGroup, Versioning)
+- 4 tests marked `[Ignore]` due to multi-spread `Record<T>` not being supported (MultipleSpreadGet/Put, SpreadRecordUnionGet/Put)
+- These models collapse `Record<string> + Record<float32>` into single `IDictionary<string, BinaryData>` instead of separate `AdditionalProperties + AdditionalSingleProperties`
+- Fixed `list.Count` → `list.Length` for array-typed additional properties (`BinaryData[]` vs `IList<BinaryData>`)
+- Added 4 ignored tests to `.expected-skips`
+- Updated csproj comment explaining the local override
+
+**Results**:
+- 56 new passing e2e tests (800 total, up from 744)
+- 0 new failures or unexpected skips
+- Acceptance criteria exceeded: 56 of 60 tests pass (target was 40 of 62)
+
+**Patterns used**:
+- Local test file override pattern: `<Compile Remove>` legacy → local copy with adaptations
+- `[Ignore("reason")]` for unsupported scenarios
+- `.expected-skips` for tracking ignored tests
+
+**Next person should know**:
+- `DifferentSpreadStringDerivedTests.cs` and `MultipleSpreadRecordTests.cs` still excluded (need `SpectorModelJsonTests<T>` base class)
+- Multi-spread `Record<T>` support would enable the remaining 4 tests
+- Array additional properties use `BinaryData[]` not `IList<BinaryData>` — use `.Length` not `.Count`

@@ -2674,7 +2674,7 @@
           "title": "Enable additional-properties e2e test coverage",
           "description": "62 Type_Property_AdditionalProperties scenarios show as not-implemented. Several test files are excluded from compilation due to missing SpectorModelJsonTests<T> base class and multi-spread Record<T> patterns.\n\nFix: Provide the missing test infrastructure or copy test files locally with adaptations.",
           "phase": "phase-21",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

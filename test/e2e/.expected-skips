@@ -30,6 +30,14 @@ QueryContinuationArray
 QueryContinuationPrimitive
 QueryContinuationRecord
 
+# --- AdditionalProperties: Multi-spread Record<T> not yet supported ---
+# New emitter collapses Record<string> + Record<float32> into IDictionary<string, BinaryData>
+# instead of generating separate AdditionalProperties + AdditionalSingleProperties dictionaries.
+MultipleSpreadGet
+MultipleSpreadPut
+SpreadRecordUnionGet
+SpreadRecordUnionPut
+
 # --- Azure/ClientGeneratorCore: Skipped by [Ignore] attribute upstream ---
 # https://github.com/microsoft/typespec/issues/9774
 Azure_ClientGenerator_Core_ClientInitialization_IndividuallyClient_IndividuallyNestedWithParamAlias
