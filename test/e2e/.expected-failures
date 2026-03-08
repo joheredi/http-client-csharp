@@ -28,14 +28,6 @@ ModelValueGet
 RecursiveModelValueGet
 UnknownValueGet
 
-# --- Payload/MediaType: text/plain serialization issue ---
-# Convenience methods use BinaryContentHelper.FromObject() for text/plain body params,
-# which JSON-serializes the string instead of sending raw text. Similarly,
-# response deserialization uses ToObjectFromJson<string>() which fails on raw text.
-# Fix: Detect text/plain content-type and use raw BinaryContent / text parsing.
-GetAsText
-SendAsText
-
 # --- Resiliency/SrvDriven V1: V1 service deployment returns 404 ---
 # The V1 client tests that hit the V1 service deployment path ("v1") get 404
 # from the Spector mock server — the server only hosts routes for the V2 deployment.

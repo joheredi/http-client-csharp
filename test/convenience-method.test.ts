@@ -636,6 +636,42 @@ describe("ConvenienceMethod", () => {
   });
 
   /**
+   * Verifies that text/plain response with string return type uses .ToString()
+   * instead of .ToObjectFromJson<string>() for deserialization.
+   *
+   * ToObjectFromJson<string>() expects JSON-encoded strings (wrapped in quotes),
+   * which fails for raw text/plain responses. The legacy emitter uses
+   * response.Content.ToString() for text/plain string responses.
+   *
+   * This is critical for the Payload_MediaType_GetAsText e2e test.
+   */
+  it("deserializes text/plain string response with .ToString()", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/text")
+      @get op getText(): {
+        @header contentType: "text/plain";
+        @body text: string;
+      };
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Text/plain string response uses .ToString() for raw text deserialization
+    expect(clientFile).toContain(
+      "result.GetRawResponse().Content.ToString()",
+    );
+    // Must NOT use ToObjectFromJson which expects JSON-encoded strings
+    expect(clientFile).not.toContain("ToObjectFromJson<string>()");
+  });
+
+  /**
    * Verifies that operations returning an array type (e.g., Item[]) generate
    * typed ClientResult<IReadOnlyList<Item>> convenience methods.
    *
@@ -1378,7 +1414,15 @@ describe("ConvenienceMethod", () => {
    * String and BinaryData types have no implicit BinaryContent conversion,
    * so explicit wrapping is required for C# overload resolution.
    */
-  it("wraps string body param in BinaryContentHelper.FromObject", async () => {
+  /**
+   * Verifies that text/plain string body parameters use BinaryContent.Create(BinaryData.FromString())
+   * instead of BinaryContentHelper.FromObject(). FromObject JSON-serializes the string (wrapping in
+   * quotes), which corrupts text/plain payloads. BinaryData.FromString() sends the raw string.
+   *
+   * This matches the legacy emitter's behavior for text/plain content types, which uses
+   * BinaryData.FromString() instead of BinaryData.FromObjectAsJson().
+   */
+  it("wraps text/plain string body in BinaryContent.Create(BinaryData.FromString())", async () => {
     const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
       using TypeSpec.Http;
 
@@ -1392,8 +1436,37 @@ describe("ConvenienceMethod", () => {
 
     const clientFile = outputs["src/Generated/TestServiceClient.cs"] ?? "";
 
-    // String body uses FromObject directly (scalar type, no constructor wrapping)
+    // Text/plain string body must use BinaryData.FromString for raw text passthrough
+    expect(clientFile).toContain(
+      "BinaryContent.Create(BinaryData.FromString(text))",
+    );
+    // Must NOT use BinaryContentHelper.FromObject which JSON-serializes the string
+    expect(clientFile).not.toContain("BinaryContentHelper.FromObject(text)");
+  });
+
+  /**
+   * Verifies that application/json string body parameters still use BinaryContentHelper.FromObject().
+   * This ensures the text/plain special case only applies to text/plain content types and doesn't
+   * accidentally affect JSON string bodies.
+   */
+  it("wraps application/json string body in BinaryContentHelper.FromObject", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/json-text")
+      @post op sendJsonText(@header contentType: "application/json", @body text: string): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"] ?? "";
+
+    // JSON string body still uses FromObject for JSON serialization
     expect(clientFile).toContain("BinaryContentHelper.FromObject(text)");
+    // Must NOT use the text/plain pattern
+    expect(clientFile).not.toContain("BinaryData.FromString(text)");
   });
 
   /**

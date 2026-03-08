@@ -193,6 +193,7 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
               params.spreadBodyType,
               params.spreadBodyParamsInOrder!,
               ctParamName,
+              isTextPlainBody(operation.bodyParam),
             )
           : [
               ...params.params.map((p) => p.protocolCallArg),
@@ -236,7 +237,13 @@ export function ConvenienceMethods(props: ConvenienceMethodsProps) {
         // Model types use the explicit operator cast. Bytes/unknown types
         // return BinaryData from the raw response content. Scalars, arrays,
         // dicts, and enums use ToObjectFromJson<T>() for typed deserialization.
-        const responseInfo = buildResponseInfo(responseType, namePolicy, isAzure);
+        // Text/plain string responses use .ToString() instead of JSON deserialization.
+        const responseInfo = buildResponseInfo(
+          responseType,
+          namePolicy,
+          isAzure,
+          hasTextPlainResponse(operation),
+        );
 
         const xmlDoc = buildConvenienceXmlDoc(
           description,
@@ -525,7 +532,11 @@ export function buildConvenienceParams(
         needsAssertion: convInfo.needsAssertion,
         isStringType: convInfo.isString,
         doc: bodyParam.doc ?? bodyParam.summary,
-        protocolCallArg: getBodyProtocolCallArg(bodyName, bodyParam.type),
+        protocolCallArg: getBodyProtocolCallArg(
+          bodyName,
+          bodyParam.type,
+          isTextPlainBody(bodyParam),
+        ),
         priority,
         index: index++,
       });
@@ -581,6 +592,7 @@ function buildSpreadProtocolCallExpr(
   spreadBodyType: SdkType,
   bodyParamsInModelOrder: ConvenienceParam[],
   ctParamName: string,
+  isTextPlain: boolean = false,
 ): Children {
   // For non-model spread body types (scalars like bool, decimal, string),
   // pass the value directly to BinaryContentHelper.FromObject instead of
@@ -588,6 +600,8 @@ function buildSpreadProtocolCallExpr(
   // that accept a single value (e.g., `new bool(value)` is invalid C#).
   // Exception: bytes (BinaryData) uses BinaryContent.Create() to avoid
   // JSON-parsing raw binary data (e.g., PNG, octet-stream).
+  // Exception: text/plain strings use BinaryContent.Create(BinaryData.FromString())
+  // to send raw text without JSON serialization (which would wrap in quotes).
   if (spreadBodyType.kind !== "model") {
     const parts: Children[] = [];
     let bodyInserted = false;
@@ -600,6 +614,10 @@ function buildSpreadProtocolCallExpr(
           );
           if (spreadBodyType.kind === "bytes") {
             parts.push(`BinaryContent.Create(${bodyParamName})`);
+          } else if (isTextPlain && spreadBodyType.kind === "string") {
+            parts.push(
+              `BinaryContent.Create(BinaryData.FromString(${bodyParamName}))`,
+            );
           } else {
             parts.push(`BinaryContentHelper.FromObject(${bodyParamName})`);
           }
@@ -983,6 +1001,7 @@ function buildResponseInfo(
   responseType: SdkType | undefined,
   namePolicy: ReturnType<typeof useCSharpNamePolicy>,
   isAzure: boolean = false,
+  isTextPlain: boolean = false,
 ): ResponseInfo | null {
   if (!responseType) return null;
 
@@ -1042,6 +1061,14 @@ function buildResponseInfo(
     case "decimal128":
       return buildScalarResponseInfo("decimal", contentExpr);
     case "string":
+      // Text/plain responses: use .ToString() to read raw text content.
+      // JSON responses: use .ToObjectFromJson<string>() for proper JSON deserialization.
+      if (isTextPlain) {
+        return {
+          typeExpr: "string",
+          deserializeExpr: `${contentExpr}.ToString()`,
+        };
+      }
       return buildScalarResponseInfo("string", contentExpr);
 
     // BCL struct types
@@ -1103,7 +1130,7 @@ function buildResponseInfo(
     }
     case "enumvalue": {
       const parentEnum = unwrapped.enumType;
-      return buildResponseInfo(parentEnum, namePolicy, isAzure);
+      return buildResponseInfo(parentEnum, namePolicy, isAzure, isTextPlain);
     }
 
     default:
@@ -1269,13 +1296,19 @@ function hasImplicitBinaryContentOperator(type: SdkModelType): boolean {
  * - **Dictionary**: `BinaryContentHelper.FromDictionary(body)`
  * - **Model without Input flag**: `BinaryContentHelper.FromObject(body)` (uses IPersistableModel)
  * - **Bytes (BinaryData)**: `BinaryContent.Create(body)` (raw binary passthrough)
+ * - **Text/plain string**: `BinaryContent.Create(BinaryData.FromString(body))` (raw text passthrough)
  * - **Other (string, scalar)**: `BinaryContentHelper.FromObject(body)`
  *
  * @param name - The camelCase parameter name in C#.
  * @param type - The TCGC SDK type of the body parameter.
+ * @param isTextPlain - Whether the body uses text/plain content type.
  * @returns A string expression to use as the body argument in the protocol call.
  */
-function getBodyProtocolCallArg(name: string, type: SdkType): string {
+function getBodyProtocolCallArg(
+  name: string,
+  type: SdkType,
+  isTextPlain: boolean = false,
+): string {
   const escaped = escapeCSharpKeyword(name);
   const unwrapped = unwrapType(type);
 
@@ -1297,7 +1330,7 @@ function getBodyProtocolCallArg(name: string, type: SdkType): string {
   }
 
   if (unwrapped.kind === "enumvalue") {
-    return getBodyProtocolCallArg(name, unwrapped.enumType);
+    return getBodyProtocolCallArg(name, unwrapped.enumType, isTextPlain);
   }
 
   // Array types: use FromEnumerable for proper JSON array serialization.
@@ -1319,6 +1352,13 @@ function getBodyProtocolCallArg(name: string, type: SdkType): string {
   // BinaryContent.Create(BinaryData) wraps the raw bytes directly.
   if (unwrapped.kind === "bytes") {
     return `BinaryContent.Create(${escaped})`;
+  }
+
+  // Text/plain string body: use BinaryContent.Create(BinaryData.FromString()) to send
+  // the string as raw text. BinaryContentHelper.FromObject() would JSON-serialize it
+  // (wrapping in quotes), which corrupts the payload for text/plain content types.
+  if (isTextPlain && unwrapped.kind === "string") {
+    return `BinaryContent.Create(BinaryData.FromString(${escaped}))`;
   }
 
   // All other types (string, model without Input, scalar, etc.):
@@ -1542,6 +1582,41 @@ function isJsonMergePatchOperation(
     method.operation?.bodyParam?.contentTypes?.includes(
       "application/merge-patch+json",
     ) ?? false
+  );
+}
+
+/**
+ * Checks whether a body parameter uses text/plain content type.
+ *
+ * Text/plain bodies must use raw string encoding (`BinaryData.FromString`)
+ * rather than JSON serialization (`BinaryContentHelper.FromObject`), which
+ * would wrap the string in quotes and corrupt the payload.
+ *
+ * @param bodyParam - The body parameter to check, or undefined if no body.
+ * @returns `true` if the body parameter's content types include text/plain.
+ */
+function isTextPlainBody(bodyParam: SdkBodyParameter | undefined): boolean {
+  return bodyParam?.contentTypes?.includes("text/plain") ?? false;
+}
+
+/**
+ * Checks whether any success response of an HTTP operation EXPLICITLY uses text/plain
+ * content type via `@header contentType: "text/plain"`.
+ *
+ * TCGC defaults all string response bodies to `contentTypes: ["text/plain"]`, even when
+ * no content type is explicitly annotated (e.g., `@get op getName(): string;`). The legacy
+ * emitter uses `ToObjectFromJson<string>()` for these implicit cases. To distinguish
+ * explicit text/plain from TCGC's default, we check that the response also has an
+ * explicit content-type header (present only when `@header contentType: ...` is annotated).
+ *
+ * @param operation - The HTTP operation to check.
+ * @returns `true` if any non-error response explicitly declares text/plain content type.
+ */
+function hasTextPlainResponse(operation: SdkHttpOperation): boolean {
+  return operation.responses.some(
+    (r) =>
+      r.contentTypes?.includes("text/plain") &&
+      r.headers?.some((h) => h.serializedName === "content-type"),
   );
 }
 

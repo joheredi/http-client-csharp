@@ -122,7 +122,7 @@ public partial class StringBody
         {
             Argument.AssertNotNullOrEmpty(text, nameof(text));
 
-            return SendAsText(BinaryContentHelper.FromObject(text), cancellationToken.ToRequestOptions());
+            return SendAsText(BinaryContent.Create(BinaryData.FromString(text)), cancellationToken.ToRequestOptions());
         }
 
         /// <summary>  </summary>
@@ -138,7 +138,7 @@ public partial class StringBody
         {
             Argument.AssertNotNullOrEmpty(text, nameof(text));
 
-            return await SendAsTextAsync(BinaryContentHelper.FromObject(text), cancellationToken.ToRequestOptions()).ConfigureAwait(false);
+            return await SendAsTextAsync(BinaryContent.Create(BinaryData.FromString(text)), cancellationToken.ToRequestOptions()).ConfigureAwait(false);
         }
 
         /// <summary>  </summary>
@@ -147,7 +147,7 @@ public partial class StringBody
         public virtual ClientResult<string> GetAsText(CancellationToken cancellationToken = default)
         {
             ClientResult result = GetAsText(cancellationToken.ToRequestOptions());
-            return ClientResult.FromValue(result.GetRawResponse().Content.ToObjectFromJson<string>(), result.GetRawResponse());
+            return ClientResult.FromValue(result.GetRawResponse().Content.ToString(), result.GetRawResponse());
         }
 
         /// <summary>  </summary>
@@ -156,7 +156,7 @@ public partial class StringBody
         public virtual async Task<ClientResult<string>> GetAsTextAsync(CancellationToken cancellationToken = default)
         {
             ClientResult result = await GetAsTextAsync(cancellationToken.ToRequestOptions()).ConfigureAwait(false);
-            return ClientResult.FromValue(result.GetRawResponse().Content.ToObjectFromJson<string>(), result.GetRawResponse());
+            return ClientResult.FromValue(result.GetRawResponse().Content.ToString(), result.GetRawResponse());
         }
 
         /// <summary>  </summary>

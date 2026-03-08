@@ -4495,3 +4495,26 @@ All 9 ARM resource-manager specs emit successfully but fail dotnet build with de
 **Gotcha**: `@body data: bytes` is classified as a "spread" body by TCGC (`isSpreadBody()` returns true). This means bytes body serialization goes through `buildSpreadProtocolCallExpr`, NOT `getBodyProtocolCallArg`. Any fix for bytes body handling must be applied in the spread path's non-model branch.
 
 **Design Decision**: For `bytes` (BinaryData) body parameters, use `BinaryContent.Create(value)` instead of `BinaryContentHelper.FromObject(value)`. `BinaryContent.Create(BinaryData)` wraps raw bytes directly without JSON processing, while `BinaryContentHelper.FromObject(BinaryData)` attempts `WriteRawValue`/`JsonDocument.Parse` which fails on non-JSON binary data (PNG, octet-stream). This matches the legacy emitter's behavior (test data: `ScalarInputTypeMethods(BinaryData).cs`).
+
+## TCGC text/plain Content Type Defaults (Task 21.4)
+
+**Gotcha**: TCGC defaults ALL `string` response bodies to `contentTypes: ["text/plain"]` and `defaultContentType: "text/plain"`, even when no content type is explicitly annotated in TypeSpec (e.g., `@get op getName(): string;`). The legacy emitter uses `ToObjectFromJson<string>()` for these implicit cases.
+
+**How to distinguish explicit vs implicit text/plain**: Check `response.headers` for an explicit content-type header. When `@header contentType: "text/plain"` is annotated, the response has `headers: [{serializedName: "content-type", type: {kind: "constant"}}]`. Without annotation, `headers` is empty.
+
+**Pattern for text/plain detection**:
+- Request body: `operation.bodyParam?.contentTypes?.includes("text/plain")` — reliable because body params with `@header contentType: "text/plain"` get text/plain in contentTypes.
+- Response: `r.contentTypes?.includes("text/plain") && r.headers?.some(h => h.serializedName === "content-type")` — requires BOTH text/plain content type AND explicit header to avoid false positives.
+
+**Serialization patterns**:
+- text/plain request: `BinaryContent.Create(BinaryData.FromString(param))` (not `BinaryContentHelper.FromObject()`)
+- text/plain response: `content.ToString()` (not `content.ToObjectFromJson<string>()`)
+- application/json string request: `BinaryContentHelper.FromObject(param)` (unchanged)
+- application/json string response: `content.ToObjectFromJson<string>()` (unchanged)
+
+## Design Decisions
+
+### Task 21.4: Text/plain handling approach
+**Chosen**: Pass `isTextPlain` boolean flags through `getBodyProtocolCallArg`, `buildSpreadProtocolCallExpr`, and `buildResponseInfo` functions. Detection via helper functions at call sites where operation context is available.
+**Rejected**: Passing full operation objects to these functions — bigger API change, less explicit about what information is needed.
+**Rejected**: Checking only `contentTypes` without header verification — TCGC defaults string to text/plain even without explicit annotation, causing false positives for implicit string returns.

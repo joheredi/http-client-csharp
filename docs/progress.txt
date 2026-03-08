@@ -6753,3 +6753,19 @@ Fixed 12 Encode_Array_Property e2e test failures. When a model property has `@en
 
 **Files changed**: `src/components/clients/ConvenienceMethod.tsx`, `test/convenience-method.test.ts`, `test/e2e/.expected-failures`
 **Tests**: 1689 unit tests pass, e2e tests pass. Removed 3 entries from .expected-failures.
+
+---
+
+## Task 21.4 — Fix text/plain request and response handling (2026-03-08)
+
+- **Problem**: 2 Payload_MediaType e2e tests failed (GetAsText, SendAsText). Convenience methods used `BinaryContentHelper.FromObject()` for text/plain body params (JSON-serializes strings wrapping them in quotes) and `ToObjectFromJson<string>()` for responses (fails on raw text).
+
+- **Root Cause**: ConvenienceMethod.tsx had no content-type-aware logic. All string bodies used `BinaryContentHelper.FromObject()` (JSON) and all string responses used `ToObjectFromJson<string>()` (JSON). For text/plain, the correct patterns are `BinaryContent.Create(BinaryData.FromString(text))` (request) and `.Content.ToString()` (response).
+
+- **Fix**: Added `isTextPlainBody()` and `hasTextPlainResponse()` helpers to ConvenienceMethod.tsx. These detect text/plain content type on body params and responses respectively, and route to the correct serialization/deserialization patterns.
+
+- **Key Learning**: TCGC defaults ALL string response bodies to `contentTypes: ["text/plain"]`, even without explicit `@header contentType: "text/plain"` annotation. To distinguish explicit text/plain from TCGC's default, check for an explicit content-type header in `response.headers` — only present when `@header contentType: ...` is annotated in TypeSpec. The check is: `r.contentTypes?.includes("text/plain") && r.headers?.some(h => h.serializedName === "content-type")`.
+
+- **Files changed**: `src/components/clients/ConvenienceMethod.tsx`, `test/convenience-method.test.ts`, `test/scenarios/payload/media_type_string_body.md`, `test/e2e/.expected-failures`
+
+- **Tests**: 1691 unit tests pass, e2e tests pass. Removed GetAsText and SendAsText from .expected-failures.

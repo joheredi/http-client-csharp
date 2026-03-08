@@ -2506,7 +2506,7 @@
           "title": "Fix text/plain request and response handling",
           "description": "2 Payload_MediaType tests fail because convenience methods use BinaryContentHelper.FromObject() for text/plain body params (JSON-serializes string) and ToObjectFromJson<string>() for responses (fails on raw text).\n\nFailing tests: GetAsText, SendAsText.\n\nFix: Detect text/plain content-type in ConvenienceMethod.tsx and use raw BinaryContent for requests and raw string parsing for responses.",
           "phase": "phase-21",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [
