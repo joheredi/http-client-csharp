@@ -43,35 +43,53 @@ const AZURE_SHARED_SOURCE_FILES = [
 ];
 
 /**
- * Additional Azure.Core shared source files required by ARM (management) projects.
+ * Azure.Core shared source files for LRO (Long Running Operation) support.
  *
- * Management SDKs use LRO infrastructure (ProtocolOperationHelpers, OperationFinalStateVia),
- * argument validation (Argument), paging helpers (Page, PageableHelpers), and resource
- * collection patterns (NoValueResponseOfT, ForwardsClientCallsAttribute).
+ * These files provide the polling infrastructure that LRO operations depend on:
+ * ProtocolOperationHelpers (creates and manages Operation<T>), OperationPoller
+ * (polling loop), OperationInternal (state tracking), and supporting types.
  *
- * This list matches the shared source includes from the Azure SDK's
- * `Directory.Build.Common.targets` for management libraries.
+ * Included when the service has LRO operations (`method.kind === "lro"`) or
+ * when generating management (ARM) projects (which always have LRO operations).
+ *
+ * This list matches the legacy emitter's `_lroSharedFiles` from
+ * `NewAzureProjectScaffolding.cs`, minus `HttpPipelineExtensions.cs` which is
+ * already in the base `AZURE_SHARED_SOURCE_FILES`.
+ *
+ * @see https://github.com/Azure/azure-sdk-for-net/blob/main/sdk/core/Azure.Core/src/Shared/
  */
-const ARM_SHARED_SOURCE_FILES = [
+const AZURE_LRO_SHARED_SOURCE_FILES = [
   "AsyncLockWithValue.cs",
   "FixedDelayWithNoJitterStrategy.cs",
-  "ForwardsClientCallsAttribute.cs",
   "IOperationSource.cs",
   "NextLinkOperationImplementation.cs",
-  "NoValueResponseOfT.cs",
   "OperationFinalStateVia.cs",
-  "OperationHelpers.cs",
   "OperationInternal.cs",
   "OperationInternalBase.cs",
   "OperationInternalOfT.cs",
   "OperationPoller.cs",
-  "Page.cs",
-  "PageableHelpers.cs",
   "ProtocolOperation.cs",
   "ProtocolOperationHelpers.cs",
   "SequentialDelayStrategy.cs",
   "TaskExtensions.cs",
   "VoidValue.cs",
+];
+
+/**
+ * Additional Azure.Core shared source files required only by ARM (management) projects.
+ *
+ * These are ARM-specific infrastructure types not needed by regular Azure LRO projects:
+ * ForwardsClientCallsAttribute (ARM extension methods), NoValueResponseOfT (void ARM ops),
+ * OperationHelpers (ARM operation utilities), Page/PageableHelpers (ARM paging).
+ *
+ * @see https://github.com/Azure/azure-sdk-for-net/blob/main/sdk/core/Azure.Core/src/Shared/
+ */
+const ARM_EXTRA_SHARED_SOURCE_FILES = [
+  "ForwardsClientCallsAttribute.cs",
+  "NoValueResponseOfT.cs",
+  "OperationHelpers.cs",
+  "Page.cs",
+  "PageableHelpers.cs",
 ];
 
 /**
@@ -95,6 +113,12 @@ export interface ProjectFileProps {
   packageName: string;
   /** Resolved emitter options. */
   options: ResolvedCSharpEmitterOptions;
+  /**
+   * Whether the service has LRO (Long Running Operation) methods.
+   * When true, LRO shared source files (ProtocolOperationHelpers, OperationPoller, etc.)
+   * are included in the project. ARM projects always include LRO files regardless.
+   */
+  hasLroOperations?: boolean;
 }
 
 /**
@@ -121,6 +145,8 @@ export function ProjectFile(props: ProjectFileProps) {
   const disableXmlDocs = props.options["disable-xml-docs"];
   const isAzure = props.options.flavor === "azure";
   const isManagement = props.options.management === true;
+  // ARM projects always have LRO operations (create/update/delete are LRO).
+  const needsLro = props.hasLroOperations === true || isManagement;
 
   // Azure.Core 1.51.1 is required for all Azure flavors:
   // - Transitively includes System.ClientModel with ModelReaderWriterContext support
@@ -153,8 +179,16 @@ export function ProjectFile(props: ProjectFileProps) {
                 LinkBase="Shared/Core"
               />
             ))}
+            {needsLro
+              ? AZURE_LRO_SHARED_SOURCE_FILES.map((file) => (
+                  <CompileWithLinkBase
+                    Include={`$(AzureCoreSharedSources)${file}`}
+                    LinkBase="Shared/Core"
+                  />
+                ))
+              : undefined}
             {isManagement
-              ? ARM_SHARED_SOURCE_FILES.map((file) => (
+              ? ARM_EXTRA_SHARED_SOURCE_FILES.map((file) => (
                   <CompileWithLinkBase
                     Include={`$(AzureCoreSharedSources)${file}`}
                     LinkBase="Shared/Core"

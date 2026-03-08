@@ -177,12 +177,13 @@
     Test files reference types from generated projects that are no longer built.
   -->
   <ItemGroup>
-    <!-- .testignore: azure/core/* (basic, lro/rpc, lro/standard, model, page, scalar) -->
+    <!-- .testignore: azure/core/* (basic, model, page, scalar) -->
     <Compile Remove="$(AzureTestRoot)Http/Azure/Core/Basic/**/*.cs" />
-    <Compile Remove="$(AzureTestRoot)Http/Azure/Core/Lro/**/*.cs" />
     <Compile Remove="$(AzureTestRoot)Http/Azure/Core/Model/**/*.cs" />
     <Compile Remove="$(AzureTestRoot)Http/Azure/Core/Page/**/*.cs" />
     <Compile Remove="$(AzureTestRoot)Http/Azure/Core/Scalar/**/*.cs" />
+    <!-- LRO: Legacy test files excluded; local adapted files used instead (see Http/Azure/Core/Lro/) -->
+    <Compile Remove="$(AzureTestRoot)Http/Azure/Core/Lro/**/*.cs" />
 
     <!-- .testignore: azure/payload/pageable -->
     <Compile Remove="$(AzureTestRoot)Http/Azure/Payload/Pageable/**/*.cs" />

@@ -2570,7 +2570,7 @@
           "title": "Implement Azure ProtocolOperationHelpers for LRO specs",
           "description": "2 Azure specs are in .testignore because ProtocolOperationHelpers and OperationFinalStateVia are internal shared-source types from Azure.Core that require VoidValue and other dependencies.\n\nBlocked specs: azure/core/lro/rpc, azure/core/lro/standard.\n\nFix: Include the required Azure.Core shared source files (ProtocolOperationHelpers.cs, VoidValue.cs, etc.) in the generated project via ProjectFile.tsx, similar to how Utf8JsonRequestContent.cs is already included.",
           "phase": "phase-21",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

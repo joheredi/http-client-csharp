@@ -6853,3 +6853,28 @@ Task 21.11 (2026-03-08) — Enable optionality property e2e test coverage:
 - Fixed literal PutDefault tests: explicitly set Property=null since generated models initialize literal defaults (bool?=true, etc.) which would serialize the value instead of omitting it
 - Spec values derived from TypeSpec scenarioDoc annotations in @typespec/http-specs
 - Result: **All 64 optionality scenarios passing**, 726 unit tests passing, all e2e tests passing
+
+---
+## Task 21.7 — Implement Azure ProtocolOperationHelpers for LRO specs (2026-03-08)
+
+- **Problem**: 2 Azure LRO specs (`azure/core/lro/rpc`, `azure/core/lro/standard`) were in `.testignore` because the generated .csproj didn't include LRO shared source files (ProtocolOperationHelpers.cs, VoidValue.cs, OperationFinalStateVia.cs, etc.).
+
+- **Root Cause 1 (csproj)**: LRO shared source files were only in `ARM_SHARED_SOURCE_FILES` (management projects). Non-ARM Azure projects with LRO operations couldn't compile because `ProtocolOperationHelpers.ProcessMessage()` was unavailable.
+
+- **Root Cause 2 (model generation)**: The emitter generated Azure.Core framework types (OperationState, ResourceOperationStatus*, Error, InnerError, ErrorResponse) that conflict with internal types from Azure.Core shared source files. Specifically, `internal struct OperationState` in `OperationInternal.cs` (shared source) conflicted with the generated `public struct OperationState`, causing CS0053 accessibility errors.
+
+- **Fix (csproj)**: Split `ARM_SHARED_SOURCE_FILES` into two arrays:
+  - `AZURE_LRO_SHARED_SOURCE_FILES` (14 files): LRO infrastructure needed by any Azure LRO project
+  - `ARM_EXTRA_SHARED_SOURCE_FILES` (5 files): ARM-only types (ForwardsClientCallsAttribute, Page, etc.)
+  - Added `hasLroOperations` prop to ProjectFile, detected in emitter.tsx by checking `allClients.some(c => c.methods.some(m => m.kind === "lro" || m.kind === "lropaging"))`
+  - LRO files included when `hasLroOperations || isManagement`
+
+- **Fix (model filtering)**: Added `isAzureCoreFrameworkModel()` and `isAzureCoreFrameworkEnum()` filters in `src/utils/model.ts`. These check `crossLanguageDefinitionId.startsWith("Azure.Core.")` to identify framework types. Applied in emitter.tsx before model generation for Azure-flavored projects.
+
+- **Key learning**: Azure.Core shared source files define INTERNAL types (e.g., `internal struct OperationState` in `OperationInternal.cs`). If the emitter generates public versions of these same types, CS0053 "inconsistent accessibility" errors occur. The fix is to never generate Azure.Core framework types — they're provided by shared source files or the Azure.Core NuGet package.
+
+- **Key learning**: When writing e2e test files for Azure specs, models are in `.Models` sub-namespace (e.g., `_Specs_.Azure.Core.Lro.Rpc.Models`), not the root namespace. Always add both `using` directives.
+
+- **Files changed**: `src/components/infrastructure/ProjectFile.tsx`, `src/emitter.tsx`, `src/utils/model.ts`, `test/project-scaffolding.test.ts`, `test/e2e/.testignore`, `test/e2e/Spector.Tests/Spector.Tests.csproj`, `test/e2e/Spector.Tests/Http/Azure/Core/Lro/Rpc/LroRpcTests.cs`, `test/e2e/Spector.Tests/Http/Azure/Core/Lro/Standard/LroStandardTests.cs`
+
+- **Tests**: 1705 unit tests pass (+2 new ProjectFile LRO tests), 731 e2e tests pass (+5 new LRO tests), 0 unexpected failures.

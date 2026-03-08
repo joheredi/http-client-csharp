@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   AzureHttpTester,
+  AzureIntegrationTester,
   ApiTester,
   HttpTester,
   MgmtTester,
@@ -241,6 +242,124 @@ describe("ProjectFile", () => {
       '<PackageReference Include="Azure.Core" Version="1.51.1" />',
     );
     expect(csproj).not.toContain("Azure.ResourceManager");
+  });
+  /**
+   * Verifies that Azure projects with LRO operations include the LRO shared source
+   * files (ProtocolOperationHelpers, OperationPoller, OperationFinalStateVia, etc.)
+   * in the generated .csproj. These internal Azure.Core types provide polling
+   * infrastructure that LRO protocol methods depend on.
+   *
+   * Without these includes, Azure LRO projects fail to compile because
+   * ProtocolOperationHelpers.ProcessMessage() is called from generated protocol
+   * methods but the type is not available.
+   *
+   * This matches the legacy emitter's `NewAzureProjectScaffolding.BuildCompileIncludes()`
+   * which conditionally adds `_lroSharedFiles` when LRO operations are detected.
+   */
+  it("includes LRO shared source files when Azure service has LRO operations", async () => {
+    const [{ outputs }, diagnostics] =
+      await AzureIntegrationTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+      using TypeSpec.Rest;
+      using TypeSpec.Versioning;
+      using Azure.Core;
+      using Azure.Core.Traits;
+
+      @service
+      @versioned(Versions)
+      namespace TestLro;
+
+      enum Versions {
+        v1: "1.0",
+      }
+
+      @resource("users")
+      model User {
+        @key name: string;
+        role: string;
+      }
+
+      alias ResourceOps = Azure.Core.ResourceOperations<
+        NoConditionalRequests & NoRepeatableRequests & NoClientRequestId
+      >;
+
+      @route("/users")
+      interface Users {
+        createOrReplace is ResourceOps.LongRunningResourceCreateOrReplace<User>;
+      }
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const csprojKey = Object.keys(outputs).find((k) => k.endsWith(".csproj"));
+    expect(csprojKey).toBeDefined();
+
+    const csproj = outputs[csprojKey!];
+
+    // All LRO shared source files must be present
+    const expectedLroFiles = [
+      "ProtocolOperationHelpers.cs",
+      "ProtocolOperation.cs",
+      "OperationFinalStateVia.cs",
+      "OperationPoller.cs",
+      "OperationInternal.cs",
+      "OperationInternalBase.cs",
+      "OperationInternalOfT.cs",
+      "VoidValue.cs",
+      "AsyncLockWithValue.cs",
+      "IOperationSource.cs",
+      "NextLinkOperationImplementation.cs",
+      "TaskExtensions.cs",
+      "SequentialDelayStrategy.cs",
+      "FixedDelayWithNoJitterStrategy.cs",
+    ];
+
+    for (const file of expectedLroFiles) {
+      expect(csproj).toMatch(
+        new RegExp(
+          `<Compile Include="\\$\\(AzureCoreSharedSources\\)${file.replace(".", "\\.")}"\\s+LinkBase="Shared/Core"\\s*/>`,
+        ),
+      );
+    }
+
+    // ARM-only files should NOT be present
+    expect(csproj).not.toContain("ForwardsClientCallsAttribute.cs");
+    expect(csproj).not.toContain("NoValueResponseOfT.cs");
+    expect(csproj).not.toContain("PageableHelpers.cs");
+  });
+
+  /**
+   * Verifies that Azure projects WITHOUT LRO operations do not include the LRO
+   * shared source files. Non-LRO Azure specs (e.g., simple CRUD with no polling)
+   * should not have ProtocolOperationHelpers compiled in — it would be dead code.
+   *
+   * This matches the legacy emitter's conditional inclusion: `_lroSharedFiles` are
+   * only added when `InputLongRunningServiceMethod` is detected in the client tree.
+   */
+  it("does not include LRO shared source files when Azure service has no LRO operations", async () => {
+    const [{ outputs }] = await AzureHttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace AzureNonLro;
+
+      model Item {
+        name: string;
+      }
+
+      @route("/items")
+      @get op getItem(): Item;
+    `);
+
+    const csprojKey = Object.keys(outputs).find((k) => k.endsWith(".csproj"));
+    expect(csprojKey).toBeDefined();
+
+    const csproj = outputs[csprojKey!];
+
+    // LRO shared source files should NOT be present
+    expect(csproj).not.toContain("ProtocolOperationHelpers.cs");
+    expect(csproj).not.toContain("OperationFinalStateVia.cs");
+    expect(csproj).not.toContain("OperationPoller.cs");
+    expect(csproj).not.toContain("VoidValue.cs");
   });
 });
 

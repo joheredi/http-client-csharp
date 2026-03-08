@@ -8,6 +8,7 @@
  */
 
 import {
+  type SdkEnumType,
   type SdkModelType,
   UsageFlags,
 } from "@azure-tools/typespec-client-generator-core";
@@ -56,4 +57,42 @@ export function isMultipartOnlyModel(model: SdkModelType): boolean {
   const hasMultipart = (model.usage & UsageFlags.MultipartFormData) !== 0;
   const hasJsonOrXml = (model.usage & (UsageFlags.Json | UsageFlags.Xml)) !== 0;
   return hasMultipart && !hasJsonOrXml;
+}
+
+/**
+ * Determines whether a model is an Azure.Core framework type that should NOT
+ * be generated as a model file.
+ *
+ * Azure.Core defines internal framework types (Error, InnerError, OperationState,
+ * ResourceOperationStatus, etc.) that are available at runtime from the Azure.Core
+ * NuGet package or compiled as shared source files. Generating these types causes:
+ * - CS0053 errors: shared source files define `internal struct OperationState`
+ *   which conflicts with the generated `public struct OperationState`
+ * - Duplicate type definitions between generated code and Azure.Core internals
+ *
+ * The legacy emitter never generates these types — they are handled by the
+ * Azure.Core SDK infrastructure. This function identifies them by their
+ * `crossLanguageDefinitionId` prefix, which TCGC sets to the TypeSpec namespace
+ * origin (e.g., `"Azure.Core.Foundations.Error"`).
+ *
+ * @param model - The TCGC SDK model type to check.
+ * @returns `true` if the model is an Azure.Core framework type.
+ */
+export function isAzureCoreFrameworkModel(model: SdkModelType): boolean {
+  return model.crossLanguageDefinitionId.startsWith("Azure.Core.");
+}
+
+/**
+ * Determines whether an enum is an Azure.Core framework type that should NOT
+ * be generated as an enum file.
+ *
+ * Same rationale as {@link isAzureCoreFrameworkModel} — Azure.Core framework
+ * enums (e.g., `OperationState`) are already provided by shared source files
+ * or the Azure.Core package. Generating them creates type conflicts.
+ *
+ * @param enumType - The TCGC SDK enum type to check.
+ * @returns `true` if the enum is an Azure.Core framework type.
+ */
+export function isAzureCoreFrameworkEnum(enumType: SdkEnumType): boolean {
+  return enumType.crossLanguageDefinitionId.startsWith("Azure.Core.");
 }

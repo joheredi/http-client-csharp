@@ -4627,3 +4627,27 @@ When a collection property is absent from JSON during deserialization, the new e
 
 ### Pattern: Local adapted test files
 When legacy test files don't compile against the new emitter's API surface, create local adapted copies at `test/e2e/Spector.Tests/Http/{path}/`. Keep the same namespace and method names so Spector scenario mapping works. Update the csproj comment to explain why the legacy file is excluded. See also: Versioning/Removed tests for the same pattern.
+
+## Azure.Core Shared Source File Conflicts (2026-03-08)
+
+**Problem**: Azure.Core shared source files (compiled into generated projects via `$(AzureCoreSharedSources)`) define INTERNAL types that can conflict with generated public types.
+
+**Example**: `OperationInternal.cs` defines `internal readonly struct OperationState` at file-level scope. If the emitter generates `public readonly partial struct OperationState` (from TCGC's Azure.Core.Foundations.OperationState model), CS0053 occurs: "property type 'OperationState' is less accessible than property".
+
+**Fix**: Filter out ALL Azure.Core framework types from model/enum generation. Check `crossLanguageDefinitionId.startsWith("Azure.Core.")`. These types are either:
+1. Provided by the Azure.Core NuGet package (public API)
+2. Compiled via shared source files (internal types)
+
+The legacy emitter never generates Azure.Core framework types.
+
+## Design Decisions
+
+### LRO Shared Source Inclusion Strategy (Task 21.7)
+**Chosen**: Split arrays + `hasLroOperations` prop on ProjectFile  
+**Why**: Matches legacy emitter's conditional inclusion. ARM projects always get LRO files.  
+**Rejected**: (1) Always include for all Azure — generates unnecessary shared source entries for non-LRO specs. (2) Detect inside ProjectFile with useTsp() — breaks simple props-based component pattern.
+
+### Azure.Core Framework Type Filtering (Task 21.7)  
+**Chosen**: Filter by `crossLanguageDefinitionId.startsWith("Azure.Core.")` in emitter.tsx  
+**Why**: CLID is the most reliable identifier — set by TCGC from TypeSpec source namespace.  
+**Rejected**: (1) Filter by namespace — namespace can be modified by model-namespace option. (2) Filter by specific type names — fragile, would miss future Azure.Core types.

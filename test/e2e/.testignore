@@ -24,10 +24,6 @@ azure/core/basic
 azure/core/page
 azure/payload/pageable
 
-# LRO: ProtocolOperationHelpers shared source dependencies.
-azure/core/lro/rpc
-azure/core/lro/standard
-
 # ============================================================
 # NON-AZURE SPECS — remaining build failures
 # ============================================================

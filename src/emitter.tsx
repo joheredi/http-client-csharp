@@ -101,7 +101,11 @@ import {
   redirectArmSdkNamespaceConflicts,
 } from "./utils/package-name.js";
 import { applyUnreferencedTypeHandling } from "./utils/unreferenced-types.js";
-import { isMultipartOnlyModel } from "./utils/model.js";
+import {
+  isMultipartOnlyModel,
+  isAzureCoreFrameworkModel,
+  isAzureCoreFrameworkEnum,
+} from "./utils/model.js";
 import {
   hasAdditionalProperties,
   hasInheritedAdditionalProperties,
@@ -176,15 +180,40 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
 
   // Apply unreferenced-types-handling option to filter or internalize
   // types that are not reachable from any client operation signature
-  const { models, enums } = applyUnreferencedTypeHandling(
+  const { models: allModels, enums: allEnums } = applyUnreferencedTypeHandling(
     sdkContext.sdkPackage.models,
     sdkContext.sdkPackage.enums,
     clients,
     options["unreferenced-types-handling"],
   );
+
+  // Filter out Azure.Core framework types (Error, OperationState,
+  // ResourceOperationStatus, etc.) that are provided by the Azure.Core package
+  // or shared source files. Generating them causes CS0053 conflicts with internal
+  // types from shared sources (e.g., `internal struct OperationState` in
+  // OperationInternal.cs vs generated `public struct OperationState`).
+  const isAzure = options.flavor === "azure";
+  const models = isAzure
+    ? allModels.filter((m) => !isAzureCoreFrameworkModel(m))
+    : allModels;
+  const enums = isAzure
+    ? allEnums.filter((e) => !isAzureCoreFrameworkEnum(e))
+    : allEnums;
+
   const fixedEnums = enums.filter((e) => e.isFixed);
   const extensibleEnums = enums.filter((e) => !e.isFixed);
   const allClients = getAllClients(clients);
+
+  // Detect whether any client has LRO (Long Running Operation) methods.
+  // This determines whether the generated .csproj needs LRO shared source files
+  // (ProtocolOperationHelpers, OperationPoller, etc.). Matches the legacy emitter's
+  // `TraverseInput` method in NewAzureProjectScaffolding.cs which checks for
+  // InputLongRunningServiceMethod across all clients.
+  const hasLro =
+    options.flavor === "azure" &&
+    allClients.some((c) =>
+      c.methods.some((m) => m.kind === "lro" || m.kind === "lropaging"),
+    );
 
   // Resolve the package name for the generated library
   const packageName = resolvePackageName(sdkContext, options["package-name"]);
@@ -294,7 +323,7 @@ export async function $onEmit(context: EmitContext<CSharpEmitterOptions>) {
       armProviderSchema={armProviderSchema}
     >
       {shouldGenerateProject && (
-        <ProjectFile packageName={packageName} options={options} />
+        <ProjectFile packageName={packageName} options={options} hasLroOperations={hasLro} />
       )}
       {shouldGenerateProject && <SolutionFile packageName={packageName} />}
       <ArgumentFile packageName={rootNamespace} options={options} />
