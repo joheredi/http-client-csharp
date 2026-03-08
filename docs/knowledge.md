@@ -4518,3 +4518,25 @@ All 9 ARM resource-manager specs emit successfully but fail dotnet build with de
 **Chosen**: Pass `isTextPlain` boolean flags through `getBodyProtocolCallArg`, `buildSpreadProtocolCallExpr`, and `buildResponseInfo` functions. Detection via helper functions at call sites where operation context is available.
 **Rejected**: Passing full operation objects to these functions — bigger API change, less explicit about what information is needed.
 **Rejected**: Checking only `contentTypes` without header verification — TCGC defaults string to text/plain even without explicit annotation, causing false positives for implicit string returns.
+
+## Task 21.5: Complex Collection Deserialization
+
+### Problem
+`ToObjectFromJson<IReadOnlyList<T>>()` uses `JsonSerializer.Deserialize<T>()` under the hood. This fails for:
+- **Model types**: internal parameterless constructor not accessible to JsonSerializer
+- **TimeSpan (duration)**: ISO 8601 duration format not supported by default
+- **BinaryData (bytes/unknown)**: not JSON-serializable
+
+### Solution
+For complex element types in array/dict responses, generate `JsonDocument.Parse()` + per-element foreach loop. Simple types keep using `ToObjectFromJson`.
+
+### Design Decisions
+- **Approach chosen**: JsonDocument.Parse + per-element static Deserialize method (for models) or extension methods (for TimeSpan/BinaryData). This is the same approach the legacy emitter's internal `ScmMethodProviderCollection.BuildCollectionConversionForResult()` uses.
+- **Rejected: ModelReaderWriter.Read<T>** per element — triple-parses JSON (element→string→BinaryData→parse).
+- **Rejected: Custom JsonSerializerOptions with converters** — no public API in System.ClientModel for getting converter-aware options.
+
+### Gotcha: BinaryData null handling
+BinaryData (bytes/unknown) types need **unconditional** null checking in the foreach loop, even when the TCGC type is NOT wrapped in `nullable`. JSON null is always a valid value for unknown types. Without null checking, `BinaryData.FromString("null")` produces a non-null BinaryData instead of C# null.
+
+### Pattern: preReturnStatements in ResponseInfo
+When multi-statement deserialization is needed (complex collections), use the `preReturnStatements` field in `ResponseInfo`. This optional `Children` value is inserted between the protocol call and the return statement in both sync and async method bodies.

@@ -2526,7 +2526,7 @@
           "title": "Fix complex type deserialization for array and dictionary GET responses",
           "description": "8 tests fail because ToObjectFromJson<IReadOnlyList<T>>() and ToObjectFromJson<IReadOnlyDictionary<string, T>>() don't support complex element types (TimeSpan, Model, BinaryData, UnknownValue).\n\nFailing tests: DurationValueGet, ModelValueGet, NullableModelValueGet, UnknownValueGet (array), DurationValueGet, ModelValueGet, RecursiveModelValueGet, UnknownValueGet (dictionary).\n\nFix: Use JsonDocument.Parse + element-level deserialization for these types instead of bulk ToObjectFromJson<T>().",
           "phase": "phase-21",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

@@ -969,6 +969,12 @@ interface ResponseInfo {
   typeExpr: Children;
   /** The C# expression to extract the typed value from a ClientResult named "result". */
   deserializeExpr: Children;
+  /**
+   * Optional C# statements to emit between the protocol call and the return statement.
+   * Used for complex collection deserialization that requires JsonDocument parsing and
+   * per-element iteration (e.g., arrays/dicts of models, TimeSpan, BinaryData).
+   */
+  preReturnStatements?: Children;
 }
 
 /**
@@ -984,10 +990,15 @@ interface ResponseInfo {
  * - **Bytes/Unknown**: `result.GetRawResponse().Content` — returns BinaryData directly.
  * - **Scalar** (string, int, bool, etc.): `result.GetRawResponse().Content.ToObjectFromJson<T>()` —
  *   uses System.Text.Json deserialization.
- * - **Array**: `result.GetRawResponse().Content.ToObjectFromJson<IReadOnlyList<T>>()` — deserializes
- *   JSON array to a read-only list.
- * - **Dictionary**: `result.GetRawResponse().Content.ToObjectFromJson<IReadOnlyDictionary<string, T>>()` —
- *   deserializes JSON object to a read-only dictionary.
+ * - **Array (simple elements)**: `result.GetRawResponse().Content.ToObjectFromJson<IReadOnlyList<T>>()` —
+ *   deserializes JSON array to a read-only list via System.Text.Json.
+ * - **Array (complex elements)**: `JsonDocument.Parse()` + `foreach` with per-element
+ *   deserialization. Used for Model, TimeSpan, and BinaryData element types that
+ *   JsonSerializer.Deserialize cannot handle (internal ctors, ISO 8601 duration, non-serializable).
+ * - **Dictionary (simple values)**: `result.GetRawResponse().Content.ToObjectFromJson<IReadOnlyDictionary<string, T>>()` —
+ *   deserializes JSON object to a read-only dictionary via System.Text.Json.
+ * - **Dictionary (complex values)**: `JsonDocument.Parse()` + `foreach` with per-property
+ *   deserialization. Same complex type handling as arrays.
  * - **Extensible enum**: `new EnumType(result.GetRawResponse().Content.ToObjectFromJson<string>())` —
  *   constructs the readonly struct from the deserialized string.
  * - **Fixed enum**: `result.GetRawResponse().Content.ToObjectFromJson<string>().ToEnumName()` —
@@ -1089,23 +1100,80 @@ function buildResponseInfo(
         deserializeExpr: code`${contentExpr}.ToObjectFromJson<${System.Uri}>()`,
       };
 
-    // Array: IReadOnlyList<T> with ToObjectFromJson
+    // Array: IReadOnlyList<T> — uses JsonDocument + per-element deserialization for complex
+    // element types (model, TimeSpan, BinaryData), falls back to ToObjectFromJson for simple types.
     case "array": {
       const elementType = (unwrapped as SdkArrayType).valueType;
       const elementExpr = getResponseElementTypeExpr(elementType, namePolicy);
+      const typeExpr = code`${SystemCollectionsGeneric.IReadOnlyList}<${elementExpr}>`;
+
+      if (isComplexCollectionElementType(elementType)) {
+        // BinaryData (bytes/unknown) needs null checking unconditionally because
+        // JSON null is always a valid value for unknown types, regardless of
+        // whether the TCGC type has a nullable wrapper.
+        const unwrappedElement = unwrapType(elementType);
+        const isNullableElement =
+          elementType.kind === "nullable" ||
+          unwrappedElement.kind === "bytes" ||
+          unwrappedElement.kind === "unknown";
+        const elementDeserExpr = getElementDeserializeExpr(
+          elementType,
+          namePolicy,
+          "item",
+        );
+        return {
+          typeExpr,
+          preReturnStatements: buildComplexArrayDeserializationStatements(
+            contentExpr,
+            elementExpr,
+            elementDeserExpr,
+            isNullableElement,
+          ),
+          deserializeExpr: code`(${typeExpr})items`,
+        };
+      }
+
       return {
-        typeExpr: code`${SystemCollectionsGeneric.IReadOnlyList}<${elementExpr}>`,
-        deserializeExpr: code`${contentExpr}.ToObjectFromJson<${SystemCollectionsGeneric.IReadOnlyList}<${elementExpr}>>()`,
+        typeExpr,
+        deserializeExpr: code`${contentExpr}.ToObjectFromJson<${typeExpr}>()`,
       };
     }
 
-    // Dictionary: IReadOnlyDictionary<string, T> with ToObjectFromJson
+    // Dictionary: IReadOnlyDictionary<string, T> — uses JsonDocument + per-property deserialization
+    // for complex value types (model, TimeSpan, BinaryData), falls back to ToObjectFromJson for simple types.
     case "dict": {
       const valueType = (unwrapped as SdkDictionaryType).valueType;
       const valueExpr = getResponseElementTypeExpr(valueType, namePolicy);
+      const typeExpr = code`${SystemCollectionsGeneric.IReadOnlyDictionary}<string, ${valueExpr}>`;
+
+      if (isComplexCollectionElementType(valueType)) {
+        // BinaryData (bytes/unknown) needs null checking unconditionally because
+        // JSON null is always a valid value for unknown types.
+        const unwrappedValue = unwrapType(valueType);
+        const isNullableValue =
+          valueType.kind === "nullable" ||
+          unwrappedValue.kind === "bytes" ||
+          unwrappedValue.kind === "unknown";
+        const valueDeserExpr = getElementDeserializeExpr(
+          valueType,
+          namePolicy,
+          "property.Value",
+        );
+        return {
+          typeExpr,
+          preReturnStatements: buildComplexDictDeserializationStatements(
+            contentExpr,
+            valueExpr,
+            valueDeserExpr,
+            isNullableValue,
+          ),
+          deserializeExpr: code`(${typeExpr})items`,
+        };
+      }
+
       return {
-        typeExpr: code`${SystemCollectionsGeneric.IReadOnlyDictionary}<string, ${valueExpr}>`,
-        deserializeExpr: code`${contentExpr}.ToObjectFromJson<${SystemCollectionsGeneric.IReadOnlyDictionary}<string, ${valueExpr}>>()`,
+        typeExpr,
+        deserializeExpr: code`${contentExpr}.ToObjectFromJson<${typeExpr}>()`,
       };
     }
 
@@ -1148,6 +1216,164 @@ function buildScalarResponseInfo(keyword: string, contentExpr: string): Response
     typeExpr: keyword,
     deserializeExpr: `${contentExpr}.ToObjectFromJson<${keyword}>()`,
   };
+}
+
+/**
+ * Checks whether a collection element type requires JsonDocument-based deserialization
+ * instead of the simpler ToObjectFromJson<T>().
+ *
+ * Complex types are those that System.Text.Json.JsonSerializer cannot deserialize
+ * with default options:
+ * - **model**: Internal parameterless constructor is not accessible to JsonSerializer.
+ * - **duration** (TimeSpan): ISO 8601 duration format ("P123DT22H14M12.011S") is not
+ *   supported by the default JSON serializer.
+ * - **bytes/unknown** (BinaryData): BinaryData is not JSON-serializable by default.
+ *
+ * @param type - The TCGC SDK type of the collection element/value (may be nullable-wrapped).
+ * @returns true if per-element deserialization via JsonDocument is required.
+ */
+function isComplexCollectionElementType(type: SdkType): boolean {
+  const unwrapped = unwrapType(type);
+  switch (unwrapped.kind) {
+    case "model":
+    case "duration":
+    case "bytes":
+    case "unknown":
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
+ * Gets the C# expression to deserialize a single JSON element to a complex type.
+ *
+ * - **Model**: `TypeName.DeserializeTypeName(accessor, ModelSerializationExtensions.WireOptions)`
+ *   Uses the model's static Deserialize method which handles internal constructors and
+ *   the IJsonModel<T> contract.
+ * - **Duration** (TimeSpan): `accessor.GetTimeSpan("P")`
+ *   Uses the GetTimeSpan extension method from ModelSerializationExtensions for ISO 8601 parsing.
+ * - **Bytes/Unknown** (BinaryData): `BinaryData.FromString(accessor.GetRawText())`
+ *   Captures the raw JSON text for any value kind (number, string, object, etc.).
+ *
+ * @param type - The TCGC SDK type of the element (may be nullable-wrapped).
+ * @param namePolicy - C# naming policy for constructing deserialization method names.
+ * @param accessor - C# expression that accesses the JsonElement (e.g., "item" or "property.Value").
+ * @returns A `code` expression for deserializing one element.
+ */
+function getElementDeserializeExpr(
+  type: SdkType,
+  namePolicy: ReturnType<typeof useCSharpNamePolicy>,
+  accessor: string,
+): Children {
+  const unwrapped = unwrapType(type);
+  switch (unwrapped.kind) {
+    case "model": {
+      const modelType = unwrapped as SdkModelType;
+      // Models without serialization infrastructure are treated as BinaryData
+      if (!modelNeedsSerialization(modelType)) {
+        return code`${System.BinaryData}.FromString(${accessor}.GetRawText())`;
+      }
+      const modelName = namePolicy.getName(modelType.name, "class");
+      const typeExpr = <TypeExpression type={unwrapped.__raw!} />;
+      return code`${typeExpr}.Deserialize${modelName}(${accessor}, ModelSerializationExtensions.WireOptions)`;
+    }
+    case "duration":
+      return code`${accessor}.GetTimeSpan("P")`;
+    case "bytes":
+    case "unknown":
+      return code`${System.BinaryData}.FromString(${accessor}.GetRawText())`;
+    default:
+      throw new Error(
+        `getElementDeserializeExpr called with non-complex type: ${unwrapped.kind}`,
+      );
+  }
+}
+
+/**
+ * Builds the C# statements for deserializing an array response with complex element types.
+ * Generates a JsonDocument.Parse + foreach EnumerateArray loop.
+ *
+ * For non-nullable elements:
+ * ```csharp
+ * using JsonDocument document = JsonDocument.Parse(content);
+ * List<T> items = new List<T>();
+ * foreach (JsonElement item in document.RootElement.EnumerateArray())
+ * {
+ *     items.Add(<elementDeserExpr>);
+ * }
+ * ```
+ *
+ * For nullable elements, adds a null check inside the loop.
+ */
+function buildComplexArrayDeserializationStatements(
+  contentExpr: string,
+  elementTypeExpr: Children,
+  elementDeserExpr: Children,
+  isNullable: boolean,
+): Children {
+  const loopBody = isNullable
+    ? [
+        "\n",
+        "    if (item.ValueKind == JsonValueKind.Null)\n    {\n        items.Add(null);\n    }\n    else\n    {\n        ",
+        code`items.Add(${elementDeserExpr});`,
+        "\n    }",
+      ]
+    : ["\n    ", code`items.Add(${elementDeserExpr});`];
+
+  return [
+    code`using ${SystemTextJson.JsonDocument} document = ${SystemTextJson.JsonDocument}.Parse(${contentExpr});`,
+    "\n",
+    code`${SystemCollectionsGeneric.List}<${elementTypeExpr}> items = new ${SystemCollectionsGeneric.List}<${elementTypeExpr}>();`,
+    "\n",
+    code`foreach (${SystemTextJson.JsonElement} item in document.RootElement.EnumerateArray())`,
+    "\n{",
+    ...loopBody,
+    "\n}",
+  ];
+}
+
+/**
+ * Builds the C# statements for deserializing a dictionary response with complex value types.
+ * Generates a JsonDocument.Parse + foreach EnumerateObject loop.
+ *
+ * For non-nullable values:
+ * ```csharp
+ * using JsonDocument document = JsonDocument.Parse(content);
+ * Dictionary<string, T> items = new Dictionary<string, T>();
+ * foreach (JsonProperty property in document.RootElement.EnumerateObject())
+ * {
+ *     items.Add(property.Name, <valueDeserExpr>);
+ * }
+ * ```
+ *
+ * For nullable values, adds a null check inside the loop.
+ */
+function buildComplexDictDeserializationStatements(
+  contentExpr: string,
+  valueTypeExpr: Children,
+  valueDeserExpr: Children,
+  isNullable: boolean,
+): Children {
+  const loopBody = isNullable
+    ? [
+        "\n",
+        "    if (property.Value.ValueKind == JsonValueKind.Null)\n    {\n        items.Add(property.Name, null);\n    }\n    else\n    {\n        ",
+        code`items.Add(property.Name, ${valueDeserExpr});`,
+        "\n    }",
+      ]
+    : ["\n    ", code`items.Add(property.Name, ${valueDeserExpr});`];
+
+  return [
+    code`using ${SystemTextJson.JsonDocument} document = ${SystemTextJson.JsonDocument}.Parse(${contentExpr});`,
+    "\n",
+    code`${SystemCollectionsGeneric.Dictionary}<string, ${valueTypeExpr}> items = new ${SystemCollectionsGeneric.Dictionary}<string, ${valueTypeExpr}>();`,
+    "\n",
+    "foreach (JsonProperty property in document.RootElement.EnumerateObject())",
+    "\n{",
+    ...loopBody,
+    "\n}",
+  ];
 }
 
 /**
@@ -1650,12 +1876,19 @@ function buildStandardConvenienceMethodParts(
 
   const rawResponseExpr = isAzure ? "result" : "result.GetRawResponse()";
 
+  // When complex collection deserialization is needed, preReturnStatements contains
+  // the JsonDocument parsing and foreach loop that populates a local variable.
+  const preStatements = responseInfo?.preReturnStatements
+    ? [responseInfo.preReturnStatements, "\n"]
+    : [];
+
   const syncBody = responseInfo
     ? [
         validation,
         assertableParams.length > 0 ? "\n\n" : "",
         code`${pipelineTypes.clientResult} result = ${methodName}(${protocolCallExpr});`,
         "\n",
+        ...preStatements,
         code`return ${pipelineTypes.clientResult}.FromValue(${responseInfo.deserializeExpr}, ${rawResponseExpr});`,
       ]
     : [
@@ -1670,6 +1903,7 @@ function buildStandardConvenienceMethodParts(
         assertableParams.length > 0 ? "\n\n" : "",
         code`${pipelineTypes.clientResult} result = await ${methodName}Async(${protocolCallExpr}).ConfigureAwait(false);`,
         "\n",
+        ...preStatements,
         code`return ${pipelineTypes.clientResult}.FromValue(${responseInfo.deserializeExpr}, ${rawResponseExpr});`,
       ]
     : [

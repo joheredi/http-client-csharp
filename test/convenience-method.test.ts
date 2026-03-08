@@ -701,8 +701,265 @@ describe("ConvenienceMethod", () => {
     // Array return → typed ClientResult<IReadOnlyList<Item>>
     expect(clientFile).toContain("ClientResult<IReadOnlyList<Item>>");
 
-    // Uses ToObjectFromJson for deserialization
-    expect(clientFile).toContain("ToObjectFromJson<IReadOnlyList<Item>>()");
+    // Model arrays use JsonDocument + per-element deserialization because
+    // ToObjectFromJson<IReadOnlyList<T>>() fails for models with internal ctors
+    expect(clientFile).toContain(
+      "JsonDocument.Parse(result.GetRawResponse().Content)",
+    );
+    expect(clientFile).toContain("List<Item> items = new List<Item>()");
+    expect(clientFile).toContain(
+      "Item.DeserializeItem(item, ModelSerializationExtensions.WireOptions)",
+    );
+    expect(clientFile).toContain("(IReadOnlyList<Item>)items");
+  });
+
+  /**
+   * Verifies that arrays of simple scalar types (like int) continue to use the
+   * efficient ToObjectFromJson<IReadOnlyList<T>>() pattern. Only complex element
+   * types (model, TimeSpan, BinaryData) need JsonDocument-based deserialization.
+   *
+   * This ensures the optimization is targeted: simple types that JsonSerializer
+   * handles natively should not incur the overhead of manual JsonDocument parsing.
+   */
+  it("uses ToObjectFromJson for arrays of simple scalar types", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/numbers")
+      @get op getNumbers(): int32[];
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Simple scalar arrays use ToObjectFromJson directly
+    expect(clientFile).toContain("ToObjectFromJson<IReadOnlyList<int>>()");
+    // Should NOT use JsonDocument-based deserialization
+    expect(clientFile).not.toContain("JsonDocument.Parse");
+  });
+
+  /**
+   * Verifies that arrays of TimeSpan (duration) use JsonDocument + GetTimeSpan("P")
+   * per-element deserialization. ToObjectFromJson<IReadOnlyList<TimeSpan>>() fails
+   * because System.Text.Json's default serializer doesn't support ISO 8601 duration
+   * format ("P123DT22H14M12.011S") for TimeSpan.
+   *
+   * This is one of the 8 e2e tests (DurationValueGet) that was failing.
+   */
+  it("uses JsonDocument deserialization for arrays of duration (TimeSpan)", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/durations")
+      @get op getDurations(): duration[];
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Duration arrays use JsonDocument + GetTimeSpan per element
+    expect(clientFile).toContain("ClientResult<IReadOnlyList<TimeSpan>>");
+    expect(clientFile).toContain(
+      "JsonDocument.Parse(result.GetRawResponse().Content)",
+    );
+    expect(clientFile).toContain("List<TimeSpan> items = new List<TimeSpan>()");
+    expect(clientFile).toContain('item.GetTimeSpan("P")');
+    expect(clientFile).toContain("(IReadOnlyList<TimeSpan>)items");
+    // Should NOT use ToObjectFromJson for duration arrays
+    expect(clientFile).not.toContain(
+      "ToObjectFromJson<IReadOnlyList<TimeSpan>>",
+    );
+  });
+
+  /**
+   * Verifies that arrays of unknown type (BinaryData) use JsonDocument +
+   * BinaryData.FromString(element.GetRawText()) per-element deserialization.
+   * ToObjectFromJson<IReadOnlyList<BinaryData>>() fails because BinaryData is
+   * not JSON-serializable by default.
+   *
+   * This is one of the 8 e2e tests (UnknownValueGet) that was failing.
+   */
+  it("uses JsonDocument deserialization for arrays of unknown (BinaryData)", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/values")
+      @get op getValues(): unknown[];
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Unknown arrays use JsonDocument + BinaryData.FromString per element
+    expect(clientFile).toContain("ClientResult<IReadOnlyList<BinaryData>>");
+    expect(clientFile).toContain(
+      "JsonDocument.Parse(result.GetRawResponse().Content)",
+    );
+    expect(clientFile).toContain(
+      "List<BinaryData> items = new List<BinaryData>()",
+    );
+    expect(clientFile).toContain("BinaryData.FromString(item.GetRawText())");
+    expect(clientFile).toContain("(IReadOnlyList<BinaryData>)items");
+    // BinaryData always gets null checking since JSON null is valid for unknown types
+    expect(clientFile).toContain("JsonValueKind.Null");
+  });
+
+  /**
+   * Verifies that dictionaries of model types use JsonDocument + per-property
+   * deserialization with EnumerateObject(). Same issue as model arrays:
+   * ToObjectFromJson<IReadOnlyDictionary<string, T>>() fails because models
+   * have internal constructors inaccessible to JsonSerializer.
+   *
+   * This covers the ModelValueGet and RecursiveModelValueGet dictionary e2e tests.
+   */
+  it("uses JsonDocument deserialization for dictionaries of model types", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      model Item {
+        name: string;
+      }
+
+      @route("/items")
+      @get op getItems(): Record<Item>;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Model dictionaries use JsonDocument + per-property deserialization
+    expect(clientFile).toContain(
+      "ClientResult<IReadOnlyDictionary<string, Item>>",
+    );
+    expect(clientFile).toContain(
+      "JsonDocument.Parse(result.GetRawResponse().Content)",
+    );
+    expect(clientFile).toContain(
+      "Dictionary<string, Item> items = new Dictionary<string, Item>()",
+    );
+    expect(clientFile).toContain("EnumerateObject()");
+    expect(clientFile).toContain(
+      "Item.DeserializeItem(property.Value, ModelSerializationExtensions.WireOptions)",
+    );
+    expect(clientFile).toContain(
+      "(IReadOnlyDictionary<string, Item>)items",
+    );
+  });
+
+  /**
+   * Verifies that dictionaries of TimeSpan use JsonDocument + GetTimeSpan("P")
+   * per-property deserialization, matching the array duration pattern but with
+   * EnumerateObject() and property.Name/property.Value accessors.
+   *
+   * This covers the DurationValueGet dictionary e2e test.
+   */
+  it("uses JsonDocument deserialization for dictionaries of duration (TimeSpan)", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/durations")
+      @get op getDurations(): Record<duration>;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Duration dictionaries use JsonDocument + GetTimeSpan per property
+    expect(clientFile).toContain(
+      "ClientResult<IReadOnlyDictionary<string, TimeSpan>>",
+    );
+    expect(clientFile).toContain(
+      "Dictionary<string, TimeSpan> items = new Dictionary<string, TimeSpan>()",
+    );
+    expect(clientFile).toContain('property.Value.GetTimeSpan("P")');
+    expect(clientFile).toContain(
+      "(IReadOnlyDictionary<string, TimeSpan>)items",
+    );
+  });
+
+  /**
+   * Verifies that dictionaries of unknown type (BinaryData) use JsonDocument +
+   * BinaryData.FromString(property.Value.GetRawText()) per-property deserialization.
+   *
+   * This covers the UnknownValueGet dictionary e2e test.
+   */
+  it("uses JsonDocument deserialization for dictionaries of unknown (BinaryData)", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/values")
+      @get op getValues(): Record<unknown>;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Unknown dictionaries use JsonDocument + BinaryData.FromString per property
+    expect(clientFile).toContain(
+      "ClientResult<IReadOnlyDictionary<string, BinaryData>>",
+    );
+    expect(clientFile).toContain(
+      "Dictionary<string, BinaryData> items = new Dictionary<string, BinaryData>()",
+    );
+    expect(clientFile).toContain(
+      "BinaryData.FromString(property.Value.GetRawText())",
+    );
+    expect(clientFile).toContain(
+      "(IReadOnlyDictionary<string, BinaryData>)items",
+    );
+    // BinaryData always gets null checking since JSON null is valid for unknown types
+    expect(clientFile).toContain("JsonValueKind.Null");
+  });
+
+  /**
+   * Verifies that dictionaries of simple types continue to use the efficient
+   * ToObjectFromJson pattern, same as simple scalar arrays.
+   */
+  it("uses ToObjectFromJson for dictionaries of simple scalar types", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/counts")
+      @get op getCounts(): Record<int32>;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"];
+    expect(clientFile).toBeDefined();
+
+    // Simple scalar dicts use ToObjectFromJson directly
+    expect(clientFile).toContain(
+      "ToObjectFromJson<IReadOnlyDictionary<string, int>>()",
+    );
+    // Should NOT use JsonDocument-based deserialization
+    expect(clientFile).not.toContain("JsonDocument.Parse");
   });
 
   /**

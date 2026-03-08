@@ -8,26 +8,6 @@
 #   1. A test fails that is NOT listed here (unexpected failure)
 #   2. A test listed here actually passes (stale entry — remove it)
 
-# --- Type/Array GET: ToObjectFromJson<T>() doesn't support complex element types ---
-# Typed convenience method returns use ToObjectFromJson<IReadOnlyList<T>>() which
-# works for primitives (int, string, float, bool, DateTimeOffset) but fails for:
-# - TimeSpan: ISO 8601 duration format not supported by default JSON serializer
-# - Model: Internal parameterless constructor not accessible to JsonSerializer
-# - BinaryData: Not JSON-serializable
-# Fix: Use JsonDocument.Parse + element-level deserialization for these types.
-DurationValueGet
-ModelValueGet
-NullableModelValueGet
-UnknownValueGet
-
-# --- Type/Dictionary PUT: BinaryContentHelper.FromObject() doesn't support Dictionary<string, T> ---
-# Dict body params use BinaryContentHelper.FromObject(body) which calls WriteObjectValue<T>()
-# --- Type/Dictionary GET: same complex type deserialization issue as Array GET ---
-DurationValueGet
-ModelValueGet
-RecursiveModelValueGet
-UnknownValueGet
-
 # --- Resiliency/SrvDriven V1: V1 service deployment returns 404 ---
 # The V1 client tests that hit the V1 service deployment path ("v1") get 404
 # from the Spector mock server — the server only hosts routes for the V2 deployment.

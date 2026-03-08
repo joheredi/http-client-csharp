@@ -6769,3 +6769,24 @@ Fixed 12 Encode_Array_Property e2e test failures. When a model property has `@en
 - **Files changed**: `src/components/clients/ConvenienceMethod.tsx`, `test/convenience-method.test.ts`, `test/scenarios/payload/media_type_string_body.md`, `test/e2e/.expected-failures`
 
 - **Tests**: 1691 unit tests pass, e2e tests pass. Removed GetAsText and SendAsText from .expected-failures.
+
+## Task 21.5 — Fix complex type deserialization for array and dictionary GET responses (2026-03-08)
+
+**Problem**: 8 e2e tests failed because `ToObjectFromJson<IReadOnlyList<T>>()` / `ToObjectFromJson<IReadOnlyDictionary<string, T>>()` use `JsonSerializer.Deserialize<T>()` which fails for: Model (internal ctor), TimeSpan (ISO 8601 duration), BinaryData (not JSON-serializable).
+
+**Fix**: For complex element types in array/dict responses, generate `JsonDocument.Parse()` + per-element foreach loop deserialization instead of `ToObjectFromJson`. Simple types (int, string, bool, etc.) still use the efficient `ToObjectFromJson` path.
+
+**Per-element deserialization patterns**:
+- Model: `TypeName.DeserializeTypeName(element, ModelSerializationExtensions.WireOptions)` — uses the model's static Deserialize method
+- Duration/TimeSpan: `element.GetTimeSpan("P")` — uses ModelSerializationExtensions extension method
+- BinaryData: `BinaryData.FromString(element.GetRawText())` — captures raw JSON text
+
+**Key learning**: BinaryData (bytes/unknown) types need unconditional null checking in the foreach loop (not just when TCGC type is nullable-wrapped), because JSON null is always valid for unknown types. Without this, `BinaryData.FromString("null")` is produced instead of C# null.
+
+**Implementation**:
+- Added `isComplexCollectionElementType()`, `getElementDeserializeExpr()`, `buildComplexArrayDeserializationStatements()`, `buildComplexDictDeserializationStatements()` helpers
+- Added `preReturnStatements` to `ResponseInfo` interface for multi-statement method bodies
+- Updated `buildStandardConvenienceMethodParts()` to include preReturnStatements in sync/async bodies
+
+**Files changed**: `src/components/clients/ConvenienceMethod.tsx`, `test/convenience-method.test.ts`, `test/e2e/.expected-failures`
+**Tests**: 1692 unit tests pass, e2e: 652 pass, 0 unexpected failures. 8 tests removed from .expected-failures.
