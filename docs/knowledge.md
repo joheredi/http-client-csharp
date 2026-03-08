@@ -4705,3 +4705,23 @@ Azure.Core scalars (eTag, azureLocation, armResourceIdentifier, ipV4Address, ipV
 **Why:** Consistent with how `CSharpTypeExpression.tsx` already resolves Azure scalar type overrides. No need for flavor context — Azure.Core scalars only appear in Azure-flavor specs.
 
 **Rejected alternative:** Using `crossLanguageDefinitionId` on SdkBuiltInType — less reliable, requires knowing the exact ID format. The `__raw` approach directly mirrors the existing type override logic.
+
+## Design Decisions
+
+### ARM Bridge Methods: Static vs Instance (2026-03-08)
+
+**Decision:** ARM bridge methods (FromResponse, ToRequestContent) must be `internal static`, not instance methods.
+
+**Why:** The legacy Azure SDK pattern from `MrwSerializationTypeDefinition` generates these as static methods:
+- `internal static RequestContent ToRequestContent(T model)` — with null check and WireOptions
+- `internal static T FromResponse(Response response)` — with JsonDocumentOptions
+
+**Callers use the static pattern:** `ModelType.ToRequestContent(data)` and `ModelType.FromResponse(result)`. All ARM components (ResourceFile, CollectionFile, MockableProviderFile, tag-methods) expect this pattern.
+
+**Rejected:** Instance method pattern (`internal virtual RequestContent ToRequestContent()`) — this doesn't match the legacy API surface and causes CS0117 errors since callers pass the model as a static method argument.
+
+### buildCreateRequestArgs returns Children, not string (2026-03-08)
+
+**Decision:** Changed `buildCreateRequestArgs` in `MockableProviderFile.tsx` to return `Children` instead of `string`.
+
+**Why:** The static `ModelType.ToRequestContent(body)` call requires a refkey for `ModelType` to generate proper `using` directives. Refkeys can only be embedded in `code` template tags (which produce `Children`), not plain strings. This follows the same pattern as `buildParamDeclarations` which already returns `Children`.

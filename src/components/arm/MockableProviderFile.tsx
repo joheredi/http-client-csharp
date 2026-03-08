@@ -24,6 +24,7 @@ import { ClassDeclaration, Namespace, SourceFile } from "@alloy-js/csharp";
 import type {
   SdkHttpOperation,
   SdkMethodParameter,
+  SdkModelType,
   SdkServiceMethod,
 } from "@azure-tools/typespec-client-generator-core";
 import {
@@ -1146,54 +1147,63 @@ function buildParamDeclarations(
  *
  * Order: scope-derived args, non-body params, serialized body, then trailing comma+space.
  * The RequestContext is appended by the caller.
+ *
+ * Returns `Children` (not a plain string) to support refkey-based model type
+ * references in the static `ModelType.ToRequestContent(body)` call pattern.
  */
 function buildCreateRequestArgs(
   data: NonResourceRenderData,
   scopeName: string,
-): string {
-  const args: string[] = [];
+): Children {
+  const parts: Children[] = [];
 
   // Scope-derived arguments
   if (scopeName === "ArmClient") {
     // Extension scope: pass scope.ToString()
-    args.push("scope.ToString()");
+    parts.push("scope.ToString()");
   } else if (scopeName === "Subscription") {
-    args.push("Guid.Parse(Id.SubscriptionId)");
+    parts.push("Guid.Parse(Id.SubscriptionId)");
   } else if (scopeName === "ResourceGroup") {
-    args.push("Id.SubscriptionId");
-    args.push("Id.ResourceGroupName");
+    parts.push("Id.SubscriptionId");
+    parts.push("Id.ResourceGroupName");
   } else if (scopeName === "ManagementGroup") {
-    args.push("Id.Name");
+    parts.push("Id.Name");
   }
   // Tenant scope: no scope-derived args
 
   // Non-body method parameters
   for (const param of data.nonBodyParams) {
-    args.push(param.name);
+    parts.push(param.name);
   }
 
-  // Body parameter (serialized)
+  // Body parameter (serialized via static ToRequestContent)
   if (data.bodyParam) {
     const bodyType = data.bodyParam.type;
     const bodyName = data.bodyParam.name;
-    // Model types use ToRequestContent for serialization
+    // Model types use the static ModelType.ToRequestContent(body) pattern
     if (bodyType.kind === "model") {
-      const rawType = (bodyType as { __raw?: unknown }).__raw;
-      if (rawType) {
-        // Use the model refkey for the serialization call
-        args.push(
-          `${bodyName} == null ? null : ${bodyName}.ToRequestContent()`,
-        );
+      const modelType = bodyType as SdkModelType;
+      if (modelType.__raw) {
+        const bodyModelRef = efCsharpRefkey(modelType.__raw);
+        parts.push(code`${bodyModelRef}.ToRequestContent(${bodyName})`);
       } else {
-        args.push(bodyName);
+        parts.push(bodyName);
       }
     } else {
-      args.push(bodyName);
+      parts.push(bodyName);
     }
   }
 
-  // Return with trailing comma-space if there are args (context is appended separately)
-  return args.length > 0 ? args.join(", ") + ", " : "";
+  if (parts.length === 0) return "";
+
+  // Join with ", " and add trailing ", " before context
+  const result: Children[] = [];
+  for (let i = 0; i < parts.length; i++) {
+    if (i > 0) result.push(", ");
+    result.push(parts[i]);
+  }
+  result.push(", ");
+  return result;
 }
 
 /**

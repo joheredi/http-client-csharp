@@ -6927,3 +6927,31 @@ Task 21.11 (2026-03-08) — Enable optionality property e2e test coverage:
 - ✅ 114 specs compile, 731 NUnit tests pass (0 unexpected failures)
 
 **Pattern:** Azure.Core scalar conversion follows the same pattern as `url` → `Uri` in the serialization code. Detection uses `SdkType.__raw` TypeSpec Scalar + Azure.Core namespace check, consistent with `CSharpTypeExpression.tsx`'s `azureScalarOverrideMap`.
+
+---
+
+## Task 21.15 — ARM: Fix FromResponse/ToRequestContent bridge method signatures (2026-03-08)
+
+**Problem:** ArmFromResponse and ArmToRequestContent components existed but had wrong signatures vs legacy:
+- ToRequestContent was `internal virtual` (instance, no params) but callers used static `ModelType.ToRequestContent(data)`
+- FromResponse was missing `ModelSerializationExtensions.JsonDocumentOptions` and used fully-qualified `System.Text.Json.JsonDocument`
+- MockableProviderFile used instance call `body.ToRequestContent()` instead of static pattern
+
+**Root Cause:** Original implementation didn't match the legacy Azure SDK pattern from MrwSerializationTypeDefinition.
+
+**Solution:**
+- Fixed `ArmToRequestContent` to be `internal static RequestContent ToRequestContent(T model)` with null check and WireOptions
+- Fixed `ArmFromResponse` to use `SystemTextJson.JsonDocument` refkey and `ModelSerializationExtensions.JsonDocumentOptions`
+- Refactored `MockableProviderFile.tsx` `buildCreateRequestArgs` to return `Children` (not string) to support refkey-based static call pattern
+- Created `test/arm/arm-model-bridge-methods.test.ts` with 8 tests covering both methods
+
+**Key patterns:**
+- Legacy ARM bridge methods are always static (not instance)
+- ToRequestContent: `internal static RequestContent ToRequestContent(T model)` with null guard
+- FromResponse: `internal static T FromResponse(Response response)` with JsonDocumentOptions
+- Use `efCsharpRefkey(modelType.__raw)` in `code` templates for proper using directive generation
+- `buildCreateRequestArgs` returns `Children` to embed refkeys in argument lists
+
+**Results:**
+- ✅ 1,724 unit tests pass (+8 new)
+- ✅ e2e tests pass: 114 specs compile, 731 NUnit tests pass (0 unexpected failures)

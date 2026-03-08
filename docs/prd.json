@@ -2733,7 +2733,7 @@
           "title": "ARM: Implement FromResponse/ToRequestContent model bridge methods",
           "description": "ARM specs require FromResponse(Response) and ToRequestContent() methods on generated model types. These are Azure.Core serialization hooks that the legacy ARM generator produces but the new emitter does not. This is the most impactful ARM fix \u2014 it addresses CS0117 (404 errors) across all 9 ARM specs.\n\nFix: Generate static FromResponse() and instance ToRequestContent() methods on ARM model types, using the existing IJsonModel/IPersistableModel serialization infrastructure.",
           "phase": "phase-21",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

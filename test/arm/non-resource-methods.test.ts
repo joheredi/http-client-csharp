@@ -225,10 +225,12 @@ describe("ARM Mockable Provider non-resource method generation", () => {
   });
 
   /**
-   * Validates that body parameters are serialized via ToRequestContent().
-   * Model-typed body parameters should be serialized for the HTTP request.
+   * Validates that body parameters are serialized via static ToRequestContent().
+   * ARM uses the static pattern: ModelType.ToRequestContent(body) — this matches
+   * the legacy Azure SDK where ToRequestContent is a static method on the model's
+   * serialization partial class.
    */
-  it("serializes body parameter with ToRequestContent", async () => {
+  it("serializes body parameter with static ToRequestContent", async () => {
     const [{ outputs }] = await MgmtTester.compileAndDiagnose(
       specWithNonResourceMethod,
     );
@@ -238,7 +240,8 @@ describe("ARM Mockable Provider non-resource method generation", () => {
       "MockableMgmtTypeSpecSubscriptionResource",
     );
 
-    expect(content).toContain("ToRequestContent()");
+    // Verify static call pattern: CheckNameRequest.ToRequestContent(content)
+    expect(content).toContain("CheckNameRequest.ToRequestContent(content)");
   });
 
   /**
