@@ -80,6 +80,8 @@ export interface RestClientFileProps {
   client: SdkClientType<SdkHttpOperation>;
   /** Resolved emitter options used for generating the file header. */
   options: ResolvedCSharpEmitterOptions;
+  /** Root namespace where infrastructure types are generated. */
+  rootNamespace: string;
 }
 
 /**
@@ -125,7 +127,7 @@ export interface RestClientFileProps {
  * ```
  */
 export function RestClientFile(props: RestClientFileProps) {
-  const { client, options } = props;
+  const { client, options, rootNamespace } = props;
   const header = getLicenseHeader(options);
   const namePolicy = useCSharpNamePolicy();
   const toClassName = (name: string) => namePolicy.getName(name, "class");
@@ -159,8 +161,14 @@ export function RestClientFile(props: RestClientFileProps) {
   // partial declaration with a "_2" suffix.
   const partialName = namekey(className, { ignoreNameConflict: true });
 
+  const additionalUsings =
+    client.namespace !== rootNamespace ? [rootNamespace] : undefined;
+
   return (
-    <SourceFile path={`src/Generated/${fileName}.RestClient.cs`}>
+    <SourceFile
+      path={`src/Generated/${fileName}.RestClient.cs`}
+      using={additionalUsings}
+    >
       {header}
       {"\n\n"}
       <Namespace name={client.namespace}>

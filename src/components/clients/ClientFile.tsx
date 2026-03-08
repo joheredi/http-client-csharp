@@ -15,7 +15,7 @@ import type {
   SdkMethodParameter,
   SdkPathParameter,
 } from "@azure-tools/typespec-client-generator-core";
-import { AzureCorePipeline } from "../../builtins/azure.js";
+import { AzureCore, AzureCorePipeline } from "../../builtins/azure.js";
 import {
   SystemClientModel,
   SystemClientModelPrimitives,
@@ -51,6 +51,8 @@ export interface ClientFileProps {
   client: SdkClientType<SdkHttpOperation>;
   /** Resolved emitter options used for generating the file header. */
   options: ResolvedCSharpEmitterOptions;
+  /** Root namespace where infrastructure types are generated. */
+  rootNamespace: string;
   /** Optional children rendered inside the class body (e.g., operation methods, factory methods). */
   children?: Children;
 }
@@ -117,7 +119,7 @@ export interface ClientFileProps {
  * ```
  */
 export function ClientFile(props: ClientFileProps) {
-  const { client, options } = props;
+  const { client, options, rootNamespace } = props;
   const header = getLicenseHeader(options);
   const namePolicy = useCSharpNamePolicy();
   const toClassName = (name: string) => namePolicy.getName(name, "class");
@@ -185,6 +187,9 @@ export function ClientFile(props: ClientFileProps) {
   }
   if (oauth2Auth && !isAzure) {
     additionalUsings.push("System.Collections.Generic");
+  }
+  if (client.namespace !== rootNamespace) {
+    additionalUsings.push(rootNamespace);
   }
 
   return (
@@ -604,6 +609,7 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
               serverPathSegments,
               [...nonApiVersionParams, ...apiVersionParams],
               serverTemplateParams,
+              isAzure,
             )}
         {scheme.fieldAssignment && `\n${scheme.fieldAssignment}`}
         {nonApiVersionParams.map((p) => `\n_${p.name} = ${p.name};`)}
@@ -743,35 +749,39 @@ function RootClientConstructors(props: RootClientConstructorsProps) {
  * @param segments - Parsed server URL template path segments from {@link getServerPathSegments}.
  * @param methodParams - Client method parameters for field resolution.
  * @param serverTemplateParams - Server template parameters that are constructor params.
- * @returns A C# code string for the constructor body.
+ * @param isAzure - Whether Azure flavor is used (uses RawRequestUriBuilder instead of ClientUriBuilder).
+ * @returns C# code children for the constructor body.
  */
 function buildEndpointFromTemplate(
   segments: ServerPathSegment[],
   methodParams: SdkMethodParameter[],
   serverTemplateParams: SdkPathParameter[] = [],
-): string {
-  const lines: string[] = [];
-  lines.push("ClientUriBuilder endpointBuilder = new ClientUriBuilder();");
-  lines.push("\nendpointBuilder.Reset(endpoint);");
+  isAzure: boolean = false,
+): Children {
+  const uriBuilderDecl: Children = isAzure
+    ? code`${AzureCore.RawRequestUriBuilder} endpointBuilder = new ${AzureCore.RawRequestUriBuilder}();`
+    : "ClientUriBuilder endpointBuilder = new ClientUriBuilder();";
+
+  const appendLines: string[] = [];
+  appendLines.push("\nendpointBuilder.Reset(endpoint);");
 
   for (const segment of segments) {
     if (segment.kind === "literal") {
-      lines.push(`\nendpointBuilder.AppendPath("${segment.value}", false);`);
+      appendLines.push(`\nendpointBuilder.AppendPath("${segment.value}", false);`);
     } else if (segment.param?.isApiVersionParam) {
-      lines.push(`\nendpointBuilder.AppendPath(options.Version, true);`);
+      appendLines.push(`\nendpointBuilder.AppendPath(options.Version, true);`);
     } else if (segment.param) {
-      // Resolve the value for non-api-version template arguments.
       const valueExpr = resolveTemplateArgValue(
         segment.param,
         methodParams,
         serverTemplateParams,
       );
-      lines.push(`\nendpointBuilder.AppendPath(${valueExpr}, true);`);
+      appendLines.push(`\nendpointBuilder.AppendPath(${valueExpr}, true);`);
     }
   }
 
-  lines.push("\n_endpoint = endpointBuilder.ToUri();");
-  return lines.join("");
+  appendLines.push("\n_endpoint = endpointBuilder.ToUri();");
+  return [uriBuilderDecl, appendLines.join("")];
 }
 
 /**

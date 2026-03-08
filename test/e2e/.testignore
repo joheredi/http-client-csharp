@@ -75,20 +75,14 @@ azure/payload/pageable
 # instead of model types in convenience methods.
 type/file
 
-# === Multi-namespace scope issues ===
-# Internal infrastructure types (ClientUriBuilder, Argument, extension methods)
-# are generated in one namespace but referenced from sub-clients in a different
-# namespace. Individual project builds succeed; fails in combined E2E build.
-# Affects: client-operation-group, multi-client, default, renamed-operation,
-# two-operation-group, and resiliency/srv-driven (v1/v2).
+# === Multi-namespace scope issues — FIXED ===
+# Fixed by adding rootNamespace using to cross-namespace client files
+# and only setting flavor=azure for azure/* directory paths in emit-e2e.ts.
+
+# === service/multi-service — separate bug ===
+# CombinedOptions class is missing Version property; Generated constructor
+# references options.Version but ClientOptionsFile does not generate it.
 service/multi-service
-client/structure/client-operation-group
-client/structure/multi-client
-client/structure/default
-client/structure/renamed-operation
-client/structure/two-operation-group
-resiliency/srv-driven/v1
-resiliency/srv-driven/v2
 
 # === Overload / Naming — Azure API surface in non-Azure specs ===
 # client/overload: Generated convenience methods use Azure.Core types

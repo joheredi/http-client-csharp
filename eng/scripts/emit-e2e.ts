@@ -309,10 +309,16 @@ async function compileSpec(spec: SpecEntry): Promise<CompileResult> {
     }
 
     if (spec.source === "azure") {
-      args.push("--option", "http-client-csharp.flavor=azure");
+      const specDir = spec.outputDir ?? dirname(spec.relativePath);
+
+      // Only set azure flavor for specs under the azure/ directory tree.
+      // Non-azure specs (client/, resiliency/, service/) from azure-http-specs
+      // use unbranded infrastructure — they don't depend on Azure.Core types.
+      if (specDir.startsWith("azure/")) {
+        args.push("--option", "http-client-csharp.flavor=azure");
+      }
 
       // ARM resource-manager specs require management plane options
-      const specDir = spec.outputDir ?? dirname(spec.relativePath);
       if (specDir.startsWith("azure/resource-manager/")) {
         args.push("--option", "http-client-csharp.management=true");
         args.push(
