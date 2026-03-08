@@ -586,6 +586,8 @@ function buildSpreadProtocolCallExpr(
   // pass the value directly to BinaryContentHelper.FromObject instead of
   // wrapping in a constructor call. Primitive types don't have constructors
   // that accept a single value (e.g., `new bool(value)` is invalid C#).
+  // Exception: bytes (BinaryData) uses BinaryContent.Create() to avoid
+  // JSON-parsing raw binary data (e.g., PNG, octet-stream).
   if (spreadBodyType.kind !== "model") {
     const parts: Children[] = [];
     let bodyInserted = false;
@@ -596,7 +598,11 @@ function buildSpreadProtocolCallExpr(
           const bodyParamName = escapeCSharpKeyword(
             bodyParamsInModelOrder[0].name,
           );
-          parts.push(`BinaryContentHelper.FromObject(${bodyParamName})`);
+          if (spreadBodyType.kind === "bytes") {
+            parts.push(`BinaryContent.Create(${bodyParamName})`);
+          } else {
+            parts.push(`BinaryContentHelper.FromObject(${bodyParamName})`);
+          }
           bodyInserted = true;
         }
       } else {
@@ -1262,7 +1268,8 @@ function hasImplicitBinaryContentOperator(type: SdkModelType): boolean {
  * - **Array**: `BinaryContentHelper.FromEnumerable(body)`
  * - **Dictionary**: `BinaryContentHelper.FromDictionary(body)`
  * - **Model without Input flag**: `BinaryContentHelper.FromObject(body)` (uses IPersistableModel)
- * - **Other (string, BinaryData, scalar)**: `BinaryContentHelper.FromObject(body)`
+ * - **Bytes (BinaryData)**: `BinaryContent.Create(body)` (raw binary passthrough)
+ * - **Other (string, scalar)**: `BinaryContentHelper.FromObject(body)`
  *
  * @param name - The camelCase parameter name in C#.
  * @param type - The TCGC SDK type of the body parameter.
@@ -1305,7 +1312,16 @@ function getBodyProtocolCallArg(name: string, type: SdkType): string {
     return `BinaryContentHelper.FromDictionary(${escaped})`;
   }
 
-  // All other types (string, BinaryData, model without Input, scalar, etc.):
+  // Bytes types: use BinaryContent.Create() to pass raw binary data through
+  // without JSON wrapping. BinaryContentHelper.FromObject(BinaryData) would attempt
+  // to JSON-parse the binary content (via WriteRawValue/JsonDocument.Parse), which
+  // fails for non-JSON payloads like application/octet-stream or image/png.
+  // BinaryContent.Create(BinaryData) wraps the raw bytes directly.
+  if (unwrapped.kind === "bytes") {
+    return `BinaryContent.Create(${escaped})`;
+  }
+
+  // All other types (string, model without Input, scalar, etc.):
   // use FromObject which delegates to WriteObjectValue for correct serialization.
   return `BinaryContentHelper.FromObject(${escaped})`;
 }

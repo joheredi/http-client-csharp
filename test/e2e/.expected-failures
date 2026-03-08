@@ -8,14 +8,6 @@
 #   1. A test fails that is NOT listed here (unexpected failure)
 #   2. A test listed here actually passes (stale entry — remove it)
 
-# --- Encode/Bytes/RequestBody: raw binary content handling ---
-# Convenience methods use BinaryContentHelper.FromObject() which attempts
-# JSON parsing on raw binary data (PNG). Needs a separate fix to use
-# BinaryContent.Create() for non-JSON byte body parameters.
-RequestBodyDefault
-RequestBodyOctetStream
-RequestBodyCustomContentType
-
 # --- Type/Array GET: ToObjectFromJson<T>() doesn't support complex element types ---
 # Typed convenience method returns use ToObjectFromJson<IReadOnlyList<T>>() which
 # works for primitives (int, string, float, bool, DateTimeOffset) but fails for:

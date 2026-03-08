@@ -4489,3 +4489,9 @@ All 9 ARM resource-manager specs emit successfully but fail dotnet build with de
 
 ## Design Decisions
 - **Array encoding handled at dispatch level, not inside `renderArraySerialization`**: The encoding applies at the property level, not at the type level. The existing `renderArraySerialization` and `renderArrayDeserialization` functions are also called from nested contexts (dict values, nested arrays) where property-level encoding doesn't apply. A separate code path at the dispatch level is cleaner.
+
+### Task 21.3: Bytes body params use spread path, not direct body path
+
+**Gotcha**: `@body data: bytes` is classified as a "spread" body by TCGC (`isSpreadBody()` returns true). This means bytes body serialization goes through `buildSpreadProtocolCallExpr`, NOT `getBodyProtocolCallArg`. Any fix for bytes body handling must be applied in the spread path's non-model branch.
+
+**Design Decision**: For `bytes` (BinaryData) body parameters, use `BinaryContent.Create(value)` instead of `BinaryContentHelper.FromObject(value)`. `BinaryContent.Create(BinaryData)` wraps raw bytes directly without JSON processing, while `BinaryContentHelper.FromObject(BinaryData)` attempts `WriteRawValue`/`JsonDocument.Parse` which fails on non-JSON binary data (PNG, octet-stream). This matches the legacy emitter's behavior (test data: `ScalarInputTypeMethods(BinaryData).cs`).

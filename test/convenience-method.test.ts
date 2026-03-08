@@ -1397,6 +1397,38 @@ describe("ConvenienceMethod", () => {
   });
 
   /**
+   * Verifies that bytes (BinaryData) body parameters use BinaryContent.Create()
+   * instead of BinaryContentHelper.FromObject() for protocol method calls.
+   *
+   * BinaryContentHelper.FromObject(BinaryData) attempts JSON parsing
+   * (WriteRawValue / JsonDocument.Parse), which fails for non-JSON payloads
+   * like application/octet-stream or image/png. BinaryContent.Create(BinaryData)
+   * wraps the raw bytes directly without any JSON processing.
+   *
+   * This is critical for the Encode_Bytes_RequestBody e2e tests
+   * (RequestBodyDefault, RequestBodyOctetStream, RequestBodyCustomContentType).
+   */
+  it("wraps bytes body param in BinaryContent.Create", async () => {
+    const [{ outputs }, diagnostics] = await HttpTester.compileAndDiagnose(`
+      using TypeSpec.Http;
+
+      @service
+      namespace TestService;
+
+      @route("/upload")
+      @post op upload(@header contentType: "application/octet-stream", @body data: bytes): void;
+    `);
+    expect(diagnostics).toHaveLength(0);
+
+    const clientFile = outputs["src/Generated/TestServiceClient.cs"] ?? "";
+
+    // Bytes body uses BinaryContent.Create() for raw binary passthrough
+    expect(clientFile).toContain("BinaryContent.Create(data)");
+    // Must NOT use BinaryContentHelper.FromObject which JSON-serializes the data
+    expect(clientFile).not.toContain("BinaryContentHelper.FromObject(data)");
+  });
+
+  /**
    * Verifies that model body parameters with UsageFlags.Input are passed directly
    * (no BinaryContentHelper wrapping) because they have implicit BinaryContent operators.
    * This ensures we don't unnecessarily wrap models that already convert implicitly.

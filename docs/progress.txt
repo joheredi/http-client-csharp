@@ -6740,3 +6740,16 @@ Fixed 12 Encode_Array_Property e2e test failures. When a model property has `@en
 - Enum elements need System.Linq for `.Select()` calls in both serialization and deserialization
 - `getArrayEncodingDelimiter()` returns both `joinDelimiter` (for string.Join) and `splitChar` (for string.Split)
 - All 1688 unit tests pass, 5 e2e tests pass, 0 unexpected failures
+
+## Task 21.3 — Fix raw binary request body handling (non-JSON content types) (2026-03-08)
+
+**Problem**: 3 Encode_Bytes_RequestBody e2e tests failed (RequestBodyDefault, RequestBodyOctetStream, RequestBodyCustomContentType). Convenience methods used `BinaryContentHelper.FromObject()` which JSON-parses raw binary data (PNG), causing failures for non-JSON content types.
+
+**Root Cause**: TCGC marks `@body data: bytes` as a "spread" body (`isSpreadBody` returns true because `bodyParam.type !== correspondingMethodParams[0].type`). This sends the body through `buildSpreadProtocolCallExpr` (not `getBodyProtocolCallArg`), where the non-model scalar case hardcoded `BinaryContentHelper.FromObject()` for all types.
+
+**Fix**: In `buildSpreadProtocolCallExpr`, added a `bytes` kind check in the non-model branch to use `BinaryContent.Create(value)` instead of `BinaryContentHelper.FromObject(value)`. Also added a matching `bytes` case in `getBodyProtocolCallArg` for completeness (non-spread bytes bodies).
+
+**Key Learning**: `@body data: bytes` is classified as spread by TCGC, NOT as a direct body parameter. The `isSpreadBody()` check returns true because the body param type differs from the corresponding method param type. This means the fix must be in `buildSpreadProtocolCallExpr`, not just `getBodyProtocolCallArg`.
+
+**Files changed**: `src/components/clients/ConvenienceMethod.tsx`, `test/convenience-method.test.ts`, `test/e2e/.expected-failures`
+**Tests**: 1689 unit tests pass, e2e tests pass. Removed 3 entries from .expected-failures.

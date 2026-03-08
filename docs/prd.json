@@ -2486,7 +2486,7 @@
           "title": "Fix raw binary request body handling (non-JSON content types)",
           "description": "3 Encode_Bytes_RequestBody tests fail because convenience methods use BinaryContentHelper.FromObject() which JSON-serializes raw binary data (PNG). For non-JSON content types (application/octet-stream, custom types), the convenience method should use BinaryContent.Create() directly.\n\nFailing tests: RequestBodyDefault, RequestBodyOctetStream, RequestBodyCustomContentType.\n\nFix: In ConvenienceMethod.tsx body serialization logic, detect the operation's content type. For non-JSON content types, use BinaryContent.Create(body) instead of BinaryContentHelper.FromObject(body).",
           "phase": "phase-21",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [
