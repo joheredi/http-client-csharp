@@ -112,18 +112,17 @@
     Re-enable as the emitter adds support for these specs.
   -->
   <ItemGroup>
-    <!-- .testignore: client/structure/* (multi-namespace scope — ClientUriBuilder not found) -->
+    <!-- Re-enabled: client/structure/* specs now compile successfully -->
+    <!--
+      client/structure/client-operation-group: The legacy test references SubNamespaceSecondClient
+      but the new emitter generates SecondClient. A local copy with the fixed class name lives in
+      test/e2e/Spector.Tests/Http/Client/Structure/ClientOperationGroup/. Exclude the submodule
+      version to avoid duplication.
+    -->
     <Compile Remove="$(LegacyTestRoot)Http/Client/Structure/ClientOperationGroup/**/*.cs" />
-    <Compile Remove="$(LegacyTestRoot)Http/Client/Structure/Default/**/*.cs" />
-    <Compile Remove="$(LegacyTestRoot)Http/Client/Structure/MultiClient/**/*.cs" />
-    <Compile Remove="$(LegacyTestRoot)Http/Client/Structure/RenamedOperation/**/*.cs" />
-    <Compile Remove="$(LegacyTestRoot)Http/Client/Structure/TwoOperationGroup/**/*.cs" />
 
-    <!-- .testignore: resiliency/srv-driven (ClientUriBuilder multi-namespace scope) -->
-    <Compile Remove="$(LegacyTestRoot)Http/Resiliency/**/*.cs" />
-
-    <!-- .testignore: client/naming (union enum overload issues, Azure API in non-Azure context) -->
-    <Compile Remove="$(LegacyTestRoot)Http/Client/Naming/**/*.cs" />
+    <!-- Re-enabled: resiliency/srv-driven v1 and v2 specs now compile successfully -->
+    <!-- Re-enabled: client/naming spec now compiles (test file is commented-out upstream) -->
 
     <!--
       payload/pageable: Tests that reference APIs not yet matching the legacy emitter.
