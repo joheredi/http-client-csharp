@@ -4683,3 +4683,25 @@ The standard `<Constructor>` from `@alloy-js/csharp` doesn't support `baseArgs` 
 
 ### Pageable<T> return types use Models namespace prefix
 When testing Azure paging, convenience method return types include the Models sub-namespace prefix (e.g., `Pageable<Models.Item>` not `Pageable<Item>`). Tests should use partial matching or account for the namespace prefix.
+
+### Azure.Core scalar serialization pattern (task 21.19)
+
+Azure.Core scalars (eTag, azureLocation, armResourceIdentifier, ipV4Address, ipV6Address) extend `string` in TypeSpec but map to non-string C# types (ETag, AzureLocation, ResourceIdentifier, IPAddress). The TCGC SDK represents them with `kind: "string"`, so the serialization code must detect them and add explicit conversions.
+
+**Detection:** Check `type.__raw?.kind === "Scalar"` and verify the namespace is `Azure.Core` via `isAzureCoreNamespace()`. This is consistent with how `CSharpTypeExpression.tsx` resolves Azure scalar overrides.
+
+**Write path:** Add `.ToString()` valueTransform so `writer.WriteStringValue(Prop.ToString())` is generated instead of `writer.WriteStringValue(Prop)`.
+
+**Read path:** Wrap `GetString()` with a constructor: `new ETag(jsonProperty.Value.GetString())` instead of bare `jsonProperty.Value.GetString()`.
+
+**Utility:** `src/utils/azure-scalar-serialization.ts` provides `getAzureScalarConversion(type)` which returns `{ writeTransform, readWrapper }` or `undefined`.
+
+**Key insight:** This follows the exact same pattern as `url` → `Uri` handling that already existed in both PropertySerializer.tsx (`valueTransform: (name) => name.AbsoluteUri`) and PropertyMatchingLoop.tsx (`new Uri(accessor.GetString())`).
+
+### Design Decision: Azure scalar detection via __raw TypeSpec Scalar (task 21.19)
+
+**Chosen approach:** Detect Azure.Core wrapped scalars by inspecting `SdkType.__raw` TypeSpec Scalar and checking its namespace + name.
+
+**Why:** Consistent with how `CSharpTypeExpression.tsx` already resolves Azure scalar type overrides. No need for flavor context — Azure.Core scalars only appear in Azure-flavor specs.
+
+**Rejected alternative:** Using `crossLanguageDefinitionId` on SdkBuiltInType — less reliable, requires knowing the exact ID format. The `__raw` approach directly mirrors the existing type override logic.

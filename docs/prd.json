@@ -2821,7 +2821,7 @@
           "id": "21.19",
           "title": "Fix Azure.ETag serialization in generated models",
           "description": "azure/core/basic and azure/core/page specs fail to compile because User.Serialization.cs has type conversion errors: Azure.ETag cannot convert to System.DateTime (CS1503) and string cannot convert to Azure.ETag (CS0029). The serialization code generator does not handle Azure.ETag type correctly.",
-          "status": "pending",
+          "status": "done",
           "phase": "phase-21",
           "dependencies": []
         }

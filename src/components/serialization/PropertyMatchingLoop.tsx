@@ -60,6 +60,7 @@ import type {
 } from "@azure-tools/typespec-client-generator-core";
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import { getArrayEncodingDelimiter } from "../../utils/array-encoding.js";
+import { getAzureScalarConversion } from "../../utils/azure-scalar-serialization.js";
 import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
 import {
   isCollectionType,
@@ -651,9 +652,17 @@ export function getReadExpression(
     }
   }
 
-  // Primitive types — direct JsonElement getter
+  // Primitive types — direct JsonElement getter.
+  // Azure.Core scalars (eTag, azureLocation, etc.) have kind="string" but their
+  // C# types (ETag, AzureLocation, etc.) need explicit construction from the
+  // deserialized string. Wrap the GetString() call with the appropriate constructor,
+  // matching the url → new Uri(GetString()) pattern.
   const method = READ_METHOD_MAP[kind];
   if (method) {
+    const azureConversion = getAzureScalarConversion(type);
+    if (azureConversion) {
+      return azureConversion.readWrapper(`${accessor}.${method}()`);
+    }
     return `${accessor}.${method}()`;
   }
 

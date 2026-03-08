@@ -6905,3 +6905,25 @@ Task 21.11 (2026-03-08) — Enable optionality property e2e test coverage:
 - **Files changed**: `src/components/collection-results/AzurePageableFile.tsx` (new), `src/components/clients/PagingMethods.tsx`, `src/emitter.tsx`, `src/builtins/azure.ts`, `src/builtins/system-threading.ts`, `test/azure-pageable.test.ts` (new), `test/e2e/.testignore`
 
 - **Tests**: 1,709 unit tests pass (+4 new Azure pageable tests), e2e tests pass (2 new Azure paging specs enabled), 0 unexpected failures.
+
+## Task 21.19 — Fix Azure.ETag serialization in generated models (2026-03-08)
+
+**Problem:** azure/core/basic and azure/core/page specs failed to compile because the serialization code generator produced:
+- `writer.WriteStringValue(Etag)` → CS1503 (Azure.ETag has no implicit string conversion)
+- `etag = jsonProperty.Value.GetString()` → CS0029 (string → Azure.ETag no implicit conversion)
+
+**Root Cause:** TypeSpec `eTag` scalar has `kind: "string"` in TCGC, so PropertySerializer.tsx and PropertyMatchingLoop.tsx treated it as a plain string. But the C# type `Azure.ETag` is a struct requiring explicit conversion.
+
+**Solution:**
+- Created `src/utils/azure-scalar-serialization.ts` — utility to detect Azure.Core wrapped scalars (eTag, azureLocation, armResourceIdentifier, ipV4Address, ipV6Address) via `SdkType.__raw` TypeSpec Scalar namespace check
+- Modified `PropertySerializer.tsx` → adds `.ToString()` valueTransform for Azure wrapped scalars (same pattern as `url` → `Uri.AbsoluteUri`)
+- Modified `PropertyMatchingLoop.tsx` → wraps `GetString()` with constructor (e.g., `new ETag(...)`) for Azure wrapped scalars (same pattern as `url` → `new Uri(...)`)
+- Created `test/azure-scalar-serialization.test.ts` with 7 tests covering eTag, azureLocation, armResourceIdentifier write/read paths + non-Azure flavor regression
+- Removed azure/core/basic and azure/core/page from `.testignore`
+
+**Results:**
+- ✅ 1716 unit tests pass (+7 new)
+- ✅ e2e tests pass: azure/core/basic and azure/core/page now fully working
+- ✅ 114 specs compile, 731 NUnit tests pass (0 unexpected failures)
+
+**Pattern:** Azure.Core scalar conversion follows the same pattern as `url` → `Uri` in the serialization code. Detection uses `SdkType.__raw` TypeSpec Scalar + Azure.Core namespace check, consistent with `CSharpTypeExpression.tsx`'s `azureScalarOverrideMap`.

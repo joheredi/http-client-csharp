@@ -16,12 +16,5 @@ azure/resource-manager/operation-templates
 azure/resource-manager/resources
 
 # ============================================================
-# AZURE DATA PLANE SPECS — Remaining failures
-# ============================================================
-# ETag serialization: Azure.ETag ↔ DateTime/string type mismatch in User.Serialization.cs
-azure/core/basic
-azure/core/page
-
-# ============================================================
 # NON-AZURE SPECS — remaining build failures
 # ============================================================

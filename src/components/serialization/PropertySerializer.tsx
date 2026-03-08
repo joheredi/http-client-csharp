@@ -96,6 +96,7 @@ import {
 } from "@azure-tools/typespec-client-generator-core";
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import { getArrayEncodingDelimiter } from "../../utils/array-encoding.js";
+import { getAzureScalarConversion } from "../../utils/azure-scalar-serialization.js";
 import {
   isCollectionType,
   isPropertyNullable,
@@ -437,7 +438,19 @@ export function getWriteMethodInfo(type: SdkType): WriteMethodInfo | null {
   const kind = unwrapped.kind;
 
   // Primitive types — no format specifier needed.
-  if (STRING_KINDS.has(kind)) return { methodName: "WriteStringValue" };
+  // Azure.Core scalars (eTag, azureLocation, etc.) have kind="string" but their
+  // C# types (ETag, AzureLocation, etc.) don't implicitly convert to string.
+  // Add .ToString() transform for these, matching the url → Uri.AbsoluteUri pattern.
+  if (STRING_KINDS.has(kind)) {
+    const azureConversion = getAzureScalarConversion(type);
+    if (azureConversion) {
+      return {
+        methodName: "WriteStringValue",
+        valueTransform: azureConversion.writeTransform,
+      };
+    }
+    return { methodName: "WriteStringValue" };
+  }
 
   // Numeric types with @encode("string") write the value as a JSON string.
   // The ToString() transform converts the native numeric or object value to
