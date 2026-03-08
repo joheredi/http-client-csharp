@@ -6711,3 +6711,32 @@ Removed 3 stale resiliency/srv-driven/v1 entries from .expected-failures.
 **Tests**: 680 unit tests pass (0 unexpected failures), 5 e2e tests pass.
 
 **Key pattern**: Body serialization in convenience methods dispatches by TCGC type kind: model→implicit operator, enum→ToString/cast, array→FromEnumerable, dict→FromDictionary, other→FromObject.
+
+## Task 21.1 — Fix delimiter array encoding in model serialization (2026-03-08)
+
+**What was completed:**
+Fixed 12 Encode_Array_Property e2e test failures. When a model property has `@encode(ArrayEncoding.commaDelimited)` (or space/pipe/newline), the array is now serialized as a single delimited string in JSON (`"blue,red,green"`) instead of a JSON array (`["blue","red","green"]`).
+
+**Root cause:** PropertySerializer.tsx always generated `WriteStartArray/foreach/WriteEndArray` for array properties, and PropertyMatchingLoop.tsx always used `EnumerateArray/foreach/Add` for deserialization, ignoring the TCGC `property.encode` field.
+
+**Approach:**
+- Added `src/utils/array-encoding.ts` utility mapping `ArrayKnownEncoding` to delimiter strings
+- In `PropertySerializer.tsx`, `renderCollectionProperty()` checks `property.encode` first; when present, generates `writer.WriteStringValue(string.Join(delimiter, collection))` instead of the array pattern
+- In `PropertyMatchingLoop.tsx`, the loop checks `p.encode` and generates `jsonProperty.Value.GetString().Split(char)` instead of `EnumerateArray()`
+- Three element type categories: string (direct join/split), fixed enum (ToSerialString/To{EnumName} via Select), extensible enum (ToString/new constructor via Select)
+- Added `System.Linq` to serialization file usings when enum elements need `.Select()`
+
+**Files modified:**
+- `src/utils/array-encoding.ts` (new) — delimiter mapping utility
+- `src/components/serialization/PropertySerializer.tsx` — encoded array serialization
+- `src/components/serialization/PropertyMatchingLoop.tsx` — encoded array deserialization
+- `src/components/serialization/ModelSerializationFile.tsx` — System.Linq using detection
+- `test/array-encoding.test.ts` (new) — 7 unit tests
+- `test/e2e/.expected-failures` — removed 12 entries
+
+**Key patterns for next person:**
+- Array encoding is on the PROPERTY (`property.encode?: ArrayKnownEncoding`), not the array type
+- The encoding check must happen at the dispatch level before `renderArraySerialization/renderArrayDeserialization`
+- Enum elements need System.Linq for `.Select()` calls in both serialization and deserialization
+- `getArrayEncodingDelimiter()` returns both `joinDelimiter` (for string.Join) and `splitChar` (for string.Split)
+- All 1688 unit tests pass, 5 e2e tests pass, 0 unexpected failures

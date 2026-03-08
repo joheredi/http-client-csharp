@@ -95,6 +95,7 @@ import {
   type SdkType,
 } from "@azure-tools/typespec-client-generator-core";
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
+import { getArrayEncodingDelimiter } from "../../utils/array-encoding.js";
 import {
   isCollectionType,
   isPropertyNullable,
@@ -1048,6 +1049,20 @@ function renderCollectionProperty(
   serializedName: string,
   csharpName: string,
 ) {
+  // Check for array encoding (commaDelimited, spaceDelimited, etc.)
+  // When present, the array is serialized as a single delimited string in JSON
+  // instead of a JSON array. E.g., ["blue","red","green"] → "blue,red,green".
+  const encoding = getArrayEncodingDelimiter(property.encode);
+  if (encoding) {
+    return renderEncodedArraySerialization(
+      property,
+      arrayType,
+      serializedName,
+      csharpName,
+      encoding.joinDelimiter,
+    );
+  }
+
   if (needsSerializationGuard(property)) {
     const condition = buildGuardCondition(property, csharpName);
     const collectionContent = renderArraySerialization(
@@ -1082,6 +1097,102 @@ function renderCollectionProperty(
       {collectionContent}
     </>
   );
+}
+
+/**
+ * Renders serialization for an array property with delimiter encoding.
+ *
+ * Instead of writing a JSON array (`WriteStartArray` / `foreach` / `WriteEndArray`),
+ * writes a single JSON string with elements joined by the specified delimiter.
+ *
+ * Handles three element type categories:
+ * - **String elements** — `string.Join(delimiter, PropName)` (no LINQ needed)
+ * - **Fixed enum elements** — `string.Join(delimiter, PropName.Select(v => v.ToSerialString()))`
+ * - **Extensible enum elements** — `string.Join(delimiter, PropName.Select(v => v.ToString()))`
+ *
+ * @example Generated output for comma-delimited string array:
+ * ```csharp
+ * writer.WritePropertyName("value"u8);
+ * writer.WriteStringValue(string.Join(",", Value));
+ * ```
+ *
+ * @example Generated output for comma-delimited fixed enum array:
+ * ```csharp
+ * writer.WritePropertyName("value"u8);
+ * writer.WriteStringValue(string.Join(",", Value.Select(v => v.ToSerialString())));
+ * ```
+ */
+function renderEncodedArraySerialization(
+  property: SdkModelPropertyType,
+  arrayType: SdkArrayType,
+  serializedName: string,
+  csharpName: string,
+  delimiter: string,
+): Children {
+  const elementType = unwrapNullableType(arrayType.valueType);
+  const joinExpr = getEncodedArrayJoinExpression(
+    elementType,
+    csharpName,
+    delimiter,
+  );
+
+  if (needsSerializationGuard(property)) {
+    const condition = buildGuardCondition(property, csharpName);
+    return (
+      <>
+        {`\n    if (${condition})`}
+        {"\n    {"}
+        {`\n        writer.WritePropertyName("${serializedName}"u8);`}
+        {`\n        writer.WriteStringValue(${joinExpr});`}
+        {"\n    }"}
+        {renderElseNull(property, serializedName)}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {`\n    writer.WritePropertyName("${serializedName}"u8);`}
+      {`\n    writer.WriteStringValue(${joinExpr});`}
+    </>
+  );
+}
+
+/**
+ * Builds the C# expression for `string.Join(delimiter, collection)` with
+ * appropriate element-to-string conversion based on the element type.
+ *
+ * @param elementType - The unwrapped element type of the array.
+ * @param collectionExpr - The C# expression for the collection (e.g., property name).
+ * @param delimiter - The C# string literal content for the delimiter (e.g., `","`, `"|"`).
+ * @returns A C# expression string suitable for `writer.WriteStringValue(...)`.
+ */
+function getEncodedArrayJoinExpression(
+  elementType: SdkType,
+  collectionExpr: string,
+  delimiter: string,
+): string {
+  if (elementType.kind === "enum") {
+    const enumType = elementType as SdkEnumType;
+    if (enumType.isFixed) {
+      // Fixed enum: each element needs ToSerialString() to get wire value
+      return `string.Join("${delimiter}", ${collectionExpr}.Select(v => v.ToSerialString()))`;
+    }
+    // Extensible enum: ToString() returns wire value
+    return `string.Join("${delimiter}", ${collectionExpr}.Select(v => v.ToString()))`;
+  }
+
+  if (elementType.kind === "enumvalue") {
+    // Enum value literal — delegate to the parent enum type
+    return getEncodedArrayJoinExpression(
+      (elementType as SdkEnumValueType).enumType,
+      collectionExpr,
+      delimiter,
+    );
+  }
+
+  // String and other primitive elements: string.Join works directly
+  return `string.Join("${delimiter}", ${collectionExpr})`;
 }
 
 /**

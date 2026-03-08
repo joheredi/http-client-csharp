@@ -8,27 +8,6 @@
 #   1. A test fails that is NOT listed here (unexpected failure)
 #   2. A test listed here actually passes (stale entry — remove it)
 
-# --- Encode/Array: ClientResultException (delimiter encoding issues) ---
-# Constructor NRE fixed (task 15.1), but the generated client now sends
-# delimited array query/header values in a format the Spector server rejects (400).
-CommaDelimited
-NewlineDelimited
-PipeDelimited
-SpaceDelimited
-EnumCommaDelimited
-EnumNewlineDelimited
-EnumPipeDelimited
-EnumSpaceDelimited
-ExtensibleEnumCommaDelimited
-ExtensibleEnumNewlineDelimited
-ExtensibleEnumPipeDelimited
-ExtensibleEnumSpaceDelimited
-
-# --- Versioning: ClientResultException (body serialization issues) ---
-# URL routing is fixed (api-version in server URL template now handled).
-# Union type serialization fix (task 15.19) resolved the remaining body
-# serialization mismatches for versioned models with union properties.
-
 # --- Encode/Bytes/RequestBody: raw binary content handling ---
 # Convenience methods use BinaryContentHelper.FromObject() which attempts
 # JSON parsing on raw binary data (PNG). Needs a separate fix to use

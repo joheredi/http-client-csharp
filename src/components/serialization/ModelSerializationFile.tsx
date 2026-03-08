@@ -7,7 +7,9 @@ import {
 } from "@alloy-js/csharp";
 import { type Children, code, namekey } from "@alloy-js/core";
 import {
+  type SdkArrayType,
   type SdkModelType,
+  type SdkType,
   UsageFlags,
 } from "@azure-tools/typespec-client-generator-core";
 import { SystemClientModelPrimitives } from "../../builtins/system-client-model.js";
@@ -17,7 +19,9 @@ import {
   useCustomCode,
 } from "../../contexts/custom-code-context.js";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
+import { encodedArrayNeedsLinq } from "../../utils/array-encoding.js";
 import { getLicenseHeader } from "../../utils/header.js";
+import { unwrapNullableType } from "../../utils/nullable.js";
 import { efCsharpRefkey, unknownModelRefkey } from "../../utils/refkey.js";
 import { hasSystemTextJsonConverter } from "../../utils/system-text-json-converter.js";
 import { isModelAbstract } from "../models/ModelConstructors.js";
@@ -51,6 +55,31 @@ export interface ModelSerializationFileProps {
  */
 export function modelNeedsSerialization(type: SdkModelType): boolean {
   return (type.usage & (UsageFlags.Json | UsageFlags.Xml)) !== 0;
+}
+
+/**
+ * Checks whether a model has any array properties with delimiter encoding that
+ * use enum element types, which require `System.Linq` for `.Select()` calls
+ * in the serialization/deserialization code.
+ *
+ * @param type - The TCGC SDK model type to check.
+ * @returns `true` if the model's serialization file needs `using System.Linq;`.
+ */
+function modelNeedsLinqForEncodedArrays(type: SdkModelType): boolean {
+  for (const prop of type.properties) {
+    if (prop.encode) {
+      const unwrapped = unwrapNullableType(prop.type);
+      if (unwrapped.kind === "array") {
+        const elementType = unwrapNullableType(
+          (unwrapped as SdkArrayType).valueType,
+        );
+        if (encodedArrayNeedsLinq(prop.encode, elementType.kind)) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
 }
 
 /**
@@ -167,9 +196,15 @@ export function ModelSerializationFile(props: ModelSerializationFileProps) {
 
   // Dynamic models (JSON Merge Patch) need System.Text for Encoding.UTF8.GetBytes()
   // used in per-key dictionary patch checks.
-  const additionalUsings = isDynamicModel(props.type)
-    ? ["System.Text"]
-    : undefined;
+  // Models with encoded array properties that have enum elements need System.Linq
+  // for the .Select() call in string.Join(..., collection.Select(v => v.ToSerialString())).
+  const additionalUsings: string[] = [];
+  if (isDynamicModel(props.type)) {
+    additionalUsings.push("System.Text");
+  }
+  if (modelNeedsLinqForEncodedArrays(props.type)) {
+    additionalUsings.push("System.Linq");
+  }
 
   // Abstract base models with discriminated subtypes need the PersistableModelProxy
   // attribute to tell the framework which concrete type to instantiate when the
@@ -203,7 +238,7 @@ export function ModelSerializationFile(props: ModelSerializationFileProps) {
   return (
     <SourceFile
       path={`src/Generated/Models/${modelName}.Serialization.cs`}
-      using={additionalUsings}
+      using={additionalUsings.length > 0 ? additionalUsings : undefined}
     >
       {header}
       {"\n\n"}

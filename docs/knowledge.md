@@ -4479,3 +4479,13 @@ All 9 ARM resource-manager specs emit successfully but fail dotnet build with de
 ## Alloy MSBuild XML attribute wrapping (Task 21.8)
 
 **Gotcha**: Alloy's MSBuild component renderer may wrap long XML attributes across lines (e.g., `<Compile Include="..." \n LinkBase="..."/>`). This is valid XML but breaks `toContain` string checks. Use regex with `\s+` between attributes instead of exact string matching.
+
+### Array Encoding (Delimiter) Serialization
+- **TCGC API**: `SdkModelPropertyTypeBase.encode?: ArrayKnownEncoding` where `ArrayKnownEncoding = "pipeDelimited" | "spaceDelimited" | "commaDelimited" | "newlineDelimited"`. Encoding is on the PROPERTY, not the `SdkArrayType`.
+- **Serialization pattern**: Use `writer.WriteStringValue(string.Join(delimiter, collection))` for string elements. For enum elements, use `.Select(v => v.ToSerialString())` (fixed) or `.Select(v => v.ToString())` (extensible).
+- **Deserialization pattern**: Use `jsonProperty.Value.GetString().Split(char)` for string elements. For enum elements, chain `.Select(v => v.To{EnumName}()).ToArray()` (fixed) or `.Select(v => new {EnumName}(v)).ToArray()` (extensible).
+- **System.Linq**: Required only when enum/extensible enum elements use `.Select()`. Added via `additionalUsings` in `ModelSerializationFile.tsx`.
+- **Check order**: The encoding check (`property.encode`) must happen BEFORE the standard array dispatch in both `renderCollectionProperty()` and `PropertyMatchingLoop`.
+
+## Design Decisions
+- **Array encoding handled at dispatch level, not inside `renderArraySerialization`**: The encoding applies at the property level, not at the type level. The existing `renderArraySerialization` and `renderArrayDeserialization` functions are also called from nested contexts (dict values, nested arrays) where property-level encoding doesn't apply. A separate code path at the dispatch level is cleaner.

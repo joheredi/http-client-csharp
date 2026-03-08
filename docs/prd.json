@@ -2443,7 +2443,7 @@
           "title": "Fix delimiter array encoding in convenience methods",
           "description": "The 12 Encode_Array_Property tests fail because the generated client sends delimited arrays (comma, pipe, space, newline) in a format the Spector server rejects (HTTP 400). The convenience method body serialization via BinaryContentHelper.FromObject/FromEnumerable doesn't correctly encode array elements with the specified delimiter format.\n\nFailing tests: CommaDelimited, NewlineDelimited, PipeDelimited, SpaceDelimited (x3 for plain, enum, extensible enum = 12 total).\n\nFix: Update the convenience method body serialization in ConvenienceMethod.tsx to detect array body parameters with delimiter encoding and use the correct serialization path.",
           "phase": "phase-21",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

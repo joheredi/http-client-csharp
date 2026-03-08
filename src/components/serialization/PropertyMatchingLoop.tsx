@@ -59,6 +59,7 @@ import type {
   SdkType,
 } from "@azure-tools/typespec-client-generator-core";
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
+import { getArrayEncodingDelimiter } from "../../utils/array-encoding.js";
 import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
 import {
   isCollectionType,
@@ -701,6 +702,54 @@ export function getReadExpression(
 }
 
 /**
+ * Builds the C# expression for deserializing an encoded array property.
+ *
+ * When a property has `@encode(ArrayEncoding.*)`, the JSON wire value is a
+ * single delimited string (e.g., `"blue,red,green"`), not a JSON array.
+ * This function generates the expression to split that string and convert
+ * elements to the correct type.
+ *
+ * Element type handling:
+ * - **String** — `jsonProperty.Value.GetString().Split(',')` → `string[]`
+ * - **Fixed enum** — `jsonProperty.Value.GetString().Split(',').Select(v => v.To{EnumName}()).ToArray()`
+ * - **Extensible enum** — `jsonProperty.Value.GetString().Split(',').Select(v => new {EnumName}(v)).ToArray()`
+ *
+ * @param elementType - The unwrapped element type of the array.
+ * @param splitChar - The C# char literal for splitting (e.g., `','`, `'|'`).
+ * @param namePolicy - C# name policy for resolving enum type names.
+ * @returns A C# expression string that produces the deserialized array value.
+ */
+function getEncodedArraySplitExpression(
+  elementType: SdkType,
+  splitChar: string,
+  namePolicy: NamePolicy<string>,
+): string {
+  const splitBase = `jsonProperty.Value.GetString().Split(${splitChar})`;
+
+  if (elementType.kind === "enum") {
+    const enumType = elementType as SdkEnumType;
+    const enumName = namePolicy.getName(enumType.name, "enum");
+    if (enumType.isFixed) {
+      // Fixed enum: split then convert each string via extension method
+      return `${splitBase}.Select(v => v.To${enumName}()).ToArray()`;
+    }
+    // Extensible enum: split then construct each struct from string
+    return `${splitBase}.Select(v => new ${enumName}(v)).ToArray()`;
+  }
+
+  if (elementType.kind === "enumvalue") {
+    return getEncodedArraySplitExpression(
+      (elementType as SdkEnumValueType).enumType,
+      splitChar,
+      namePolicy,
+    );
+  }
+
+  // String elements: Split returns string[] directly
+  return splitBase;
+}
+
+/**
  * Returns the variable name for the local list at a given nesting depth.
  *
  * Follows the legacy emitter's naming convention:
@@ -1077,6 +1126,30 @@ export function PropertyMatchingLoop(props: PropertyMatchingLoopProps) {
         );
         const unwrapped = unwrapNullableType(p.type);
         const nullBehavior = getNullCheckBehavior(p);
+
+        // Encoded array properties — the JSON wire value is a delimited string,
+        // not a JSON array. E.g., "blue,red,green" instead of ["blue","red","green"].
+        if (unwrapped.kind === "array" && p.encode) {
+          const encoding = getArrayEncodingDelimiter(p.encode);
+          if (encoding) {
+            const splitExpr = getEncodedArraySplitExpression(
+              unwrapNullableType((unwrapped as SdkArrayType).valueType),
+              encoding.splitChar,
+              namePolicy,
+            );
+            return (
+              <>
+                {`\n        if (jsonProperty.NameEquals("${serializedName}"u8))`}
+                {"\n        {"}
+                {nullBehavior !== null &&
+                  renderPropertyNullCheck(nullBehavior, varName, p)}
+                {`\n            ${varName} = ${splitExpr};`}
+                {"\n            continue;"}
+                {"\n        }"}
+              </>
+            );
+          }
+        }
 
         // Array types need a multi-line block with List<T> + foreach
         if (unwrapped.kind === "array") {
