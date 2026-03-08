@@ -135,8 +135,7 @@
     <Compile Remove="$(LegacyTestRoot)Http/Payload/Pageable/ContinuationTokenPaginationTests.cs" />
     <Compile Remove="$(LegacyTestRoot)Http/Payload/Pageable/XmlPaginationTests.cs" />
 
-    <!-- .testignore: payload/multipart (IJsonModel on non-JSON models) -->
-    <Compile Remove="$(LegacyTestRoot)Http/Payload/Multipart/**/*.cs" />
+
 
 
     <!--

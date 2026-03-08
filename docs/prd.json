@@ -2634,7 +2634,7 @@
           "title": "Enable multipart form-data e2e test coverage",
           "description": "17 Payload_MultiPart_FormData scenarios show as not-implemented. The multipart tests are excluded from compilation in the csproj (Compile Remove for Http/Payload/Multipart/**/*.cs). The spec compiles and generates code, but the test files have API surface mismatches with the new emitter.\n\nFix: Copy multipart test files locally with namespace/API fixes, or fix the generated multipart API to match legacy patterns. Remove the Compile Remove entry.",
           "phase": "phase-21",
-          "status": "pending",
+          "status": "done",
           "dependencies": [],
           "files": {
             "modify": [

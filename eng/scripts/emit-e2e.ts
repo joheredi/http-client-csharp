@@ -484,14 +484,19 @@ async function generateProjectReferences(ignoreList: string[]): Promise<void> {
 // ---------------------------------------------------------------------------
 
 /**
- * Generates a Directory.Build.props file in the generated output root that defines
- * the `$(AzureCoreSharedSources)` MSBuild property. This property is required by
- * Azure-flavored generated .csproj files to locate Azure.Core shared source files
- * (ClientDiagnostics, DiagnosticScope, etc.) which are internal to Azure.Core and
- * must be compiled directly into each project.
- *
- * In the real Azure SDK build, this property is defined in Directory.Build.Common.props.
- * For e2e tests, we define it here pointing to the azure-sdk-for-net submodule.
+ * Generates a Directory.Build.props file in the generated output root that defines:
+ * - `$(AzureCoreSharedSources)` MSBuild property, required by Azure-flavored generated
+ *   .csproj files to locate Azure.Core shared source files (ClientDiagnostics,
+ *   DiagnosticScope, etc.) which are internal to Azure.Core and must be compiled
+ *   directly into each project. In the real Azure SDK build, this property is defined
+ *   in Directory.Build.Common.props. For e2e tests, we point to the submodule.
+ * - `InternalsVisibleTo` for the Spector.Tests assembly, so that e2e tests can access
+ *   internal generated types (e.g., MultiPartFormDataBinaryContent). The legacy emitter
+ *   achieves this via generated AssemblyInfo.cs files; here we use a centralized
+ *   Directory.Build.props to cover all generated projects at once. Scoped to non-Azure
+ *   projects to avoid CS0121 ambiguity from duplicate Azure.Core shared source internal
+ *   extension methods (e.g., RequestHeaderExtensions.Add) that would otherwise be
+ *   visible from multiple Azure-flavored assemblies simultaneously.
  */
 async function generateDirectoryBuildProps(): Promise<void> {
   const propsPath = join(generatedRoot, "Directory.Build.props");
@@ -501,6 +506,14 @@ async function generateDirectoryBuildProps(): Promise<void> {
     `  <PropertyGroup>`,
     `    <AzureCoreSharedSources>$(MSBuildThisFileDirectory)../../../../submodules/azure-sdk-for-net/sdk/core/Azure.Core/src/Shared/</AzureCoreSharedSources>`,
     `  </PropertyGroup>`,
+    `  <!--`,
+    `    Grant test project access to internal types (e.g., MultiPartFormDataBinaryContent).`,
+    `    Scoped to non-Azure projects to avoid CS0121 ambiguity from duplicate Azure.Core`,
+    `    shared source internal extension methods.`,
+    `  -->`,
+    `  <ItemGroup Condition="!$(MSBuildProjectDirectory.Contains('/azure/'))">`,
+    `    <InternalsVisibleTo Include="Spector.Tests" />`,
+    `  </ItemGroup>`,
     `</Project>`,
     ``,
   ].join("\n");

@@ -6965,3 +6965,21 @@ Task 21.11 (2026-03-08) — Enable optionality property e2e test coverage:
 **Verification:** Build passes, 731 unit tests pass (13 expected failures), 5 e2e tests pass (0 unexpected failures).
 
 **Next:** Task 21.18 (ARM: Fix constructor signatures and namespace collisions) is now unblocked — its dependencies (21.15, 21.16, 21.17) are all done. Tasks 21.10 and 21.12 (multipart/additional-properties e2e coverage) also remain pending with no dependencies.
+
+## Task 21.10 — Enable multipart form-data e2e test coverage (2026-03-08)
+
+- **Problem**: 13 multipart test scenarios were excluded from e2e compilation via `<Compile Remove="$(LegacyTestRoot)Http/Payload/Multipart/**/*.cs" />` in Spector.Tests.csproj. The comment said "IJsonModel on non-JSON models" but the real issue was that `MultiPartFormDataBinaryContent` is `internal` and the test project had no `InternalsVisibleTo` access to generated project internals.
+
+- **Root Cause**: The legacy emitter generates `AssemblyInfo.cs` files with `[assembly: InternalsVisibleTo("TestProjects.Spector.Tests")]` in each generated project. The new emitter did not generate any InternalsVisibleTo mechanism, so internal types like `MultiPartFormDataBinaryContent` were inaccessible from the test project.
+
+- **Fix (Directory.Build.props)**: Modified `eng/scripts/emit-e2e.ts` to generate `<InternalsVisibleTo Include="Spector.Tests" />` in the `Directory.Build.props` file at `temp/e2e/Spector/http/`. This grants the test project access to internal types from ALL generated projects under that directory tree.
+
+- **Fix (scoping)**: Added MSBuild condition `Condition="!$(MSBuildProjectDirectory.Contains('/azure/'))"` to scope InternalsVisibleTo to non-Azure projects only. Without this condition, Azure-flavored projects (which each compile Azure.Core shared source files like `RequestHeaderExtensions.cs`) would expose duplicate internal extension methods to the test project, causing CS0121 ambiguous method call errors.
+
+- **Fix (csproj)**: Removed the `<Compile Remove>` entry for multipart test files from Spector.Tests.csproj. The legacy test file now compiles directly against the new emitter's generated API surface.
+
+- **Key insight**: The new emitter's multipart API surface perfectly matches the legacy emitter (same namespace `Payload.MultiPart`, same client hierarchy, same method signatures `(BinaryContent, string contentType, RequestOptions)`). No test file modifications were needed — only the InternalsVisibleTo infrastructure was missing.
+
+- **Files changed**: `eng/scripts/emit-e2e.ts`, `test/e2e/Spector.Tests/Spector.Tests.csproj`
+
+- **Tests**: 1,724 unit tests pass (0 new), 772 e2e tests total (744 passed, 13 expected failures, 15 expected skips, 0 unexpected). Previously 731 NUnit tests passed; now 744 pass (+13 multipart tests enabled).
