@@ -132,6 +132,20 @@ describe("Azure pipeline types - ProtocolMethod", () => {
     // Should NOT contain unbranded types in protocol methods
     expect(clientFile).not.toContain("ClientResult GetWidget");
     expect(clientFile).not.toContain("ClientResult.FromResponse");
+
+    // Azure protocol methods with body param use RequestContent (not BinaryContent).
+    // This is critical because Azure.Core's HttpPipeline expects RequestContent,
+    // and the model's implicit cast operator targets RequestContent for Azure flavor.
+    // Without this, convenience method delegation fails with CS1503 because the
+    // model has `implicit operator RequestContent(Widget)` but the protocol method
+    // would wrongly expect BinaryContent.
+    expect(clientFile).toContain(
+      "public virtual Response CreateWidget(RequestContent content, RequestContext options",
+    );
+    expect(clientFile).toContain(
+      "public virtual async Task<Response> CreateWidgetAsync(RequestContent content, RequestContext options",
+    );
+    expect(clientFile).not.toContain("BinaryContent content");
   });
 
   /**
@@ -152,6 +166,10 @@ describe("Azure pipeline types - ProtocolMethod", () => {
     expect(clientFile).toContain(
       "ClientResult.FromResponse(Pipeline.ProcessMessage(",
     );
+
+    // Unbranded protocol methods with body param use BinaryContent
+    expect(clientFile).toContain("BinaryContent content, RequestOptions options");
+    expect(clientFile).not.toContain("RequestContent content");
   });
 });
 

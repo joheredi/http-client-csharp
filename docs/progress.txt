@@ -6630,3 +6630,21 @@ Task 20.12b — Fix CS0104 ambiguous references (2026-03-07)
 **Files modified**: `src/utils/package-name.ts`, `src/emitter.tsx`, `src/components/arm/CollectionFile.tsx`
 **Tests added**: 6 unit tests in `test/package-name.test.ts` for `redirectArmSdkNamespaceConflicts()`
 **Test status**: 89 files pass (1676 tests), 0 CS0104 errors in e2e
+
+## Task 20.12e — Fix remaining operation-templates ARM compilation errors (2026-03-07)
+
+**Problem**: Azure flavor protocol methods used hardcoded `SystemClientModel.BinaryContent` for body parameters instead of flavor-aware `pipelineTypes.binaryContent`. This caused 40 CS1503 errors across `client-generator-core/alternate-type` and `client-generator-core/client-initialization/default` specs because:
+- Protocol methods declared `BinaryContent content` but Azure expects `RequestContent content`
+- Model implicit cast operators target `RequestContent` for Azure, so overload resolution fails when protocol method expects `BinaryContent`
+
+**Fix**: Changed `ProtocolMethod.tsx:buildProtocolParams()` to use `pipelineTypes.binaryContent` (which resolves to `AzureCore.RequestContent` for Azure, `SystemClientModel.BinaryContent` for unbranded) instead of the hardcoded `SystemClientModel.BinaryContent`.
+
+**Files modified**: `src/components/clients/ProtocolMethod.tsx`, `test/azure-cascade-types.test.ts`
+
+**Test additions**: Added assertions in azure-cascade-types.test.ts verifying Azure protocol methods use `RequestContent content` and unbranded uses `BinaryContent content`.
+
+**Remaining e2e errors**: 40 errors remain (pre-existing, not caused by this change):
+- `core/lro/standard`: ProtocolOperationHelpers not found, OperationFinalStateVia inaccessible (LRO shared source issue)
+- `resource-manager/multi-service-shared-models/VirtualMachines.cs`: Argument inaccessible, ToRequestOptions missing (ARM non-resource method infrastructure issue)
+
+**Key pattern**: Always use `pipelineTypes.*` for type references that differ between Azure and unbranded flavors. Never hardcode `SystemClientModel.*` or `AzureCore.*` in components that render for both flavors.

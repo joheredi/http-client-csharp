@@ -4424,3 +4424,19 @@ Adding SystemData/CreatedByType as builtins and filtering them from generation w
 
 ### Key Pattern: FQN for SDK Type Collisions in Collections
 When a spec defines a model with the same name as an SDK parent scope type (e.g., spec-defined `SubscriptionResource` vs SDK's `Azure.ResourceManager.Resources.SubscriptionResource`), use `global::` FQN for the SDK type reference in `ValidateResourceId`. This avoids CS0104 without affecting Alloy's reference system for the model type.
+
+## Task 20.12e — Flavor-aware body parameter types in protocol methods
+
+**Gotcha**: `buildProtocolParams()` in `ProtocolMethod.tsx` hardcoded body parameter type to `SystemClientModel.BinaryContent`. For Azure flavor, this should be `AzureCore.RequestContent` (via `pipelineTypes.binaryContent`). The `pipelineTypes` object from `getPipelineTypes()` is the single source of truth for all flavor-dependent types.
+
+**Root cause chain**: When protocol method has `BinaryContent content` but model has `implicit operator RequestContent(Widget)`, C# overload resolution fails. The convenience method calls `CreateWidget(widget, cancellationToken.ToRequestOptions())` — the first arg `widget` needs implicit conversion to the body type, and the second arg `ToRequestOptions()` returns `RequestContext`. If body type is `BinaryContent`, no overload matches: overload 1 (convenience) expects `CancellationToken` not `RequestContext`; overload 2 (protocol) expects `BinaryContent` but `widget` only converts to `RequestContent`.
+
+**Rule**: Every type reference in protocol/convenience method generation that differs between Azure and unbranded MUST use `pipelineTypes.*`. Grep for hardcoded `SystemClientModel.*` or `AzureCore.*` in client-generation components to catch similar issues.
+
+### Design Decision: Task 20.12e — Flavor-aware body parameter types
+
+**Approach chosen**: Use `pipelineTypes.binaryContent` in `buildProtocolParams()` to select body parameter type per flavor.
+
+**Why**: Minimal change (1 line), follows existing pattern used by all other flavor-dependent types in the same file (requestOptions, clientResult, message, etc.), and correctly resolves to `RequestContent` for Azure / `BinaryContent` for unbranded.
+
+**Rejected**: No alternatives considered — this is the obvious fix following the established `pipelineTypes` pattern used throughout the codebase.

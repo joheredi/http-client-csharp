@@ -2413,7 +2413,7 @@
           "title": "Fix remaining operation-templates ARM compilation errors",
           "description": "After fixing 20.12a-d, operation-templates will still have ~400+ errors from complex ARM patterns:\n- CS1503 (188): Argument type mismatches in LRO/paging operations\n- CS0029/CS0030 (104): Type conversion errors\n- CS0117 (72): Type does not contain member\n- CS1744 (24): Named argument specifies wrong parameter\n- CS7036 (16): Required formal parameter missing\n- CS0128 (12): Local variable already defined\n- CS0103 (12): Name does not exist in context\n- CS0144 (4): Cannot create instance of abstract type\n\nThese require deep investigation of the operation-templates spec to understand what ARM patterns are being generated incorrectly. Likely involves LRO operations, paging, resource CRUD, and extension methods.\n\nNote: Some of these may cascade from 20.12a-d fixes. Re-count after those are done.",
           "phase": "phase-20",
-          "status": "pending",
+          "status": "done",
           "dependencies": [
             "20.12a",
             "20.12b",

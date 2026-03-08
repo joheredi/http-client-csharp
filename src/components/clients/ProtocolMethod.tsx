@@ -16,7 +16,6 @@ import type {
 } from "@azure-tools/typespec-client-generator-core";
 import type { FinalStateValue } from "@azure-tools/typespec-azure-core";
 import { AzureCorePipeline } from "../../builtins/azure.js";
-import { SystemClientModel } from "../../builtins/system-client-model.js";
 import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
 import { System } from "../../builtins/system.js";
 import { formatDocLines } from "../../utils/doc.js";
@@ -430,12 +429,13 @@ export function buildProtocolParams(
     });
   }
 
-  // Body parameter as BinaryContent (priority 200 required, 300 optional)
+  // Body parameter as BinaryContent/RequestContent (priority 200 required, 300 optional)
+  const pipelineTypes = getPipelineTypes(flavor ?? "unbranded");
   if (bodyParam && !isConstantType(bodyParam.type)) {
     const priority = bodyParam.optional ? 300 : 200;
     params.push({
       name: "content",
-      type: SystemClientModel.BinaryContent,
+      type: pipelineTypes.binaryContent,
       optional: bodyParam.optional ?? false,
       isStringType: false,
       isBody: true,
