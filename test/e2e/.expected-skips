@@ -29,3 +29,7 @@ LabelExpansionRecord
 QueryContinuationArray
 QueryContinuationPrimitive
 QueryContinuationRecord
+
+# --- Azure/ClientGeneratorCore: Skipped by [Ignore] attribute upstream ---
+# https://github.com/microsoft/typespec/issues/9774
+Azure_ClientGenerator_Core_ClientInitialization_IndividuallyClient_IndividuallyNestedWithParamAlias
