@@ -55,7 +55,7 @@ export function BinaryContentHelperFile(props: BinaryContentHelperFileProps) {
   const jsonContentType = isAzure
     ? "Utf8JsonRequestContent"
     : "Utf8JsonBinaryContent";
-  const contentCreate = isAzure
+  const _contentCreate = isAzure
     ? "RequestContent.Create"
     : "BinaryContent.Create";
 

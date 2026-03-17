@@ -27,10 +27,7 @@ import {
   renderAdditionalPropertiesValueType,
 } from "../../utils/additional-properties.js";
 import { efCsharpRefkey } from "../../utils/refkey.js";
-import {
-  collectFlattenedProperties,
-  isFlattenedProperty,
-} from "../../utils/flatten.js";
+import { collectFlattenedProperties } from "../../utils/flatten.js";
 import { DynamicModelMembers, isDynamicModel } from "./DynamicModel.js";
 import { FlattenedProperty } from "./FlattenedProperty.js";
 import {

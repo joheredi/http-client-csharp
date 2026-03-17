@@ -63,7 +63,7 @@ const trackedResourceSpec = `
  * Finds a generated file by suffix from the outputs record.
  * Throws a clear error if the file isn't found.
  */
-function findFile(outputs: Record<string, string>, suffix: string): string {
+function _findFile(outputs: Record<string, string>, suffix: string): string {
   const key = Object.keys(outputs).find((k) => k.endsWith(suffix));
   if (!key) {
     const available = Object.keys(outputs)

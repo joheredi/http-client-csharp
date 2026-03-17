@@ -31,10 +31,7 @@ type PagingLikeMethod<
 import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import { System } from "../../builtins/system.js";
 import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
-import {
-  SystemClientModel,
-  SystemClientModelPrimitives,
-} from "../../builtins/system-client-model.js";
+import { SystemClientModelPrimitives } from "../../builtins/system-client-model.js";
 import { Azure, AzureCorePipeline } from "../../builtins/azure.js";
 import { SystemThreadingTasks } from "../../builtins/system-threading.js";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
@@ -345,12 +342,7 @@ function AzurePageableFile(props: AzurePageableFileProps) {
       {header}
       {"\n\n"}
       <Namespace name={client.namespace}>
-        <ClassDeclaration
-          internal
-          partial
-          name={className}
-          baseType={baseType}
-        >
+        <ClassDeclaration internal partial name={className} baseType={baseType}>
           <Field private readonly name="client" type={refkey(client)} />
           {"\n"}
           {operationParams.map((p) => (
@@ -444,11 +436,7 @@ function buildSinglePageAsPagesBody(
     options,
   );
 
-  return [
-    getResponse,
-    "\n",
-    ...itemsExtraction,
-  ];
+  return [getResponse, "\n", ...itemsExtraction];
 }
 
 /**
@@ -686,7 +674,7 @@ function buildItemsExtraction(
   responseTypeExpr: Children | undefined,
   pageItemType: Children,
   itemPropertyPath: string | undefined,
-  options: ResolvedCSharpEmitterOptions,
+  _options: ResolvedCSharpEmitterOptions,
 ): Children[] {
   if (isConvenience && responseTypeExpr && itemPropertyPath) {
     // Convenience: cast items directly

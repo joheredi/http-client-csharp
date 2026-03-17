@@ -34,7 +34,6 @@ import type {
   SdkClientType,
   SdkContext,
   SdkHttpOperation,
-  SdkMethod,
   SdkModelType,
   SdkServiceMethod,
   SdkServiceOperation,
@@ -47,7 +46,6 @@ import {
 import type {
   ResolvedResource,
   ResourceType,
-  ArmResourceOperation,
 } from "@azure-tools/typespec-azure-resource-manager";
 import { resolveArmResources as resolveArmResourcesFromLibrary } from "@azure-tools/typespec-azure-resource-manager";
 
@@ -71,7 +69,6 @@ import {
   ResourceScope,
   assignNonResourceMethodsToResources,
   postProcessArmResources,
-  sortResourceMethods,
 } from "./resource-metadata.js";
 
 // Re-export types that downstream consumers need
@@ -101,7 +98,7 @@ export { ResourceOperationKind, ResourceScope };
  */
 export function detectArmResources(
   program: Program,
-  sdkContext: SdkContext<any, SdkHttpOperation>,
+  sdkContext: SdkContext<object, SdkHttpOperation>,
   useLegacyDetection: boolean,
 ): ArmProviderSchema {
   if (!useLegacyDetection) {
@@ -126,7 +123,7 @@ export function detectArmResources(
  */
 function resolveArmResourcesNewMode(
   program: Program,
-  sdkContext: SdkContext<any, SdkHttpOperation>,
+  sdkContext: SdkContext<object, SdkHttpOperation>,
 ): ArmProviderSchema {
   const provider = resolveArmResourcesFromLibrary(program);
 
@@ -272,7 +269,7 @@ function resolveArmResourcesNewMode(
  * Converts a `ResolvedResource` from the ARM library to our `ResourceMetadata` format.
  */
 function convertResolvedResourceToMetadata(
-  sdkContext: SdkContext<any, SdkHttpOperation>,
+  sdkContext: SdkContext<object, SdkHttpOperation>,
   resolvedResource: ResolvedResource,
 ): ResourceMetadata {
   const methods: ResourceMethod[] = [];
@@ -490,7 +487,7 @@ function extractSingletonName(path: string): string | undefined {
  * reassigns them using path matching for correctness.
  */
 function assignListOperationsToResources(
-  sdkContext: SdkContext<any, SdkHttpOperation>,
+  sdkContext: SdkContext<object, SdkHttpOperation>,
   resources: ArmResourceSchema[],
   schemaToResolvedResource: Map<ArmResourceSchema, ResolvedResource>,
 ): void {
@@ -573,11 +570,11 @@ const ARM_RESOURCE_WITH_PARAMETER =
   "Azure.ResourceManager.@armResourceWithParameter";
 const CUSTOM_AZURE_RESOURCE =
   "Azure.ResourceManager.Legacy.@customAzureResource";
-const SINGLETON_DECORATOR = "Azure.ResourceManager.@singleton";
+const _SINGLETON_DECORATOR = "Azure.ResourceManager.@singleton";
 const TENANT_RESOURCE = "Azure.ResourceManager.@tenantResource";
 const SUBSCRIPTION_RESOURCE = "Azure.ResourceManager.@subscriptionResource";
 const RESOURCE_GROUP_RESOURCE = "Azure.ResourceManager.@resourceGroupResource";
-const PARENT_RESOURCE = "TypeSpec.Rest.@parentResource";
+const _PARENT_RESOURCE = "TypeSpec.Rest.@parentResource";
 
 /** Decorator names for classifying resource operations. */
 const ARM_RESOURCE_READ = "@armResourceRead";
@@ -611,7 +608,7 @@ const BUILTIN_RESOURCE_OPERATION = "@builtInResourceOperation";
  */
 function buildArmProviderSchemaLegacy(
   program: Program,
-  sdkContext: SdkContext<any, SdkHttpOperation>,
+  sdkContext: SdkContext<object, SdkHttpOperation>,
 ): ArmProviderSchema {
   const allClients = getAllSdkClients(sdkContext);
 
@@ -742,6 +739,7 @@ function buildArmProviderSchemaLegacy(
         const singletonDecorator = (model?.__raw as Model)?.decorators?.find(
           (d) =>
             d.definition?.name === "@singleton" &&
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- runtime decorator has Namespace-typed namespace property
             (d.decorator as any)?.namespace?.name === "ResourceManager",
         );
 
@@ -997,7 +995,7 @@ function isCRUDKind(kind: ResourceOperationKind): boolean {
  */
 function parseResourceOperation(
   serviceMethod: SdkServiceMethod<SdkHttpOperation> | undefined,
-  sdkContext: SdkContext<any, SdkHttpOperation>,
+  sdkContext: SdkContext<object, SdkHttpOperation>,
 ): {
   kind?: ResourceOperationKind;
   modelId?: string;
@@ -1066,8 +1064,8 @@ function parseResourceOperation(
  */
 function parseExtensionOrLegacyOperation(
   decoratorName: string,
-  decorator: any,
-  sdkContext: SdkContext<any, SdkHttpOperation>,
+  decorator: DecoratorApplication,
+  sdkContext: SdkContext<object, SdkHttpOperation>,
 ): { kind?: ResourceOperationKind; modelId?: string } {
   const isExtension = decoratorName === EXTENSION_RESOURCE_OPERATION;
   // Extension: args[2] is kind, args[1] is model
@@ -1090,9 +1088,9 @@ function parseExtensionOrLegacyOperation(
  * Args: (ParentResource, BuiltInResource, kind, ResourceName?)
  */
 function parseBuiltInResourceOperation(
-  decorator: any,
-  sdkContext: SdkContext<any, SdkHttpOperation>,
-  allDecorators: readonly any[],
+  decorator: DecoratorApplication,
+  sdkContext: SdkContext<object, SdkHttpOperation>,
+  allDecorators: readonly DecoratorApplication[],
 ): { kind?: ResourceOperationKind; modelId?: string } {
   const kindValue = decorator.args[2]?.jsValue as string;
   let kind = kindStringToResourceOperationKind(kindValue);
@@ -1142,8 +1140,8 @@ function kindStringToResourceOperationKind(
  * first argument (which should be the resource Model type).
  */
 function getResourceModelIdFromDecorator(
-  sdkContext: SdkContext<any, SdkHttpOperation>,
-  decorator: any,
+  sdkContext: SdkContext<object, SdkHttpOperation>,
+  decorator: DecoratorApplication,
 ): string | undefined {
   if (!decorator?.args?.[0]?.value) return undefined;
   return getResourceModelIdCore(sdkContext, decorator.args[0].value as Model);
@@ -1153,7 +1151,7 @@ function getResourceModelIdFromDecorator(
  * Resolves a TypeSpec Model to its SDK model and returns the cross-language definition ID.
  */
 function getResourceModelIdCore(
-  sdkContext: SdkContext<any, SdkHttpOperation>,
+  sdkContext: SdkContext<object, SdkHttpOperation>,
   model: Model,
 ): string | undefined {
   const sdkModel = getClientType(
@@ -1167,7 +1165,7 @@ function getResourceModelIdCore(
  * Gets the cross-language definition ID for a TypeSpec Operation.
  */
 function getMethodIdFromOperation(
-  sdkContext: SdkContext<any, SdkHttpOperation>,
+  sdkContext: SdkContext<object, SdkHttpOperation>,
   operation: Operation,
 ): string | undefined {
   return getCrossLanguageDefinitionId(sdkContext as TCGCContext, operation);
@@ -1178,7 +1176,7 @@ function getMethodIdFromOperation(
  * on the underlying TypeSpec model.
  */
 function getParentResourceModelId(
-  sdkContext: SdkContext<any, SdkHttpOperation>,
+  sdkContext: SdkContext<object, SdkHttpOperation>,
   model: SdkModelType | undefined,
 ): string | undefined {
   const rawModel = model?.__raw as Model | undefined;
@@ -1199,7 +1197,7 @@ function getParentResourceModelId(
  * Extracts the singleton resource name from the `@singleton` decorator.
  * Returns the `keyValue` argument if present, otherwise `"default"`.
  */
-function getSingletonResource(decorator: any): string | undefined {
+function getSingletonResource(decorator: DecoratorApplication | undefined): string | undefined {
   if (!decorator) return undefined;
   // The singleton decorator argument may be in different positions depending on the decorator format
   const keyValue = decorator.args?.[0]?.jsValue ?? decorator.args?.[0]?.value;
@@ -1260,7 +1258,7 @@ function traverseClient(
  * Returns all SDK clients from the SDK package, including nested children.
  */
 function getAllSdkClients(
-  sdkContext: SdkContext<any, SdkHttpOperation>,
+  sdkContext: SdkContext<object, SdkHttpOperation>,
 ): SdkClientType<SdkServiceOperation>[] {
   const clients: SdkClientType<SdkServiceOperation>[] = [];
   for (const client of sdkContext.sdkPackage.clients) {

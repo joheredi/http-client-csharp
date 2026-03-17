@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type {
   SdkClientType,
+  SdkContext,
   SdkEnumType,
   SdkHttpOperation,
   SdkModelType,
@@ -271,17 +272,17 @@ describe("resolveRootNamespace", () => {
         namespaces: [],
         crossLanguagePackageId: undefined,
       },
-    };
+    } as unknown as SdkContext<object, SdkHttpOperation>;
 
     // Before cleaning
-    expect(resolveRootNamespace(mockContext as any)).toBe("MoveClient");
+    expect(resolveRootNamespace(mockContext)).toBe("MoveClient");
 
     const allClients = mockContext.sdkPackage.clients;
-    cleanAllNamespaces(allClients, [], []);
+    cleanAllNamespaces(allClients as unknown as SdkClientType<SdkHttpOperation>[], [], []);
 
     // After cleaning: name "MoveClient" matches last segment "MoveClient" → prefixed
     expect(allClients[0].namespace).toBe("_MoveClient");
-    expect(resolveRootNamespace(mockContext as any)).toBe("_MoveClient");
+    expect(resolveRootNamespace(mockContext)).toBe("_MoveClient");
   });
 });
 
@@ -293,7 +294,7 @@ function createMockSdkContext(opts: {
   clientNamespace?: string;
   namespaceName?: string;
   crossLanguagePackageId?: string;
-}): any {
+}): SdkContext<object, SdkHttpOperation> {
   return {
     sdkPackage: {
       clients: opts.clientNamespace
@@ -302,7 +303,7 @@ function createMockSdkContext(opts: {
       namespaces: opts.namespaceName ? [{ fullName: opts.namespaceName }] : [],
       crossLanguagePackageId: opts.crossLanguagePackageId ?? undefined,
     },
-  };
+  } as unknown as SdkContext<object, SdkHttpOperation>;
 }
 
 /**

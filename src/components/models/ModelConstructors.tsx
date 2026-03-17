@@ -57,10 +57,7 @@ import { TypeExpression } from "@typespec/emitter-framework/csharp";
 import { SystemClientModelPrimitives } from "../../builtins/system-client-model.js";
 import { SystemCollectionsGeneric } from "../../builtins/system-collections-generic.js";
 import { System } from "../../builtins/system.js";
-import {
-  getCollectionValueType,
-  isDictCollection,
-} from "../../utils/collections.js";
+import { getCollectionValueType } from "../../utils/collections.js";
 import {
   renderCollectionParameterType,
   renderCollectionPropertyType,
@@ -847,8 +844,7 @@ export function computeSerializationCtorParams(
     // without filtering, the constructor would have duplicate parameters.
     const basePropertyNames = collectAllBasePropertyNames(model.baseModel);
     const ownProps = model.properties.filter(
-      (p) =>
-        !isBaseDiscriminatorOverride(p) && !basePropertyNames.has(p.name),
+      (p) => !isBaseDiscriminatorOverride(p) && !basePropertyNames.has(p.name),
     );
     const ownParams = buildPropertyTypeParameters(
       ownProps,
@@ -1034,8 +1030,7 @@ function collectSerializationParamDocs(
     const baseDocs = collectSerializationParamDocs(model.baseModel, namePolicy);
     const basePropertyNames = collectAllBasePropertyNames(model.baseModel);
     const ownProps = model.properties.filter(
-      (p) =>
-        !isBaseDiscriminatorOverride(p) && !basePropertyNames.has(p.name),
+      (p) => !isBaseDiscriminatorOverride(p) && !basePropertyNames.has(p.name),
     );
     return [...baseDocs, ...toParamDocInfos(ownProps, namePolicy, model.name)];
   }
@@ -1273,8 +1268,7 @@ function DerivedModelConstructors(props: {
   // constructor already handles the inherited property.
   const basePropertyNames = collectAllBasePropertyNames(baseModel);
   const ownProperties = type.properties.filter(
-    (p) =>
-      !isBaseDiscriminatorOverride(p) && !basePropertyNames.has(p.name),
+    (p) => !isBaseDiscriminatorOverride(p) && !basePropertyNames.has(p.name),
   );
 
   // === Public initialization constructor ===

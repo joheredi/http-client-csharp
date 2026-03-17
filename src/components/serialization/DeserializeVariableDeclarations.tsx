@@ -69,7 +69,6 @@ import { needsLiteralWrapperStruct } from "../literal-types/collect.js";
 import {
   ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME,
   isBaseDiscriminatorOverride,
-  isDerivedDiscriminatedModel,
 } from "../models/ModelConstructors.js";
 import {
   ADDITIONAL_PROPERTIES_PARAM_NAME,
@@ -126,8 +125,7 @@ export function computeVariableInfos(model: SdkModelType): VariableInfo[] {
         .map((info) => info.property.name),
     );
     const ownProps = model.properties.filter(
-      (p) =>
-        !isBaseDiscriminatorOverride(p) && !basePropertyNames.has(p.name),
+      (p) => !isBaseDiscriminatorOverride(p) && !basePropertyNames.has(p.name),
     );
     return [
       ...baseInfos,

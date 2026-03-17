@@ -220,9 +220,6 @@ export function getOperationScopeFromPath(path: string): ResourceScope {
     return ResourceScope.ResourceGroup;
   } else if (/^\/subscriptions\/\{[^}]+\}\//.test(path)) {
     return ResourceScope.Subscription;
-  } else if (hasMultipleProviderSegments(path)) {
-    // Paths with multiple /providers/ segments indicate extension resources
-    return ResourceScope.Extension;
   }
   return ResourceScope.Tenant;
 }

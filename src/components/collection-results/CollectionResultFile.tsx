@@ -38,7 +38,6 @@ import {
   SystemClientModel,
   SystemClientModelPrimitives,
 } from "../../builtins/system-client-model.js";
-import { Azure } from "../../builtins/azure.js";
 import { SystemThreadingTasks } from "../../builtins/system-threading.js";
 import type { ResolvedCSharpEmitterOptions } from "../../options.js";
 import { getLicenseHeader } from "../../utils/header.js";

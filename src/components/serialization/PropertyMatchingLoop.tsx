@@ -73,10 +73,7 @@ import {
   collectPropertyCSharpNames,
 } from "../../utils/property.js";
 import { isDynamicModel } from "../models/DynamicModel.js";
-import {
-  isBaseDiscriminatorOverride,
-  isDerivedDiscriminatedModel,
-} from "../models/ModelConstructors.js";
+import { isBaseDiscriminatorOverride } from "../models/ModelConstructors.js";
 
 /**
  * Props for the {@link PropertyMatchingLoop} component.
@@ -146,8 +143,7 @@ function computeMatchablePropertyInfos(
     // base properties (e.g., ARM TrackedResource re-declares `name`).
     const basePropertyNames = new Set(baseInfos.map((i) => i.property.name));
     const ownProps = model.properties.filter(
-      (p) =>
-        !isBaseDiscriminatorOverride(p) && !basePropertyNames.has(p.name),
+      (p) => !isBaseDiscriminatorOverride(p) && !basePropertyNames.has(p.name),
     );
     return [
       ...baseInfos,

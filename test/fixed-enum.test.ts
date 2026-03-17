@@ -391,12 +391,6 @@ describe("FixedEnumFile", () => {
 
     // Float literal union → enum with "_125", "_2375" (not "1_25", "2_375")
     // The enum file name is derived from the model+property names by TCGC
-    const floatEnumKey = Object.keys(outputs).find(
-      (k) =>
-        k.includes("Models") &&
-        k.endsWith(".cs") &&
-        !k.includes("Serialization"),
-    );
     const allModelFiles = Object.entries(outputs)
       .filter(
         ([k]) =>

@@ -21,7 +21,7 @@
  * @module
  */
 import { describe, expect, it } from "vitest";
-import { MgmtTester, MgmtApiTester } from "../test-host.js";
+import { MgmtApiTester } from "../test-host.js";
 
 /**
  * MgmtTester with new detection mode enabled to properly detect

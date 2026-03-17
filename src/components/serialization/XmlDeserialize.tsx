@@ -86,10 +86,7 @@ import { SystemClientModelPrimitives } from "../../builtins/system-client-model.
 import { SystemXmlLinq } from "../../builtins/system-xml-linq.js";
 import { unwrapNullableType } from "../../utils/nullable.js";
 import { resolvePropertyName } from "../../utils/property.js";
-import {
-  isBaseDiscriminatorOverride,
-  isDerivedDiscriminatedModel,
-} from "../models/ModelConstructors.js";
+import { isBaseDiscriminatorOverride } from "../models/ModelConstructors.js";
 import { DeserializeReturnStatement } from "./DeserializeReturnStatement.js";
 import { DeserializeVariableDeclarations } from "./DeserializeVariableDeclarations.js";
 

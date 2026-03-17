@@ -9,7 +9,6 @@ import { type Children, code, namekey } from "@alloy-js/core";
 import {
   type SdkArrayType,
   type SdkModelType,
-  type SdkType,
   UsageFlags,
 } from "@azure-tools/typespec-client-generator-core";
 import { SystemClientModelPrimitives } from "../../builtins/system-client-model.js";

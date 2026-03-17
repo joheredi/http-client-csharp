@@ -63,7 +63,6 @@ import {
 } from "../../utils/collections.js";
 import { renderCollectionPropertyType } from "../../utils/collection-type-expression.js";
 import {
-  isCollectionType,
   isPropertyNullable,
   unwrapNullableType,
 } from "../../utils/nullable.js";
@@ -78,9 +77,7 @@ import {
 } from "../../utils/refkey.js";
 import { needsLiteralWrapperStruct } from "../literal-types/collect.js";
 import {
-  ADDITIONAL_BINARY_DATA_PROPS_PARAM_NAME,
   isBaseDiscriminatorOverride,
-  isDerivedDiscriminatedModel,
   isModelAbstract,
 } from "../models/ModelConstructors.js";
 import { isDynamicModel } from "../models/DynamicModel.js";
@@ -121,8 +118,7 @@ function computeSerializationProperties(
     // TrackedResource re-declares inherited `name` from Resource).
     const basePropertyNames = new Set(baseProps.map((p) => p.name));
     const ownProps = model.properties.filter(
-      (p) =>
-        !isBaseDiscriminatorOverride(p) && !basePropertyNames.has(p.name),
+      (p) => !isBaseDiscriminatorOverride(p) && !basePropertyNames.has(p.name),
     );
     return [...baseProps, ...ownProps];
   }
@@ -146,12 +142,9 @@ function computeSerializationPropertyInfos(
 ): SerializationPropertyInfo[] {
   if (model.baseModel) {
     const baseInfos = computeSerializationPropertyInfos(model.baseModel);
-    const basePropertyNames = new Set(
-      baseInfos.map((i) => i.property.name),
-    );
+    const basePropertyNames = new Set(baseInfos.map((i) => i.property.name));
     const ownProps = model.properties.filter(
-      (p) =>
-        !isBaseDiscriminatorOverride(p) && !basePropertyNames.has(p.name),
+      (p) => !isBaseDiscriminatorOverride(p) && !basePropertyNames.has(p.name),
     );
     return [
       ...baseInfos,

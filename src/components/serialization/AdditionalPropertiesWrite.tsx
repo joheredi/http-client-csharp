@@ -49,7 +49,6 @@ import {
   isAdditionalPropertiesBinaryData,
   isAdditionalPropertiesArray,
 } from "../../utils/additional-properties.js";
-import { unwrapNullableType } from "../../utils/nullable.js";
 import { getWriteMethodInfo } from "./PropertySerializer.js";
 
 /**

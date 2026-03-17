@@ -12,6 +12,7 @@ import { mkdir, rm, writeFile } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import type { SdkModelType } from "@azure-tools/typespec-client-generator-core";
 
 import {
   findCustomCodeFiles,
@@ -527,7 +528,7 @@ describe("applyCustomCodeRenames", () => {
    * "RenamedModel" to "RenamedModelCustom".
    */
   it("renames model when custom code has a different declaredName", () => {
-    const model = { name: "RenamedModel" } as any;
+    const model = { name: "RenamedModel" } as unknown as SdkModelType;
     const customCode = createEmptyCustomCodeModel();
     customCode.types.set("RenamedModel", {
       declaredName: "RenamedModelCustom",
@@ -548,7 +549,7 @@ describe("applyCustomCodeRenames", () => {
    * (isMemberSuppressed, getCustomNamespace) work correctly.
    */
   it("adds custom code entry under the new name for downstream lookups", () => {
-    const model = { name: "RenamedModel" } as any;
+    const model = { name: "RenamedModel" } as unknown as SdkModelType;
     const customCode = createEmptyCustomCodeModel();
     const typeInfo = {
       declaredName: "RenamedModelCustom",
@@ -573,7 +574,7 @@ describe("applyCustomCodeRenames", () => {
    * This is the common case for most models.
    */
   it("does not rename models without custom code entries", () => {
-    const model = { name: "Widget" } as any;
+    const model = { name: "Widget" } as unknown as SdkModelType;
     const customCode = createEmptyCustomCodeModel();
 
     applyCustomCodeRenames([model], customCode);
@@ -587,7 +588,7 @@ describe("applyCustomCodeRenames", () => {
    * the model should NOT be renamed.
    */
   it("does not rename when declaredName equals originalName", () => {
-    const model = { name: "Friend" } as any;
+    const model = { name: "Friend" } as unknown as SdkModelType;
     const customCode = createEmptyCustomCodeModel();
     customCode.types.set("Friend", {
       declaredName: "Friend",
@@ -607,9 +608,9 @@ describe("applyCustomCodeRenames", () => {
    * all of them, including models that should and shouldn't be renamed.
    */
   it("handles multiple models with mixed rename scenarios", () => {
-    const model1 = { name: "RenamedModel" } as any;
-    const model2 = { name: "Widget" } as any;
-    const model3 = { name: "AnotherRename" } as any;
+    const model1 = { name: "RenamedModel" } as unknown as SdkModelType;
+    const model2 = { name: "Widget" } as unknown as SdkModelType;
+    const model3 = { name: "AnotherRename" } as unknown as SdkModelType;
     const customCode = createEmptyCustomCodeModel();
     customCode.types.set("RenamedModel", {
       declaredName: "RenamedModelCustom",
@@ -638,7 +639,7 @@ describe("applyCustomCodeRenames", () => {
    * no models should be renamed. This is a no-op.
    */
   it("is a no-op when custom code has no types", () => {
-    const model = { name: "Widget" } as any;
+    const model = { name: "Widget" } as unknown as SdkModelType;
     const customCode = createEmptyCustomCodeModel();
 
     applyCustomCodeRenames([model], customCode);
